@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="km">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>កម្មវិធីទម្លាក់ការកម្មង់</title>
+    <link rel="icon" type="image/png" href="https://cdn-icons-png.flaticon.com/512/2921/2921226.png">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Kantumruy+Pro:ital,wght@0,100..700;1,100..700&display=swap" rel="stylesheet">
+    
+    <script>
+      /**
+       * ULTIMATE SANDBOX PROTECTION v5
+       * បិទរាល់ការចូលទៅកាន់ location.href ដែលអាចបង្កកំហុស Security ក្នុង iFrame
+       */
+      (function() {
+        window.global = window;
+        window.process = window.process || {
+          env: { NODE_ENV: 'development', API_KEY: '' },
+          browser: true,
+          version: ''
+        };
+
+        // Suppress restricted access errors
+        window.onerror = function(msg) {
+          if (msg && (msg.indexOf('Location') !== -1 || msg.indexOf('cross-origin') !== -1)) {
+            return true; 
+          }
+        };
+      })();
+    </script>
+
+<script type="importmap">
+{
+  "imports": {
+    "vite": "https://aistudiocdn.com/vite@^7.2.2",
+    "@vitejs/plugin-react": "https://aistudiocdn.com/@vitejs/plugin-react@^5.1.0",
+    "react/": "https://aistudiocdn.com/react@^19.2.0/",
+    "react": "https://aistudiocdn.com/react@^19.2.0",
+    "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.0/",
+    "react-dom": "https://aistudiocdn.com/react-dom@^19.2.0",
+    "react-dom/client": "https://aistudiocdn.com/react-dom@^19.2.0/client",
+    "@google/genai": "https://aistudiocdn.com/@google/genai@^1.29.0",
+    "path": "https://aistudiocdn.com/path@^0.12.7",
+    "url": "https://aistudiocdn.com/url@^0.11.4",
+    "jspdf": "https://aistudiocdn.com/jspdf@^2.5.2",
+    "jspdf-autotable": "https://aistudiocdn.com/jspdf-autotable@^3.8.4",
+    "lucide-react": "https://esm.sh/lucide-react@^0.562.0"
+  }
+}
+</script>
+  <script type="module" crossorigin src="/Order_System/assets/index-D_lpKiAk.js"></script>
+  <link rel="stylesheet" crossorigin href="/Order_System/assets/index-5Uq1W5hI.css">
+</head>
+<body class="bg-gray-900 text-gray-200 antialiased">
+    <div class="flare-light"></div>
+    <div id="root"></div>
+</body>
+</html>
