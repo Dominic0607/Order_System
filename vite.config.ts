@@ -26,3 +26,5 @@ export default defineConfig(({ mode }) => {
       }
     };
 });
+
+export default { base: "/Order_System/", }
