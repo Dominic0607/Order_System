@@ -5,6 +5,9 @@ import { ParsedOrder } from '../types';
 import { convertGoogleDriveUrl } from '../utils/fileUtils';
 import SimpleBarChart from '../components/admin/SimpleBarChart';
 import StatCard from '../components/performance/StatCard';
+import { jsPDF } from 'jspdf';
+import 'jspdf-autotable';
+import Spinner from '../components/common/Spinner';
 
 interface SalesByPageReportProps {
     orders: ParsedOrder[];
@@ -21,6 +24,8 @@ const SalesByPageReport: React.FC<SalesByPageReportProps> = ({ orders, onBack })
     const [isFrozen, setIsFrozen] = useState(false);
     const [showFillColor, setShowFillColor] = useState(true);
     const [isMerged, setIsMerged] = useState(true);
+    const [showAllPages, setShowAllPages] = useState(true); // Default to true (Show all including 0)
+    const [isExporting, setIsExporting] = useState(false);
     const [sortConfig, setSortConfig] = useState<{ key: SortKey, direction: 'asc' | 'desc' }>({ key: 'teamName', direction: 'asc' });
 
     const toggleSort = (key: SortKey) => {
@@ -32,6 +37,23 @@ const SalesByPageReport: React.FC<SalesByPageReportProps> = ({ orders, onBack })
 
     const pageStats = useMemo(() => {
         const stats: Record<string, any> = {};
+        
+        // Initialize with ALL defined pages from system settings first
+        if (appData.pages) {
+            appData.pages.forEach(p => {
+                stats[p.PageName] = {
+                    pageName: p.PageName,
+                    teamName: p.Team || 'Unassigned',
+                    logoUrl: p.PageLogoURL || '',
+                    revenue: 0,
+                    profit: 0,
+                    orderCount: 0
+                };
+                MONTHS.forEach(m => { stats[p.PageName][`rev_${m}`] = 0; stats[p.PageName][`prof_${m}`] = 0; });
+            });
+        }
+
+        // Aggregate order data
         orders.forEach(o => {
             const page = o.Page || 'Unknown';
             if (!stats[page]) {
@@ -59,14 +81,21 @@ const SalesByPageReport: React.FC<SalesByPageReportProps> = ({ orders, onBack })
             }
         });
 
-        return Object.values(stats).sort((a: any, b: any) => {
+        let result = Object.values(stats);
+
+        // Filter out zero revenue pages if the toggle is OFF
+        if (!showAllPages) {
+            result = result.filter(item => item.revenue > 0);
+        }
+
+        return result.sort((a: any, b: any) => {
             const mult = sortConfig.direction === 'asc' ? 1 : -1;
             const valA = a[sortConfig.key];
             const valB = b[sortConfig.key];
             if (typeof valA === 'string') return valA.localeCompare(valB) * mult;
             return (valA - valB) * mult;
         });
-    }, [orders, sortConfig, appData.pages]);
+    }, [orders, sortConfig, appData.pages, showAllPages]);
 
     const teamSpanCounts = useMemo(() => {
         const counts: Record<string, number> = {};
@@ -96,6 +125,46 @@ const SalesByPageReport: React.FC<SalesByPageReportProps> = ({ orders, onBack })
         return totals;
     }, [pageStats]);
 
+    const handleExportPDF = () => {
+        setIsExporting(true);
+        setTimeout(() => {
+            try {
+                const doc = new jsPDF({ orientation: 'landscape' }) as any;
+                const pageWidth = doc.internal.pageSize.width;
+
+                doc.setFontSize(18);
+                doc.text("Sales Report by Page", pageWidth / 2, 15, { align: 'center' });
+                doc.setFontSize(10);
+                doc.text(`Generated on: ${new Date().toLocaleString()}`, pageWidth / 2, 22, { align: 'center' });
+
+                const head = [['#', 'Team', 'Page Name', 'Total Revenue', ...MONTHS]];
+                const body = pageStats.map((p: any, i) => [
+                    i + 1,
+                    p.teamName,
+                    p.pageName,
+                    `$${p.revenue.toLocaleString()}`,
+                    ...MONTHS.map(m => `$${p[`rev_${m}`].toLocaleString()}`)
+                ]);
+
+                doc.autoTable({
+                    startY: 30,
+                    head: head,
+                    body: body,
+                    theme: 'grid',
+                    headStyles: { fillColor: [37, 99, 235], textColor: 255 },
+                    styles: { fontSize: 7 },
+                });
+
+                doc.save(`Page_Sales_Report_${Date.now()}.pdf`);
+            } catch (err) {
+                console.error(err);
+                alert("Export failed");
+            } finally {
+                setIsExporting(false);
+            }
+        }, 100);
+    };
+
     const topPagesChartData = useMemo(() => {
         return [...pageStats]
             .sort((a, b) => b.revenue - a.revenue)
@@ -112,7 +181,7 @@ const SalesByPageReport: React.FC<SalesByPageReportProps> = ({ orders, onBack })
             { key: `total${type}`, label: `សរុប (${type})`, sortable: true, sortKey: type.toLowerCase() as SortKey },
             ...MONTHS.map(m => ({ key: `${prefix}_${m}`, label: m }))
         ];
-        const active = columns.filter(c => true);
+        const active = columns;
 
         return (
             <div className="hidden md:flex page-card flex-col mb-8 !p-6 border-gray-700/50 shadow-xl overflow-hidden bg-gray-900/40">
@@ -122,6 +191,21 @@ const SalesByPageReport: React.FC<SalesByPageReportProps> = ({ orders, onBack })
                         តារាង{type === 'Revenue' ? 'ចំណូល' : 'ប្រាក់ចំណេញ'}តាម Page
                     </h3>
                     <div className="flex items-center gap-2">
+                        {type === 'Revenue' && (
+                             <>
+                                <button onClick={() => setShowAllPages(!showAllPages)} className={`btn !py-1 !px-3 text-[10px] font-black border transition-all ${showAllPages ? 'bg-purple-600 border-purple-500 text-white shadow-lg shadow-purple-900/20' : 'bg-gray-800 border-gray-700 text-gray-400'}`}>
+                                    {showAllPages ? 'ALL PAGES' : 'ACTIVE ONLY'}
+                                </button>
+                                <button 
+                                    onClick={handleExportPDF}
+                                    disabled={isExporting}
+                                    className="btn !py-1 !px-4 text-[10px] font-black bg-red-600/20 border border-red-500/30 text-red-400 hover:bg-red-600 hover:text-white transition-all flex items-center gap-2"
+                                >
+                                    {isExporting ? <Spinner size="sm"/> : <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>}
+                                    EXPORT PDF
+                                </button>
+                             </>
+                        )}
                         <button onClick={() => setIsMerged(!isMerged)} className={`btn !py-1 !px-3 text-[10px] font-black border transition-all ${isMerged ? 'bg-indigo-600 border-indigo-500 text-white' : 'bg-gray-800 border-gray-700 text-gray-400'}`}>MERGE</button>
                         <button onClick={() => setShowFillColor(!showFillColor)} className={`btn !py-1 !px-3 text-[10px] font-black border transition-all ${showFillColor ? 'bg-orange-600 border-orange-500 text-white' : 'bg-gray-800 border-gray-700 text-gray-400'}`}>COLOR</button>
                         <button onClick={() => setIsFrozen(!isFrozen)} className={`btn !py-1 !px-3 text-[10px] font-black border transition-all ${isFrozen ? 'bg-blue-600 border-blue-500 text-white shadow-lg' : 'bg-gray-800 border-gray-700 text-gray-400'}`}>FREEZE</button>
@@ -228,7 +312,7 @@ const SalesByPageReport: React.FC<SalesByPageReportProps> = ({ orders, onBack })
                 {renderTable('Revenue', 'rev')}
                 {renderTable('Profit', 'prof')}
             </div>
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 pb-10">
                 <div className="lg:col-span-8"><div className="page-card !p-4 bg-gray-800/40 border-gray-700/50"><SimpleBarChart data={topPagesChartData} title="Page ដែលមានចំណូលខ្ពស់បំផុត (Top 5 Pages Revenue)" /></div></div>
                 <div className="lg:col-span-4 flex flex-col justify-center page-card !p-5 bg-gray-800/30 border-gray-700/50"><h3 className="text-sm font-black text-gray-400 uppercase tracking-widest flex items-center gap-2 mb-6"><span className="w-1.5 h-4 bg-indigo-500 rounded-full"></span>សង្ខេប</h3><div className="space-y-4"><div className="flex justify-between border-b border-gray-700/50 pb-2"><span className="text-xs text-gray-400">ចំនួន Page សកម្ម:</span><span className="text-white font-black text-sm">{grandTotals.pagesCount}</span></div><div className="flex justify-between"><span className="text-xs text-gray-400">មធ្យមភាគ/Page:</span><span className="text-blue-400 font-black text-sm">${(grandTotals.revenue / (grandTotals.pagesCount || 1)).toLocaleString(undefined, {maximumFractionDigits: 0})}</span></div></div></div>
             </div>
