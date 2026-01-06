@@ -1,18 +1,14 @@
 
-import React, { useState, useContext, useEffect, useMemo, useRef, useCallback } from 'react';
+import React, { useState, useContext, useEffect, useMemo, useCallback } from 'react';
 import { AppContext } from '../context/AppContext';
-import { Product as ProductType, MasterProduct, ShippingMethod, Driver, BankAccount, Store, TeamPage } from '../types';
+import { Product as ProductType, MasterProduct, Driver, Store } from '../types';
 import Spinner from '../components/common/Spinner';
 import { WEB_APP_URL } from '../constants';
 import Modal from '../components/common/Modal';
 import { convertGoogleDriveUrl } from '../utils/fileUtils';
 import SearchableProductDropdown from '../components/common/SearchableProductDropdown';
-
-declare global {
-    interface Window {
-        Html5Qrcode: any;
-    }
-}
+import MapModal from '../components/orders/MapModal';
+import BarcodeScannerModal from '../components/orders/BarcodeScannerModal';
 
 interface CreateOrderPageProps {
     team: string;
@@ -22,8 +18,8 @@ interface CreateOrderPageProps {
 
 type ProductUIState = ProductType & {
     discountType: 'percent' | 'amount' | 'custom';
-    discountAmountInput: string;
-    discountPercentInput: string;
+    discountAmountInput: string; 
+    discountPercentInput: string; 
     finalPriceInput: string;
     applyDiscountToTotal: boolean;
 }
@@ -53,221 +49,665 @@ const STEPS = [
     { number: 4, title: 'ផ្ទៀងផ្ទាត់' },
 ];
 
-const MapModal: React.FC<{ isOpen: boolean; onClose: () => void; url: string; }> = ({ isOpen, onClose, url }) => {
-    const [isLoading, setIsLoading] = useState(true);
-    useEffect(() => { if (isOpen) setIsLoading(true); }, [isOpen, url]);
-    if (!isOpen) return null;
-    return (
-        <Modal isOpen={isOpen} onClose={onClose} maxWidth="max-w-4xl">
-            <h2 className="text-xl font-bold mb-2 text-white">ស្វែងរកទីតាំង</h2>
-            <div className="relative w-full h-[70vh] bg-gray-900 rounded-lg overflow-hidden border border-gray-700">
-                {isLoading && <div className="absolute inset-0 flex items-center justify-center"><Spinner size="lg"/><span className="ml-3 text-gray-300">Loading Map...</span></div>}
-                <iframe src={url} width="100%" height="100%" style={{ border: 0 }} onLoad={() => setIsLoading(false)} className={isLoading ? 'opacity-0' : 'opacity-100 transition-opacity duration-500'}></iframe>
-            </div>
-        </Modal>
-    );
-};
-
-const BarcodeScannerModal = ({ onClose, onCodeScanned, scanMode, setScanMode, productsInOrder, masterProducts }: any) => {
-    const scannerRef = useRef<any>(null);
-    const [isScannerInitializing, setIsScannerInitializing] = useState(true);
-    useEffect(() => {
-        const scanner = new window.Html5Qrcode("barcode-reader-container");
-        scannerRef.current = scanner;
-        const config = { fps: 10, qrbox: { width: 250, height: 250 } };
-        scanner.start({ facingMode: "environment" }, config, (text: string) => { onCodeScanned(text); if (scanMode === 'single') onClose(); })
-            .then(() => setIsScannerInitializing(false))
-            .catch(() => setIsScannerInitializing(false));
-        return () => { if (scannerRef.current?.getState() === 2) scannerRef.current.stop(); };
-    }, [onCodeScanned, scanMode]);
-    return (
-        <div className="fixed inset-0 bg-black/90 z-50 flex flex-col p-4">
-            <div className="flex justify-between items-center text-white mb-4"><h2 className="text-xl font-bold">Scan Barcode</h2><button onClick={onClose} className="p-2 bg-gray-800 rounded-full">&times;</button></div>
-            <div id="barcode-reader-container" className="flex-grow bg-gray-900 rounded-lg overflow-hidden relative">
-                {isScannerInitializing && <div className="absolute inset-0 flex items-center justify-center"><Spinner size="lg"/></div>}
-            </div>
-            <div className="mt-4 flex gap-4">
-                <button onClick={() => setScanMode('increment')} className={`flex-1 py-3 rounded-xl font-bold ${scanMode === 'increment' ? 'bg-blue-600' : 'bg-gray-800'}`}>បូកចំនួន</button>
-                <button onClick={() => setScanMode('single')} className={`flex-1 py-3 rounded-xl font-bold ${scanMode === 'single' ? 'bg-blue-600' : 'bg-gray-800'}`}>រាប់មួយ</button>
-            </div>
-        </div>
-    );
-};
-
 const CreateOrderPage: React.FC<CreateOrderPageProps> = ({ team, onSaveSuccess, onCancel }) => {
-    const { appData, currentUser, previewImage, apiKey } = useContext(AppContext);
+    const { appData, currentUser, apiKey, previewImage } = useContext(AppContext);
     const [currentStep, setCurrentStep] = useState(1);
     const [isCancelModalOpen, setIsCancelModalOpen] = useState(false);
     
-    const [order, setOrder] = useState<any>({
+    const initialOrderState = useMemo(() => ({
         page: '',
         telegramValue: '',
-        fulfillmentStore: '', // New Field
-        scheduledTime: '',    // New Field
-        isScheduled: false,   // UI State
+        fulfillmentStore: '',
         customer: { name: '', phone: '', province: '', district: '', sangkat: '', additionalLocation: '', shippingFee: '' },
         products: [{...initialProductState, id: Date.now()}],
         shipping: { method: '', details: '', cost: '' },
         payment: { status: 'Unpaid', info: '' },
+        telegram: { schedule: false, time: null },
         subtotal: 0,
         grandTotal: 0,
         note: '',
-    });
+    }), []);
 
+    const [order, setOrder] = useState<any>(initialOrderState);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
     const [submissionStatus, setSubmissionStatus] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
     const [selectedShippingMethod, setSelectedShippingMethod] = useState<any>(null);
+    const [carrierLogo, setCarrierLogo] = useState<string>('');
+    const [shippingLogo, setShippingLogo] = useState<string>('');
+    const [bankLogo, setBankLogo] = useState<string>('');
     const [isScannerVisible, setIsScannerVisible] = useState(false);
-    const [scanMode, setScanMode] = useState<'single' | 'increment'>('increment');
+    const [shippingFeeOption, setShippingFeeOption] = useState<'charge' | 'free'>('charge');
     const [isMapModalOpen, setIsMapModalOpen] = useState(false);
     const [mapSearchUrl, setMapSearchUrl] = useState('');
-    const [shippingFeeOption, setShippingFeeOption] = useState<'charge' | 'free'>('charge');
+    const [scanMode, setScanMode] = useState<'single' | 'increment'>('increment');
+    
+    const DRAFT_KEY = useMemo(() => `createOrderDraft_${currentUser?.UserName}_${team}`, [currentUser, team]);
+    
+    // Auto Scroll to Top on Step Change (Mobile focus)
+    useEffect(() => {
+        if (window.innerWidth < 768) {
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+    }, [currentStep]);
 
-    const teamPages = useMemo(() => appData.pages?.filter((p: any) => p.Team === team) || [], [appData.pages, team]);
-    const stores = useMemo(() => appData.stores || [], [appData.stores]);
+    useEffect(() => {
+        try {
+            const savedDraft = localStorage.getItem(DRAFT_KEY);
+            if (savedDraft) {
+                const parsedDraft = JSON.parse(savedDraft);
+                setOrder((prev: any) => ({ ...prev, ...parsedDraft }));
+                if (parsedDraft.customer && typeof parsedDraft.customer.shippingFee === 'number') {
+                    setShippingFeeOption(parsedDraft.customer.shippingFee === 0 ? 'free' : 'charge');
+                }
+                if (parsedDraft.customer.phone) {
+                   const phoneNumber = parsedDraft.customer.phone;
+                   const foundCarrier = appData.phoneCarriers?.find((carrier: any) => 
+                        (carrier.Prefixes || '').split(',').some((prefix: string) => phoneNumber.startsWith(prefix.trim()))
+                    );
+                    setCarrierLogo(foundCarrier ? convertGoogleDriveUrl(foundCarrier.CarrierLogoURL) : '');
+                }
+                if (parsedDraft.shipping.method) {
+                    const methodInfo = appData.shippingMethods?.find((s: any) => s.MethodName === parsedDraft.shipping.method);
+                    setSelectedShippingMethod(methodInfo || null);
+                    setShippingLogo(methodInfo ? convertGoogleDriveUrl(methodInfo.LogosURL) : '');
+                }
+            }
+        } catch (e) {
+            localStorage.removeItem(DRAFT_KEY);
+        }
+    }, [DRAFT_KEY, appData.phoneCarriers, appData.shippingMethods]);
 
-    const handlePageChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-        const pageName = e.target.value;
-        const pageData = teamPages.find((p: any) => p.PageName === pageName);
-        setOrder((prev: any) => ({
-            ...prev,
-            page: pageName,
-            telegramValue: pageData ? pageData.TelegramValue : '',
-            fulfillmentStore: pageData?.DefaultStore || prev.fulfillmentStore // Auto-default store
-        }));
+    useEffect(() => {
+        const handler = setTimeout(() => {
+            localStorage.setItem(DRAFT_KEY, JSON.stringify(order));
+        }, 500);
+        return () => clearTimeout(handler);
+    }, [order, DRAFT_KEY]);
+
+    const handleCancelClick = () => setIsCancelModalOpen(true);
+    const handleConfirmCancel = () => { localStorage.removeItem(DRAFT_KEY); setIsCancelModalOpen(false); onCancel(); };
+    
+    const teamPages = useMemo(() => {
+        if (!appData.pages) return [];
+        return appData.pages.filter((p: any) => p.Team === team);
+    }, [appData.pages, team]);
+
+    const selectedPageInfo = useMemo(() => {
+        if (!order.page) return null;
+        return teamPages.find((p: any) => p.PageName === order.page) || null;
+    }, [order.page, teamPages]);
+
+    useEffect(() => {
+        if (teamPages.length === 1 && !order.page) {
+            const pageData = teamPages[0];
+            setOrder((prev: any) => ({ ...prev, page: pageData.PageName, telegramValue: pageData.TelegramValue, fulfillmentStore: pageData.DefaultStore || prev.fulfillmentStore }));
+        }
+    }, [teamPages, order.page]);
+
+    const provinces = useMemo(() => {
+        if (!appData.locations) return [];
+        const uniqueProvinces = [...new Set(appData.locations.map((loc: any) => loc.Province))];
+        uniqueProvinces.sort((a, b) => String(a).localeCompare(String(b), 'km'));
+        return uniqueProvinces;
+    }, [appData.locations]);
+
+    const districts = useMemo(() => {
+        if (!appData.locations || !order.customer.province) return [];
+        return [...new Set(appData.locations.filter((loc: any) => loc.Province === order.customer.province).map((loc: any) => loc.District))].sort((a, b) => String(a).localeCompare(String(b), 'km'));
+    }, [appData.locations, order.customer.province]);
+
+    const sangkats = useMemo(() => {
+        if (!appData.locations || !order.customer.province || !order.customer.district) return [];
+        return [...new Set(appData.locations.filter((loc: any) => loc.Province === order.customer.province && loc.District === order.customer.district).map((loc: any) => loc.Sangkat).filter(Boolean))].sort((a, b) => String(a).localeCompare(String(b), 'km'));
+    }, [appData.locations, order.customer.province, order.customer.district]);
+
+    useEffect(() => {
+        const newSubtotal = order.products.reduce((acc: number, p: ProductType) => acc + p.total, 0);
+        const newGrandTotal = newSubtotal + (Number(order.customer.shippingFee) || 0);
+        if (newSubtotal !== order.subtotal || newGrandTotal !== order.grandTotal) {
+            setOrder((prev: any) => ({ ...prev, subtotal: newSubtotal, grandTotal: newGrandTotal }));
+        }
+    }, [order.products, order.customer.shippingFee]);
+
+    const calculateProductFields = (product: ProductUIState, allMasterProducts: MasterProduct[]): ProductUIState => {
+        const updated = { ...product };
+        const masterProduct = allMasterProducts.find(p => p.ProductName === updated.name);
+        updated.quantity = Math.max(1, Number(updated.quantity) || 1);
+        updated.originalPrice = Math.max(0, masterProduct ? (Number(masterProduct.Price) || 0) : 0);
+        updated.cost = Math.max(0, masterProduct ? (Number(masterProduct.Cost) || 0) : 0);
+        const originalTotal = updated.quantity * updated.originalPrice;
+        let finalTotal = originalTotal;
+        let totalDiscountAmount = 0;
+        switch (updated.discountType) {
+            case 'percent':
+                const dp = Math.max(0, Number(updated.discountPercentInput) || 0);
+                totalDiscountAmount = originalTotal * (dp / 100);
+                finalTotal = originalTotal - totalDiscountAmount;
+                break;
+            case 'amount':
+                const da = Math.max(0, Number(updated.discountAmountInput) || 0);
+                totalDiscountAmount = (updated.quantity > 1 && updated.applyDiscountToTotal) ? da : da * updated.quantity;
+                finalTotal = originalTotal - totalDiscountAmount;
+                break;
+            case 'custom':
+                const cfp = Math.max(0, Number(updated.finalPriceInput) || 0);
+                finalTotal = updated.quantity * cfp;
+                totalDiscountAmount = originalTotal - finalTotal;
+                updated.finalPrice = cfp;
+                break;
+        }
+        updated.total = Math.max(0, finalTotal);
+        updated.finalPrice = updated.quantity > 0 ? updated.total / updated.quantity : 0;
+        updated.discountPercent = originalTotal > 0 ? (totalDiscountAmount / originalTotal) * 100 : 0;
+        if (updated.discountType !== 'custom') updated.finalPriceInput = updated.finalPrice.toFixed(2);
+        return updated;
     };
 
     const handleCodeScanned = useCallback((scannedCode: string) => {
-        const foundProduct = appData.products.find((p: MasterProduct) => p.Barcode?.trim() === scannedCode.trim());
+        const foundProduct: MasterProduct | undefined = appData.products.find((p: MasterProduct) => p.Barcode && p.Barcode.trim() === scannedCode.trim());
         if (!foundProduct) return;
-        setOrder((prev: any) => {
-            const idx = prev.products.findIndex((p: any) => p.name === foundProduct.ProductName);
-            const updated = [...prev.products];
-            if (idx > -1) {
-                if (scanMode === 'increment') updated[idx].quantity += 1;
+        setOrder((prevOrder: any) => {
+            const existingProductIndex = prevOrder.products.findIndex((p: ProductType) => p.name === foundProduct.ProductName);
+            let updatedProducts;
+            if (existingProductIndex > -1) {
+                const productToUpdate = { ...prevOrder.products[existingProductIndex] };
+                if (scanMode === 'increment') productToUpdate.quantity += 1;
+                const recalculated = calculateProductFields(productToUpdate, appData.products);
+                updatedProducts = [...prevOrder.products];
+                updatedProducts[existingProductIndex] = recalculated;
             } else {
-                updated.push({ ...initialProductState, id: Date.now(), name: foundProduct.ProductName, originalPrice: foundProduct.Price, cost: foundProduct.Cost, image: foundProduct.ImageURL });
+                const emptyProductIndex = prevOrder.products.findIndex((p: ProductType) => !p.name);
+                const newProduct: ProductUIState = { ...initialProductState, id: Date.now(), name: foundProduct.ProductName, quantity: 1, originalPrice: foundProduct.Price, cost: foundProduct.Cost, image: foundProduct.ImageURL };
+                const recalculated = calculateProductFields(newProduct, appData.products);
+                if (emptyProductIndex > -1) { updatedProducts = [...prevOrder.products]; updatedProducts[emptyProductIndex] = recalculated; }
+                else { updatedProducts = [...prevOrder.products, recalculated]; }
             }
-            return { ...prev, products: updated };
+            return { ...prevOrder, products: updatedProducts };
         });
+        if (scanMode === 'single') setIsScannerVisible(false);
     }, [appData.products, scanMode]);
 
-    const submitOrder = async () => {
-        setLoading(true);
-        setError('');
-        
-        const payload = {
-            currentUser,
-            selectedTeam: team,
-            page: order.page,
-            fulfillmentStore: order.fulfillmentStore,
-            scheduledTime: order.isScheduled ? order.scheduledTime : null,
-            customer: { ...order.customer, shippingFee: Number(order.customer.shippingFee) || 0 },
-            products: order.products.map((p: any) => ({
-                name: p.name, quantity: p.quantity, originalPrice: p.originalPrice, 
-                finalPrice: p.finalPrice, total: p.total, colorInfo: p.colorInfo, cost: p.cost, image: p.image
-            })),
-            shipping: { ...order.shipping, cost: Number(order.shipping.cost) || 0 },
-            payment: order.payment,
-            subtotal: order.subtotal,
-            grandTotal: order.grandTotal,
-            note: order.note,
-        };
+    const handleCustomerChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+        const { name, value } = e.target;
+        if (name === 'phone') {
+            let phoneNumber = value.replace(/[^0-9]/g, '');
+            if (phoneNumber.length > 1 && phoneNumber.startsWith('00')) phoneNumber = '0' + phoneNumber.substring(2);
+            else if (phoneNumber.length > 0 && !phoneNumber.startsWith('0')) phoneNumber = '0' + phoneNumber;
+            let foundCarrier = null;
+            if (phoneNumber.length >= 2 && appData.phoneCarriers) { foundCarrier = appData.phoneCarriers.find((carrier: any) => (carrier.Prefixes || '').split(',').some((prefix: string) => phoneNumber.startsWith(prefix.trim()))); }
+            setCarrierLogo(foundCarrier ? convertGoogleDriveUrl(foundCarrier.CarrierLogoURL) : '');
+            setOrder((prev: any) => ({ ...prev, customer: { ...prev.customer, phone: phoneNumber } }));
+            return;
+        }
+        if (name === 'shippingFee') {
+            const numValue = value === '' ? '' : Math.max(0, parseFloat(value)); 
+            setOrder((prev: any) => ({ ...prev, customer: { ...prev.customer, shippingFee: numValue } }));
+            return;
+        }
+        setOrder((prev: any) => {
+            let newCustomerState = { ...prev.customer, [name]: value };
+            if (name === 'province') { newCustomerState.district = ''; newCustomerState.sangkat = ''; }
+            else if (name === 'district') { newCustomerState.sangkat = ''; }
+            return { ...prev, customer: newCustomerState };
+        });
+    };
+    
+    const handleProductUpdate = (index: number, field: keyof ProductUIState, value: any) => {
+         setOrder((prev: any) => {
+            const updatedProducts = [...prev.products];
+            let productToUpdate = { ...updatedProducts[index] };
+            if (['discountPercentInput', 'discountAmountInput', 'finalPriceInput'].includes(field)) {
+                let stringValue = String(value).replace(/[^0-9.]/g, '').replace(/(\..*?)\./g, '$1');
+                if (stringValue.startsWith('0') && stringValue.length > 1 && !stringValue.startsWith('0.')) stringValue = String(parseFloat(stringValue));
+                // @ts-ignore
+                productToUpdate[field] = stringValue;
+            } else {
+                // @ts-ignore
+                productToUpdate[field] = value;
+            }
+            if (field === 'name') {
+                const masterProduct = appData.products.find((p: MasterProduct) => p.ProductName === value);
+                productToUpdate.name = value;
+                if (masterProduct) {
+                    productToUpdate.originalPrice = masterProduct.Price;
+                    productToUpdate.image = masterProduct.ImageURL;
+                    productToUpdate.cost = masterProduct.Cost;
+                    productToUpdate.discountType = 'percent';
+                    productToUpdate.finalPrice = masterProduct.Price;
+                    productToUpdate.finalPriceInput = String(masterProduct.Price);
+                } else {
+                    productToUpdate.originalPrice = 0; productToUpdate.image = ''; productToUpdate.cost = 0;
+                    productToUpdate.discountType = 'custom'; productToUpdate.finalPrice = 0;
+                }
+            }
+            if (field === 'discountType') { productToUpdate.discountPercentInput = ''; productToUpdate.discountAmountInput = ''; productToUpdate.finalPrice = productToUpdate.originalPrice; productToUpdate.finalPriceInput = String(productToUpdate.originalPrice); }
+            updatedProducts[index] = calculateProductFields(productToUpdate, appData.products);
+            return { ...prev, products: updatedProducts };
+        });
+    };
+    
+    const handleShippingMethodChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+        const methodName = e.target.value;
+        const methodInfo = appData.shippingMethods?.find((s: any) => s.MethodName === methodName) || null;
+        setSelectedShippingMethod(methodInfo);
+        setShippingLogo(methodInfo ? convertGoogleDriveUrl(methodInfo.LogosURL) : '');
+        setOrder((prev: any) => ({ ...prev, shipping: { ...prev.shipping, method: methodName, details: methodInfo?.RequireDriverSelection ? '' : methodName } }));
+    };
+    
+    const handleShippingChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const { name, value } = e.target;
+        let sv = value;
+        if (name === 'cost') {
+            if (sv.startsWith('0') && sv.length > 1 && !sv.startsWith('0.')) sv = String(parseFloat(sv));
+            sv = String(Math.max(0, parseFloat(sv) || 0)); 
+        }
+        setOrder((prev: any) => ({ ...prev, shipping: { ...prev.shipping, [name]: sv } }));
+    };
 
+    const handleDriverChange = (driverName: string) => {
+        setOrder((prev: any) => ({ ...prev, shipping: { ...prev.shipping, details: driverName } }));
+    };
+
+    const handleBankChange = (bankName: string) => {
+        const b = appData.bankAccounts?.find((b: any) => b.BankName === bankName) || null;
+        setBankLogo(b ? convertGoogleDriveUrl(b.LogoURL) : '');
+        setOrder((prev: any) => ({ ...prev, payment: { ...prev.payment, info: bankName } }));
+    };
+
+    const handleShippingOptionChange = (option: 'charge' | 'free') => { setShippingFeeOption(option); setOrder((prev: any) => ({ ...prev, customer: { ...prev.customer, shippingFee: option === 'free' ? 0 : '' } })); };
+    
+    const handleSearchOnMaps = () => {
+        if (!apiKey) { alert("API Key Required for Maps."); return; }
+        const { province, district, sangkat, additionalLocation } = order.customer;
+        const query = [additionalLocation, sangkat, district, province, 'Cambodia'].filter(Boolean).join(', ');
+        setMapSearchUrl(`https://www.google.com/maps/embed/v1/search?key=${apiKey}&q=${encodeURIComponent(query)}`);
+        setIsMapModalOpen(true);
+    };
+
+    const validateStep = (step: number): boolean => {
+        setError(''); 
+        switch (step) {
+            case 1:
+                if (!order.customer.name || !order.customer.phone || !order.customer.province || !order.page || !order.fulfillmentStore) { setError('សូមបំពេញឈ្មោះ, លេខទូរស័ព្ទ, ខេត្ត/ក្រុង, Page និងឃ្លាំងបញ្ចេញទំនិញ។'); return false; }
+                if ((order.customer.additionalLocation || '').match(/(https?:\/\/[^\s]+)|(www\.[^\s]+)|(maps\.app\.goo\.gl)/gi)) { setError('ហាមបញ្ចូល Link ក្នុង "ទីតាំងលម្អិត"។ សូមប្រើ "ចំណាំ" នៅជំហានចុងក្រោយ។'); return false; }
+                if (shippingFeeOption === 'charge' && (order.customer.shippingFee === '' || order.customer.shippingFee < 0)) { setError('សូមបញ្ចូលតម្លៃដឹកជញ្ជូនឱ្យបានត្រឹមត្រូវ។'); return false; }
+                return true;
+            case 2:
+                if (order.products.length === 0 || order.products.some((p: ProductType) => !p.name || p.quantity <= 0)) { setError('សូមពិនិត្យទិន្នន័យផលិតផល។'); return false; }
+                return true;
+            case 3:
+                if (!order.shipping.method || (selectedShippingMethod?.RequireDriverSelection && !order.shipping.details) || order.shipping.cost === '' || parseFloat(order.shipping.cost) < 0) { setError('សូមពិនិត្យព័ត៌មានដឹកជញ្ជូន (តម្លៃដឹកមិនអាចអវិជ្ជមានទេ)។'); return false; }
+                return true;
+            case 4:
+                 if (order.payment.status === 'Paid' && !order.payment.info) { setError('សូមជ្រើសរើសគណនីធនាគារ Tune។'); return false; }
+                 if (order.telegram.schedule && !order.telegram.time) { setError('សូមជ្រើសរើសពេលវេលាផ្ញើសារ។'); return false; }
+                return true;
+            default: return true;
+        }
+    };
+    
+    const nextStep = () => { if (validateStep(currentStep)) setCurrentStep(currentStep + 1); };
+    const prevStep = () => { if (currentStep > 1) setCurrentStep(currentStep - 1); };
+
+    const submitOrder = async () => {
+        for (const step of STEPS) { if (!validateStep(step.number)) { setCurrentStep(step.number); return; } }
+        setLoading(true);
+        let phoneToSend = '0' + order.customer.phone.replace(/[^0-9]/g, '').replace(/^0+/, '');
+        const payload = { currentUser, selectedTeam: team, page: order.page, fulfillmentStore: order.fulfillmentStore, telegramValue: order.telegramValue, customer: { ...order.customer, phone: phoneToSend, shippingFee: Number(order.customer.shippingFee) || 0 }, products: order.products.map((p: ProductType) => ({ name: p.name, quantity: p.quantity, originalPrice: p.originalPrice, finalPrice: p.finalPrice, total: p.total, colorInfo: p.colorInfo, cost: p.cost })), shipping: { ...order.shipping, cost: Number(order.shipping.cost) || 0 }, payment: order.payment, telegram: order.telegram, subtotal: order.subtotal, grandTotal: order.grandTotal, note: order.note };
         try {
-            const response = await fetch(`${WEB_APP_URL}/api/submit-order`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload)
-            });
-            const result = await response.json();
-            if (result.status !== 'success') throw new Error(result.message || 'Failed');
-            
-            setSubmissionStatus({ type: 'success', message: `ការកម្មង់បានបង្កើតជោគជ័យ! Order ID: ${result.orderId}` });
+            const res = await fetch(`${WEB_APP_URL}/api/submit-order`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+            const result = await res.json();
+            if (!res.ok || result.status !== 'success') throw new Error(result.message || 'Error');
+            localStorage.removeItem(DRAFT_KEY);
+            setSubmissionStatus({ type: 'success', message: `ជោគជ័យ! Order ID: ${result.orderId}` });
             setTimeout(onSaveSuccess, 3000);
         } catch(err: any) {
             setSubmissionStatus({ type: 'error', message: `បរាជ័យ: ${err.message}` });
             setTimeout(() => setSubmissionStatus(null), 3000);
-        } finally {
-            setLoading(false);
+        } finally { setLoading(false); }
+    };
+
+    const renderStepContent = () => {
+        switch (currentStep) {
+            case 1:
+                return (
+                    <fieldset className="border border-gray-600 p-3 sm:p-4 rounded-lg animate-fade-in space-y-4 sm:space-y-6">
+                        <legend className="px-2 text-base sm:text-lg font-semibold text-blue-300">ព័ត៌មានអតិថិជន & Page</legend>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
+                            <div className="space-y-3 sm:space-y-4">
+                                <div><label className="input-label">Facebook Page*</label><select name="page" value={order.page} className="form-select" onChange={(e) => { const pageData = teamPages.find((p: any) => p.PageName === e.target.value); setOrder({ ...order, page: e.target.value, telegramValue: pageData ? pageData.TelegramValue : '', fulfillmentStore: pageData?.DefaultStore || order.fulfillmentStore }); }} required><option value="">-- ជ្រើសរើស Page* --</option>{teamPages.map((p: any) => <option key={p.PageName} value={p.PageName}>{p.PageName}</option>)}</select></div>
+                                {selectedPageInfo && (<div className="bg-gray-900/60 p-3 sm:p-4 rounded-2xl border border-blue-500/20 flex items-center gap-3 sm:gap-4 shadow-inner"><img src={convertGoogleDriveUrl(selectedPageInfo.PageLogoURL)} alt="Page" className="w-12 h-12 sm:w-16 sm:h-16 rounded-full object-cover border-2 border-blue-500 shadow-lg bg-gray-800" /><div className="min-w-0"><p className="text-blue-400 text-[10px] font-black uppercase tracking-widest mb-0.5">Selected Page</p><h4 className="text-white font-black text-sm sm:text-base truncate leading-tight">{selectedPageInfo.PageName}</h4></div></div>)}
+                            </div>
+                            <div><label className="input-label">ឃ្លាំងបញ្ចេញទំនិញ (Store)*</label><select value={order.fulfillmentStore} onChange={e => setOrder({...order, fulfillmentStore: e.target.value})} className="form-select"><option value="">-- ជ្រើសរើសឃ្លាំង --</option>{appData.stores?.map((s: Store) => <option key={s.StoreName} value={s.StoreName}>{s.StoreName}</option>)}</select></div>
+                            <input type="text" name="name" value={order.customer.name} placeholder="ឈ្មោះអតិថិជន*" className="form-input" onChange={handleCustomerChange} required />
+                            <div className="relative"><input type="tel" name="phone" value={order.customer.phone} placeholder="លេខទូរស័ព្ទ*" className="form-input pr-12" onChange={handleCustomerChange} required />{carrierLogo && <img src={carrierLogo} alt="Carrier" className="absolute right-2 top-1/2 -translate-y-1/2 h-8 w-auto object-contain" />}</div>
+                             <div className="md:col-span-2 grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
+                                <select name="province" value={order.customer.province} className="form-select" onChange={handleCustomerChange} required><option value="">-- ខេត្ត/រាជធានី* --</option>{provinces.map((p: string) => <option key={p} value={p}>{p}</option>)}</select>
+                                <select name="district" value={order.customer.district} className="form-select" onChange={handleCustomerChange} disabled={!order.customer.province}><option value="">-- ស្រុក/ខណ្ឌ --</option>{districts.map((d: string) => <option key={d} value={d}>{d}</option>)}</select>
+                                <select name="sangkat" value={order.customer.sangkat} className="form-select" onChange={handleCustomerChange} disabled={!order.customer.district}><option value="">-- ឃុំ/សង្កាត់ --</option>{sangkats.map((s: string) => <option key={s} value={s}>{s}</option>)}</select>
+                            </div>
+                             <div className="md:col-span-2"><label className="input-label">ទីតាំងលម្អិត (ផ្ទះលេខ, ផ្លូវ)</label><div className="flex gap-2"><input type="text" name="additionalLocation" value={order.customer.additionalLocation} placeholder="បញ្ចូលទីតាំងលម្អិត..." className="form-input" onChange={handleCustomerChange} /><button type="button" onClick={handleSearchOnMaps} className="btn btn-secondary !p-2 sm:!p-2.5 shadow-lg"><svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd" /></svg></button></div></div>
+                            <div className="md:col-span-2">
+                                <label className="input-label">ថ្លៃសេវាដឹកជញ្ជូន</label>
+                                <div className="flex gap-2 mb-2"><button type="button" onClick={() => handleShippingOptionChange('charge')} className={`flex-1 btn py-2 sm:py-2.5 text-xs sm:text-sm ${shippingFeeOption === 'charge' ? 'btn-primary' : 'btn-secondary'}`}>គិតថ្លៃសេវា</button><button type="button" onClick={() => handleShippingOptionChange('free')} className={`flex-1 btn py-2 sm:py-2.5 text-xs sm:text-sm ${shippingFeeOption === 'free' ? '!bg-red-600 hover:!bg-red-700' : 'btn-secondary'}`}>មិនគិតថ្លៃសេវា</button></div>
+                                {shippingFeeOption === 'charge' && <input type="number" min="0" name="shippingFee" value={order.customer.shippingFee} placeholder="តម្លៃដឹកជញ្ជូន (ឧ. 1.5)*" className="form-input" onChange={handleCustomerChange} required />}
+                            </div>
+                        </div>
+                    </fieldset>
+                );
+            case 2:
+                return (
+                    <fieldset className="border border-gray-600 p-3 sm:p-4 rounded-lg animate-fade-in space-y-4 sm:space-y-6">
+                        <legend className="px-2 text-base sm:text-lg font-semibold text-blue-300">ផលិតផល & ការបញ្ចុះតម្លៃ</legend>
+                        <div className="space-y-4 sm:space-y-6">
+                             {order.products.map((p: ProductUIState, index: number) => {
+                                 const originalTotal = p.quantity * p.originalPrice;
+                                 const discountValue = originalTotal - p.total;
+
+                                 return (
+                                    <div key={p.id} className="p-3 sm:p-5 bg-gray-800/40 rounded-2xl sm:rounded-3xl border border-gray-700 relative shadow-xl overflow-hidden group">
+                                        <button type="button" onClick={() => { if (order.products.length > 1) setOrder({ ...order, products: order.products.filter((_:any, i:number)=>i!==index) }); }} className="absolute top-2 right-2 sm:top-4 sm:right-4 text-red-400 bg-red-400/10 rounded-full h-6 w-6 sm:h-8 sm:w-8 flex items-center justify-center border border-red-400/20 hover:bg-red-600 hover:text-white transition-all z-10" disabled={order.products.length <= 1}>&times;</button>
+                                        
+                                        <div className="grid grid-cols-1 md:grid-cols-12 gap-3 sm:gap-6 mb-4 sm:mb-6">
+                                            <div className="md:col-span-2 flex justify-center">
+                                                <div className="w-20 h-20 sm:w-28 sm:h-28 bg-gray-900 rounded-xl sm:rounded-2xl overflow-hidden border-2 border-gray-700 shadow-inner group-hover:border-blue-500/50 transition-colors">
+                                                    <img src={convertGoogleDriveUrl(p.image)} className="w-full h-full object-cover" alt="" />
+                                                </div>
+                                            </div>
+                                            <div className="md:col-span-10 grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+                                                <div className="space-y-1.5">
+                                                    <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-1">ឈ្មោះផលិតផល*</label>
+                                                    <SearchableProductDropdown products={appData.products || []} selectedProductName={p.name} onSelect={(val) => handleProductUpdate(index, 'name', val)} />
+                                                </div>
+                                                <div className="grid grid-cols-2 gap-3 sm:gap-4">
+                                                    <div className="space-y-1.5">
+                                                        <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-1">ចំនួន*</label>
+                                                        <div className="quantity-stepper !max-w-full">
+                                                            <button type="button" onClick={() => handleProductUpdate(index, 'quantity', Math.max(1, p.quantity - 1))} disabled={p.quantity <= 1}>-</button>
+                                                            <span className="quantity-display text-sm">{p.quantity}</span>
+                                                            <button type="button" onClick={() => handleProductUpdate(index, 'quantity', p.quantity + 1)}>+</button>
+                                                        </div>
+                                                    </div>
+                                                    <div className="space-y-1.5">
+                                                        <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-1">ពណ៌/សម្គាល់</label>
+                                                        <input type="text" list={`colors-datalist-${p.id}`} value={p.colorInfo} onChange={(e) => handleProductUpdate(index, 'colorInfo', e.target.value)} className="form-input text-sm" placeholder="ឧ. ខៀវ, XL" />
+                                                        <datalist id={`colors-datalist-${p.id}`}>{(appData.colors || []).map((c:any,i:number)=><option key={i} value={c.ColorName}/>)}</datalist>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div className="bg-black/20 rounded-xl sm:rounded-[2rem] p-3 sm:p-6 border border-white/5 space-y-4 sm:space-y-6">
+                                            <div className="flex items-center gap-2 sm:gap-3">
+                                                <div className="h-px flex-grow bg-gray-700/50"></div>
+                                                <span className="text-[9px] sm:text-[10px] font-black text-gray-500 uppercase tracking-[0.2em] sm:tracking-[0.3em] whitespace-nowrap">Pricing & Discount</span>
+                                                <div className="h-px flex-grow bg-gray-700/50"></div>
+                                            </div>
+
+                                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-8">
+                                                <div className="space-y-3 sm:space-y-4">
+                                                    <div className="flex bg-gray-900/50 p-1 rounded-xl sm:rounded-2xl border border-gray-700 shadow-inner">
+                                                        {(['percent', 'amount', 'custom'] as const).map(t => (
+                                                            <button 
+                                                                key={t} 
+                                                                type="button" 
+                                                                onClick={() => handleProductUpdate(index, 'discountType', t)} 
+                                                                className={`flex-1 flex flex-col items-center justify-center py-2 sm:py-2.5 rounded-lg sm:rounded-xl transition-all duration-300 ${p.discountType === t ? 'bg-blue-600 text-white shadow-lg' : 'text-gray-500 hover:text-gray-300'}`}
+                                                            >
+                                                                <span className="text-[9px] sm:text-[11px] font-black uppercase tracking-widest">
+                                                                    {t === 'percent' ? 'បញ្ចុះ %' : t === 'amount' ? 'បញ្ចុះ $' : 'កែតម្លៃលក់'}
+                                                                </span>
+                                                            </button>
+                                                        ))}
+                                                    </div>
+
+                                                    <div className="relative animate-fade-in">
+                                                        {p.discountType === 'percent' && (
+                                                            <div className="space-y-2">
+                                                                <label className="text-[10px] font-bold text-gray-400 ml-1">បញ្ចូលភាគរយបញ្ចុះតម្លៃ (%)</label>
+                                                                <div className="relative">
+                                                                    <input type="number" min="0" max="100" placeholder="0" value={p.discountPercentInput} onChange={e=>handleProductUpdate(index, 'discountPercentInput', e.target.value)} className="form-input !text-base sm:!text-lg !font-black !py-2 sm:!py-3 pr-10 text-right text-blue-400 bg-gray-900 border-gray-700" />
+                                                                    <span className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 font-black">%</span>
+                                                                </div>
+                                                            </div>
+                                                        )}
+                                                        {p.discountType === 'amount' && (
+                                                            <div className="space-y-2">
+                                                                <label className="text-[10px] font-bold text-gray-400 ml-1">បញ្ចូលទឹកប្រាក់បញ្ចុះតម្លៃ ($)</label>
+                                                                <div className="relative">
+                                                                    <input type="number" min="0" placeholder="0.00" value={p.discountAmountInput} onChange={e=>handleProductUpdate(index, 'discountAmountInput', e.target.value)} className="form-input !text-base sm:!text-lg !font-black !py-2 sm:!py-3 pr-10 text-right text-red-400 bg-gray-900 border-gray-700" />
+                                                                    <span className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 font-black">$</span>
+                                                                </div>
+                                                                {p.quantity > 1 && (
+                                                                    <label className="flex items-center gap-2 cursor-pointer p-2 bg-black/20 rounded-lg mt-1 sm:mt-2 border border-white/5">
+                                                                        <input type="checkbox" checked={p.applyDiscountToTotal} onChange={e => handleProductUpdate(index, 'applyDiscountToTotal', e.target.checked)} className="w-4 h-4 rounded border-gray-600 bg-gray-800 text-blue-500" />
+                                                                        <span className="text-[9px] sm:text-[10px] text-gray-400 uppercase font-black">បញ្ចុះលើតម្លៃសរុប</span>
+                                                                    </label>
+                                                                )}
+                                                            </div>
+                                                        )}
+                                                        {p.discountType === 'custom' && (
+                                                            <div className="space-y-2">
+                                                                <label className="text-[10px] font-bold text-gray-400 ml-1">កំណត់តម្លៃលក់ថ្មីក្នុង ១ ឯកតា ($)</label>
+                                                                <div className="relative">
+                                                                    <input type="text" inputMode="decimal" placeholder="0.00" value={p.finalPriceInput} onChange={e=>handleProductUpdate(index, 'finalPriceInput', e.target.value)} className="form-input !text-base sm:!text-lg !font-black !py-2 sm:!py-3 pr-10 text-right text-emerald-400 bg-gray-900 border-gray-700" />
+                                                                    <span className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 font-black">$</span>
+                                                                </div>
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                </div>
+
+                                                <div className="bg-gray-900/60 rounded-xl sm:rounded-[1.5rem] p-3 sm:p-5 border border-white/5 flex flex-col justify-between">
+                                                    <div className="space-y-2 sm:space-y-3">
+                                                        <div className="flex justify-between items-center text-[10px] sm:text-xs">
+                                                            <span className="text-gray-500 font-bold uppercase">Original Subtotal</span>
+                                                            <span className="text-blue-400 font-black">${originalTotal.toFixed(2)}</span>
+                                                        </div>
+                                                        <div className="flex justify-between items-center text-[10px] sm:text-xs">
+                                                            <span className="text-gray-500 font-bold uppercase">Discount Applied</span>
+                                                            <span className="text-red-400 font-black">-{discountValue > 0 ? `$${discountValue.toFixed(2)}` : '$0.00'}</span>
+                                                        </div>
+                                                        <div className="h-px bg-gray-700/50 my-1"></div>
+                                                        <div className="flex justify-between items-center">
+                                                            <span className="text-[9px] sm:text-[10px] font-black text-gray-400 uppercase tracking-widest">Net Total</span>
+                                                            <span className="text-xl sm:text-2xl font-black text-white tracking-tighter">${p.total.toFixed(2)}</span>
+                                                        </div>
+                                                    </div>
+                                                    <div className="mt-3 sm:mt-4 pt-2 sm:pt-3 border-t border-white/5 flex justify-center">
+                                                        <span className="text-[8px] sm:text-[9px] bg-emerald-500/10 text-emerald-400 px-2 sm:px-3 py-1 rounded-full border border-emerald-500/20 font-black uppercase tracking-widest">
+                                                            Avg. ${p.finalPrice.toFixed(2)} / unit
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                 );
+                             })}
+                        </div>
+                        <div className="flex gap-3 sm:gap-4 mt-4 sm:mt-8">
+                            <button type="button" onClick={() => setOrder({ ...order, products: [...order.products, {...initialProductState, id: Date.now()}] })} className="btn btn-secondary flex-1 !rounded-xl sm:!rounded-2xl font-black uppercase text-[10px] sm:text-[11px] tracking-widest py-3 sm:py-4 border border-gray-700 hover:bg-gray-800 transition-all">+ បន្ថែមផលិតផល</button>
+                            <button type="button" onClick={()=>setIsScannerVisible(true)} className="btn btn-secondary flex-1 flex items-center justify-center gap-2 sm:gap-3 !rounded-xl sm:!rounded-2xl font-black uppercase text-[10px] sm:text-[11px] tracking-widest py-3 sm:py-4 border border-gray-700 hover:bg-gray-800 transition-all">
+                                <svg className="w-4 h-4 sm:w-5 sm:h-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2M7 12h10" strokeWidth="2.5"/></svg>
+                                Scan
+                            </button>
+                        </div>
+                    </fieldset>
+                );
+            case 3:
+                return (
+                    <fieldset className="border border-gray-600 p-3 sm:p-4 rounded-lg animate-fade-in space-y-4 sm:space-y-6"><legend className="px-2 text-base sm:text-lg font-semibold text-blue-300">ដឹកជញ្ជូន</legend><div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
+                            <div className="space-y-1.5"><label className="input-label">វិធីសាស្រ្តដឹកជញ្ជូន*</label><div className="flex items-center gap-2 sm:gap-3"><select value={order.shipping.method} onChange={handleShippingMethodChange} className="form-select flex-grow bg-gray-900 border-gray-700"><option value="">-- ជ្រើសរើសសេវាដឹក --</option>{appData.shippingMethods?.map((s:any)=><option key={s.MethodName} value={s.MethodName}>{s.MethodName}</option>)}</select>{shippingLogo && (<div className="w-12 h-8 sm:w-16 sm:h-10 bg-white/5 border border-white/10 rounded-lg sm:rounded-xl flex items-center justify-center p-1 shadow-inner flex-shrink-0"><img src={shippingLogo} className="h-full w-full object-contain" alt="logo" /></div>)}</div></div>
+                            <div className="space-y-1.5"><label className="input-label">ថ្លៃសេវាឲ្យអ្នកដឹក (Cost)*</label><div className="relative"><input type="number" min="0" name="cost" placeholder="0.00" value={order.shipping.cost} className="form-input !py-2 sm:!py-3 pr-12 bg-gray-900 border-gray-700 text-blue-400 font-black" onChange={handleShippingChange} required /><span className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 font-bold">$</span></div></div>
+                            {selectedShippingMethod?.RequireDriverSelection && (
+                                <div className="md:col-span-2 space-y-3 sm:space-y-4"><div className="flex items-center gap-2 px-1"><div className="h-4 w-1 bg-blue-500 rounded-full"></div><label className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">ជ្រើសរើសអ្នកដឹក (DriverSelection)*</label></div><div className="grid grid-cols-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2 sm:gap-4">
+                                        {appData.drivers?.map((d: Driver) => {
+                                            const isSelected = order.shipping.details === d.DriverName;
+                                            return (<button key={d.DriverName} type="button" onClick={() => handleDriverChange(d.DriverName)} className={`group relative flex flex-col items-center p-2 sm:p-3 rounded-2xl sm:rounded-[2rem] border-2 transition-all duration-300 ${isSelected ? 'bg-blue-600/20 border-blue-500 shadow-lg shadow-blue-900/20 scale-105' : 'bg-gray-800/40 border-transparent hover:bg-gray-800 hover:border-gray-700'}`}><div className={`w-12 h-12 sm:w-20 sm:h-20 rounded-full overflow-hidden mb-2 sm:mb-3 border-2 sm:border-4 transition-all duration-500 ${isSelected ? 'border-blue-500 shadow-xl' : 'border-gray-700 group-hover:border-gray-600'}`}><img src={convertGoogleDriveUrl(d.ImageURL)} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" alt={d.DriverName} /></div><span className={`text-[9px] sm:text-[11px] font-black uppercase tracking-widest text-center truncate w-full ${isSelected ? 'text-white' : 'text-gray-400 group-hover:text-gray-200'}`}>{d.DriverName}</span>{isSelected && (<div className="absolute top-0.5 right-0.5 bg-blue-500 text-white rounded-full p-0.5 sm:p-1 shadow-lg animate-fade-in-scale"><svg className="w-2.5 h-2.5 sm:w-3 sm:h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={4}><path d="M5 13l4 4L19 7"/></svg></div>)}</button>);
+                                        })}
+                                    </div>{!order.shipping.details && (<p className="text-center text-[9px] text-gray-500 italic mt-1">សូមជ្រើសរើសអ្នកដឹកម្នាក់</p>)}</div>
+                            )}
+                         </div></fieldset>
+                );
+            case 4:
+                const selectedDriver = appData.drivers?.find((d: Driver) => d.DriverName === order.shipping.details);
+                return (
+                    <div className="animate-fade-in space-y-4 sm:space-y-8">
+                        <div>
+                            <h3 className="text-[10px] font-black text-gray-500 uppercase tracking-widest mb-2 sm:mb-3 flex items-center gap-2">
+                                <span className="w-1.5 h-1.5 rounded-full bg-blue-500"></span> ព័ត៌មានអតិថិជន
+                            </h3>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4 bg-gray-900/60 p-3 sm:p-5 rounded-2xl sm:rounded-3xl border border-white/5 shadow-inner">
+                                <div className="space-y-1">
+                                    <p className="text-[9px] text-gray-500 font-bold uppercase">Customer Info</p>
+                                    <p className="text-white font-black text-base sm:text-lg">{order.customer.name}</p>
+                                    <div className="flex items-center gap-2">
+                                        <p className="text-blue-400 font-bold font-mono text-sm">{order.customer.phone}</p>
+                                        {carrierLogo && <img src={carrierLogo} className="h-4 sm:h-5 w-auto object-contain" alt="Carrier" />}
+                                    </div>
+                                </div>
+                                <div className="space-y-1 md:text-right">
+                                    <p className="text-[9px] text-gray-500 font-bold uppercase">Location / Store</p>
+                                    <p className="text-gray-200 font-bold text-xs sm:text-sm leading-tight">{`${order.customer.additionalLocation}, ${order.customer.sangkat}, ${order.customer.district}, ${order.customer.province}`.replace(/^,|,$/g, '').trim()}</p>
+                                    <p className="text-purple-400 font-black text-[9px] uppercase tracking-wider">Fulfillment: {order.fulfillmentStore}</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div>
+                            <h3 className="text-[10px] font-black text-gray-500 uppercase tracking-widest mb-2 sm:mb-3 flex items-center gap-2">
+                                <span className="w-1.5 h-1.5 rounded-full bg-orange-500"></span> ព័ត៌មានដឹកជញ្ជូន
+                            </h3>
+                            <div className="bg-gray-900/40 p-3 sm:p-5 rounded-2xl sm:rounded-3xl border border-white/5 shadow-inner grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6">
+                                <div className="space-y-1">
+                                    <p className="text-[9px] text-gray-500 font-bold uppercase">Shipping Method</p>
+                                    <div className="flex items-center gap-2">
+                                        {shippingLogo && <img src={shippingLogo} className="h-4 sm:h-5 w-auto object-contain" alt="Logo" />}
+                                        <p className="text-white font-black text-xs sm:text-sm">{order.shipping.method}</p>
+                                    </div>
+                                </div>
+                                <div className="space-y-1">
+                                    <p className="text-[9px] text-gray-500 font-bold uppercase">Driver / Details</p>
+                                    <div className="flex items-center gap-2">
+                                        {selectedDriver && (
+                                            <img 
+                                                src={convertGoogleDriveUrl(selectedDriver.ImageURL)} 
+                                                className="h-6 w-6 sm:h-8 sm:w-8 rounded-full object-cover border border-gray-700 cursor-pointer" 
+                                                alt="Driver" 
+                                                onClick={() => previewImage(convertGoogleDriveUrl(selectedDriver.ImageURL))}
+                                            />
+                                        )}
+                                        <p className="text-white font-bold text-xs sm:text-sm">{order.shipping.details || 'N/A'}</p>
+                                    </div>
+                                </div>
+                                <div className="space-y-1 sm:text-right">
+                                    <p className="text-[9px] text-gray-500 font-bold uppercase">Internal Cost ($)</p>
+                                    <p className="text-orange-400 font-black text-base sm:text-lg font-mono">${(Number(order.shipping.cost) || 0).toFixed(2)}</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div>
+                            <h3 className="text-[10px] font-black text-gray-500 uppercase tracking-widest mb-2 sm:mb-3 flex items-center gap-2">
+                                <span className="w-1.5 h-1.5 rounded-full bg-blue-500"></span> បញ្ជីទំនិញកុម្ម៉ង់
+                            </h3>
+                            <div className="space-y-2 sm:space-y-3">
+                                {order.products.map((p: ProductUIState) => (<div key={p.id} className="flex items-center gap-3 sm:gap-4 bg-gray-900/40 p-2 sm:p-3 rounded-xl sm:rounded-2xl border border-white/5 group hover:border-blue-500/30 transition-all"><div className="w-12 h-12 sm:w-16 sm:h-16 bg-gray-800 rounded-lg sm:rounded-xl overflow-hidden border border-gray-700 flex-shrink-0 relative"><img src={convertGoogleDriveUrl(p.image)} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" alt={p.name} /></div><div className="flex-grow min-w-0"><div className="flex justify-between items-start mb-0.5 sm:mb-1"><h4 className="text-white font-black text-xs sm:text-sm truncate leading-tight">{p.name}</h4><div className="flex gap-1.5"><span className="bg-blue-600/10 text-blue-400 text-[9px] sm:text-[10px] font-black px-1.5 sm:px-2.5 py-0.5 sm:py-1 rounded-lg border border-blue-500/20">x{p.quantity}</span></div></div><div className="flex items-center gap-2 sm:gap-3">{p.colorInfo && (<span className="text-[9px] bg-purple-500/10 text-purple-400 px-1.5 py-0.5 rounded-md font-bold">{p.colorInfo}</span>)}<p className="text-[9px] text-gray-500 font-bold uppercase tracking-tight"><span>${p.finalPrice.toFixed(2)}</span> / unit</p></div></div><div className="text-right"><p className="text-white font-black text-sm sm:text-base tracking-tight">${p.total.toFixed(2)}</p><p className="text-[8px] text-gray-600 font-bold uppercase">Subtotal</p></div></div>))}
+                            </div>
+                        </div>
+
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4"><div className="bg-gray-900/40 p-3 sm:p-4 rounded-xl sm:rounded-2xl border border-white/5 text-center"><p className="text-[8px] sm:text-[9px] text-gray-500 font-black uppercase mb-1">សរុបទំនិញ</p><p className="text-white font-black text-base sm:text-lg">${order.subtotal.toFixed(2)}</p></div><div className="bg-gray-900/40 p-3 sm:p-4 rounded-xl sm:rounded-2xl border border-white/5 text-center"><p className="text-[8px] sm:text-[9px] text-gray-500 font-black uppercase mb-1">សេវាដឹក</p><p className="text-white font-black text-base sm:text-lg">${(Number(order.customer.shippingFee) || 0).toFixed(2)}</p></div><div className="col-span-2 bg-blue-600/10 p-3 sm:p-4 rounded-xl sm:rounded-2xl border border-blue-500/20 text-center shadow-lg shadow-blue-900/20"><p className="text-[9px] sm:text-[10px] text-blue-400 font-black uppercase mb-1 tracking-widest">សរុបរួម (Grand Total)</p><p className="text-white font-black text-2xl sm:text-3xl tracking-tighter">${order.grandTotal.toFixed(2)}</p></div></div>
+                        
+                        <fieldset className="border border-gray-700 p-4 sm:p-6 rounded-2xl sm:rounded-3xl bg-gray-900/20"><legend className="px-3 text-[10px] sm:text-xs font-black text-blue-400 uppercase tracking-[0.2em]">ស្ថានភាពទូទាត់</legend><div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4"><select value={order.payment.status} onChange={(e) => setOrder({...order, payment: {...order.payment, status: e.target.value, info: ''}})} className="form-select bg-gray-800 text-sm"><option value="Unpaid">មិនទាន់ទូទាត់ (COD)</option><option value="Paid">ទូទាត់រួច (Paid)</option></select>{order.payment.status === 'Paid' && (<div className="flex items-center gap-2 sm:gap-3 animate-fade-in"><select value={order.payment.info} onChange={(e) => handleBankChange(e.target.value)} className="form-select bg-gray-800 flex-grow text-sm"><option value="">ជ្រើសរើសធនាគារ</option>{appData.bankAccounts?.map((b: any) => <option key={b.BankName} value={b.BankName}>{b.BankName}</option>)}</select>{bankLogo && <img src={bankLogo} className="h-8 w-12 sm:h-10 sm:w-16 object-contain bg-white/10 p-1 rounded-lg sm:rounded-xl" alt="bank" />}</div>)}</div></fieldset>
+                        <fieldset className="border border-gray-700 p-4 sm:p-6 rounded-2xl sm:rounded-3xl bg-gray-900/20"><legend className="px-3 text-[10px] sm:text-xs font-black text-orange-400 uppercase tracking-[0.2em]">កំណត់ពេល Telegram</legend><div className="flex flex-col md:flex-row gap-4 sm:gap-6"><label className="flex items-center cursor-pointer group"><input type="checkbox" checked={order.telegram.schedule} onChange={e => setOrder({...order, telegram: {...order.telegram, schedule: e.target.checked}})} className="w-5 h-5 rounded-lg border-gray-600 bg-gray-800 text-blue-500" /><span className="ml-3 text-sm font-bold text-gray-300 group-hover:text-white transition-colors">កំណត់ពេលផ្ញើសារ</span></label>{order.telegram.schedule && <input type="datetime-local" value={order.telegram.time || ''} onChange={e => setOrder({...order, telegram: {...order.telegram, time: e.target.value}})} className="form-input !py-2 animate-fade-in-down text-sm" min={new Date().toISOString().slice(0, 16)} />}</div></fieldset>
+                        <div className="space-y-2 sm:space-y-3"><label className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-1">ចំណាំ & Link Google Map</label><textarea placeholder="ចំណាំបន្ថែម..." value={order.note} rows={4} onChange={(e) => setOrder({...order, note: e.target.value})} className="form-textarea bg-gray-900/60 !rounded-[1.5rem] sm:!rounded-[2rem] border-white/5 focus:border-blue-500/50 text-sm"></textarea></div>
+                    </div>
+                );
+            default: return null;
         }
     };
 
     return (
-        <div className="w-full max-w-4xl mx-auto md:mt-10 px-2 sm:px-0">
-            {submissionStatus && (
-                <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
-                    <div className="page-card text-center flex flex-col items-center animate-fade-in-scale">
-                        <p className="text-xl font-bold text-white mb-2">{submissionStatus.message}</p>
-                        {submissionStatus.type === 'success' && <Spinner size="md" />}
-                    </div>
-                </div>
-            )}
+        <div className="w-full max-w-4xl mx-auto mt-2 sm:mt-10 lg:mt-14 px-1 sm:px-0">
+             {submissionStatus && (<div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-[100] animate-fade-in p-4"><div className="page-card text-center flex flex-col items-center animate-fade-in-scale">{submissionStatus.type === 'success' ? (<div className="w-16 h-16 sm:w-20 sm:h-20 bg-green-500/20 text-green-400 rounded-full flex items-center justify-center mb-4 border border-green-500/30 shadow-[0_0_30px_rgba(34,197,94,0.2)]"><svg className="h-8 w-8 sm:h-10 sm:w-10" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7"/></svg></div>) : (<div className="w-16 h-16 sm:w-20 sm:h-20 bg-red-500/20 text-red-400 rounded-full flex items-center justify-center mb-4 border border-red-500/30"><svg className="h-8 w-8 sm:h-10 sm:w-10" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12"/></svg></div>)}<p className="text-base sm:text-lg font-black text-white">{submissionStatus.message}</p></div></div>)}
+            <MapModal isOpen={isMapModalOpen} onClose={() => setIsMapModalOpen(false)} url={mapSearchUrl} />
+            {isScannerVisible && <BarcodeScannerModal onClose={() => setIsScannerVisible(false)} onCodeScanned={handleCodeScanned} scanMode={scanMode} setScanMode={setScanMode} productsInOrder={order.products} masterProducts={appData.products || []} />}
+            <Modal isOpen={isCancelModalOpen} onClose={() => setIsCancelModalOpen(false)} maxWidth="max-w-sm"><div className="p-6 text-center space-y-6"><div className="mx-auto w-14 h-14 sm:w-16 sm:h-16 bg-red-500/10 text-red-500 rounded-full flex items-center justify-center border border-red-500/20 shadow-xl shadow-red-900/10 animate-bounce-slow"><svg className="h-7 w-7 sm:h-8 sm:w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg></div><h3 className="text-lg sm:text-xl font-black text-white uppercase tracking-tighter">បោះបង់ការបញ្ចូល?</h3><div className="flex gap-3"><button onClick={() => setIsCancelModalOpen(false)} className="btn btn-secondary flex-1 rounded-xl sm:rounded-2xl font-bold text-xs sm:text-sm">ទេ (ត្រឡប់)</button><button onClick={handleConfirmCancel} className="btn !bg-red-600 hover:!bg-red-700 text-white flex-1 rounded-xl sm:rounded-2xl font-bold text-xs sm:text-sm">បាទ (បោះបង់)</button></div></div></Modal>
             
-            {isScannerVisible && <BarcodeScannerModal onClose={() => setIsScannerVisible(false)} onCodeScanned={handleCodeScanned} scanMode={scanMode} setScanMode={setScanMode} />}
-
-            <div className="flex justify-between items-center mb-6">
-                <h1 className="text-xl md:text-3xl font-bold text-white">កម្មង់ថ្មី (ក្រុម {team})</h1>
-                <button onClick={() => setIsCancelModalOpen(true)} className="btn btn-secondary bg-red-900/30 text-red-300">បោះបង់</button>
+            <div className="hidden sm:flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 sm:mb-10 gap-4">
+                <h1 className="text-2xl sm:text-3xl font-black text-white uppercase tracking-tighter flex items-center gap-3 sm:gap-4">
+                    <span className="text-blue-500">កុម្ម៉ង់ថ្មី</span>
+                    <span className="text-[9px] sm:text-[10px] bg-blue-600/20 text-blue-400 px-3 sm:px-4 py-1.5 rounded-full border border-blue-500/20 uppercase tracking-[0.15em] sm:tracking-[0.2em]">{team}</span>
+                </h1>
+                <button onClick={handleCancelClick} className="btn btn-secondary !py-2 bg-gray-800 border-gray-700 hover:bg-red-600 hover:border-red-500 transition-all font-bold rounded-2xl uppercase text-[10px] sm:text-[11px] tracking-widest">បោះបង់</button>
             </div>
 
-            <div className="page-card">
-                <div className="flex justify-between items-center mb-8 relative">
-                    {STEPS.map(s => (
-                        <div key={s.number} className={`flex flex-col items-center z-10 ${currentStep >= s.number ? 'text-blue-400' : 'text-gray-500'}`}>
-                            <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold border-2 mb-1 ${currentStep >= s.number ? 'border-blue-500 bg-blue-900' : 'border-gray-600'}`}>{s.number}</div>
-                            <span className="text-[10px]">{s.title}</span>
+            <div className="bg-gray-800/30 backdrop-blur-3xl border border-white/5 rounded-[1.5rem] sm:rounded-[3rem] p-3 sm:p-10 shadow-2xl">
+                <div className="flex justify-between items-center mb-8 sm:mb-12 relative px-2 sm:px-4">
+                    <div className="absolute left-6 right-6 sm:left-10 sm:right-10 top-1/2 w-[calc(100%-48px)] sm:w-[calc(100%-80px)] h-0.5 bg-gray-700 -z-10"></div>
+                    <div className="absolute left-6 sm:left-10 top-1/2 h-0.5 bg-blue-500 -z-10 transition-all duration-500" style={{ width: `${((currentStep-1)/(STEPS.length-1)) * (100 - (48/400)*100)}%` }}></div>
+                    {STEPS.map(step => (
+                        <div key={step.number} className={`relative flex flex-col items-center z-10 transition-all duration-500 ${currentStep >= step.number ? 'scale-110' : 'opacity-40 scale-90'}`}>
+                            <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl flex items-center justify-center font-black text-[10px] sm:text-xs border-2 transition-all duration-500 ${currentStep >= step.number ? 'border-blue-500 bg-blue-600 text-white shadow-[0_0_20px_rgba(37,99,235,0.4)]' : 'border-gray-600 bg-gray-800 text-gray-500'}`}>
+                                {currentStep > step.number ? "✓" : step.number}
+                            </div>
+                            <span className={`absolute -bottom-6 sm:-bottom-7 text-[8px] sm:text-[9px] font-black uppercase tracking-widest whitespace-nowrap ${currentStep >= step.number ? 'text-blue-400' : 'text-gray-600'}`}>{step.title}</span>
                         </div>
                     ))}
                 </div>
-
-                {currentStep === 1 && (
-                    <fieldset className="space-y-4 animate-fade-in">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div>
-                                <label className="input-label">Facebook Page*</label>
-                                <select value={order.page} onChange={handlePageChange} className="form-select">
-                                    <option value="">-- ជ្រើសរើស Page --</option>
-                                    {teamPages.map((p: any) => <option key={p.PageName} value={p.PageName}>{p.PageName}</option>)}
-                                </select>
-                            </div>
-                            <div>
-                                <label className="input-label">ឃ្លាំងបញ្ចេញទំនិញ (Branch/Store)*</label>
-                                <select value={order.fulfillmentStore} onChange={e => setOrder({...order, fulfillmentStore: e.target.value})} className="form-select">
-                                    <option value="">-- ជ្រើសរើសឃ្លាំង --</option>
-                                    {stores.map((s: Store) => <option key={s.StoreName} value={s.StoreName}>{s.StoreName}</option>)}
-                                </select>
-                            </div>
-                            <input type="text" placeholder="ឈ្មោះអតិថិជន*" value={order.customer.name} onChange={e => setOrder({...order, customer: {...order.customer, name: e.target.value}})} className="form-input" />
-                            <input type="tel" placeholder="លេខទូរស័ព្ទ*" value={order.customer.phone} onChange={e => setOrder({...order, customer: {...order.customer, phone: e.target.value}})} className="form-input" />
-                        </div>
-                    </fieldset>
-                )}
-
-                {currentStep === 4 && (
-                    <div className="space-y-6 animate-fade-in">
-                        <div className="bg-gray-800/50 p-4 rounded-xl border border-gray-700 space-y-4">
-                            <h3 className="font-bold text-blue-300">ការកំណត់សារ Telegram</h3>
-                            <label className="flex items-center gap-3 cursor-pointer">
-                                <input type="checkbox" checked={order.isScheduled} onChange={e => setOrder({...order, isScheduled: e.target.checked})} className="w-5 h-5 rounded border-gray-600 bg-gray-900 text-blue-500" />
-                                <span className="text-sm text-gray-200">កំណត់ពេលផ្ញើសារ (Schedule Send)</span>
-                            </label>
-                            {order.isScheduled && (
-                                <input type="datetime-local" value={order.scheduledTime} onChange={e => setOrder({...order, scheduledTime: e.target.value})} className="form-input" min={new Date().toISOString().slice(0, 16)} />
-                            )}
-                        </div>
-                        <div className="p-4 bg-gray-900/50 rounded-xl border border-gray-700">
-                             <p className="text-sm"><strong>Store:</strong> {order.fulfillmentStore || 'None'}</p>
-                             <p className="text-sm"><strong>Subtotal:</strong> ${order.subtotal.toFixed(2)}</p>
-                             <p className="text-xl font-black text-blue-400">Total: ${order.grandTotal.toFixed(2)}</p>
-                        </div>
+                
+                <div className="mt-8 sm:mt-16">{renderStepContent()}</div>
+                
+                {error && <div className="mt-4 sm:mt-6 p-3 sm:p-4 bg-red-500/10 border border-red-500/20 rounded-xl sm:rounded-2xl text-red-400 text-center text-[10px] sm:text-xs font-bold animate-shake">{error}</div>}
+                
+                <div className="mt-8 sm:mt-10 pt-6 sm:pt-8 border-t border-white/5 space-y-3 sm:space-y-4">
+                    <div className="flex gap-2 sm:gap-3 h-12 sm:h-14">
+                        {currentStep > 1 && (
+                            <button 
+                                type="button" 
+                                onClick={prevStep} 
+                                className="flex-1 btn btn-secondary !rounded-xl sm:!rounded-2xl font-black uppercase text-[10px] sm:text-[11px] tracking-[0.1em] sm:tracking-[0.15em] transition-all hover:bg-gray-700 flex items-center justify-center gap-1.5 sm:gap-2"
+                            >
+                                <svg className="w-3 h-3 sm:w-4 sm:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M15 19l-7-7 7-7"/></svg>
+                                ត្រឡប់
+                            </button>
+                        )}
+                        
+                        {currentStep < STEPS.length ? (
+                            <button 
+                                type="button" 
+                                onClick={nextStep} 
+                                className="flex-[2] btn btn-primary !rounded-xl sm:!rounded-2xl font-black uppercase text-[11px] sm:text-[12px] tracking-[0.15em] sm:tracking-[0.2em] shadow-xl shadow-blue-600/20 active:scale-95 transition-all flex items-center justify-center gap-1.5 sm:gap-2"
+                            >
+                                បន្ត
+                                <svg className="w-3 h-3 sm:w-4 sm:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M9 5l7 7-7 7"/></svg>
+                            </button>
+                        ) : (
+                             <button 
+                                type="button" 
+                                onClick={submitOrder} 
+                                className="flex-[2] btn !bg-emerald-600 hover:!bg-emerald-700 !rounded-xl sm:!rounded-2xl font-black uppercase text-[11px] sm:text-[12px] tracking-[0.15em] sm:tracking-[0.2em] shadow-xl shadow-emerald-600/20 active:scale-95 transition-all flex items-center justify-center gap-1.5 sm:gap-2 text-white" 
+                                disabled={loading}
+                             >
+                                {loading ? <Spinner size="sm" /> : (
+                                    <>
+                                        បញ្ជូនកម្ម៉ង់
+                                        <svg className="w-3 h-3 sm:w-4 sm:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7"/></svg>
+                                    </>
+                                )}
+                             </button>
+                        )}
                     </div>
-                )}
-
-                <div className="flex justify-between mt-8 pt-4 border-t border-gray-700">
-                    <button onClick={() => setCurrentStep(currentStep - 1)} className={`btn btn-secondary ${currentStep === 1 ? 'invisible' : ''}`}>ត្រឡប់</button>
-                    {currentStep < 4 ? <button onClick={() => setCurrentStep(currentStep + 1)} className="btn btn-primary">បន្ត</button> : <button onClick={submitOrder} className="btn btn-primary px-10" disabled={loading}>{loading ? <Spinner size="sm" /> : 'បញ្ជូន'}</button>}
+                    
+                    <button 
+                        onClick={handleCancelClick} 
+                        className="sm:hidden w-full py-2.5 text-[9px] font-black uppercase tracking-[0.2em] text-red-500/70 hover:text-red-400 transition-colors flex items-center justify-center gap-2 border border-red-500/20 rounded-lg bg-red-500/5"
+                    >
+                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M6 18L18 6M6 6l12 12"/></svg>
+                        បោះបង់ការបញ្ចូល
+                    </button>
                 </div>
             </div>
         </div>
