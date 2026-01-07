@@ -144,21 +144,16 @@ const OrdersDashboard: React.FC<OrdersDashboardProps> = ({ onBack }) => {
         };
     });
 
-    // Sync URL params to filters (when URL changes)
     useEffect(() => {
-        setFilters(prev => {
-            if (urlTeam !== prev.team || urlDate !== prev.datePreset) {
-                return {
-                    ...prev,
-                    team: urlTeam || prev.team,
-                    datePreset: (urlDate as DateRangePreset) || prev.datePreset
-                };
-            }
-            return prev;
-        });
+        if (urlTeam !== filters.team || urlDate !== filters.datePreset) {
+            setFilters(prev => ({
+                ...prev,
+                team: urlTeam || prev.team,
+                datePreset: (urlDate as DateRangePreset) || prev.datePreset
+            }));
+        }
     }, [urlTeam, urlDate]);
 
-    // Sync filters to URL params (when filters change)
     useEffect(() => {
         if (filters.team !== urlTeam) setUrlTeam(filters.team);
         if (filters.datePreset !== urlDate) setUrlDate(filters.datePreset);
@@ -221,7 +216,6 @@ const OrdersDashboard: React.FC<OrdersDashboardProps> = ({ onBack }) => {
 
     const enrichedOrders = useMemo(() => {
         return allOrders.map(order => {
-            // Enhanced resolve team logic to handle missing Column AB
             let team = (order.Team || '').trim();
             if (!team) {
                 const u = usersList.find(u => u.UserName === order.User);
@@ -266,10 +260,10 @@ const OrdersDashboard: React.FC<OrdersDashboardProps> = ({ onBack }) => {
             if (filters.shippingService && order['Internal Shipping Method'] !== filters.shippingService) return false;
             if (filters.driver && order['Internal Shipping Details'] !== filters.driver) return false;
             if (filters.bank && order['Payment Info'] !== filters.bank) return false;
-            if (filters.product && (!Array.isArray(order.Products) || !order.Products.some(p => p.name === filters.product))) return false;
+            if (filters.product && !order.Products.some(p => p.name === filters.product)) return false;
             if (searchQuery.trim()) {
                 const q = searchQuery.toLowerCase();
-                const match = (order['Order ID'] || '').toLowerCase().includes(q) ||
+                const match = order['Order ID'].toLowerCase().includes(q) ||
                               (order['Customer Name'] || '').toLowerCase().includes(q) ||
                               (order['Customer Phone'] || '').includes(q);
                 if (!match) return false;
@@ -300,33 +294,36 @@ const OrdersDashboard: React.FC<OrdersDashboardProps> = ({ onBack }) => {
         }
     };
 
-    const handleBulkUpdate = async (updateData: any) => {
+    const handleBulkUpdate = async (updateData: any, confirmMsg?: string) => {
         if (selectedIds.size === 0) return;
+        if (confirmMsg && !window.confirm(confirmMsg)) return;
+
         setIsBulkProcessing(true);
         try {
-            const promises = Array.from(selectedIds).map(id => 
-                fetch(`${WEB_APP_URL}/api/admin/update-sheet`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ 
-                        sheetName: 'AllOrders', 
-                        primaryKey: { 'Order ID': id }, 
-                        newData: updateData 
+            // Processing in chunks of 5 to avoid overloading
+            const idArray = Array.from(selectedIds);
+            const chunkSize = 5;
+            for (let i = 0; i < idArray.length; i += chunkSize) {
+                const chunk = idArray.slice(i, i + chunkSize);
+                await Promise.all(chunk.map(id => 
+                    fetch(`${WEB_APP_URL}/api/admin/update-sheet`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ 
+                            sheetName: 'AllOrders', 
+                            primaryKey: { 'Order ID': id }, 
+                            newData: updateData 
+                        })
                     })
-                })
-            );
-            await Promise.all(promises);
+                ));
+            }
+            
             await refreshData();
             setSelectedIds(new Set());
             fetchAllOrders();
             setIsBulkCostModalOpen(false);
             setIsBulkPaymentModalOpen(false);
             setIsBulkShippingModalOpen(false);
-            // Reset form fields
-            setBulkCostValue('');
-            setBulkPaymentStatus('Paid');
-            setBulkPaymentInfo('');
-            setBulkShippingMethod('');
         } catch (e) {
             alert("Bulk update failed.");
         } finally {
@@ -345,19 +342,23 @@ const OrdersDashboard: React.FC<OrdersDashboardProps> = ({ onBack }) => {
 
         setIsBulkProcessing(true);
         try {
-            const promises = Array.from(selectedIds).map(id => {
-                const order = allOrders.find(o => o['Order ID'] === id);
-                return fetch(`${WEB_APP_URL}/api/admin/delete-order`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        orderId: id,
-                        team: order?.Team,
-                        userName: currentUser?.UserName,
-                    })
-                });
-            });
-            await Promise.all(promises);
+            const idArray = Array.from(selectedIds);
+            const chunkSize = 3; // Delete is more sensitive, smaller chunk
+            for (let i = 0; i < idArray.length; i += chunkSize) {
+                const chunk = idArray.slice(i, i + chunkSize);
+                await Promise.all(chunk.map(id => {
+                    const order = allOrders.find(o => o['Order ID'] === id);
+                    return fetch(`${WEB_APP_URL}/api/admin/delete-order`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            orderId: id,
+                            team: order?.Team,
+                            userName: currentUser?.UserName,
+                        })
+                    });
+                }));
+            }
             await refreshData();
             setSelectedIds(new Set());
             fetchAllOrders();
@@ -490,51 +491,109 @@ const OrdersDashboard: React.FC<OrdersDashboardProps> = ({ onBack }) => {
                 />
             </div>
 
+            {/* ENHANCED BULK ACTION BAR */}
             {selectedIds.size > 0 && (
-                <div className="fixed bottom-10 left-1/2 -translate-x-1/2 z-[100] bg-gray-900/90 backdrop-blur-xl border border-blue-500/30 p-4 rounded-3xl shadow-[0_20px_50px_rgba(0,0,0,0.5)] flex flex-wrap items-center justify-center gap-3 animate-fade-in-up min-w-[300px] max-w-[95vw]">
-                    <div className="px-4 py-2 bg-blue-600 text-white rounded-2xl text-xs font-black uppercase tracking-widest flex items-center gap-2">
-                        {isBulkProcessing ? <Spinner size="sm" /> : <span className="bg-white/20 w-6 h-6 rounded-full flex items-center justify-center">{selectedIds.size}</span>}
-                        បានជ្រើសរើស
+                <div className="fixed bottom-10 left-1/2 -translate-x-1/2 z-[100] bg-gray-900/95 backdrop-blur-2xl border-t border-x border-blue-500/40 p-4 sm:p-5 rounded-[2.5rem] shadow-[0_30px_100px_rgba(0,0,0,0.8)] flex flex-col items-center gap-4 animate-fade-in-up w-[95vw] max-w-4xl ring-1 ring-white/10">
+                    <div className="flex w-full items-center justify-between border-b border-white/5 pb-3">
+                        <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 bg-blue-600 text-white rounded-2xl flex items-center justify-center font-black text-sm shadow-lg shadow-blue-600/30">
+                                {isBulkProcessing ? <Spinner size="sm" /> : selectedIds.size}
+                            </div>
+                            <div className="text-left">
+                                <p className="text-[11px] font-black text-blue-400 uppercase tracking-widest">Bulk Actions Active</p>
+                                <p className="text-[9px] text-gray-500 font-bold uppercase">គ្រប់គ្រងលើ {selectedIds.size} ប្រតិបត្តិការណ៍</p>
+                            </div>
+                        </div>
+                        <button onClick={() => setSelectedIds(new Set())} className="p-2 hover:bg-white/5 rounded-full text-gray-500 hover:text-white transition-all active:scale-90">
+                            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M6 18L18 6M6 6l12 12" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                        </button>
                     </div>
-                    <div className="flex flex-wrap items-center justify-center gap-2">
-                        <button onClick={() => setIsBulkCostModalOpen(true)} className="px-4 py-2 bg-orange-600/20 text-orange-400 hover:bg-orange-600 hover:text-white rounded-xl text-[10px] font-black uppercase transition-all border border-orange-500/20">Edit Cost</button>
-                        <button onClick={() => setIsBulkPaymentModalOpen(true)} className="px-4 py-2 bg-emerald-600/20 text-emerald-400 hover:bg-emerald-600 hover:text-white rounded-xl text-[10px] font-black uppercase transition-all border border-emerald-500/20">Edit Payment</button>
-                        <button onClick={() => setIsBulkShippingModalOpen(true)} className="px-4 py-2 bg-purple-600/20 text-purple-400 hover:bg-purple-600 hover:text-white rounded-xl text-[10px] font-black uppercase transition-all border border-purple-500/20">Edit Shipping</button>
-                        <button onClick={() => setIsBulkDeleteModalOpen(true)} className="px-4 py-2 bg-red-600/20 text-red-500 hover:bg-red-600 hover:text-white rounded-xl text-[10px] font-black uppercase transition-all border border-red-500/20">Delete</button>
+
+                    <div className="flex flex-wrap items-center justify-center gap-2.5 w-full">
+                        <button 
+                            onClick={() => handleBulkUpdate({ 'IsVerified': true }, `តើអ្នកចង់បញ្ជាក់ (Verify) លើការកម្មង់ទាំង ${selectedIds.size} នេះមែនទេ?`)} 
+                            className="px-4 py-2.5 bg-emerald-600 text-white hover:bg-emerald-700 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all flex items-center gap-2 shadow-lg shadow-emerald-900/20 active:scale-95"
+                            disabled={isBulkProcessing}
+                        >
+                            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M5 13l4 4L19 7" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                            Verify
+                        </button>
+                        <button 
+                            onClick={() => handleBulkUpdate({ 'IsVerified': false }, `តើអ្នកចង់បោះបង់ការបញ្ជាក់ (Unverify) លើការកម្មង់ទាំង ${selectedIds.size} នេះមែនទេ?`)} 
+                            className="px-4 py-2.5 bg-gray-700 text-gray-200 hover:bg-gray-600 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all flex items-center gap-2 active:scale-95"
+                            disabled={isBulkProcessing}
+                        >
+                            Unverify
+                        </button>
+                        <div className="w-px h-6 bg-white/10 mx-1"></div>
+                        <button 
+                            onClick={() => setIsBulkCostModalOpen(true)} 
+                            className="px-4 py-2.5 bg-orange-600/20 text-orange-400 hover:bg-orange-600 hover:text-white rounded-xl text-[10px] font-black uppercase tracking-wider transition-all border border-orange-500/20 active:scale-95"
+                            disabled={isBulkProcessing}
+                        >
+                            Cost
+                        </button>
+                        <button 
+                            onClick={() => setIsBulkPaymentModalOpen(true)} 
+                            className="px-4 py-2.5 bg-blue-600/20 text-blue-400 hover:bg-blue-600 hover:text-white rounded-xl text-[10px] font-black uppercase tracking-wider transition-all border border-blue-500/20 active:scale-95"
+                            disabled={isBulkProcessing}
+                        >
+                            Payment
+                        </button>
+                        <button 
+                            onClick={() => setIsBulkShippingModalOpen(true)} 
+                            className="px-4 py-2.5 bg-purple-600/20 text-purple-400 hover:bg-purple-600 hover:text-white rounded-xl text-[10px] font-black uppercase tracking-wider transition-all border border-purple-500/20 active:scale-95"
+                            disabled={isBulkProcessing}
+                        >
+                            Shipping
+                        </button>
+                        <div className="w-px h-6 bg-white/10 mx-1"></div>
+                        <button 
+                            onClick={() => setIsBulkDeleteModalOpen(true)} 
+                            className="px-4 py-2.5 bg-red-600/20 text-red-500 hover:bg-red-600 hover:text-white rounded-xl text-[10px] font-black uppercase tracking-wider transition-all border border-red-500/20 active:scale-95"
+                            disabled={isBulkProcessing}
+                        >
+                            Delete
+                        </button>
                     </div>
-                    <button onClick={() => setSelectedIds(new Set())} className="text-gray-500 hover:text-white transition-colors p-2 text-xl">&times;</button>
+                    {isBulkProcessing && (
+                        <div className="absolute inset-0 bg-black/20 backdrop-blur-[1px] rounded-[2.5rem] pointer-events-none"></div>
+                    )}
                 </div>
             )}
 
+            {/* MODALS */}
             <Modal isOpen={isBulkCostModalOpen} onClose={() => setIsBulkCostModalOpen(false)} maxWidth="max-w-sm">
-                <div className="p-6 bg-[#1a1f2e]">
-                    <h3 className="text-lg font-bold text-white mb-6 uppercase tracking-wider">កែប្រែតម្លៃដឹកដើម (Bulk)</h3>
+                <div className="p-8 bg-[#1a1f2e]">
+                    <div className="text-center mb-8">
+                        <div className="w-14 h-14 bg-orange-600/20 text-orange-500 rounded-2xl flex items-center justify-center mx-auto mb-4 border border-orange-500/20">
+                            <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v.01" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                        </div>
+                        <h3 className="text-xl font-black text-white uppercase tracking-tighter">កែប្រែតម្លៃដឹកដើម (Cost)</h3>
+                        <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest mt-1">អនុវត្តលើ {selectedIds.size} ប្រតិបត្តិការណ៍</p>
+                    </div>
                     <div className="space-y-4">
                         <div>
-                            <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest mb-1.5 block">តម្លៃថ្មី ($)</label>
-                            <input 
-                                type="number" 
-                                step="0.01"
-                                value={bulkCostValue} 
-                                onChange={e => setBulkCostValue(e.target.value)}
-                                className="form-input bg-gray-900 border-gray-700"
-                                placeholder="0.00"
-                            />
+                            <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest mb-2 block ml-1">តម្លៃថ្មីក្នុងមួយ Order ($)</label>
+                            <div className="relative">
+                                <input 
+                                    type="number" 
+                                    step="0.01"
+                                    value={bulkCostValue} 
+                                    onChange={e => setBulkCostValue(e.target.value)}
+                                    className="form-input bg-black/40 border-gray-700 !py-4 pr-12 text-blue-400 font-black text-lg focus:ring-orange-500/20"
+                                    placeholder="0.00"
+                                />
+                                <span className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 font-black">$</span>
+                            </div>
                         </div>
                     </div>
-                    <div className="flex gap-3 mt-8">
-                        <button onClick={() => setIsBulkCostModalOpen(false)} className="btn btn-secondary flex-1">បោះបង់</button>
+                    <div className="flex gap-3 mt-10">
+                        <button onClick={() => setIsBulkCostModalOpen(false)} className="px-6 py-4 bg-gray-800 text-gray-400 font-black rounded-2xl uppercase text-[11px] tracking-widest flex-1 hover:bg-gray-700 transition-all">បោះបង់</button>
                         <button 
-                            onClick={() => { 
-                                const costValue = Number(bulkCostValue);
-                                if (isNaN(costValue) || bulkCostValue.trim() === '') {
-                                    alert("សូមបញ្ចូលតម្លៃដឹកដើមដែលត្រឹមត្រូវ");
-                                    return;
-                                }
-                                handleBulkUpdate({ 'Internal Cost': costValue }); 
-                            }} 
-                            className="btn btn-primary flex-1 shadow-lg shadow-blue-600/20"
-                            disabled={isBulkProcessing || bulkCostValue.trim() === ''}
+                            onClick={() => { handleBulkUpdate({ 'Internal Cost': Number(bulkCostValue) }); }} 
+                            className="px-6 py-4 bg-orange-600 text-white font-black rounded-2xl uppercase text-[11px] tracking-widest flex-1 shadow-lg shadow-orange-900/20 hover:bg-orange-700 transition-all"
+                            disabled={isBulkProcessing || bulkCostValue === ''}
                         >
                             {isBulkProcessing ? <Spinner size="sm" /> : 'រក្សាទុក'}
                         </button>
@@ -543,27 +602,33 @@ const OrdersDashboard: React.FC<OrdersDashboardProps> = ({ onBack }) => {
             </Modal>
 
             <Modal isOpen={isBulkPaymentModalOpen} onClose={() => setIsBulkPaymentModalOpen(false)} maxWidth="max-w-md">
-                <div className="p-6 bg-[#1a1f2e]">
-                    <h3 className="text-lg font-bold text-white mb-6 uppercase tracking-wider">កែប្រែព័ត៌មានបង់ប្រាក់ (Bulk)</h3>
-                    <div className="space-y-5">
+                <div className="p-8 bg-[#1a1f2e]">
+                    <div className="text-center mb-8">
+                        <div className="w-14 h-14 bg-blue-600/20 text-blue-500 rounded-2xl flex items-center justify-center mx-auto mb-4 border border-blue-500/20">
+                            <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                        </div>
+                        <h3 className="text-xl font-black text-white uppercase tracking-tighter">កែប្រែព័ត៌មានបង់ប្រាក់</h3>
+                        <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest mt-1">អនុវត្តលើ {selectedIds.size} ប្រតិបត្តិការណ៍</p>
+                    </div>
+                    <div className="space-y-6">
                         <div>
-                            <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest mb-1.5 block">ស្ថានភាព</label>
+                            <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest mb-2 block ml-1">ស្ថានភាព</label>
                             <select 
                                 value={bulkPaymentStatus} 
                                 onChange={e => setBulkPaymentStatus(e.target.value)}
-                                className="form-select bg-gray-900 border-gray-700"
+                                className="form-select bg-black/40 border-gray-700 !py-4 rounded-2xl font-black"
                             >
                                 <option value="Paid">ទូទាត់រួច (Paid)</option>
                                 <option value="Unpaid">មិនទាន់ទូទាត់ (Unpaid)</option>
                             </select>
                         </div>
                         {bulkPaymentStatus === 'Paid' && (
-                            <div>
-                                <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest mb-1.5 block">ធនាគារ / គណនី</label>
+                            <div className="animate-fade-in-down">
+                                <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest mb-2 block ml-1">ធនាគារ / គណនី</label>
                                 <select 
                                     value={bulkPaymentInfo} 
                                     onChange={e => setBulkPaymentInfo(e.target.value)}
-                                    className="form-select bg-gray-900 border-gray-700"
+                                    className="form-select bg-black/40 border-gray-700 !py-4 rounded-2xl font-black"
                                 >
                                     <option value="">-- ជ្រើសរើសធនាគារ --</option>
                                     {appData.bankAccounts?.map((b: any) => (
@@ -574,13 +639,13 @@ const OrdersDashboard: React.FC<OrdersDashboardProps> = ({ onBack }) => {
                         )}
                     </div>
                     <div className="flex gap-3 mt-10">
-                        <button onClick={() => setIsBulkPaymentModalOpen(false)} className="btn btn-secondary flex-1">បោះបង់</button>
+                        <button onClick={() => setIsBulkPaymentModalOpen(false)} className="px-6 py-4 bg-gray-800 text-gray-400 font-black rounded-2xl uppercase text-[11px] tracking-widest flex-1 hover:bg-gray-700 transition-all">បោះបង់</button>
                         <button 
                             onClick={() => { handleBulkUpdate({ 
                                 'Payment Status': bulkPaymentStatus, 
                                 'Payment Info': bulkPaymentStatus === 'Paid' ? bulkPaymentInfo : '' 
                             }); }} 
-                            className="btn btn-primary flex-1 shadow-lg shadow-blue-600/20"
+                            className="px-6 py-4 bg-blue-600 text-white font-black rounded-2xl uppercase text-[11px] tracking-widest flex-1 shadow-lg shadow-blue-900/20 hover:bg-blue-700 transition-all"
                             disabled={isBulkProcessing || (bulkPaymentStatus === 'Paid' && !bulkPaymentInfo)}
                         >
                             {isBulkProcessing ? <Spinner size="sm" /> : 'រក្សាទុក'}
@@ -590,14 +655,20 @@ const OrdersDashboard: React.FC<OrdersDashboardProps> = ({ onBack }) => {
             </Modal>
 
             <Modal isOpen={isBulkShippingModalOpen} onClose={() => setIsBulkShippingModalOpen(false)} maxWidth="max-w-sm">
-                <div className="p-6 bg-[#1a1f2e]">
-                    <h3 className="text-lg font-bold text-white mb-6 uppercase tracking-wider">កែប្រែសេវាដឹក (Bulk)</h3>
+                <div className="p-8 bg-[#1a1f2e]">
+                    <div className="text-center mb-8">
+                        <div className="w-14 h-14 bg-purple-600/20 text-purple-500 rounded-2xl flex items-center justify-center mx-auto mb-4 border border-purple-500/20">
+                            <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M13 16V6a1 1 0 00-1-1H4a1 1 0 00-1 1v10a1 1 0 001 1h8a1 1 0 001-1z" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>
+                        </div>
+                        <h3 className="text-xl font-black text-white uppercase tracking-tighter">កែប្រែសេវាដឹក (Bulk)</h3>
+                        <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest mt-1">អនុវត្តលើ {selectedIds.size} ប្រតិបត្តិការណ៍</p>
+                    </div>
                     <div className="space-y-4">
-                        <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest mb-1.5 block">សេវាដឹក</label>
+                        <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest mb-2 block ml-1">សេវាដឹក</label>
                         <select 
                             value={bulkShippingMethod} 
                             onChange={e => setBulkShippingMethod(e.target.value)}
-                            className="form-select bg-gray-900 border-gray-700"
+                            className="form-select bg-black/40 border-gray-700 !py-4 rounded-2xl font-black"
                         >
                             <option value="">-- ជ្រើសរើសសេវាដឹក --</option>
                             {appData.shippingMethods?.map(m => (
@@ -605,11 +676,11 @@ const OrdersDashboard: React.FC<OrdersDashboardProps> = ({ onBack }) => {
                             ))}
                         </select>
                     </div>
-                    <div className="flex gap-3 mt-8">
-                        <button onClick={() => setIsBulkShippingModalOpen(false)} className="btn btn-secondary flex-1">បោះបង់</button>
+                    <div className="flex gap-3 mt-10">
+                        <button onClick={() => setIsBulkShippingModalOpen(false)} className="px-6 py-4 bg-gray-800 text-gray-400 font-black rounded-2xl uppercase text-[11px] tracking-widest flex-1 hover:bg-gray-700 transition-all">បោះបង់</button>
                         <button 
                             onClick={() => { handleBulkUpdate({ 'Internal Shipping Method': bulkShippingMethod }); }} 
-                            className="btn btn-primary flex-1 shadow-lg shadow-blue-600/20"
+                            className="px-6 py-4 bg-purple-600 text-white font-black rounded-2xl uppercase text-[11px] tracking-widest flex-1 shadow-lg shadow-purple-900/20 hover:bg-purple-700 transition-all"
                             disabled={isBulkProcessing || !bulkShippingMethod}
                         >
                             {isBulkProcessing ? <Spinner size="sm" /> : 'រក្សាទុក'}
@@ -619,13 +690,13 @@ const OrdersDashboard: React.FC<OrdersDashboardProps> = ({ onBack }) => {
             </Modal>
 
             <Modal isOpen={isBulkDeleteModalOpen} onClose={() => setIsBulkDeleteModalOpen(false)} maxWidth="max-w-sm">
-                <div className="p-6 bg-[#1a1f2e]">
-                    <div className="flex flex-col items-center text-center mb-6">
-                        <div className="w-16 h-16 bg-red-600/20 text-red-500 rounded-full flex items-center justify-center mb-4 border border-red-500/30">
+                <div className="p-8 bg-[#1a1f2e]">
+                    <div className="flex flex-col items-center text-center mb-8">
+                        <div className="w-16 h-16 bg-red-600/20 text-red-500 rounded-2xl flex items-center justify-center mb-4 border border-red-500/30">
                             <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
                         </div>
-                        <h3 className="text-xl font-black text-white">បញ្ជាក់ការលុបជាក្រុម</h3>
-                        <p className="text-sm text-gray-500 mt-2">តើអ្នកប្រាកដថាចង់លុបប្រតិបត្តិការណ៍ទាំង <span className="text-red-500 font-black">{selectedIds.size}</span> នេះមែនទេ? សកម្មភាពនេះមិនអាចត្រឡប់វិញបានឡើយ។</p>
+                        <h3 className="text-xl font-black text-white uppercase tracking-tighter">បញ្ជាក់ការលុបជាក្រុម</h3>
+                        <p className="text-sm text-gray-500 mt-2 font-medium">តើអ្នកប្រាកដថាចង់លុបប្រតិបត្តិការណ៍ទាំង <span className="text-red-500 font-black">{selectedIds.size}</span> នេះមែនទេ? សកម្មភាពនេះមិនអាចត្រឡប់វិញបានឡើយ។</p>
                     </div>
                     
                     <div className="space-y-4">
@@ -635,17 +706,17 @@ const OrdersDashboard: React.FC<OrdersDashboardProps> = ({ onBack }) => {
                                 type="password" 
                                 value={bulkDeletePassword} 
                                 onChange={e => setBulkDeletePassword(e.target.value)} 
-                                className="form-input bg-black/40 border-gray-700 text-center text-lg tracking-widest focus:ring-red-500/20 focus:border-red-500" 
+                                className="form-input bg-black/40 border-gray-700 text-center text-lg tracking-[0.3em] font-black focus:ring-red-500/20 focus:border-red-500 !py-4 rounded-2xl" 
                                 placeholder="••••••••"
                             />
                         </div>
                     </div>
 
-                    <div className="flex gap-3 mt-8">
-                        <button onClick={() => setIsBulkDeleteModalOpen(false)} className="btn btn-secondary flex-1" disabled={isBulkProcessing}>បោះបង់</button>
+                    <div className="flex gap-3 mt-10">
+                        <button onClick={() => setIsBulkDeleteModalOpen(false)} className="px-6 py-4 bg-gray-800 text-gray-400 font-black rounded-2xl uppercase text-[11px] tracking-widest flex-1 hover:bg-gray-700 transition-all" disabled={isBulkProcessing}>បោះបង់</button>
                         <button 
                             onClick={() => { handleBulkDelete(); }} 
-                            className="btn !bg-red-600 hover:!bg-red-700 text-white flex-1 font-black shadow-lg shadow-red-600/20" 
+                            className="px-6 py-4 bg-red-600 text-white font-black rounded-2xl uppercase text-[11px] tracking-widest flex-1 shadow-lg shadow-red-900/20 hover:bg-red-700 transition-all" 
                             disabled={isBulkProcessing || !bulkDeletePassword}
                         >
                             {isBulkProcessing ? <Spinner size="sm" /> : 'លុបចេញ'}
@@ -659,4 +730,7 @@ const OrdersDashboard: React.FC<OrdersDashboardProps> = ({ onBack }) => {
     );
 };
 
+
+
 export default OrdersDashboard;
+
