@@ -435,7 +435,7 @@ const OrdersDashboard: React.FC<OrdersDashboardProps> = ({ onBack }) => {
     }
 
     return (
-        <div className="max-w-[115rem] mx-auto p-2 sm:p-6 animate-fade-in relative pb-32">
+        <div className="w-full px-2 sm:px-6 lg:px-10 animate-fade-in relative pb-32">
             <div className="md:hidden"><FilterPanel isOpen={isFilterModalOpen} onClose={() => setIsFilterModalOpen(false)}><FiltersComponent /></FilterPanel></div>
             <div className="hidden md:block">
                 <Modal isOpen={isFilterModalOpen} onClose={() => setIsFilterModalOpen(false)} maxWidth="max-w-4xl">
