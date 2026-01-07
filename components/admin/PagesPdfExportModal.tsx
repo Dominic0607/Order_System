@@ -1,17 +1,12 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
 import Modal from '../common/Modal';
+import html2canvas from 'html2canvas';
 import { jsPDF } from 'jspdf';
-import 'jspdf-autotable';
 import { TeamPage } from '../../types';
-import { imageUrlToBase64 } from '../../utils/fileUtils';
+import { imageUrlToBase64, convertGoogleDriveUrl } from '../../utils/fileUtils';
 import Spinner from '../common/Spinner';
-
-// Extend jsPDF type to include autoTable
-interface jsPDFWithAutoTable extends jsPDF {
-    autoTable: (options: any) => void;
-    lastAutoTable?: { finalY: number };
-}
+import ExportTemplate from './ExportTemplate';
 
 interface PagesPdfExportModalProps {
     isOpen: boolean;
@@ -19,60 +14,42 @@ interface PagesPdfExportModalProps {
     pages: TeamPage[];
 }
 
-type PageSize = 'a4' | 'a3' | 'letter' | 'legal' | '1080p';
-type Orientation = 'portrait' | 'landscape';
-type LayoutType = 'list' | 'grid';
-type FontWeight = 'bold' | 'normal';
-
 const PagesPdfExportModal: React.FC<PagesPdfExportModalProps> = ({ isOpen, onClose, pages }) => {
-    const [pageSize, setPageSize] = useState<PageSize>('a4');
-    const [orientation, setOrientation] = useState<Orientation>('landscape');
-    const [layout, setLayout] = useState<LayoutType>('list');
-    const [pageNameFontWeight, setPageNameFontWeight] = useState<FontWeight>('bold');
-    
-    // Layout Configurations
-    const [itemsPerTeamRow, setItemsPerTeamRow] = useState<number>(1); 
     const [teamsPerRow, setTeamsPerRow] = useState<number>(3); 
-    const [singleSheet, setSingleSheet] = useState<boolean>(true);
-    const [showBorders, setShowBorders] = useState<boolean>(true); // New State
-    
     const [isGenerating, setIsGenerating] = useState(false);
     const [progress, setProgress] = useState(0);
+    const [previewImage, setPreviewImage] = useState<string | null>(null);
 
-    // Column Visibility State
     const [columns, setColumns] = useState({
         pageName: true,
         telegramValue: true,
-        logoUrl: false,
         logoImage: true,
     });
 
     const [selectedPageNames, setSelectedPageNames] = useState<Set<string>>(new Set());
+    const [imageMap, setImageMap] = useState<Record<string, string>>({});
 
     useEffect(() => {
-        if (pages && pages.length > 0 && selectedPageNames.size === 0) {
+        if (isOpen && pages && pages.length > 0 && selectedPageNames.size === 0) {
             setSelectedPageNames(new Set(pages.map(p => p.PageName)));
         }
-    }, [pages]);
-
-    // Intelligent defaults when switching layout types
-    useEffect(() => {
-        if (layout === 'list') {
-            setItemsPerTeamRow(1);
-        } else {
-            setItemsPerTeamRow(3);
+        if (!isOpen) {
+            setPreviewImage(null); // Reset preview on close
         }
-    }, [layout]);
+    }, [isOpen, pages]);
 
-    const pagesByTeam = useMemo(() => {
-        const groups: Record<string, TeamPage[]> = {};
-        if (!pages) return groups;
+    const storesHierarchy = useMemo(() => {
+        const hierarchy: Record<string, Record<string, TeamPage[]>> = {};
+        if (!pages) return hierarchy;
+
         pages.forEach(p => {
-            const team = p.Team || 'Unassigned';
-            if (!groups[team]) groups[team] = [];
-            groups[team].push(p);
+            const store = p.DefaultStore || 'No Store';
+            const team = p.Team || 'No Team';
+            if (!hierarchy[store]) hierarchy[store] = {};
+            if (!hierarchy[store][team]) hierarchy[store][team] = [];
+            hierarchy[store][team].push(p);
         });
-        return groups;
+        return hierarchy;
     }, [pages]);
 
     const toggleColumn = (key: keyof typeof columns) => {
@@ -88,7 +65,7 @@ const PagesPdfExportModal: React.FC<PagesPdfExportModalProps> = ({ isOpen, onClo
         });
     };
 
-    const toggleTeamSelection = (teamName: string, teamPages: TeamPage[]) => {
+    const toggleTeamSelection = (teamPages: TeamPage[]) => {
         const allSelected = teamPages.every(p => selectedPageNames.has(p.PageName));
         setSelectedPageNames(prev => {
             const newSet = new Set(prev);
@@ -100,731 +77,305 @@ const PagesPdfExportModal: React.FC<PagesPdfExportModalProps> = ({ isOpen, onClo
         });
     };
 
-    const handleSelectAll = (select: boolean) => {
-        if (select) {
-            setSelectedPageNames(new Set(pages.map(p => p.PageName)));
-        } else {
-            setSelectedPageNames(new Set());
-        }
+    const toggleStoreSelection = (storeTeams: Record<string, TeamPage[]>) => {
+        const allPagesInStore = Object.values(storeTeams).flat();
+        const allSelected = allPagesInStore.every(p => selectedPageNames.has(p.PageName));
+        setSelectedPageNames(prev => {
+            const newSet = new Set(prev);
+            allPagesInStore.forEach(p => {
+                if (allSelected) newSet.delete(p.PageName);
+                else newSet.add(p.PageName);
+            });
+            return newSet;
+        });
     };
 
-    const generatePDF = async () => {
-        if (selectedPageNames.size === 0) {
-            alert("Please select at least one page.");
-            return;
+    const handleSelectAll = (select: boolean) => {
+        if (select) setSelectedPageNames(new Set(pages.map(p => p.PageName)));
+        else setSelectedPageNames(new Set());
+    };
+
+    const loadImages = async (targetPages: TeamPage[]) => {
+        const newImageMap: Record<string, string> = { ...imageMap };
+        let processedCount = 0;
+        for (const page of targetPages) {
+            if (page.PageLogoURL && !newImageMap[page.PageName]) {
+                try {
+                    const base64 = await imageUrlToBase64(page.PageLogoURL);
+                    if (base64) newImageMap[page.PageName] = `data:image/png;base64,${base64}`;
+                } catch (e) {
+                    console.warn(`Failed to load logo for ${page.PageName}`);
+                }
+            }
+            processedCount++;
+            setProgress(Math.round((processedCount / targetPages.length) * 100));
         }
+        setImageMap(newImageMap);
+        return newImageMap;
+    };
+
+    const handleGeneratePreview = async () => {
+        if (selectedPageNames.size === 0) return;
 
         setIsGenerating(true);
         setProgress(0);
 
-        try {
-            // 1. Data Preparation
-            const finalPages = pages.filter(p => selectedPageNames.has(p.PageName));
-            const groupedForPdf: Record<string, TeamPage[]> = {};
-            finalPages.forEach(p => {
-                const team = p.Team || 'Unassigned';
-                if (!groupedForPdf[team]) groupedForPdf[team] = [];
-                groupedForPdf[team].push(p);
-            });
-
-            // 2. Image Pre-loading
-            const imageMap: Record<string, string> = {};
-            let processedCount = 0;
-            const totalCount = finalPages.length;
-
-            const imagePromises = finalPages.map(async (page) => {
-                if (page.PageLogoURL && columns.logoImage) {
-                    try {
-                        const base64 = await imageUrlToBase64(page.PageLogoURL);
-                        if (base64) imageMap[page.PageName] = base64;
-                    } catch (e) {
-                        console.warn(`Failed to load image for ${page.PageName}`);
-                    }
-                }
-                processedCount++;
-                setProgress(Math.round((processedCount / totalCount) * 100));
-            });
-            
-            await Promise.all(imagePromises);
-
-            // 3. Document Dimensions & Scaling
-            let unit: 'mm' | 'px' = 'mm';
-            let width = 210;
-            let height = 297;
-            let scale = 1;
-
-            if (pageSize === '1080p') {
-                unit = 'px';
-                if (orientation === 'landscape') { width = 1920; height = 1080; } 
-                else { width = 1080; height = 1920; }
-                scale = 4.5; 
-            } else {
-                if (pageSize === 'a3') { width = 297; height = 420; }
-                else if (pageSize === 'letter') { width = 215.9; height = 279.4; }
-                else if (pageSize === 'legal') { width = 215.9; height = 355.6; }
-                
-                if (orientation === 'landscape') { [width, height] = [height, width]; }
-            }
-
-            // 4. Layout Constants & Centering Logic
-            const headerHeight = 35 * scale;
-            const teamGap = 10 * scale; 
-            const itemGap = 5 * scale;
-            
-            const minMargin = 10 * scale; 
-            const maxContentWidth = width - (minMargin * 2);
-            
-            const teamColWidth = Math.floor((maxContentWidth - ((teamsPerRow - 1) * teamGap)) / teamsPerRow);
-            const actualTotalContentWidth = (teamColWidth * teamsPerRow) + (teamGap * (teamsPerRow - 1));
-            
-            const startX = (width - actualTotalContentWidth) / 2;
-
-            const innerItemWidth = (teamColWidth - ((itemsPerTeamRow - 1) * itemGap)) / itemsPerTeamRow;
-
-            // Height Constants - dynamic based on content
-            const gridRowHeight = (nameLength: number) => {
-                if (nameLength > 40) return 120 * scale;
-                else if (nameLength > 30) return 110 * scale;
-                else if (nameLength > 20) return 100 * scale;
-                else if (nameLength > 15) return 90 * scale;
-                else return 85 * scale;
-            };
-            
-            const listRowHeight = 30 * scale; 
-            const autoTableRowHeight = 16 * scale;
-            const teamHeaderHeight = 22 * scale;
-
-            // Helper to calculate the height of a specific team block
-            const calculateTeamBlockHeight = (items: TeamPage[]) => {
-                let h = teamHeaderHeight + (10 * scale); // Header + padding
-                
-                if (layout === 'list' && itemsPerTeamRow === 1) {
-                    h += (15 * scale); // Table Header
-                    h += (items.length * autoTableRowHeight); 
-                } else {
-                    const rows = Math.ceil(items.length / itemsPerTeamRow);
-                    const maxNameLength = items.reduce((max, page) => {
-                        return Math.max(max, page.PageName?.length || 0);
-                    }, 0);
-                    const rowH = layout === 'grid' ? gridRowHeight(maxNameLength) : listRowHeight;
-                    h += (rows * (rowH + itemGap));
-                }
-                return h;
-            };
-
-            const sortedTeamNames = Object.keys(groupedForPdf).sort();
-
-            // 5. Single Sheet Height Calculation
-            let finalDocHeight = height;
-            if (singleSheet) {
-                let totalContentHeight = headerHeight + minMargin;
-                for (let i = 0; i < sortedTeamNames.length; i += teamsPerRow) {
-                    const rowTeams = sortedTeamNames.slice(i, i + teamsPerRow);
-                    let maxRowHeight = 0;
-                    rowTeams.forEach(team => {
-                        const h = calculateTeamBlockHeight(groupedForPdf[team]);
-                        if (h > maxRowHeight) maxRowHeight = h;
-                    });
-                    totalContentHeight += maxRowHeight + teamGap;
-                }
-                totalContentHeight += minMargin;
-                finalDocHeight = Math.max(height, totalContentHeight);
-            }
-
-            // 6. Initialize FINAL PDF Instance (as any to bypass type issues)
-            const doc: any = new jsPDF({
-                orientation: orientation,
-                unit: unit,
-                format: [width, finalDocHeight]
-            });
-
-            // 7. IMPROVED PERFECT FIT TEXT HELPER
-            const drawPerfectFitText = (
-                text: string, 
-                centerX: number, 
-                y: number, 
-                maxWidth: number, 
-                maxFontSize: number, 
-                fontStyle: string = 'bold',
-                align: 'center' | 'left' = 'center',
-                color: number[] = [0,0,0],
-                allowWrap: boolean = false 
-            ) => {
-                doc.setFont("helvetica", fontStyle);
-                doc.setTextColor(color[0], color[1], color[2]);
-
-                let displayText = text || '';
-                let finalFontSize = maxFontSize;
-                
-                doc.setFontSize(finalFontSize);
-                let textWidth = doc.getTextWidth(displayText);
-                
-                while (textWidth > maxWidth && finalFontSize > 4 * scale) {
-                    finalFontSize -= 0.5 * scale;
-                    doc.setFontSize(finalFontSize);
-                    textWidth = doc.getTextWidth(displayText);
-                }
-                
-                if (finalFontSize <= 5 * scale && allowWrap) {
-                    const words = displayText.split(' ');
-                    if (words.length > 1) {
-                        const midIndex = Math.floor(words.length / 2);
-                        const line1 = words.slice(0, midIndex).join(' ');
-                        const line2 = words.slice(midIndex).join(' ');
-                        
-                        let lineFontSize = maxFontSize;
-                        doc.setFontSize(lineFontSize);
-                        const line1Width = doc.getTextWidth(line1);
-                        const line2Width = doc.getTextWidth(line2);
-                        
-                        while ((line1Width > maxWidth || line2Width > maxWidth) && lineFontSize > 4 * scale) {
-                            lineFontSize -= 0.5 * scale;
-                            doc.setFontSize(lineFontSize);
-                        }
-                        
-                        doc.setFontSize(lineFontSize);
-                        
-                        if (align === 'center') {
-                            doc.text(line1, centerX, y - (3 * scale), { align: 'center' });
-                            doc.text(line2, centerX, y + (6 * scale), { align: 'center' });
-                        } else {
-                            doc.text(line1, centerX, y - (3 * scale), { maxWidth });
-                            doc.text(line2, centerX, y + (6 * scale), { maxWidth });
-                        }
-                        return;
-                    }
-                }
-                
-                doc.setFontSize(finalFontSize);
-                if (align === 'center') {
-                    doc.text(displayText, centerX, y, { align: 'center' });
-                } else {
-                    doc.text(displayText, centerX, y, { maxWidth: allowWrap ? maxWidth : undefined });
-                }
-            };
-
-            const drawHeader = () => {
-                doc.setFontSize(18 * scale);
-                doc.setTextColor(40, 40, 40);
-                doc.text("Team Pages Report", width / 2, 15 * scale, { align: 'center' });
-                doc.setFontSize(10 * scale);
-                doc.setTextColor(100, 100, 100);
-                doc.text(`Generated: ${new Date().toLocaleString()}`, width / 2, 24 * scale, { align: 'center' });
-            };
-
-            // 8. Main Rendering Loop
-            drawHeader();
-            let currentY = headerHeight + 5 * scale;
-            
-            for (let i = 0; i < sortedTeamNames.length; i += teamsPerRow) {
-                const rowTeams = sortedTeamNames.slice(i, i + teamsPerRow);
-                
-                let maxRowHeight = 0;
-                rowTeams.forEach(team => {
-                    const h = calculateTeamBlockHeight(groupedForPdf[team]);
-                    if (h > maxRowHeight) maxRowHeight = h;
-                });
-
-                if (!singleSheet && currentY + maxRowHeight > finalDocHeight - minMargin) {
-                    doc.addPage();
-                    drawHeader();
-                    currentY = headerHeight + 5 * scale;
-                }
-
-                rowTeams.forEach((team, idx) => {
-                    const teamX = startX + (idx * (teamColWidth + teamGap));
-                    let localY = currentY;
-                    const teamPages = groupedForPdf[team];
-
-                    if (idx < rowTeams.length - 1 && showBorders) {
-                        doc.setDrawColor(200, 200, 200);
-                        doc.setLineWidth(0.5 * scale);
-                        const lineX = teamX + teamColWidth + (teamGap / 2);
-                        doc.line(lineX, currentY, lineX, currentY + maxRowHeight);
-                    }
-
-                    if (showBorders) {
-                        doc.setFillColor(240, 242, 245);
-                        doc.setDrawColor(200, 200, 200);
-                        doc.roundedRect(teamX, localY, teamColWidth, 12 * scale, 2 * scale, 2 * scale, 'FD');
-                    } else {
-                        // Just fill, no border if hidden, or just text
-                         doc.setFillColor(240, 242, 245);
-                         doc.rect(teamX, localY, teamColWidth, 12 * scale, 'F');
-                    }
-                    
-                    doc.setFontSize(11 * scale);
-                    doc.setFont("helvetica", "bold");
-                    doc.setTextColor(30, 64, 175);
-                    doc.text(`${team} (${teamPages.length})`, teamX + (4 * scale), localY + (8 * scale));
-                    
-                    localY += 18 * scale;
-
-                    // --- ITEMS RENDER ---
-                    
-                    // CASE A: Standard Table (1 col list)
-                    if (layout === 'list' && itemsPerTeamRow === 1) {
-                        const headRow = [];
-                        let colIndexCounter = 0;
-                        let pageNameColIndex = -1;
-
-                        if (columns.logoImage) { headRow.push('Logo'); colIndexCounter++; }
-                        if (columns.pageName) { headRow.push('Name'); pageNameColIndex = colIndexCounter; colIndexCounter++; }
-                        if (columns.telegramValue) { headRow.push('Telegram'); colIndexCounter++; }
-                        if (columns.logoUrl) { headRow.push('Logo Link'); colIndexCounter++; }
-                        
-                        const body = teamPages.map(page => {
-                            const row = [];
-                            if (columns.logoImage) row.push(''); 
-                            if (columns.pageName) row.push(page.PageName || '');
-                            if (columns.telegramValue) row.push(page.TelegramValue || '');
-                            if (columns.logoUrl) row.push(page.PageLogoURL || '');
-                            return row;
-                        });
-
-                        doc.autoTable({
-                            startY: localY,
-                            head: [headRow],
-                            body: body,
-                            theme: showBorders ? 'grid' : 'plain', // Use plain theme if borders hidden
-                            styles: { 
-                                fontSize: 9 * scale, 
-                                cellPadding: 3 * scale,
-                                valign: 'middle',
-                                minCellHeight: 18 * scale, 
-                                overflow: 'visible',
-                                cellWidth: 'wrap',
-                                lineWidth: showBorders ? 0.1 * scale : 0 // Remove internal borders
-                            },
-                            headStyles: { 
-                                fillColor: [55, 65, 81], 
-                                fontSize: 9 * scale,
-                                cellPadding: 3 * scale,
-                                textColor: [255, 255, 255],
-                                fontStyle: 'bold',
-                                lineWidth: showBorders ? 0.1 * scale : 0
-                            },
-                            columnStyles: {
-                                0: columns.logoImage ? { cellWidth: 22 * scale } : {},
-                                ...(pageNameColIndex >= 0 ? {
-                                    [pageNameColIndex]: { 
-                                        cellWidth: 'auto',
-                                        minCellWidth: 50 * scale,
-                                        fontStyle: pageNameFontWeight
-                                    }
-                                } : {})
-                            },
-                            willDrawCell: (data: any) => {
-                                if (data.section === 'body' && data.column.index === pageNameColIndex) {
-                                    data.cell.text = []; 
-                                }
-                            },
-                            didDrawCell: (data: any) => {
-                                if (columns.logoImage && data.section === 'body' && data.column.index === 0) {
-                                    const rowIndex = data.row.index;
-                                    const page = teamPages[rowIndex];
-                                    if (page && imageMap[page.PageName]) {
-                                        try {
-                                            const imgDim = 14 * scale;
-                                            const xPos = data.cell.x + (data.cell.width - imgDim) / 2;
-                                            const yPos = data.cell.y + (data.cell.height - imgDim) / 2;
-                                            doc.addImage(`data:image/jpeg;base64,${imageMap[page.PageName]}`, 'JPEG', xPos, yPos, imgDim, imgDim);
-                                        } catch (e) {}
-                                    }
-                                }
-                                
-                                if (columns.pageName && data.section === 'body' && data.column.index === pageNameColIndex) {
-                                    const rawText = data.cell.raw;
-                                    const cellX = data.cell.x;
-                                    const cellY = data.cell.y;
-                                    const cellW = data.cell.width;
-                                    const cellH = data.cell.height;
-                                    const textY = cellY + (cellH / 2) + (3 * scale); 
-
-                                    drawPerfectFitText(
-                                        String(rawText),
-                                        cellX + (2 * scale),
-                                        textY,
-                                        cellW - (4 * scale),
-                                        9 * scale,
-                                        pageNameFontWeight,
-                                        'left',
-                                        [0,0,0],
-                                        false // Table mode usually single line preferred, but allow logic to scale down
-                                    );
-                                }
-                            },
-                            margin: { left: teamX },
-                            tableWidth: teamColWidth
-                        });
-                    } 
-                    // CASE B: Custom Card Rendering (Grid or Multi-col List)
-                    else {
-                        const isGrid = layout === 'grid';
-                        
-                        const maxNameLength = teamPages.reduce((max, page) => {
-                            return Math.max(max, page.PageName?.length || 0);
-                        }, 0);
-                        
-                        const dynamicGridRowHeight = gridRowHeight(maxNameLength);
-                        
-                        for (let j = 0; j < teamPages.length; j++) {
-                            const page = teamPages[j];
-                            const itemColIndex = j % itemsPerTeamRow;
-                            const itemRowIndex = Math.floor(j / itemsPerTeamRow);
-                            
-                            const itemX = teamX + (itemColIndex * (innerItemWidth + itemGap));
-                            const itemY = localY + (itemRowIndex * ((isGrid ? dynamicGridRowHeight : listRowHeight) + itemGap));
-                            const itemHeight = isGrid ? dynamicGridRowHeight : listRowHeight;
-                            const imgSize = isGrid ? (25 * scale) : (16 * scale);
-
-                            if (showBorders) {
-                                doc.setDrawColor(220, 220, 220);
-                                doc.setFillColor(255, 255, 255);
-                                doc.roundedRect(itemX, itemY, innerItemWidth, itemHeight, 2 * scale, 2 * scale, 'FD');
-                            } else {
-                                // No border, just white background if desired, or transparent
-                                // doc.setFillColor(255, 255, 255);
-                                // doc.rect(itemX, itemY, innerItemWidth, itemHeight, 'F');
-                            }
-
-                            let hasImageDrawn = false;
-                            if (columns.logoImage) {
-                                if (imageMap[page.PageName]) {
-                                    try {
-                                        const imgX = isGrid ? itemX + (innerItemWidth - imgSize)/2 : itemX + (4 * scale);
-                                        const imgY = isGrid ? itemY + (8 * scale) : itemY + (itemHeight - imgSize)/2;
-                                        
-                                        if (showBorders) {
-                                            doc.setDrawColor(230, 230, 230);
-                                            doc.setLineWidth(0.3 * scale);
-                                            doc.roundedRect(imgX - (1*scale), imgY - (1*scale), imgSize + (2*scale), imgSize + (2*scale), 1 * scale, 1 * scale, 'S');
-                                        }
-                                        
-                                        doc.addImage(`data:image/jpeg;base64,${imageMap[page.PageName]}`, 'JPEG', imgX, imgY, imgSize, imgSize);
-                                        hasImageDrawn = true;
-                                    } catch (e) {}
-                                } else if (isGrid && showBorders) {
-                                    doc.setFillColor(240, 240, 240);
-                                    doc.setDrawColor(220, 220, 220);
-                                    doc.setLineWidth(0.3 * scale);
-                                    doc.circle(itemX + innerItemWidth/2, itemY + 8*scale + imgSize/2, imgSize/2, 'FD');
-                                    hasImageDrawn = true;
-                                }
-                            }
-
-                            if (isGrid) {
-                                let currentTextY = itemY + (hasImageDrawn ? (imgSize + 12 * scale) : (8 * scale));
-                                const maxWidth = innerItemWidth - (10 * scale); 
-                                const textCenterX = itemX + (innerItemWidth / 2);
-
-                                const nameY = columns.telegramValue ? currentTextY : (itemY + (itemHeight/2) + (3*scale));
-                                
-                                if (columns.pageName) {
-                                    drawPerfectFitText(
-                                        page.PageName || 'Unknown',
-                                        textCenterX,
-                                        nameY + (4*scale),
-                                        maxWidth,
-                                        10 * scale,
-                                        pageNameFontWeight,
-                                        'center',
-                                        [0, 0, 0],
-                                        true 
-                                    );
-                                    currentTextY += 16 * scale;
-                                }
-
-                                if (columns.telegramValue) {
-                                    const telText = page.TelegramValue || '-';
-                                    const telY = currentTextY + (2 * scale);
-                                    
-                                    drawPerfectFitText(
-                                        telText,
-                                        textCenterX,
-                                        telY + (2*scale),
-                                        maxWidth,
-                                        8 * scale,
-                                        'normal',
-                                        'center',
-                                        [100, 100, 100]
-                                    );
-                                }
-
-                            } else {
-                                const contentStartX = itemX + (columns.logoImage ? (imgSize + 8*scale) : 6*scale);
-                                const contentWidth = innerItemWidth - (contentStartX - itemX) - (6 * scale);
-                                const contentY = itemY + (4 * scale);
-                                const contentHeight = itemHeight - (8 * scale);
-                                let textCenterY = contentY + (contentHeight/2);
-
-                                if (columns.pageName) {
-                                    const nameY = columns.telegramValue ? (textCenterY - (3*scale)) : textCenterY + (2*scale);
-                                    
-                                    const nameLength = page.PageName?.length || 0;
-                                    let nameFontSize = 9 * scale;
-                                    if (nameLength > 25) nameFontSize = 7 * scale;
-                                    else if (nameLength > 15) nameFontSize = 8 * scale;
-                                    
-                                    drawPerfectFitText(
-                                        page.PageName || 'Unknown',
-                                        contentStartX,
-                                        nameY,
-                                        contentWidth,
-                                        nameFontSize,
-                                        pageNameFontWeight, 
-                                        'left',
-                                        [0, 0, 0],
-                                        true 
-                                    );
-                                }
-                                
-                                if (columns.telegramValue) {
-                                    const telY = columns.pageName ? (textCenterY + (6*scale)) : textCenterY + (2*scale);
-                                    
-                                    drawPerfectFitText(
-                                        page.TelegramValue || '',
-                                        contentStartX,
-                                        telY,
-                                        contentWidth,
-                                        8 * scale,
-                                        'normal',
-                                        'left',
-                                        [100, 100, 100]
-                                    );
-                                }
-                            }
-                        }
-                    }
-                });
-
-                currentY += maxRowHeight + teamGap;
-            }
-
-            const pageCount = doc.getNumberOfPages();
-            for(let i = 1; i <= pageCount; i++) {
-                doc.setPage(i);
-                doc.setFontSize(8 * scale);
-                doc.setTextColor(150, 150, 150);
-                doc.text(`Page ${i} of ${pageCount}`, width - minMargin, finalDocHeight - (5 * scale), { align: 'right' });
-                
-                doc.setFontSize(6 * scale);
-                doc.text(`*ឈ្មោះ Page ត្រូវបានបង្ហាញពេញលេញ - អក្សរ: ${pageNameFontWeight === 'bold' ? 'Bold' : 'Normal'}`, 
-                    minMargin, finalDocHeight - (5 * scale), { align: 'left' });
-            }
-
-            doc.save(`Pages_Report_${layout}_${pageNameFontWeight}_${new Date().toISOString().slice(0, 10)}.pdf`);
-            onClose();
-
-        } catch (error) {
-            console.error("PDF Generation failed:", error);
-            alert("Failed to generate PDF. Check console for details.");
-        } finally {
+        const container = document.getElementById('png-export-layer');
+        if (!container) {
             setIsGenerating(false);
-            setProgress(0);
+            return;
+        }
+
+        const originalStyle = container.getAttribute('style') || '';
+
+        try {
+            const finalPages = pages.filter(p => selectedPageNames.has(p.PageName));
+            await loadImages(finalPages);
+
+            await document.fonts.ready;
+
+            const TARGET_W = 2560;
+            
+            // Set styles for capture
+            container.style.display = 'flex';
+            container.style.width = `${TARGET_W}px`;
+            container.style.height = 'auto'; // Allow height to extend
+            container.style.position = 'fixed';
+            container.style.top = '0';
+            container.style.left = '-10000px'; // Hide offscreen
+            container.style.zIndex = '-100';
+
+            // Wait for DOM
+            await new Promise(r => setTimeout(r, 1000));
+
+            // Calculate exact height needed
+            const scrollHeight = container.scrollHeight;
+            const TARGET_H = Math.max(1440, scrollHeight);
+
+            const canvas = await html2canvas(container, {
+                backgroundColor: '#020617',
+                scale: 1.5, // Better quality
+                useCORS: true,
+                logging: false,
+                width: TARGET_W,
+                height: TARGET_H,
+                windowWidth: TARGET_W,
+                windowHeight: TARGET_H,
+                allowTaint: true,
+                imageTimeout: 15000,
+            });
+
+            const imgData = canvas.toDataURL('image/png', 0.9);
+            setPreviewImage(imgData);
+
+        } catch (err) {
+            console.error('Preview Generation Error:', err);
+            alert('ការបង្កើត Preview បរាជ័យ។');
+        } finally {
+            container.setAttribute('style', originalStyle);
+            setIsGenerating(false);
         }
     };
 
+    const handleDownloadPDF = () => {
+        if (!previewImage) return;
+        
+        try {
+            const pdf = new jsPDF({
+                orientation: 'landscape',
+                unit: 'mm',
+                format: 'a4' // Default, will adjust
+            });
+
+            const imgProps = pdf.getImageProperties(previewImage);
+            const pdfWidth = pdf.internal.pageSize.getWidth();
+            const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
+
+            // Resize PDF page to match image aspect ratio if necessary
+            pdf.deletePage(1);
+            pdf.addPage([pdfWidth, pdfHeight]);
+            pdf.addImage(previewImage, 'PNG', 0, 0, pdfWidth, pdfHeight);
+            
+            pdf.save(`Organization_Chart_${new Date().getTime()}.pdf`);
+            onClose();
+        } catch (err) {
+            console.error(err);
+            alert("Export PDF Error");
+        }
+    };
+
+    const handleDownloadPNG = () => {
+        if (!previewImage) return;
+        const link = document.createElement('a');
+        link.href = previewImage;
+        link.download = `Organization_Chart_${new Date().getTime()}.png`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    };
+
     return (
-        <Modal isOpen={isOpen} onClose={onClose} maxWidth="max-w-5xl">
-            <div className="flex justify-between items-center mb-6">
-                <h2 className="text-2xl font-bold text-white flex items-center">
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 mr-2 text-red-500" viewBox="0 0 20 20" fill="currentColor">
-                        <path fillRule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM6.293 6.707a1 1 0 010-1.414l3-3a1 1 0 011.414 0l3 3a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l6-6a1 1 0 011.414 0z" clipRule="evenodd" />
-                    </svg>
-                    Export Pages to PDF (Full Text Display)
-                </h2>
-                <button onClick={onClose} className="text-gray-400 hover:text-white text-2xl">&times;</button>
+        <Modal isOpen={isOpen} onClose={onClose} maxWidth="max-w-7xl">
+            <div className="flex justify-between items-center mb-8 border-b border-white/5 pb-6">
+                <div>
+                    <h2 className="text-3xl font-black text-white flex items-center gap-4">
+                        <div className="w-12 h-12 bg-red-600/20 rounded-2xl flex items-center justify-center border border-red-500/30">
+                            <svg className="w-7 h-7 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" /></svg>
+                        </div>
+                        Premium HD Export
+                    </h2>
+                </div>
+                <button onClick={onClose} className="p-3 bg-gray-800 text-gray-400 hover:text-white rounded-2xl active:scale-95 transition-all">&times;</button>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 h-[70vh] overflow-hidden">
-                {/* Left Side: Settings */}
-                <div className="space-y-6 overflow-y-auto pr-2 pb-4">
-                    
-                    {/* 1. PDF Settings */}
-                    <div className="bg-gray-800/50 p-4 rounded-lg border border-gray-700">
-                        <h3 className="text-lg font-semibold text-blue-300 mb-3">ការកំណត់ PDF (Config)</h3>
-                        <div className="grid grid-cols-2 gap-4">
-                            <div>
-                                <label className="block text-sm text-gray-400 mb-1">ទំហំ (Size)</label>
-                                <select value={pageSize} onChange={(e) => setPageSize(e.target.value as PageSize)} className="form-select">
-                                    <option value="a4">A4</option>
-                                    <option value="a3">A3</option>
-                                    <option value="letter">Letter</option>
-                                    <option value="legal">Legal</option>
-                                    <option value="1080p">1920x1080 (FHD)</option>
-                                </select>
-                            </div>
-                            <div>
-                                <label className="block text-sm text-gray-400 mb-1">ទិសដៅ</label>
-                                <select value={orientation} onChange={(e) => setOrientation(e.target.value as Orientation)} className="form-select">
-                                    <option value="landscape">ប្ដេក (Landscape)</option>
-                                    <option value="portrait">បញ្ឈរ (Portrait)</option>
-                                </select>
-                            </div>
-                            <div className="col-span-2">
-                                <label className="flex items-center space-x-3 cursor-pointer p-2 bg-gray-900/50 rounded hover:bg-gray-700/50 border border-gray-600/50">
-                                    <input type="checkbox" checked={singleSheet} onChange={(e) => setSingleSheet(e.target.checked)} className="form-checkbox h-5 w-5 text-blue-500 rounded bg-gray-800 border-gray-500" />
-                                    <span className="text-gray-200 text-sm">ដាក់ទិន្នន័យទាំងអស់ក្នុង ១ សន្លឹក (Single Sheet)</span>
-                                </label>
-                            </div>
-                        </div>
+            {/* PREVIEW MODE */}
+            {previewImage ? (
+                <div className="flex flex-col h-[70vh]">
+                    <div className="flex-grow overflow-auto bg-gray-950/50 rounded-3xl border border-white/10 p-4 flex items-center justify-center relative">
+                        <img src={previewImage} className="max-w-full h-auto shadow-2xl rounded-lg" alt="Preview" />
                     </div>
-
-                    {/* 2. Layout Settings */}
-                    <div className="bg-gray-800/50 p-4 rounded-lg border border-gray-700">
-                        <h3 className="text-lg font-semibold text-blue-300 mb-3">រូបរាង (Layout)</h3>
-                        
-                        <div className="mb-4">
-                            <label className="block text-sm text-gray-400 mb-2">ទម្រង់បង្ហាញ Page (Page Style):</label>
-                            <div className="flex bg-gray-900 rounded p-1">
-                                <button onClick={() => setLayout('list')} className={`flex-1 py-2 rounded text-sm font-medium transition-colors ${layout === 'list' ? 'bg-blue-600 text-white' : 'text-gray-400 hover:text-white'}`}>បញ្ជី (List)</button>
-                                <button onClick={() => setLayout('grid')} className={`flex-1 py-2 rounded text-sm font-medium transition-colors ${layout === 'grid' ? 'bg-blue-600 text-white' : 'text-gray-400 hover:text-white'}`}>ក្រឡា (Grid)</button>
-                            </div>
-                        </div>
-                        
-                         {/* Border Toggle */}
-                         <div className="mb-4">
-                            <label className="flex items-center space-x-3 cursor-pointer p-2 bg-gray-900/50 rounded hover:bg-gray-700/50 border border-gray-600/50">
-                                <input type="checkbox" checked={showBorders} onChange={(e) => setShowBorders(e.target.checked)} className="form-checkbox h-5 w-5 text-blue-500 rounded bg-gray-800 border-gray-500" />
-                                <span className="text-gray-200 text-sm">បង្ហាញ Borders (Show Borders)</span>
-                            </label>
-                        </div>
-
-                        {/* 2.1 Font Weight Setting */}
-                        <div className="mb-4">
-                            <label className="block text-sm text-gray-400 mb-2">ទម្ងន់អក្សរឈ្មោះ Page (Font Weight):</label>
-                            <div className="flex bg-gray-900 rounded p-1">
-                                <button 
-                                    onClick={() => setPageNameFontWeight('bold')} 
-                                    className={`flex-1 py-2 rounded text-sm font-medium transition-colors ${pageNameFontWeight === 'bold' ? 'bg-purple-600 text-white' : 'text-gray-400 hover:text-white'}`}
-                                >
-                                    Bold
-                                </button>
-                                <button 
-                                    onClick={() => setPageNameFontWeight('normal')} 
-                                    className={`flex-1 py-2 rounded text-sm font-medium transition-colors ${pageNameFontWeight === 'normal' ? 'bg-purple-600 text-white' : 'text-gray-400 hover:text-white'}`}
-                                >
-                                    Normal
-                                </button>
-                            </div>
-                        </div>
-
-                        {/* Teams Per Row Slider */}
-                        <div className="mb-6">
-                            <div className="flex justify-between items-center mb-2">
-                                <label className="block text-sm text-yellow-400 font-medium">ចំនួនក្រុមក្នុង ១ ជួរ (Teams per Row):</label>
-                                <span className="text-xl font-bold text-white bg-blue-900 px-2 rounded">{teamsPerRow}</span>
-                            </div>
-                            <input 
-                                type="range" min="1" max="4" 
-                                value={teamsPerRow} 
-                                onChange={(e) => setTeamsPerRow(Number(e.target.value))} 
-                                className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer"
-                            />
-                            <div className="flex justify-between text-xs text-gray-500 mt-1"><span>1</span><span>2</span><span>3</span><span>4</span></div>
-                        </div>
-
-                        {/* Items Per Row Slider */}
-                        <div className="mb-4">
-                            <div className="flex justify-between items-center mb-2">
-                                <label className="block text-sm text-gray-400">ចំនួន Page ក្នុង ១ ជួរ (Inside Team):</label>
-                                <span className="text-white font-bold">{itemsPerTeamRow}</span>
-                            </div>
-                            <input 
-                                type="range" min="1" max="6" 
-                                value={itemsPerTeamRow} 
-                                onChange={(e) => setItemsPerTeamRow(Number(e.target.value))} 
-                                className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer"
-                            />
-                            <div className="flex justify-between text-xs text-gray-500 mt-1"><span>1 (Table)</span><span>2</span><span>3</span><span>4</span><span>5</span><span>6</span></div>
-                        </div>
-                    </div>
-
-                    {/* 3. Data Visibility Settings */}
-                    <div className="bg-gray-800/50 p-4 rounded-lg border border-gray-700">
-                        <h3 className="text-lg font-semibold text-blue-300 mb-3">ជ្រើសរើសទិន្នន័យ (Data Selection)</h3>
-                        <div className="space-y-2">
-                            <label className="flex items-center space-x-2 cursor-pointer p-1.5 hover:bg-gray-700 rounded">
-                                <input type="checkbox" checked={columns.logoImage} onChange={() => toggleColumn('logoImage')} className="form-checkbox h-4 w-4 text-blue-500 rounded bg-gray-900 border-gray-500" />
-                                <span className="text-sm text-gray-200">រូបភាព Logo (Logo Image)</span>
-                            </label>
-                            <label className="flex items-center space-x-2 cursor-pointer p-1.5 hover:bg-gray-700 rounded">
-                                <input type="checkbox" checked={columns.pageName} onChange={() => toggleColumn('pageName')} className="form-checkbox h-4 w-4 text-blue-500 rounded bg-gray-900 border-gray-500" />
-                                <span className="text-sm text-gray-200">ឈ្មោះ Page (Page Name)</span>
-                            </label>
-                            <label className="flex items-center space-x-2 cursor-pointer p-1.5 hover:bg-gray-700 rounded">
-                                <input type="checkbox" checked={columns.telegramValue} onChange={() => toggleColumn('telegramValue')} className="form-checkbox h-4 w-4 text-blue-500 rounded bg-gray-900 border-gray-500" />
-                                <span className="text-sm text-gray-200">Telegram Value</span>
-                            </label>
-                            {layout === 'list' && itemsPerTeamRow === 1 && (
-                                <label className="flex items-center space-x-2 cursor-pointer p-1.5 hover:bg-gray-700 rounded">
-                                    <input type="checkbox" checked={columns.logoUrl} onChange={() => toggleColumn('logoUrl')} className="form-checkbox h-4 w-4 text-blue-500 rounded bg-gray-900 border-gray-500" />
-                                    <span className="text-sm text-gray-200">Logo Link (URL)</span>
-                                </label>
-                            )}
+                    <div className="mt-6 flex flex-wrap justify-between items-center border-t border-white/5 pt-6 gap-4">
+                        <button 
+                            onClick={() => setPreviewImage(null)} 
+                            className="px-8 py-4 text-sm font-black text-gray-400 hover:text-white uppercase flex items-center gap-2"
+                        >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M15 19l-7-7 7-7" /></svg>
+                            Back to Settings
+                        </button>
+                        <div className="flex gap-4">
+                            <button 
+                                onClick={handleDownloadPNG}
+                                className="px-8 py-5 rounded-2xl text-sm font-black uppercase tracking-[0.2em] shadow-2xl transition-all active:scale-95 flex items-center gap-4 bg-blue-600 text-white hover:bg-blue-700 shadow-blue-600/20"
+                            >
+                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M4 16l4 4m0 0l4-4m-4 4V4" /></svg>
+                                Download PNG
+                            </button>
+                            <button 
+                                onClick={handleDownloadPDF}
+                                className="px-8 py-5 rounded-2xl text-sm font-black uppercase tracking-[0.2em] shadow-2xl transition-all active:scale-95 flex items-center gap-4 bg-emerald-600 text-white hover:bg-emerald-700 shadow-emerald-600/20"
+                            >
+                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+                                Download PDF
+                            </button>
                         </div>
                     </div>
                 </div>
-
-                {/* Right Side: Page Selection */}
-                <div className="bg-gray-800/50 rounded-lg border border-gray-700 flex flex-col h-full overflow-hidden">
-                    <div className="p-4 border-b border-gray-700 flex-shrink-0">
-                        <div className="flex justify-between items-center">
-                            <h3 className="text-lg font-semibold text-blue-300">ជ្រើសរើស Pages ({selectedPageNames.size})</h3>
-                            <div className="space-x-2 text-xs">
-                                <button onClick={() => handleSelectAll(true)} className="text-blue-400 hover:underline">All</button>
-                                <span className="text-gray-500">|</span>
-                                <button onClick={() => handleSelectAll(false)} className="text-blue-400 hover:underline">None</button>
+            ) : (
+                /* SETTINGS MODE */
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 h-[70vh]">
+                    <div className="lg:col-span-3 space-y-8 overflow-y-auto pr-4 custom-scrollbar">
+                        <div className="bg-black/40 p-6 rounded-[2.5rem] border border-white/5 space-y-8 shadow-inner">
+                            <div>
+                                <label className="text-[10px] font-black text-blue-400 uppercase tracking-[0.2em] block mb-4">Density Control</label>
+                                <div className="grid grid-cols-3 gap-2 bg-gray-900/50 p-1.5 rounded-2xl border border-gray-800">
+                                    {[1, 2, 3, 4, 5, 6].map(n => (
+                                        <button key={n} onClick={() => setTeamsPerRow(n)} className={`py-2.5 rounded-xl text-xs font-black transition-all ${teamsPerRow === n ? 'bg-blue-600 text-white shadow-lg' : 'text-gray-500 hover:text-gray-300'}`}>{n}</button>
+                                    ))}
+                                </div>
+                            </div>
+                            <div>
+                                <label className="text-[10px] font-black text-blue-400 uppercase tracking-[0.2em] block mb-4">Display Fields</label>
+                                <div className="space-y-2">
+                                    {(Object.keys(columns) as Array<keyof typeof columns>).map((key) => (
+                                        <label key={key} className="flex items-center justify-between p-4 bg-gray-900/50 rounded-2xl border border-gray-800 cursor-pointer hover:bg-blue-600/5 transition-colors group">
+                                            <span className="text-xs font-bold text-gray-400 group-hover:text-gray-200 capitalize">{key.replace(/([A-Z])/g, ' $1')}</span>
+                                            <div className="relative">
+                                                <input type="checkbox" checked={columns[key]} onChange={() => toggleColumn(key)} className="sr-only peer" />
+                                                <div className="w-10 h-5 bg-gray-700 rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600"></div>
+                                            </div>
+                                        </label>
+                                    ))}
+                                </div>
                             </div>
                         </div>
                     </div>
-                    <div className="flex-grow overflow-y-auto p-4 space-y-4">
-                        {Object.keys(pagesByTeam).length === 0 ? <p className="text-gray-500 text-center">No pages.</p> : 
-                            Object.keys(pagesByTeam).sort().map(team => {
-                                const teamPages = pagesByTeam[team];
-                                const allSelected = teamPages.every(p => selectedPageNames.has(p.PageName));
-                                const someSelected = teamPages.some(p => selectedPageNames.has(p.PageName));
-                                return (
-                                    <div key={team} className="border border-gray-700 rounded bg-gray-900/30 overflow-hidden">
-                                        <div className="bg-gray-700/50 p-2 flex justify-between items-center">
-                                            <label className="flex items-center space-x-2 cursor-pointer font-bold text-white text-sm">
-                                                <input type="checkbox" checked={allSelected} ref={input => { if(input) input.indeterminate = someSelected && !allSelected; }} onChange={() => toggleTeamSelection(team, teamPages)} className="form-checkbox h-4 w-4 text-blue-500 rounded bg-gray-800 border-gray-500" />
-                                                <span>{team}</span>
-                                            </label>
-                                            <span className="text-xs text-gray-400">{teamPages.length}</span>
+
+                    <div className="lg:col-span-9 flex flex-col bg-gray-950/40 rounded-[3rem] border border-white/5 overflow-hidden">
+                        <div className="p-6 border-b border-white/5 bg-white/5 flex justify-between items-center backdrop-blur-md">
+                            <div className="flex items-center gap-3">
+                                <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></div>
+                                <p className="text-xs font-black text-white uppercase tracking-widest">{selectedPageNames.size} Nodes Linked</p>
+                            </div>
+                            <div className="flex gap-6">
+                                <button onClick={() => handleSelectAll(true)} className="text-[10px] font-black text-blue-400 hover:text-blue-300 transition-colors uppercase tracking-widest">Select All</button>
+                                <button onClick={() => handleSelectAll(false)} className="text-[10px] font-black text-gray-500 hover:text-white transition-colors uppercase tracking-widest">Clear</button>
+                            </div>
+                        </div>
+
+                        <div className="flex-grow overflow-y-auto p-8 space-y-12 custom-scrollbar">
+                            {Object.entries(storesHierarchy).map(([storeName, teams]) => (
+                                <div key={storeName} className="space-y-6">
+                                    <div className="flex items-center gap-4 group">
+                                        <input type="checkbox" onChange={() => toggleStoreSelection(teams)} className="w-6 h-6 rounded-lg border-gray-700 bg-gray-900 text-blue-600 focus:ring-blue-500/20 cursor-pointer" />
+                                        <h4 className="text-2xl font-black text-white uppercase tracking-tighter flex items-center gap-4 group-hover:text-blue-400 transition-colors">
+                                            <div className="w-1.5 h-8 bg-blue-600 rounded-full"></div>
+                                            {storeName}
+                                        </h4>
+                                    </div>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 pl-10">
+                                        {Object.entries(teams).map(([teamName, teamPages]) => {
+                                            const isTeamAllSelected = teamPages.every(p => selectedPageNames.has(p.PageName));
+                                            return (
+                                                <div key={teamName} className="bg-gray-900/40 rounded-3xl border border-white/5 p-6 shadow-xl">
+                                                    <label className="flex items-center gap-3 mb-6 cursor-pointer border-b border-white/5 pb-4">
+                                                        <input type="checkbox" checked={isTeamAllSelected} onChange={() => toggleTeamSelection(teamPages)} className="w-5 h-5 rounded-md border-gray-700 bg-gray-800 text-blue-500" />
+                                                        <span className="text-xs font-black text-gray-400 uppercase tracking-[0.15em]">{teamName}</span>
+                                                    </label>
+                                                    <div className="space-y-3">
+                                                        {teamPages.map(page => (
+                                                            <label key={page.PageName} className={`flex items-center gap-4 p-3 rounded-2xl border transition-all cursor-pointer ${selectedPageNames.has(page.PageName) ? 'bg-blue-600/10 border-blue-500/30' : 'bg-black/20 border-transparent hover:bg-white/5'}`}>
+                                                                <input type="checkbox" checked={selectedPageNames.has(page.PageName)} onChange={() => togglePageSelection(page.PageName)} className="w-4 h-4 rounded-md border-gray-700 bg-gray-900 text-blue-600" />
+                                                                <div className="flex items-center gap-3 min-w-0">
+                                                                    <img src={convertGoogleDriveUrl(page.PageLogoURL)} className="w-7 h-7 rounded-full object-cover border border-white/10" alt="" />
+                                                                    <span className="text-xs font-bold text-gray-300 truncate">{page.PageName}</span>
+                                                                </div>
+                                                            </label>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+
+                        <div className="p-8 border-t border-white/5 bg-gray-900/80 backdrop-blur-xl flex justify-between items-center">
+                            <div className="flex flex-col">
+                                {isGenerating && (
+                                    <div className="space-y-2">
+                                        <div className="flex items-center gap-3">
+                                            <Spinner size="sm" />
+                                            <p className="text-xs font-black text-red-400 uppercase tracking-[0.2em] animate-pulse">Processing Preview: {progress}%</p>
                                         </div>
-                                        <div className="p-2 space-y-1">
-                                            {teamPages.map(page => (
-                                                <label key={page.PageName} className="flex items-center space-x-3 cursor-pointer hover:bg-gray-800 p-1.5 rounded transition-colors">
-                                                    <input type="checkbox" checked={selectedPageNames.has(page.PageName)} onChange={() => togglePageSelection(page.PageName)} className="form-checkbox h-4 w-4 text-blue-500 rounded bg-gray-900 border-gray-600" />
-                                                    <span className="text-sm text-gray-300 truncate" title={page.PageName}>{page.PageName}</span>
-                                                </label>
-                                            ))}
+                                        <div className="w-64 h-1.5 bg-gray-800 rounded-full overflow-hidden">
+                                            <div className="h-full bg-red-600 transition-all duration-300" style={{ width: `${progress}%` }}></div>
                                         </div>
                                     </div>
-                                );
-                            })
-                        }
+                                )}
+                            </div>
+                            <div className="flex items-center gap-4">
+                                <button onClick={onClose} className="px-8 py-4 text-sm font-black text-gray-500 hover:text-white uppercase">Cancel</button>
+                                <button 
+                                    onClick={handleGeneratePreview}
+                                    disabled={isGenerating || selectedPageNames.size === 0}
+                                    className={`px-12 py-5 rounded-2xl text-sm font-black uppercase tracking-[0.2em] shadow-2xl transition-all active:scale-95 flex items-center gap-4 ${isGenerating || selectedPageNames.size === 0 ? 'bg-gray-800 text-gray-600' : 'bg-blue-600 text-white hover:bg-blue-700 shadow-blue-600/20'}`}
+                                >
+                                    {isGenerating ? 'Rendering...' : 'Preview Export'}
+                                </button>
+                            </div>
+                        </div>
                     </div>
                 </div>
-            </div>
-            
+            )}
 
-            <div className="mt-6 pt-4 border-t border-gray-700 flex flex-col items-end">
-                {isGenerating && (
-                    <div className="w-full mb-3">
-                        <div className="flex justify-between text-xs text-gray-400 mb-1"><span>Processing...</span><span>{progress}%</span></div>
-                        <div className="w-full bg-gray-700 rounded-full h-2"><div className="bg-blue-500 h-2 rounded-full transition-all duration-300" style={{ width: `${progress}%` }}></div></div>
-                    </div>
-                )}
-                <div className="flex space-x-3">
-                    <button onClick={onClose} className="btn btn-secondary" disabled={isGenerating}>បោះបង់</button>
-                    <button onClick={generatePDF} className="btn btn-primary flex items-center shadow-lg shadow-blue-600/20" disabled={isGenerating || selectedPageNames.size === 0}>
-                        {isGenerating ? <><Spinner size="sm" /><span className="ml-2">Generating...</span></> : <><svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>ទាញយក PDF</>}
-                    </button>
-                </div>
-            </div>
+            <ExportTemplate 
+                storesHierarchy={storesHierarchy}
+                selectedPageNames={selectedPageNames}
+                teamsPerRow={teamsPerRow}
+                columns={columns}
+                imageMap={imageMap}
+            />
         </Modal>
     );
 };

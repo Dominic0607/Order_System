@@ -2,7 +2,7 @@
 import React, { useState, useContext, useEffect, useMemo, useRef } from 'react';
 import { AppContext } from '../context/AppContext';
 import Spinner from '../components/common/Spinner';
-import { FullOrder, ParsedOrder, ShippingMethod, Driver, BankAccount, User, MasterProduct } from '../types';
+import { FullOrder, ParsedOrder, User } from '../types';
 import EditOrderPage from './EditOrderPage';
 import OrdersList from '../components/orders/OrdersList';
 import { WEB_APP_URL } from '../constants';
@@ -114,17 +114,14 @@ const OrdersDashboard: React.FC<OrdersDashboardProps> = ({ onBack }) => {
     const [isPdfModalOpen, setIsPdfModalOpen] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
 
-    // --- Bulk Selection States ---
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
     const [isBulkProcessing, setIsBulkProcessing] = useState(false);
     
-    // Bulk Modals Visibility
     const [isBulkCostModalOpen, setIsBulkCostModalOpen] = useState(false);
     const [isBulkPaymentModalOpen, setIsBulkPaymentModalOpen] = useState(false);
     const [isBulkShippingModalOpen, setIsBulkShippingModalOpen] = useState(false);
     const [isBulkDeleteModalOpen, setIsBulkDeleteModalOpen] = useState(false);
 
-    // Bulk Input Values
     const [bulkCostValue, setBulkCostValue] = useState<string>('');
     const [bulkPaymentStatus, setBulkPaymentStatus] = useState<string>('Paid');
     const [bulkPaymentInfo, setBulkPaymentInfo] = useState<string>('');
@@ -219,14 +216,20 @@ const OrdersDashboard: React.FC<OrdersDashboardProps> = ({ onBack }) => {
 
     const enrichedOrders = useMemo(() => {
         return allOrders.map(order => {
-            let team = order.Team;
-            if (!team && order.User) {
+            // Enhanced resolve team logic to handle missing Column AB
+            let team = (order.Team || '').trim();
+            if (!team) {
                 const u = usersList.find(u => u.UserName === order.User);
-                if (u?.Team) team = u.Team.split(',')[0].trim();
+                if (u?.Team) {
+                    team = u.Team.split(',')[0].trim();
+                } else {
+                    const p = appData.pages?.find(pg => pg.PageName === order.Page);
+                    if (p?.Team) team = p.Team;
+                }
             }
             return { ...order, Team: team || 'Unassigned' };
         });
-    }, [allOrders, usersList]);
+    }, [allOrders, usersList, appData.pages]);
 
     const filteredOrders = useMemo(() => {
         return enrichedOrders.filter(order => {
@@ -270,7 +273,6 @@ const OrdersDashboard: React.FC<OrdersDashboardProps> = ({ onBack }) => {
         });
     }, [enrichedOrders, filters, searchQuery]);
 
-    // --- Selection Handlers ---
     const toggleSelection = (id: string) => {
         setSelectedIds(prev => {
             const next = new Set(prev);
@@ -342,7 +344,6 @@ const OrdersDashboard: React.FC<OrdersDashboardProps> = ({ onBack }) => {
                         orderId: id,
                         team: order?.Team,
                         userName: currentUser?.UserName,
-                        telegramMessageIds: [order?.['Telegram Message ID 1'], order?.['Telegram Message ID 2']].filter(Boolean)
                     })
                 });
             });
@@ -479,7 +480,6 @@ const OrdersDashboard: React.FC<OrdersDashboardProps> = ({ onBack }) => {
                 />
             </div>
 
-            {/* Bulk Actions Toolbar */}
             {selectedIds.size > 0 && (
                 <div className="fixed bottom-10 left-1/2 -translate-x-1/2 z-[100] bg-gray-900/90 backdrop-blur-xl border border-blue-500/30 p-4 rounded-3xl shadow-[0_20px_50px_rgba(0,0,0,0.5)] flex flex-wrap items-center justify-center gap-3 animate-fade-in-up min-w-[300px] max-w-[95vw]">
                     <div className="px-4 py-2 bg-blue-600 text-white rounded-2xl text-xs font-black uppercase tracking-widest flex items-center gap-2">
@@ -496,7 +496,6 @@ const OrdersDashboard: React.FC<OrdersDashboardProps> = ({ onBack }) => {
                 </div>
             )}
 
-            {/* Bulk Edit Cost Modal */}
             <Modal isOpen={isBulkCostModalOpen} onClose={() => setIsBulkCostModalOpen(false)} maxWidth="max-w-sm">
                 <div className="p-6 bg-[#1a1f2e]">
                     <h3 className="text-lg font-bold text-white mb-6 uppercase tracking-wider">កែប្រែតម្លៃដឹកដើម (Bulk)</h3>
@@ -516,7 +515,7 @@ const OrdersDashboard: React.FC<OrdersDashboardProps> = ({ onBack }) => {
                     <div className="flex gap-3 mt-8">
                         <button onClick={() => setIsBulkCostModalOpen(false)} className="btn btn-secondary flex-1">បោះបង់</button>
                         <button 
-                            onClick={() => handleBulkUpdate({ 'Internal Cost': Number(bulkCostValue) })} 
+                            onClick={() => { handleBulkUpdate({ 'Internal Cost': Number(bulkCostValue) }); }} 
                             className="btn btn-primary flex-1 shadow-lg shadow-blue-600/20"
                             disabled={isBulkProcessing || bulkCostValue === ''}
                         >
@@ -526,7 +525,6 @@ const OrdersDashboard: React.FC<OrdersDashboardProps> = ({ onBack }) => {
                 </div>
             </Modal>
 
-            {/* Bulk Edit Payment Modal */}
             <Modal isOpen={isBulkPaymentModalOpen} onClose={() => setIsBulkPaymentModalOpen(false)} maxWidth="max-w-md">
                 <div className="p-6 bg-[#1a1f2e]">
                     <h3 className="text-lg font-bold text-white mb-6 uppercase tracking-wider">កែប្រែព័ត៌មានបង់ប្រាក់ (Bulk)</h3>
@@ -561,10 +559,10 @@ const OrdersDashboard: React.FC<OrdersDashboardProps> = ({ onBack }) => {
                     <div className="flex gap-3 mt-10">
                         <button onClick={() => setIsBulkPaymentModalOpen(false)} className="btn btn-secondary flex-1">បោះបង់</button>
                         <button 
-                            onClick={() => handleBulkUpdate({ 
+                            onClick={() => { handleBulkUpdate({ 
                                 'Payment Status': bulkPaymentStatus, 
                                 'Payment Info': bulkPaymentStatus === 'Paid' ? bulkPaymentInfo : '' 
-                            })} 
+                            }); }} 
                             className="btn btn-primary flex-1 shadow-lg shadow-blue-600/20"
                             disabled={isBulkProcessing || (bulkPaymentStatus === 'Paid' && !bulkPaymentInfo)}
                         >
@@ -574,7 +572,6 @@ const OrdersDashboard: React.FC<OrdersDashboardProps> = ({ onBack }) => {
                 </div>
             </Modal>
 
-            {/* Bulk Edit Shipping Modal */}
             <Modal isOpen={isBulkShippingModalOpen} onClose={() => setIsBulkShippingModalOpen(false)} maxWidth="max-w-sm">
                 <div className="p-6 bg-[#1a1f2e]">
                     <h3 className="text-lg font-bold text-white mb-6 uppercase tracking-wider">កែប្រែសេវាដឹក (Bulk)</h3>
@@ -594,7 +591,7 @@ const OrdersDashboard: React.FC<OrdersDashboardProps> = ({ onBack }) => {
                     <div className="flex gap-3 mt-8">
                         <button onClick={() => setIsBulkShippingModalOpen(false)} className="btn btn-secondary flex-1">បោះបង់</button>
                         <button 
-                            onClick={() => handleBulkUpdate({ 'Internal Shipping Method': bulkShippingMethod })} 
+                            onClick={() => { handleBulkUpdate({ 'Internal Shipping Method': bulkShippingMethod }); }} 
                             className="btn btn-primary flex-1 shadow-lg shadow-blue-600/20"
                             disabled={isBulkProcessing || !bulkShippingMethod}
                         >
@@ -604,7 +601,6 @@ const OrdersDashboard: React.FC<OrdersDashboardProps> = ({ onBack }) => {
                 </div>
             </Modal>
 
-            {/* Bulk Delete Verification Modal */}
             <Modal isOpen={isBulkDeleteModalOpen} onClose={() => setIsBulkDeleteModalOpen(false)} maxWidth="max-w-sm">
                 <div className="p-6 bg-[#1a1f2e]">
                     <div className="flex flex-col items-center text-center mb-6">
@@ -631,7 +627,7 @@ const OrdersDashboard: React.FC<OrdersDashboardProps> = ({ onBack }) => {
                     <div className="flex gap-3 mt-8">
                         <button onClick={() => setIsBulkDeleteModalOpen(false)} className="btn btn-secondary flex-1" disabled={isBulkProcessing}>បោះបង់</button>
                         <button 
-                            onClick={handleBulkDelete} 
+                            onClick={() => { handleBulkDelete(); }} 
                             className="btn !bg-red-600 hover:!bg-red-700 text-white flex-1 font-black shadow-lg shadow-red-600/20" 
                             disabled={isBulkProcessing || !bulkDeletePassword}
                         >

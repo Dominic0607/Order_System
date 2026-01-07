@@ -9,13 +9,13 @@ import PerformanceTrackingPage from './PerformanceTrackingPage';
 import ReportDashboard from './ReportDashboard';
 import SettingsDashboard from './SettingsDashboard';
 import OrdersDashboard from './OrdersDashboard';
-import FulfillmentDashboard from './FulfillmentDashboard'; // បន្ថែមថ្មី
+import FulfillmentDashboard from './FulfillmentDashboard';
 import EditProfileModal from '../components/common/EditProfileModal';
 import { useUrlState } from '../hooks/useUrlState';
 import { WEB_APP_URL } from '../constants';
-import { FullOrder, ParsedOrder } from '../types';
+import { FullOrder, ParsedOrder, User, TeamPage } from '../types';
 
-type ActiveDashboard = 'admin' | 'orders' | 'reports' | 'settings' | 'fulfillment'; // បន្ថែម fulfillment
+type ActiveDashboard = 'admin' | 'orders' | 'reports' | 'settings' | 'fulfillment';
 type AdminView = 'dashboard' | 'performance';
 type ReportType = 'overview' | 'performance' | 'profitability' | 'forecasting' | 'shipping' | 'sales_team' | 'sales_page';
 
@@ -65,23 +65,47 @@ const AdminDashboard: React.FC = () => {
 
     useEffect(() => { fetchOrders(); }, [refreshTimestamp]);
 
+    // Enhanced Team Name Resolution Logic
     const teamRevenueStats = useMemo(() => {
         const stats: Record<string, { name: string, revenue: number, orders: number }> = {};
         const now = new Date();
+        
         parsedOrders.forEach(order => {
             if (!order.Timestamp) return;
             const d = new Date(order.Timestamp);
+            
+            // Date Filtering
             if (revenueBreakdownPeriod === 'today' && d.toDateString() !== now.toDateString()) return;
             if (revenueBreakdownPeriod === 'this_month' && (d.getMonth() !== now.getMonth() || d.getFullYear() !== now.getFullYear())) return;
             if (revenueBreakdownPeriod === 'this_year' && d.getFullYear() !== now.getFullYear()) return;
 
-            let teamName = order.Team || 'Unassigned';
+            // 1. Try to get team from order data (Column AB)
+            let teamName = (order.Team || '').trim();
+            
+            // 2. Fallback: Search from User List if Column AB is missing or empty
+            if (!teamName) {
+                const user = appData.users?.find(u => u.UserName === order.User);
+                if (user?.Team) {
+                    teamName = user.Team.split(',')[0].trim();
+                } 
+                // 3. Last Resort: Search from Page configuration
+                else {
+                    const pageInfo = appData.pages?.find(p => p.PageName === order.Page);
+                    if (pageInfo?.Team) {
+                        teamName = pageInfo.Team;
+                    }
+                }
+            }
+
+            if (!teamName) teamName = 'Unassigned';
+
             if (!stats[teamName]) stats[teamName] = { name: teamName, revenue: 0, orders: 0 };
             stats[teamName].revenue += (Number(order['Grand Total']) || 0);
             stats[teamName].orders += 1;
         });
+        
         return Object.values(stats).sort((a, b) => b.revenue - a.revenue);
-    }, [parsedOrders, revenueBreakdownPeriod]);
+    }, [parsedOrders, revenueBreakdownPeriod, appData.users, appData.pages]);
 
     const provinceStats = useMemo(() => {
         const stats: Record<string, { name: string, revenue: number, orders: number }> = {};
@@ -144,14 +168,13 @@ const AdminDashboard: React.FC = () => {
             case 'orders': return <OrdersDashboard onBack={() => setActiveDashboard('admin')} />;
             case 'reports': return <ReportDashboard activeReport={activeReport} onBack={() => setActiveDashboard('admin')} />;
             case 'settings': return <SettingsDashboard onBack={() => setActiveDashboard('admin')} />;
-            case 'fulfillment': return <FulfillmentDashboard orders={parsedOrders} />; // មុខងារថ្មី
+            case 'fulfillment': return <FulfillmentDashboard orders={parsedOrders} />;
             default: return null;
         }
     };
 
     return (
         <div className="flex min-h-screen bg-transparent text-gray-200">
-            {/* Sidebar */}
             <div className="hidden md:block">
                 <Sidebar 
                     activeDashboard={activeDashboard}
@@ -166,7 +189,6 @@ const AdminDashboard: React.FC = () => {
                 />
             </div>
             
-            {/* Mobile Sidebar */}
             <div className="md:hidden">
                 {isMobileSidebarOpen && <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[90]" onClick={() => setIsMobileSidebarOpen(false)} />}
                 <Sidebar 
@@ -184,7 +206,6 @@ const AdminDashboard: React.FC = () => {
                 />
             </div>
 
-            {/* Main Content Area */}
             <main className={`flex-1 transition-all duration-300 ease-in-out ${isSidebarCollapsed ? 'md:pl-16' : 'md:pl-52'}`}>
                 <div className="p-2 md:p-3 lg:p-4 pb-24 lg:pb-10 w-full max-w-full overflow-x-hidden relative">
                     <button 
