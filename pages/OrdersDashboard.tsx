@@ -1,718 +1,733 @@
 
-import React, { useState, useContext, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useContext, useEffect, useMemo, useRef } from 'react';
 import { AppContext } from '../context/AppContext';
-import { Product as ProductType, MasterProduct, Driver, Store, TeamPage, ShippingMethod } from '../types';
 import Spinner from '../components/common/Spinner';
+import { FullOrder, ParsedOrder, User } from '../types';
+import EditOrderPage from './EditOrderPage';
+import OrdersList from '../components/orders/OrdersList';
 import { WEB_APP_URL } from '../constants';
 import Modal from '../components/common/Modal';
-import { convertGoogleDriveUrl } from '../utils/fileUtils';
 import SearchableProductDropdown from '../components/common/SearchableProductDropdown';
-import PageDropdown from '../components/common/PageDropdown';
-import SearchablePageDropdown from '../components/common/SearchablePageDropdown';
-import SearchableShippingMethodDropdown from '../components/common/SearchableShippingMethodDropdown';
-import MapModal from '../components/orders/MapModal';
-import BarcodeScannerModal from '../components/orders/BarcodeScannerModal';
-import SearchableProvinceDropdown from '../components/orders/SearchableProvinceDropdown';
-import TelegramScheduler from '../components/orders/TelegramScheduler';
+import { useUrlState } from '../hooks/useUrlState';
+import PdfExportModal from '../components/admin/PdfExportModal';
 
-interface CreateOrderPageProps {
-    team: string;
-    onSaveSuccess: () => void;
-    onCancel: () => void;
+interface OrdersDashboardProps {
+    onBack: () => void;
 }
 
-type ProductUIState = ProductType & {
-    discountType: 'percent' | 'amount' | 'custom';
-    discountAmountInput: string; 
-    discountPercentInput: string; 
-    finalPriceInput: string;
-    applyDiscountToTotal: boolean;
-}
+type DateRangePreset = 'all' | 'today' | 'yesterday' | 'this_week' | 'last_week' | 'this_month' | 'last_month' | 'this_year' | 'last_year' | 'custom';
 
-const initialProductState: ProductUIState = {
-    id: Date.now(),
-    name: '',
-    quantity: 1,
-    originalPrice: 0,
-    finalPrice: 0,
-    total: 0,
-    discountPercent: 0,
-    colorInfo: '',
-    image: '',
-    cost: 0,
-    discountType: 'percent',
-    discountAmountInput: '',
-    discountPercentInput: '',
-    finalPriceInput: '',
-    applyDiscountToTotal: false,
-};
-
-const STEPS = [
-    { number: 1, title: 'អតិថិជន' },
-    { number: 2, title: 'ផលិតផល' },
-    { number: 3, title: 'ដឹកជញ្ជូន' },
-    { number: 4, title: 'ផ្ទៀងផ្ទាត់' },
+const datePresets: { label: string, value: DateRangePreset }[] = [
+    { label: 'ទាំងអស់ (All Time)', value: 'all' },
+    { label: 'ថ្ងៃនេះ (Today)', value: 'today' },
+    { label: 'ម្សិលមិញ (Yesterday)', value: 'yesterday' },
+    { label: 'សប្តាហ៍នេះ (This Week)', value: 'this_week' },
+    { label: 'សប្តាហ៍មុន (Last Week)', value: 'last_week' },
+    { label: 'ខែនេះ (This Month)', value: 'this_month' },
+    { label: 'ខែមុន (Last Month)', value: 'last_month' },
+    { label: 'ឆ្នាំនេះ (This Year)', value: 'this_year' },
+    { label: 'ឆ្នាំមុន (Last Year)', value: 'last_year' },
+    { label: 'កំណត់ខ្លួនឯង (Custom)', value: 'custom' },
 ];
 
-const CreateOrderPage: React.FC<CreateOrderPageProps> = ({ team, onSaveSuccess, onCancel }) => {
-    const { appData, currentUser, apiKey, previewImage } = useContext(AppContext);
-    const [currentStep, setCurrentStep] = useState(1);
-    const [isCancelModalOpen, setIsCancelModalOpen] = useState(false);
-    
-    const initialOrderState = useMemo(() => ({
-        page: '',
-        telegramValue: '',
-        fulfillmentStore: '',
-        pageSelectMode: 'cards', // 'cards' or 'search'
-        customer: { name: '', phone: '', province: '', district: '', sangkat: '', additionalLocation: '', shippingFee: '' },
-        products: [{...initialProductState, id: Date.now()}],
-        shipping: { method: '', details: '', cost: '' },
-        payment: { status: 'Unpaid', info: '' },
-        telegram: { schedule: false, time: '' },
-        subtotal: 0,
-        grandTotal: 0,
-        note: '',
-    }), []);
+const availableColumns = [
+    { key: 'index', label: '#' },
+    { key: 'orderId', label: 'ID' },
+    { key: 'customerName', label: 'ឈ្មោះអតិថិជន' },
+    { key: 'productInfo', label: 'ព័ត៌មាន Product' }, 
+    { key: 'location', label: 'ទីតាំង' },
+    { key: 'pageInfo', label: 'Page' }, 
+    { key: 'total', label: 'សរុប' },
+    { key: 'shippingService', label: 'សេវាដឹក' },
+    { key: 'shippingCost', label: '(Cost) សេវាដឹក' },
+    { key: 'status', label: 'ស្ថានភាព' },
+    { key: 'date', label: 'កាលបរិច្ឆេទ' },
+    { key: 'print', label: 'ព្រីន' },
+    { key: 'actions', label: 'សកម្មភាព' },
+    { key: 'check', label: 'Check' },
+];
 
-    const [order, setOrder] = useState<any>(initialOrderState);
-    const [loading, setLoading] = useState(false);
-    const [error, setError] = useState('');
-    const [submissionStatus, setSubmissionStatus] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
-    const [selectedShippingMethod, setSelectedShippingMethod] = useState<any>(null);
-    const [carrierLogo, setCarrierLogo] = useState<string>('');
-    const [shippingLogo, setShippingLogo] = useState<string>('');
-    const [bankLogo, setBankLogo] = useState<string>('');
-    const [isScannerVisible, setIsScannerVisible] = useState(false);
-    const [shippingFeeOption, setShippingFeeOption] = useState<'charge' | 'free'>('charge');
-    const [isMapModalOpen, setIsMapModalOpen] = useState(false);
-    const [mapSearchUrl, setMapSearchUrl] = useState('');
-    const [scanMode, setScanMode] = useState<'single' | 'increment'>('increment');
-    
-    const DRAFT_KEY = useMemo(() => `createOrderDraft_${currentUser?.UserName}_${team}`, [currentUser, team]);
-    
+const ColumnToggler = ({ columns, visibleColumns, onToggle }: { columns: typeof availableColumns, visibleColumns: Set<string>, onToggle: (key: string) => void }) => {
+    const [isOpen, setIsOpen] = useState(false);
+    const ref = useRef<HTMLDivElement>(null);
     useEffect(() => {
-        if (window.innerWidth < 768) {
-            window.scrollTo({ top: 0, behavior: 'smooth' });
-        }
-    }, [currentStep]);
-
-    useEffect(() => {
-        try {
-            const savedDraft = localStorage.getItem(DRAFT_KEY);
-            if (savedDraft) {
-                const parsedDraft = JSON.parse(savedDraft);
-                setOrder((prev: any) => ({ ...prev, ...parsedDraft }));
-                if (parsedDraft.customer && typeof parsedDraft.customer.shippingFee === 'number') {
-                    setShippingFeeOption(parsedDraft.customer.shippingFee === 0 ? 'free' : 'charge');
-                }
-                if (parsedDraft.customer.phone) {
-                   const phoneNumber = parsedDraft.customer.phone;
-                   const foundCarrier = appData.phoneCarriers?.find((carrier: any) => 
-                        (carrier.Prefixes || '').split(',').some((prefix: string) => phoneNumber.startsWith(prefix.trim()))
-                    );
-                    setCarrierLogo(foundCarrier ? convertGoogleDriveUrl(foundCarrier.CarrierLogoURL) : '');
-                }
-                if (parsedDraft.shipping.method) {
-                    const methodInfo = appData.shippingMethods?.find((s: any) => s.MethodName === parsedDraft.shipping.method);
-                    setSelectedShippingMethod(methodInfo || null);
-                    setShippingLogo(methodInfo ? convertGoogleDriveUrl(methodInfo.LogosURL) : '');
-                }
-            }
-        } catch (e) {
-            localStorage.removeItem(DRAFT_KEY);
-        }
-    }, [DRAFT_KEY, appData.phoneCarriers, appData.shippingMethods]);
-
-    useEffect(() => {
-        const handler = setTimeout(() => {
-            localStorage.setItem(DRAFT_KEY, JSON.stringify(order));
-        }, 500);
-        return () => clearTimeout(handler);
-    }, [order, DRAFT_KEY]);
-
-    const handleCancelClick = () => setIsCancelModalOpen(true);
-    const handleConfirmCancel = () => { localStorage.removeItem(DRAFT_KEY); setIsCancelModalOpen(false); onCancel(); };
-    
-    const teamPages = useMemo(() => {
-        if (!appData.pages) return [];
-        return appData.pages.filter((p: TeamPage) => p.Team === team);
-    }, [appData.pages, team]);
-
-    useEffect(() => {
-        if (teamPages.length === 1 && !order.page) {
-            const pageData = teamPages[0];
-            setOrder((prev: any) => ({ ...prev, page: pageData.PageName, telegramValue: pageData.TelegramValue, fulfillmentStore: pageData.DefaultStore || order.fulfillmentStore }));
-        }
-    }, [teamPages, order.page]);
-
-    const provinces = useMemo(() => {
-        if (!appData.locations) return [];
-        return [...new Set(appData.locations.map((loc: any) => loc.Province))];
-    }, [appData.locations]);
-
-    const districts = useMemo(() => {
-        if (!appData.locations || !order.customer.province) return [];
-        return [...new Set(appData.locations.filter((loc: any) => loc.Province === order.customer.province).map((loc: any) => loc.District))].sort((a, b) => String(a).localeCompare(String(b), 'km'));
-    }, [appData.locations, order.customer.province]);
-
-    const sangkats = useMemo(() => {
-        if (!appData.locations || !order.customer.province || !order.customer.district) return [];
-        return [...new Set(appData.locations.filter((loc: any) => loc.Province === order.customer.province && loc.District === order.customer.district).map((loc: any) => loc.Sangkat).filter(Boolean))].sort((a, b) => String(a).localeCompare(String(b), 'km'));
-    }, [appData.locations, order.customer.province, order.customer.district]);
-
-    useEffect(() => {
-        const newSubtotal = order.products.reduce((acc: number, p: ProductType) => acc + (p.total || 0), 0);
-        const newGrandTotal = newSubtotal + (Number(order.customer.shippingFee) || 0);
-        if (newSubtotal !== order.subtotal || newGrandTotal !== order.grandTotal) {
-            setOrder((prev: any) => ({ ...prev, subtotal: newSubtotal, grandTotal: newGrandTotal }));
-        }
-    }, [order.products, order.customer.shippingFee]);
-
-    const calculateProductFields = (product: ProductUIState, allMasterProducts: MasterProduct[]): ProductUIState => {
-        const updated = { ...product };
-        const masterProduct = allMasterProducts.find(p => p.ProductName === updated.name);
-        updated.quantity = Math.max(1, Number(updated.quantity) || 1);
-        updated.originalPrice = Math.max(0, masterProduct ? (Number(masterProduct.Price) || 0) : 0);
-        updated.cost = Math.max(0, masterProduct ? (Number(masterProduct.Cost) || 0) : 0);
-        const originalTotal = updated.quantity * updated.originalPrice;
-        let finalTotal = originalTotal;
-        let totalDiscountAmount = 0;
-        switch (updated.discountType) {
-            case 'percent':
-                const dp = Math.max(0, Number(updated.discountPercentInput) || 0);
-                totalDiscountAmount = originalTotal * (dp / 100);
-                finalTotal = originalTotal - totalDiscountAmount;
-                break;
-            case 'amount':
-                const da = Math.max(0, Number(updated.discountAmountInput) || 0);
-                totalDiscountAmount = (updated.quantity > 1 && updated.applyDiscountToTotal) ? da : da * updated.quantity;
-                finalTotal = originalTotal - totalDiscountAmount;
-                break;
-            case 'custom':
-                const cfp = Math.max(0, Number(updated.finalPriceInput) || 0);
-                finalTotal = updated.quantity * cfp;
-                totalDiscountAmount = originalTotal - finalTotal;
-                updated.finalPrice = cfp;
-                break;
-        }
-        updated.total = Math.max(0, finalTotal);
-        updated.finalPrice = updated.quantity > 0 ? updated.total / updated.quantity : 0;
-        updated.discountPercent = originalTotal > 0 ? (totalDiscountAmount / originalTotal) * 100 : 0;
-        if (updated.discountType !== 'custom') updated.finalPriceInput = updated.finalPrice.toFixed(2);
-        return updated;
-    };
-
-    const handleCodeScanned = useCallback((scannedCode: string) => {
-        const foundProduct = appData.products.find((p: MasterProduct) => p.Barcode && p.Barcode.trim() === scannedCode.trim());
-        if (!foundProduct) return;
-        setOrder((prevOrder: any) => {
-            const existingProductIndex = prevOrder.products.findIndex((p: ProductType) => p.name === foundProduct.ProductName);
-            let updatedProducts;
-            if (existingProductIndex > -1) {
-                const productToUpdate = { ...prevOrder.products[existingProductIndex] };
-                if (scanMode === 'increment') productToUpdate.quantity += 1;
-                const recalculated = calculateProductFields(productToUpdate, appData.products);
-                updatedProducts = [...prevOrder.products];
-                updatedProducts[existingProductIndex] = recalculated;
-            } else {
-                const emptyProductIndex = prevOrder.products.findIndex((p: ProductType) => !p.name);
-                const newProduct: ProductUIState = { ...initialProductState, id: Date.now(), name: foundProduct.ProductName, quantity: 1, originalPrice: foundProduct.Price, cost: foundProduct.Cost, image: foundProduct.ImageURL };
-                const recalculated = calculateProductFields(newProduct, appData.products);
-                if (emptyProductIndex > -1) { updatedProducts = [...prevOrder.products]; updatedProducts[emptyProductIndex] = recalculated; }
-                else { updatedProducts = [...prevOrder.products, recalculated]; }
-            }
-            return { ...prevOrder, products: updatedProducts };
-        });
-        if (scanMode === 'single') setIsScannerVisible(false);
-    }, [appData.products, scanMode]);
-
-    const handleCustomerChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-        const { name, value } = e.target;
-        if (name === 'phone') {
-            let phoneNumber = value.replace(/[^0-9]/g, '');
-            if (phoneNumber.length > 1 && phoneNumber.startsWith('00')) phoneNumber = '0' + phoneNumber.substring(2);
-            else if (phoneNumber.length > 0 && !phoneNumber.startsWith('0')) phoneNumber = '0' + phoneNumber;
-            let foundCarrier = null;
-            if (phoneNumber.length >= 2 && appData.phoneCarriers) { foundCarrier = appData.phoneCarriers.find((carrier: any) => (carrier.Prefixes || '').split(',').some((prefix: string) => phoneNumber.startsWith(prefix.trim()))); }
-            setCarrierLogo(foundCarrier ? convertGoogleDriveUrl(foundCarrier.CarrierLogoURL) : '');
-            setOrder((prev: any) => ({ ...prev, customer: { ...prev.customer, phone: phoneNumber } }));
-            return;
-        }
-        if (name === 'shippingFee') {
-            const numValue = value === '' ? '' : Math.max(0, parseFloat(value)); 
-            setOrder((prev: any) => ({ ...prev, customer: { ...prev.customer, shippingFee: numValue } }));
-            return;
-        }
-        setOrder((prev: any) => {
-            let newCustomerState = { ...prev.customer, [name]: value };
-            if (name === 'province') { newCustomerState.district = ''; newCustomerState.sangkat = ''; }
-            else if (name === 'district') { newCustomerState.sangkat = ''; }
-            return { ...prev, customer: newCustomerState };
-        });
-    };
-    
-    const handleProductUpdate = (index: number, field: keyof ProductUIState, value: any) => {
-         setOrder((prev: any) => {
-            const updatedProducts = [...prev.products];
-            let productToUpdate = { ...updatedProducts[index] };
-            if (['discountPercentInput', 'discountAmountInput', 'finalPriceInput'].includes(field)) {
-                let stringValue = String(value).replace(/[^0-9.]/g, '').replace(/(\..*?)\./g, '$1');
-                if (stringValue.startsWith('0') && stringValue.length > 1 && !stringValue.startsWith('0.')) stringValue = String(parseFloat(stringValue));
-                // @ts-ignore
-                productToUpdate[field] = stringValue;
-            } else {
-                // @ts-ignore
-                productToUpdate[field] = value;
-            }
-            if (field === 'name') {
-                const masterProduct = appData.products.find((p: MasterProduct) => p.ProductName === value);
-                productToUpdate.name = value;
-                if (masterProduct) {
-                    productToUpdate.originalPrice = masterProduct.Price;
-                    productToUpdate.image = masterProduct.ImageURL;
-                    productToUpdate.cost = masterProduct.Cost;
-                    productToUpdate.discountType = 'percent';
-                    productToUpdate.finalPrice = masterProduct.Price;
-                    productToUpdate.finalPriceInput = String(masterProduct.Price);
-                } else {
-                    productToUpdate.originalPrice = 0; productToUpdate.image = ''; productToUpdate.cost = 0;
-                    productToUpdate.discountType = 'custom'; productToUpdate.finalPrice = 0;
-                }
-            }
-            if (field === 'discountType') { productToUpdate.discountPercentInput = ''; productToUpdate.discountAmountInput = ''; productToUpdate.finalPrice = productToUpdate.originalPrice; productToUpdate.finalPriceInput = String(productToUpdate.originalPrice); }
-            updatedProducts[index] = calculateProductFields(productToUpdate, appData.products);
-            return { ...prev, products: updatedProducts };
-        });
-    };
-    
-    const handleShippingMethodSelect = (method: ShippingMethod) => {
-        setSelectedShippingMethod(method);
-        setShippingLogo(convertGoogleDriveUrl(method.LogosURL));
-        setOrder((prev: any) => ({ 
-            ...prev, 
-            shipping: { 
-                ...prev.shipping, 
-                method: method.MethodName, 
-                details: method.RequireDriverSelection ? '' : method.MethodName 
-            } 
-        }));
-    };
-    
-    const handleShippingChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const { name, value } = e.target;
-        let sv = value;
-        if (name === 'cost') {
-            if (sv.startsWith('0') && sv.length > 1 && !sv.startsWith('0.')) sv = String(parseFloat(sv));
-            const numericValue = parseFloat(sv) || 0;
-            sv = String(Math.max(0, numericValue)); 
-        }
-        setOrder((prev: any) => ({ ...prev, shipping: { ...prev.shipping, [name]: sv } }));
-    };
-
-    const handleDriverChange = (driverName: string) => {
-        setOrder((prev: any) => ({ ...prev, shipping: { ...prev.shipping, details: driverName } }));
-    };
-
-    const handleBankChange = (bankName: string) => {
-        const b = appData.bankAccounts?.find((b: any) => b.BankName === bankName) || null;
-        setBankLogo(b ? convertGoogleDriveUrl(b.LogoURL) : '');
-        setOrder((prev: any) => ({ ...prev, payment: { ...prev.payment, info: bankName } }));
-    };
-
-    const handleShippingOptionChange = (option: 'charge' | 'free') => { setShippingFeeOption(option); setOrder((prev: any) => ({ ...prev, customer: { ...prev.customer, shippingFee: option === 'free' ? 0 : '' } })); };
-    
-    const handleSearchOnMaps = () => {
-        if (!apiKey) { alert("API Key Required for Maps."); return; }
-        const { province, district, sangkat, additionalLocation } = order.customer;
-        const query = [additionalLocation, sangkat, district, province, 'Cambodia'].filter(Boolean).join(', ');
-        setMapSearchUrl(`https://www.google.com/maps/embed/v1/search?key=${apiKey}&q=${encodeURIComponent(query)}`);
-        setIsMapModalOpen(true);
-    };
-
-    const validateStep = (step: number): boolean => {
-        setError(''); 
-        switch (step) {
-            case 1:
-                if (!order.customer.name || !order.customer.phone || !order.customer.province || !order.page || !order.fulfillmentStore) { setError('សូមបំពេញឈ្មោះ, លេខទូរស័ព្ទ, ខេត្ត/ក្រុង, Page និងឃ្លាំងបញ្ចេញទំនិញ។'); return false; }
-                if (shippingFeeOption === 'charge' && (order.customer.shippingFee === '' || order.customer.shippingFee < 0)) { setError('សូមបញ្ចូលតម្លៃដឹកជញ្ជូនឱ្យបានត្រឹមត្រូវ។'); return false; }
-                return true;
-            case 2:
-                if (order.products.length === 0 || order.products.some((p: any) => !p.name || p.quantity <= 0)) { setError('សូមពិនិត្យទិន្នន័យផលិតផល។'); return false; }
-                return true;
-            case 3:
-                if (!order.shipping.method || (selectedShippingMethod?.RequireDriverSelection && !order.shipping.details) || order.shipping.cost === '' || parseFloat(order.shipping.cost) < 0) { setError('សូមពិនិត្យព័ត៌មានដឹកជញ្ជូន។'); return false; }
-                return true;
-            case 4:
-                 if (order.payment.status === 'Paid' && !order.payment.info) { setError('សូមជ្រើសរើសគណនីធនាគារ Tune។'); return false; }
-                 if (order.telegram.schedule && !order.telegram.time) { setError('សូមជ្រើសរើសពេលវេលាផ្ញើសារ។'); return false; }
-                return true;
-            default: return true;
-        }
-    };
-    
-    const nextStep = () => { if (validateStep(currentStep)) setCurrentStep(currentStep + 1); };
-    const prevStep = () => { if (currentStep > 1) setCurrentStep(currentStep - 1); };
-
-    const submitOrder = async () => {
-        for (const step of STEPS) { if (!validateStep(step.number)) { setCurrentStep(step.number); return; } }
-        setLoading(true);
-        let phoneToSend = '0' + order.customer.phone.replace(/[^0-9]/g, '').replace(/^0+/, '');
-        
-        const payload = { 
-            currentUser, 
-            selectedTeam: team, 
-            page: order.page, 
-            telegramValue: order.telegramValue, 
-            customer: { 
-                ...order.customer, 
-                phone: phoneToSend, 
-                shippingFee: Number(order.customer.shippingFee) || 0 
-            }, 
-            products: order.products.map((p: any) => ({ 
-                name: p.name, 
-                quantity: Number(p.quantity) || 1, 
-                originalPrice: Number(p.originalPrice) || 0, 
-                finalPrice: Number(p.finalPrice) || 0, 
-                total: Number(p.total) || 0, 
-                colorInfo: p.colorInfo, 
-                cost: Number(p.cost) || 0 
-            })), 
-            shipping: { 
-                ...order.shipping, 
-                cost: Number(order.shipping.cost) || 0 
-            }, 
-            payment: order.payment, 
-            subtotal: Number(order.subtotal) || 0, 
-            grandTotal: Number(order.grandTotal) || 0, 
-            note: order.note,
-            fulfillmentStore: order.fulfillmentStore,
-            scheduledTime: order.telegram.schedule ? order.telegram.time : ''
-        };
-        
-        try {
-            const res = await fetch(`${WEB_APP_URL}/api/submit-order`, { 
-                method: 'POST', 
-                headers: { 'Content-Type': 'application/json' }, 
-                body: JSON.stringify(payload) 
-            });
-            const result = await res.json();
-            if (!res.ok || result.status !== 'success') throw new Error(result.message || 'Error');
-            localStorage.removeItem(DRAFT_KEY);
-            setSubmissionStatus({ type: 'success', message: `ជោគជ័យ! Order ID: ${result.orderId}` });
-            setTimeout(onSaveSuccess, 3000);
-        } catch(err: any) {
-            setSubmissionStatus({ type: 'error', message: `បរាជ័យ: ${err.message}` });
-            setTimeout(() => setSubmissionStatus(null), 3000);
-        } finally { setLoading(false); }
-    };
-
-    const renderStepContent = () => {
-        switch (currentStep) {
-            case 1:
-                return (
-                    <fieldset className="border border-gray-600 p-3 sm:p-4 rounded-lg animate-fade-in space-y-6">
-                        <legend className="px-2 text-base sm:text-lg font-semibold text-blue-300">ព័ត៌មានអតិថិជន & Page</legend>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <div className="md:col-span-2 space-y-4">
-                                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                                    <label className="input-label font-black text-xs uppercase tracking-widest text-gray-500 mb-0 block">Facebook Page*</label>
-                                    
-                                    {/* UI Style Toggle */}
-                                    <div className="flex bg-gray-900/80 p-1 rounded-xl border border-gray-700">
-                                        <button 
-                                            type="button"
-                                            onClick={() => setOrder({ ...order, pageSelectMode: 'cards' })}
-                                            className={`px-3 py-1.5 text-[10px] font-black uppercase rounded-lg transition-all flex items-center gap-2 ${order.pageSelectMode === 'cards' ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/20' : 'text-gray-500 hover:text-gray-300'}`}
-                                        >
-                                            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                                            Card View
-                                        </button>
-                                        <button 
-                                            type="button"
-                                            onClick={() => setOrder({ ...order, pageSelectMode: 'search' })}
-                                            className={`px-3 py-1.5 text-[10px] font-black uppercase rounded-lg transition-all flex items-center gap-2 ${order.pageSelectMode === 'search' ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/20' : 'text-gray-500 hover:text-gray-300'}`}
-                                        >
-                                            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                                            Search View
-                                        </button>
-                                    </div>
-                                </div>
-
-                                <div className="animate-fade-in-down">
-                                    {order.pageSelectMode === 'cards' ? (
-                                        <PageDropdown 
-                                            pages={teamPages} 
-                                            selectedPageName={order.page} 
-                                            onSelect={(pageData) => setOrder({ 
-                                                ...order, 
-                                                page: pageData.PageName, 
-                                                telegramValue: pageData.TelegramValue, 
-                                                fulfillmentStore: pageData.DefaultStore || order.fulfillmentStore 
-                                            })} 
-                                        />
-                                    ) : (
-                                        <SearchablePageDropdown 
-                                            pages={teamPages}
-                                            selectedPageName={order.page}
-                                            onSelect={(pageData) => setOrder({ 
-                                                ...order, 
-                                                page: pageData.PageName, 
-                                                telegramValue: pageData.TelegramValue, 
-                                                fulfillmentStore: pageData.DefaultStore || order.fulfillmentStore 
-                                            })}
-                                        />
-                                    )}
-                                </div>
-                            </div>
-
-                            <div className="md:col-span-2 space-y-3">
-                                <div className="flex items-center gap-2 mb-1">
-                                    <div className="w-1.5 h-4 bg-orange-500 rounded-full"></div>
-                                    <label className="input-label !mb-0 font-black text-xs uppercase tracking-widest text-orange-400">ឃ្លាំងបញ្ចេញទំនិញ (Store)*</label>
-                                </div>
-                                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
-                                    {appData.stores?.map((s: Store) => {
-                                        const isSelected = order.fulfillmentStore === s.StoreName;
-                                        return (
-                                            <button 
-                                                key={s.StoreName} 
-                                                type="button" 
-                                                onClick={() => setOrder({...order, fulfillmentStore: s.StoreName})}
-                                                className={`relative overflow-hidden group p-4 rounded-2xl border-2 transition-all duration-300 flex flex-col items-center text-center gap-2 ${
-                                                    isSelected 
-                                                    ? 'bg-orange-500/10 border-orange-500 shadow-[0_0_20px_rgba(249,115,22,0.2)]' 
-                                                    : 'bg-gray-900 border-gray-800 hover:border-gray-600'
-                                                }`}
-                                            >
-                                                <div className={`w-10 h-10 rounded-xl flex items-center justify-center transition-colors ${isSelected ? 'bg-orange-500 text-white' : 'bg-gray-800 text-gray-500 group-hover:text-gray-300'}`}>
-                                                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" /></svg>
-                                                </div>
-                                                <span className={`text-[11px] font-black uppercase tracking-tight ${isSelected ? 'text-white' : 'text-gray-400'}`}>{s.StoreName}</span>
-                                                {isSelected && (
-                                                    <div className="absolute top-1 right-1">
-                                                        <svg className="w-4 h-4 text-orange-500" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" /></svg>
-                                                    </div>
-                                                )}
-                                            </button>
-                                        );
-                                    })}
-                                </div>
-                            </div>
-
-                            <input type="text" name="name" value={order.customer.name} placeholder="ឈ្មោះអតិថិជន*" className="form-input !py-3 rounded-xl border-gray-700 bg-gray-900" onChange={handleCustomerChange} required />
-                            <div className="relative"><input type="tel" name="phone" value={order.customer.phone} placeholder="លេខទូរស័ព្ទ*" className="form-input !py-3 rounded-xl border-gray-700 bg-gray-900 pr-12" onChange={handleCustomerChange} required />{carrierLogo && <img src={carrierLogo} alt="Carrier" className="absolute right-2 top-1/2 -translate-y-1/2 h-8 w-auto object-contain" />}</div>
-                             
-                             <div className="md:col-span-2 grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
-                                <SearchableProvinceDropdown 
-                                    provinces={provinces}
-                                    selectedProvince={order.customer.province}
-                                    onSelect={(val) => handleCustomerChange({ target: { name: 'province', value: val } } as any)}
-                                />
-                                <select name="district" value={order.customer.district} className="form-select" onChange={handleCustomerChange} disabled={!order.customer.province}><option value="">-- ស្រុក/ខណ្ឌ --</option>{districts.map((d: string) => <option key={d} value={d}>{d}</option>)}</select>
-                                <select name="sangkat" value={order.customer.sangkat} className="form-select" onChange={handleCustomerChange} disabled={!order.customer.district}><option value="">-- ឃុំ/សង្កាត់ --</option>{sangkats.map((s: string) => <option key={s} value={s}>{s}</option>)}</select>
-                            </div>
-                             <div className="md:col-span-2"><label className="input-label font-black text-[10px] uppercase text-gray-500 tracking-widest mb-2 block">ទីតាំងលម្អិត (ផ្ទះលេខ, ផ្លូវ)</label><div className="flex gap-2"><input type="text" name="additionalLocation" value={order.customer.additionalLocation} placeholder="បញ្ចូលទីតាំងលម្អិត..." className="form-input !py-3 rounded-xl bg-gray-900 border-gray-700" onChange={handleCustomerChange} /><button type="button" onClick={handleSearchOnMaps} className="p-3 bg-blue-600/10 text-blue-400 rounded-xl border border-blue-500/20 hover:bg-blue-600 hover:text-white transition-all active:scale-90"><svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd" /></svg></button></div></div>
-                            <div className="md:col-span-2">
-                                <label className="input-label font-black text-[10px] uppercase text-gray-500 tracking-widest mb-2 block">ថ្លៃសេវាដឹកជញ្ជូន</label>
-                                <div className="flex gap-3 mb-3">
-                                    <button type="button" onClick={() => handleShippingOptionChange('charge')} className={`flex-1 py-3 px-4 rounded-xl text-xs font-black uppercase transition-all border ${shippingFeeOption === 'charge' ? 'bg-blue-600 border-blue-500 text-white shadow-lg shadow-blue-600/20' : 'bg-gray-800 border-gray-700 text-gray-500 hover:text-gray-300'}`}>គិតថ្លៃសេវា</button>
-                                    <button type="button" onClick={() => handleShippingOptionChange('free')} className={`flex-1 py-3 px-4 rounded-xl text-xs font-black uppercase transition-all border ${shippingFeeOption === 'free' ? 'bg-emerald-600 border-emerald-500 text-white shadow-lg shadow-emerald-600/20' : 'bg-gray-800 border-gray-700 text-gray-500 hover:text-gray-300'}`}>មិនគិតថ្លៃសេវា</button>
-                                </div>
-                                {shippingFeeOption === 'charge' && (
-                                    <div className="space-y-3 animate-fade-in">
-                                        <input type="number" min="0" name="shippingFee" value={order.customer.shippingFee} placeholder="តម្លៃដឹកជញ្ជូន (ឧ. 1.5)*" className="form-input !py-3 rounded-xl border-gray-700 bg-gray-900" onChange={handleCustomerChange} required />
-                                        <div className="flex gap-2">
-                                            {[1, 1.5, 2].map(fee => {
-                                                const isActive = parseFloat(order.customer.shippingFee) === fee;
-                                                return (
-                                                    <button 
-                                                        key={fee} 
-                                                        type="button" 
-                                                        onClick={() => handleCustomerChange({ target: { name: 'shippingFee', value: String(fee) } } as any)}
-                                                        className={`flex-1 py-2 border font-black rounded-xl text-xs transition-all active:scale-95 ${isActive ? 'bg-blue-600 border-blue-500 text-white shadow-lg shadow-blue-600/20' : 'bg-gray-800 border-gray-700 text-gray-400 hover:text-gray-200'}`}
-                                                    >
-                                                        ${fee}
-                                                    </button>
-                                                );
-                                            })}
-                                        </div>
-                                    </div>
-                                )}
-                            </div>
-                        </div>
-                    </fieldset>
-                );
-            case 2:
-                return (
-                    <fieldset className="border border-gray-600 p-3 sm:p-4 rounded-lg animate-fade-in space-y-4 sm:space-y-6">
-                        <legend className="px-2 text-base sm:text-lg font-semibold text-blue-300">ផលិតផល & ការបញ្ចុះតម្លៃ</legend>
-                        <div className="space-y-4 sm:space-y-6">
-                             {order.products.map((p: ProductUIState, index: number) => {
-                                 const originalTotal = (Number(p.quantity) || 0) * (Number(p.originalPrice) || 0);
-                                 const discountValue = originalTotal - (Number(p.total) || 0);
-                                 return (
-                                    <div key={p.id} className="p-3 sm:p-5 bg-gray-800/40 rounded-2xl sm:rounded-3xl border border-gray-700 relative shadow-xl overflow-hidden group">
-                                        <button type="button" onClick={() => { if (order.products.length > 1) setOrder({ ...order, products: order.products.filter((_:any, i:number)=>i!==index) }); }} className="absolute top-2 right-2 sm:top-4 sm:right-4 text-red-400 bg-red-400/10 rounded-full h-6 w-6 sm:h-8 sm:w-8 flex items-center justify-center border border-red-400/20 hover:bg-red-600 hover:text-white transition-all z-10 active:scale-90" disabled={order.products.length <= 1}>&times;</button>
-                                        <div className="grid grid-cols-1 md:grid-cols-12 gap-3 sm:gap-6 mb-4 sm:mb-6">
-                                            <div className="md:col-span-2 flex justify-center">
-                                                <div className="w-20 h-20 sm:w-28 sm:h-28 bg-gray-900 rounded-xl sm:rounded-2xl overflow-hidden border-2 border-gray-700 shadow-inner group-hover:border-blue-500/50 transition-colors"><img src={convertGoogleDriveUrl(p.image)} className="w-full h-full object-cover" alt="" /></div>
-                                            </div>
-                                            <div className="md:col-span-10 grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-                                                <div className="space-y-1.5"><label className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-1">ឈ្មោះផលិតផល*</label><SearchableProductDropdown products={appData.products || []} selectedProductName={p.name} onSelect={(val) => handleProductUpdate(index, 'name', val)} /></div>
-                                                <div className="grid grid-cols-2 gap-3 sm:gap-4">
-                                                    <div className="space-y-1.5"><label className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-1">ចំនួន*</label><div className="quantity-stepper !max-w-full"><button type="button" className="active:scale-95 transition-transform" onClick={() => handleProductUpdate(index, 'quantity', Math.max(1, p.quantity - 1))} disabled={p.quantity <= 1}>-</button><span className="quantity-display text-sm">{p.quantity}</span><button type="button" className="active:scale-95 transition-transform" onClick={() => handleProductUpdate(index, 'quantity', p.quantity + 1)}>+</button></div></div>
-                                                    <div className="space-y-1.5"><label className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-1">ពណ៌/សម្គាល់</label><input type="text" list={`colors-datalist-${p.id}`} value={p.colorInfo} onChange={(e) => handleProductUpdate(index, 'colorInfo', e.target.value)} className="form-input text-sm !py-2.5 rounded-xl bg-gray-900 border-gray-700" placeholder="ឧ. ខៀវ, XL" /><datalist id={`colors-datalist-${p.id}`}>{(appData.colors || []).map((c:any,i:number)=><option key={i} value={c.ColorName}/>)}</datalist></div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                        <div className="bg-black/20 rounded-xl sm:rounded-[2rem] p-3 sm:p-6 border border-white/5 space-y-4 sm:space-y-6">
-                                            <div className="flex items-center gap-2 sm:gap-3"><div className="h-px flex-grow bg-gray-700/50"></div><span className="text-[9px] sm:text-[10px] font-black text-gray-500 uppercase tracking-[0.2em] sm:tracking-[0.3em] whitespace-nowrap">Pricing & Discount</span><div className="h-px flex-grow bg-gray-700/50"></div></div>
-                                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-8">
-                                                <div className="space-y-3 sm:space-y-4">
-                                                    <div className="flex bg-gray-900/50 p-1 rounded-xl sm:rounded-2xl border border-gray-700 shadow-inner">{(['percent', 'amount', 'custom'] as const).map(t => (<button key={t} type="button" onClick={() => handleProductUpdate(index, 'discountType', t)} className={`flex-1 flex flex-col items-center justify-center py-2 sm:py-2.5 rounded-lg sm:rounded-xl transition-all duration-300 active:scale-95 ${p.discountType === t ? 'bg-blue-600 text-white shadow-lg' : 'text-gray-500 hover:text-gray-300'}`}><span className="text-[9px] sm:text-[11px] font-black uppercase tracking-widest">{t === 'percent' ? 'បញ្ចុះ %' : t === 'amount' ? 'បញ្ចុះ $' : 'កែតម្លៃលក់'}</span></button>))}</div>
-                                                    <div className="relative animate-fade-in">{p.discountType === 'percent' && (<div className="space-y-2"><label className="text-[10px] font-bold text-gray-400 ml-1">បញ្ចូលភាគរយបញ្ចុះតម្លៃ (%)</label><div className="relative"><input type="number" min="0" max="100" placeholder="0" value={p.discountPercentInput} onChange={e=>handleProductUpdate(index, 'discountPercentInput', e.target.value)} className="form-input !text-base sm:!text-lg !font-black !py-2 sm:!py-3 pr-10 text-right text-blue-400 bg-gray-900 border-gray-700" /><span className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 font-black">%</span></div></div>)}{p.discountType === 'amount' && (<div className="space-y-2"><label className="text-[10px] font-bold text-gray-400 ml-1">បញ្ចូលទឹកប្រាក់បញ្ចុះតម្លៃ ($)</label><div className="relative"><input type="number" min="0" placeholder="0.00" value={p.discountAmountInput} onChange={e=>handleProductUpdate(index, 'discountAmountInput', e.target.value)} className="form-input !text-base sm:!text-lg !font-black !py-2 sm:!py-3 pr-10 text-right text-red-400 bg-gray-900 border-gray-700" /><span className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 font-black">$</span></div>{p.quantity > 1 && (<label className="flex items-center gap-2 cursor-pointer p-2 bg-black/20 rounded-lg mt-1 sm:mt-2 border border-white/5 active:scale-95 transition-transform"><input type="checkbox" checked={p.applyDiscountToTotal} onChange={e => handleProductUpdate(index, 'applyDiscountToTotal', e.target.checked)} className="w-4 h-4 rounded border-gray-600 bg-gray-800 text-blue-500" /><span className="text-[9px] sm:text-[10px] text-gray-400 uppercase font-black">បញ្ចុះលើតម្លៃសរុប</span></label>)}</div>)}{p.discountType === 'custom' && (<div className="space-y-2"><label className="text-[10px] font-bold text-gray-400 ml-1">កំណត់តម្លៃលក់ថ្មីក្នុង ១ ឯកតា ($)</label><div className="relative"><input type="text" inputMode="decimal" placeholder="0.00" value={p.finalPriceInput} onChange={e=>handleProductUpdate(index, 'finalPriceInput', e.target.value)} className="form-input !text-base sm:!text-lg !font-black !py-2 sm:!py-3 pr-10 text-right text-emerald-400 bg-gray-900 border-gray-700" /><span className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 font-black">$</span></div></div>)}</div>
-                                                </div>
-                                                <div className="bg-gray-900/60 rounded-xl sm:rounded-[1.5rem] p-3 sm:p-5 border border-white/5 flex flex-col justify-between"><div className="space-y-2 sm:space-y-3"><div className="flex justify-between items-center text-[10px] sm:text-xs"><span className="text-gray-500 font-bold uppercase">Original Subtotal</span><span className="text-blue-400 font-black">${originalTotal.toFixed(2)}</span></div><div className="flex justify-between items-center text-[10px] sm:text-xs"><span className="text-gray-500 font-bold uppercase">Discount Applied</span><span className="text-red-400 font-black">-{discountValue > 0 ? `$${discountValue.toFixed(2)}` : '$0.00'}</span></div><div className="h-px bg-gray-700/50 my-1"></div><div className="flex justify-between items-center"><span className="text-[9px] sm:text-[10px] font-black text-gray-400 uppercase tracking-widest">Net Total</span><span className="text-xl sm:text-2xl font-black text-white tracking-tighter">${(p.total || 0).toFixed(2)}</span></div></div><div className="mt-3 sm:mt-4 pt-2 sm:pt-3 border-t border-white/5 flex justify-center"><span className="text-[8px] sm:text-[9px] bg-emerald-500/10 text-emerald-400 px-2 sm:px-3 py-1 rounded-full border border-emerald-500/20 font-black uppercase tracking-widest">Avg. ${(p.finalPrice || 0).toFixed(2)} / unit</span></div></div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                 );
-                             })}
-                        </div>
-                        <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 mt-6">
-                            <button type="button" onClick={() => setOrder({ ...order, products: [...order.products, {...initialProductState, id: Date.now()}] })} className="flex-1 py-4 px-6 bg-gray-800 border border-gray-700 rounded-2xl text-gray-300 font-black uppercase text-[11px] tracking-widest hover:bg-gray-700 hover:border-blue-500 transition-all flex items-center justify-center gap-2 active:scale-95"><svg className="w-5 h-5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M12 4v16m8-8H4"/></svg>បន្ថែមផលិតផល</button>
-                            <button type="button" onClick={()=>setIsScannerVisible(true)} className="flex-1 py-4 px-6 bg-blue-600/10 border border-blue-500/30 rounded-2xl text-blue-400 font-black uppercase text-[11px] tracking-widest hover:bg-blue-600 hover:text-white transition-all flex items-center justify-center gap-2 shadow-lg shadow-blue-900/10 active:scale-95"><svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2M7 12h10" strokeWidth="3"/></svg>Scan Barcode</button>
-                        </div>
-                    </fieldset>
-                );
-            case 3:
-                return (
-                    <fieldset className="border border-gray-600 p-3 sm:p-4 rounded-lg animate-fade-in space-y-4 sm:space-y-6"><legend className="px-2 text-base sm:text-lg font-semibold text-blue-300">ដឹកជញ្ជូន</legend><div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
-                            <div className="space-y-1.5"><label className="input-label font-black text-[10px] uppercase text-gray-500 tracking-widest mb-2 block">វិធីសាស្រ្តដឹកជញ្ជូន*</label><SearchableShippingMethodDropdown methods={appData.shippingMethods || []} selectedMethodName={order.shipping.method} onSelect={handleShippingMethodSelect} /></div>
-                            <div className="space-y-1.5">
-                                <label className="input-label font-black text-[10px] uppercase text-gray-500 tracking-widest mb-2 block">ថ្លៃសេវាឲ្យអ្នកដឹក (Cost)*</label>
-                                <div className="space-y-3">
-                                    <div className="relative">
-                                        <input type="number" min="0" step="0.01" name="cost" placeholder="0.00" value={order.shipping.cost} className="form-input !py-3 rounded-xl bg-gray-900 border-gray-700 text-blue-400 font-black pr-12" onChange={handleShippingChange} required />
-                                        <span className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 font-bold">$</span>
-                                    </div>
-                                    <div className="flex gap-2">
-                                        {[1.25, 1.5, 2].map(cost => {
-                                            const isActive = parseFloat(order.shipping.cost) === cost;
-                                            return (
-                                                <button 
-                                                    key={cost} 
-                                                    type="button" 
-                                                    onClick={() => handleShippingChange({ target: { name: 'cost', value: String(cost) } } as any)}
-                                                    className={`flex-1 py-2 border font-black rounded-xl text-xs transition-all active:scale-95 ${isActive ? 'bg-blue-600 border-blue-500 text-white shadow-lg shadow-blue-600/20' : 'bg-gray-800 border-gray-700 text-gray-400 hover:text-gray-200'}`}
-                                                >
-                                                    ${cost}
-                                                </button>
-                                            );
-                                        })}
-                                    </div>
-                                </div>
-                            </div>
-                            {selectedShippingMethod?.RequireDriverSelection && (
-                                <div className="md:col-span-2 space-y-3 sm:space-y-4"><div className="flex items-center gap-2 px-1"><div className="h-4 w-1 bg-blue-500 rounded-full"></div><label className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">ជ្រើសរើសអ្នកដឹក (DriverSelection)*</label></div><div className="grid grid-cols-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2 sm:gap-4">
-                                        {appData.drivers?.map((d: Driver) => {
-                                            const isSelected = order.shipping.details === d.DriverName;
-                                            return (<button key={d.DriverName} type="button" onClick={() => handleDriverChange(d.DriverName)} className={`group relative flex flex-col items-center p-2 sm:p-3 rounded-2xl sm:rounded-[2rem] border-2 transition-all duration-300 active:scale-95 ${isSelected ? 'bg-blue-600/20 border-blue-500 shadow-lg shadow-blue-900/20 scale-105' : 'bg-gray-800/40 border-transparent hover:bg-gray-800 hover:border-gray-700'}`}><div className={`w-12 h-12 sm:w-20 sm:h-20 rounded-full overflow-hidden mb-2 sm:mb-3 border-2 sm:border-4 transition-all duration-500 ${isSelected ? 'border-blue-500 shadow-xl' : 'border-gray-700 group-hover:border-gray-600'}`}><img src={convertGoogleDriveUrl(d.ImageURL)} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" alt={d.DriverName} /></div><span className={`text-[9px] sm:text-[11px] font-black uppercase tracking-widest text-center truncate w-full ${isSelected ? 'text-white' : 'text-gray-400 group-hover:text-gray-200'}`}>{d.DriverName}</span>{isSelected && (<div className="absolute top-0.5 right-0.5 bg-blue-500 text-white rounded-full p-0.5 sm:p-1 shadow-lg animate-fade-in-scale"><svg className="w-2.5 h-2.5 sm:w-3 sm:h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={4}><path d="M5 13l4 4L19 7"/></svg></div>)}</button>);
-                                        })}
-                                    </div>{!order.shipping.details && (<p className="text-center text-[9px] text-gray-500 italic mt-1">សូមជ្រើសរើសអ្នកដឹកម្នាក់</p>)}</div>
-                            )}
-                         </div></fieldset>
-                );
-            case 4:
-                const selectedDriver = appData.drivers?.find((d: Driver) => d.DriverName === order.shipping.details);
-                return (
-                    <div className="animate-fade-in space-y-4 sm:space-y-8">
-                        <div><h3 className="text-[10px] font-black text-gray-500 uppercase tracking-widest mb-2 sm:mb-3 flex items-center gap-2"><span className="w-1.5 h-1.5 rounded-full bg-blue-500"></span> ព័ត៌មានអតិថិជន</h3><div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4 bg-gray-900/60 p-3 sm:p-5 rounded-2xl sm:rounded-3xl border border-white/5 shadow-inner"><div className="space-y-1"><p className="text-[9px] text-gray-500 font-bold uppercase">Customer Info</p><p className="text-white font-black text-base sm:text-lg">{order.customer.name}</p><div className="flex items-center gap-2"><p className="text-blue-400 font-bold font-mono text-sm">{order.customer.phone}</p>{carrierLogo && <img src={carrierLogo} className="h-4 sm:h-5 w-auto object-contain" alt="Carrier" />}</div></div><div className="space-y-1 md:text-right"><p className="text-[9px] text-gray-500 font-bold uppercase">Location / Store</p><p className="text-gray-200 font-bold text-xs sm:text-sm leading-tight">{`${order.customer.additionalLocation}, ${order.customer.sangkat}, ${order.customer.district}, ${order.customer.province}`.replace(/^,|,$/g, '').trim()}</p><p className="text-purple-400 font-black text-[9px] uppercase tracking-wider">Fulfillment: {order.fulfillmentStore}</p></div></div></div>
-                        <div><h3 className="text-[10px] font-black text-gray-500 uppercase tracking-widest mb-2 sm:mb-3 flex items-center gap-2"><span className="w-1.5 h-1.5 rounded-full bg-orange-500"></span> ព័ត៌មានដឹកជញ្ជូន</h3><div className="bg-gray-900/40 p-3 sm:p-5 rounded-2xl sm:rounded-3xl border border-white/5 shadow-inner grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6"><div className="space-y-1"><p className="text-[9px] text-gray-500 font-bold uppercase">Shipping Method</p><div className="flex items-center gap-2">{shippingLogo && <img src={shippingLogo} className="h-4 sm:h-5 w-auto object-contain" alt="Logo" />}<p className="text-white font-black text-xs sm:text-sm">{order.shipping.method}</p></div></div><div className="space-y-1"><p className="text-[9px] text-gray-500 font-bold uppercase">Driver / Details</p><div className="flex items-center gap-2">{selectedDriver && (<img src={convertGoogleDriveUrl(selectedDriver.ImageURL)} className="h-6 w-6 sm:h-8 sm:w-8 rounded-full object-cover border border-gray-700 cursor-pointer active:scale-95 transition-transform" alt="Driver" onClick={() => previewImage(convertGoogleDriveUrl(selectedDriver.ImageURL))} />)}<p className="text-white font-bold text-xs sm:text-sm">{order.shipping.details || 'N/A'}</p></div></div><div className="space-y-1 sm:text-right"><p className="text-[9px] text-gray-500 font-bold uppercase">Internal Cost ($)</p><p className="text-orange-400 font-black text-base sm:text-lg font-mono">${(Number(order.shipping.cost) || 0).toFixed(2)}</p></div></div></div>
-                        <div><h3 className="text-[10px] font-black text-gray-500 uppercase tracking-widest mb-2 sm:mb-3 flex items-center gap-2"><span className="w-1.5 h-1.5 rounded-full bg-blue-500"></span> បញ្ជីទំនិញកុម្ម៉ង់</h3><div className="space-y-2 sm:space-y-3">{order.products.map((p: any) => (<div key={p.id} className="flex items-center gap-3 sm:gap-4 bg-gray-900/40 p-2 sm:p-3 rounded-xl sm:rounded-2xl border border-white/5 group hover:border-blue-500/30 transition-all"><div className="w-12 h-12 sm:w-16 sm:h-16 bg-gray-800 rounded-lg sm:rounded-xl overflow-hidden border border-gray-700 flex-shrink-0 relative"><img src={convertGoogleDriveUrl(p.image)} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" alt={p.name} /></div><div className="flex-grow min-w-0"><div className="flex justify-between items-start mb-0.5 sm:mb-1"><h4 className="text-white font-black text-xs sm:text-sm truncate leading-tight">{p.name}</h4><div className="flex gap-1.5"><span className="bg-blue-600/10 text-blue-400 text-[9px] sm:text-[10px] font-black px-1.5 sm:px-2.5 py-0.5 sm:py-1 rounded-lg border border-blue-500/20">x{p.quantity}</span></div></div><div className="flex items-center gap-2 sm:gap-3">{p.colorInfo && (<span className="text-[9px] bg-purple-500/10 text-purple-400 px-1.5 py-0.5 rounded-md font-bold">{p.colorInfo}</span>)}<p className="text-[9px] text-gray-500 font-bold uppercase tracking-tight"><span>${(p.finalPrice || 0).toFixed(2)}</span> / unit</p></div></div><div className="text-right"><p className="text-white font-black text-sm sm:text-base tracking-tight">${(p.total || 0).toFixed(2)}</p><p className="text-[8px] text-gray-600 font-bold uppercase">Subtotal</p></div></div>))}</div></div>
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4"><div className="bg-gray-900/40 p-3 sm:p-4 rounded-xl sm:rounded-2xl border border-white/5 text-center"><p className="text-[8px] sm:text-[9px] text-gray-500 font-black uppercase mb-1">សរុបទំនិញ</p><p className="text-white font-black text-base sm:text-lg">${(order.subtotal || 0).toFixed(2)}</p></div><div className="bg-gray-900/40 p-3 sm:p-4 rounded-xl sm:rounded-2xl border border-white/5 text-center"><p className="text-[8px] sm:text-[9px] text-gray-500 font-black uppercase mb-1">សេវាដឹក</p><p className="text-white font-black text-base sm:text-lg">${(Number(order.customer.shippingFee) || 0).toFixed(2)}</p></div><div className="col-span-2 bg-blue-600/10 p-3 sm:p-4 rounded-xl sm:rounded-2xl border border-blue-500/20 text-center shadow-lg shadow-blue-900/10"><p className="text-[9px] sm:text-[10px] text-blue-400 font-black uppercase mb-1 tracking-widest">សរុបរួម (Grand Total)</p><p className="text-white font-black text-2xl sm:text-3xl tracking-tighter">${(order.grandTotal || 0).toFixed(2)}</p></div></div>
-                        <fieldset className="border border-gray-700 p-4 sm:p-6 rounded-2xl sm:rounded-3xl bg-gray-900/20"><legend className="px-3 text-[10px] sm:text-xs font-black text-blue-400 uppercase tracking-[0.2em]">ស្ថានភាពទូទាត់</legend><div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4"><select value={order.payment.status} onChange={(e) => setOrder({...order, payment: {...order.payment, status: e.target.value, info: ''}})} className="form-select bg-gray-800 text-sm"><option value="Unpaid">មិនទាន់ទូទាត់ (COD)</option><option value="Paid">ទូទាត់រួច (Paid)</option></select>{order.payment.status === 'Paid' && (<div className="flex items-center gap-2 sm:gap-3 animate-fade-in"><select value={order.payment.info} onChange={(e) => handleBankChange(e.target.value)} className="form-select bg-gray-800 flex-grow text-sm"><option value="">ជ្រើសរើសធនាគារ</option>{appData.bankAccounts?.map((b: any) => <option key={b.BankName} value={b.BankName}>{b.BankName}</option>)}</select>{bankLogo && <img src={bankLogo} className="h-8 w-12 sm:h-10 sm:w-16 object-contain bg-white/10 p-1 rounded-lg sm:rounded-xl active:scale-95 transition-transform" alt="bank" />}</div>)}</div></fieldset>
-                        
-                        {/* Telegram Scheduling Component */}
-                        <TelegramScheduler 
-                            schedule={order.telegram.schedule}
-                            time={order.telegram.time}
-                            onChange={(data) => setOrder({ ...order, telegram: data })}
-                        />
-
-                        <div className="space-y-2 sm:space-y-3 pt-4"><label className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-1">ចំណាំ & Link Google Map</label><textarea placeholder="ចំណាំបន្ថែម..." value={order.note} rows={4} onChange={(e) => setOrder({...order, note: e.target.value})} className="form-textarea bg-gray-900/60 !rounded-[1.5rem] sm:!rounded-[2rem] border-white/5 focus:border-blue-500/50 text-sm"></textarea></div>
-                    </div>
-                );
-            default: return null;
-        }
-    };
-
+        const handleClickOutside = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) setIsOpen(false); };
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, []);
     return (
-        <div className="w-full max-w-4xl mx-auto mt-2 sm:mt-10 lg:mt-14 px-1 sm:px-0">
-             <style>{`
-                @keyframes shimmer {
-                    0% { background-position: -200% 0; }
-                    100% { background-position: 200% 0; }
-                }
-                .btn-shimmer {
-                    background: linear-gradient(90deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.1) 50%, rgba(255,255,255,0) 100%);
-                    background-size: 200% 100%;
-                    animation: shimmer 3s infinite linear;
-                }
-                @keyframes pulse-glow {
-                    0%, 100% { box-shadow: 0 0 15px rgba(37,99,235,0.3); }
-                    50% { box-shadow: 0 0 30px rgba(37,99,235,0.6); }
-                }
-                .btn-pulse { animation: pulse-glow 2s infinite ease-in-out; }
-             `}</style>
-             {submissionStatus && (<div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-[100] animate-fade-in p-4"><div className="page-card text-center flex flex-col items-center animate-fade-in-scale">{submissionStatus.type === 'success' ? (<div className="w-16 h-16 sm:w-20 sm:h-20 bg-green-500/20 text-green-400 rounded-full flex items-center justify-center mb-4 border border-green-500/30 shadow-[0_0_30px_rgba(34,197,94,0.2)]"><svg className="h-8 w-8 sm:h-10 sm:w-10" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7"/></svg></div>) : (<div className="w-16 h-16 sm:w-20 sm:h-20 bg-red-500/20 text-red-400 rounded-full flex items-center justify-center mb-4 border border-red-500/30"><svg className="h-8 w-8 sm:h-10 sm:w-10" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12"/></svg></div>)}<p className="text-base sm:text-lg font-black text-white">{submissionStatus.message}</p></div></div>)}
-            <MapModal isOpen={isMapModalOpen} onClose={() => setIsMapModalOpen(false)} url={mapSearchUrl} />
-            {isScannerVisible && <BarcodeScannerModal onClose={() => setIsScannerVisible(false)} onCodeScanned={handleCodeScanned} scanMode={scanMode} setScanMode={setScanMode} productsInOrder={order.products} masterProducts={appData.products || []} />}
-            <Modal isOpen={isCancelModalOpen} onClose={() => setIsCancelModalOpen(false)} maxWidth="max-w-sm"><div className="p-6 text-center space-y-6"><div className="mx-auto w-14 h-14 sm:w-16 sm:h-16 bg-red-500/10 text-red-500 rounded-full flex items-center justify-center border border-red-500/20 shadow-xl shadow-red-900/10 animate-bounce-slow"><svg className="h-7 w-7 sm:h-8 sm:w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg></div><h3 className="text-lg sm:text-xl font-black text-white uppercase tracking-tighter">បោះបង់ការបញ្ចូល?</h3><div className="flex gap-3"><button onClick={() => setIsCancelModalOpen(false)} className="px-6 py-3 bg-gray-800 border border-gray-700 text-gray-300 rounded-2xl flex-1 font-black text-xs sm:text-sm transition-all hover:bg-gray-700 active:scale-95">ទេ (ត្រឡប់)</button><button onClick={handleConfirmCancel} className="px-6 py-3 bg-red-600 border border-red-500 text-white rounded-2xl flex-1 font-black text-xs sm:text-sm transition-all hover:bg-red-700 active:scale-95 shadow-lg shadow-red-900/20">បាទ (បោះបង់)</button></div></div></Modal>
-            
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 sm:mb-10 gap-4">
-                <h1 className="hidden md:flex text-2xl sm:text-3xl font-black text-white uppercase tracking-tighter items-center gap-3 sm:gap-4">
-                    <span className="text-blue-500">កុម្ម៉ង់ថ្មី</span>
-                    <span className="text-[9px] sm:text-[10px] bg-blue-600/20 text-blue-400 px-3 sm:px-4 py-1.5 rounded-full border border-blue-500/20 uppercase tracking-[0.15em] sm:tracking-[0.2em]">{team}</span>
-                </h1>
-                <button onClick={handleCancelClick} className="hidden md:block px-6 py-2.5 bg-gray-800 border border-gray-700 hover:border-red-500 hover:bg-red-500/10 text-gray-400 hover:text-red-400 font-black rounded-2xl uppercase text-[10px] sm:text-[11px] tracking-widest transition-all active:scale-90">បោះបង់</button>
-            </div>
-
-            <div className="bg-gray-800/30 backdrop-blur-3xl border border-white/5 rounded-[1.5rem] sm:rounded-[3rem] p-3 sm:p-10 shadow-2xl">
-                <div className="flex justify-between items-center mb-8 sm:mb-12 relative px-2 sm:px-4">
-                    <div className="absolute left-6 right-6 sm:left-10 sm:right-10 top-1/2 w-[calc(100%-48px)] sm:w-[calc(100%-80px)] h-0.5 bg-gray-700 -z-10"></div>
-                    <div className="absolute left-6 sm:left-10 top-1/2 h-0.5 bg-blue-500 -z-10 transition-all duration-500" style={{ width: `${((currentStep-1)/(STEPS.length-1)) * (100 - (48/400)*100)}%` }}></div>
-                    {STEPS.map(step => (
-                        <div key={step.number} className={`relative flex flex-col items-center z-10 transition-all duration-500 ${currentStep >= step.number ? 'scale-110' : 'opacity-40 scale-90'}`}>
-                            <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl flex items-center justify-center font-black text-[10px] sm:text-xs border-2 transition-all duration-500 ${currentStep >= step.number ? 'border-blue-500 bg-blue-600 text-white shadow-[0_0_20px_rgba(37,99,235,0.4)]' : 'border-gray-600 bg-gray-800 text-gray-500'}`}>{currentStep > step.number ? "✓" : step.number}</div>
-                            <span className={`absolute -bottom-6 sm:-bottom-7 text-[8px] sm:text-[9px] font-black uppercase tracking-widest whitespace-nowrap ${currentStep >= step.number ? 'text-blue-400' : 'text-gray-600'}`}>{step.title}</span>
-                        </div>
-                    ))}
-                </div>
-                 
-                 
-                <div className="mt-8 sm:mt-16">{renderStepContent()}</div>
-                
-                {error && <div className="mt-4 sm:mt-6 p-3 sm:p-4 bg-red-500/10 border border-red-500/20 rounded-xl sm:rounded-2xl text-red-400 text-center text-[10px] sm:text-xs font-bold animate-shake">{error}</div>}
-                
-                <div className="mt-8 sm:mt-10 pt-6 sm:pt-8 border-t border-white/5 space-y-3 sm:space-y-4">
-                    <div className="flex gap-3 sm:gap-4 h-12 sm:h-16">
-                        {currentStep > 1 && (
-                            <button type="button" onClick={prevStep} className="flex-1 px-4 sm:px-8 bg-gray-800 border border-gray-700 text-gray-300 rounded-2xl font-black uppercase text-[10px] sm:text-[12px] tracking-[0.15em] transition-all hover:bg-gray-700 flex items-center justify-center gap-2 active:scale-95"><svg className="w-3 h-3 sm:w-4 sm:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={3}><path d="M15 19l-7-7 7-7"/></svg>ត្រឡប់</button>
-                        )}
-                        
-                        {currentStep < STEPS.length ? (
-                            <button type="button" onClick={nextStep} className="relative flex-[2] bg-blue-600 hover:bg-blue-700 text-white rounded-2xl font-black uppercase text-[12px] sm:text-[14px] tracking-[0.2em] shadow-2xl active:scale-95 transition-all flex items-center justify-center gap-3 group overflow-hidden btn-pulse"><div className="absolute inset-0 btn-shimmer pointer-events-none"></div><span className="relative z-10">ជំហានបន្ទាប់</span><svg className="w-4 h-4 sm:w-5 sm:h-5 relative z-10 transform group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={3}><path d="M9 5l7 7-7 7"/></svg></button>
-                        ) : (
-                             <button type="button" onClick={submitOrder} className="relative flex-[2] bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl font-black uppercase text-[12px] sm:text-[14px] tracking-[0.2em] shadow-2xl active:scale-95 transition-all flex items-center justify-center gap-3 overflow-hidden" disabled={loading}><div className="absolute inset-0 btn-shimmer pointer-events-none"></div>{loading ? <Spinner size="sm" /> : <><span className="relative z-10">បញ្ជូនកម្ម៉ង់ឥឡូវនេះ</span><svg className="w-4 h-4 sm:w-5 sm:h-5 relative z-10 animate-bounce-x" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={3}><path d="M5 13l4 4L19 7"/></svg></>}</button>
-                        )}
+        <div className="relative inline-block text-left" ref={ref}>
+            <button onClick={() => setIsOpen(!isOpen)} className="btn btn-secondary !py-2 !px-4 text-sm flex items-center bg-gray-800 border border-gray-700 hover:bg-gray-700 transition-all rounded-lg shadow-sm">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2 text-blue-400" viewBox="0 0 20 20" fill="currentColor"><path d="M5 4a1 1 0 00-2 0v12a1 1 0 002 0V4zM9 4a1 1 0 00-2 0v12a1 1 0 002 0V4zM13 4a1 1 0 00-2 0v12a1 1 0 002 0V4zM17 4a1 1 0 00-2 0v12a1 1 0 002 0V4z" /></svg>
+                Column
+                <svg xmlns="http://www.w3.org/2000/svg" className={`h-4 w-4 ml-2 transition-transform ${isOpen ? 'rotate-180' : ''}`} viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" /></svg>
+            </button>
+            {isOpen && (
+                <div className="absolute right-0 mt-2 w-56 bg-gray-800 border border-gray-700 rounded-xl shadow-[0_10px_40px_rgba(0,0,0,0.5)] z-[100] origin-top-right overflow-hidden border border-white/5 backdrop-blur-xl">
+                    <div className="p-2 space-y-1">
+                        {columns.map(col => (
+                            <label key={col.key} className="flex items-center px-3 py-2 text-sm text-gray-200 hover:bg-gray-700 rounded-lg cursor-pointer transition-colors">
+                                <input type="checkbox" className="h-4 w-4 rounded border-gray-600 bg-gray-900 text-blue-500" checked={visibleColumns.has(col.key)} onChange={() => onToggle(col.key)} />
+                                <span className="ml-3 font-medium">{col.label}</span>
+                            </label>
+                        ))}
                     </div>
-                    <button onClick={handleCancelClick} className="md:hidden w-full py-4 bg-gray-800/40 text-gray-500 hover:text-red-400 font-black rounded-2xl uppercase text-[10px] tracking-widest transition-all active:scale-95 border border-white/5">បោះបង់ការបញ្ចូល</button>
                 </div>
-            </div>
-            <style>{`.animate-bounce-x { animation: bounce-x 1s infinite ease-in-out; } @keyframes bounce-x { 0%, 100% { transform: translateX(0); } 50% { transform: translateX(5px); } }`}</style>
+            )}
         </div>
     );
 };
 
-export default CreateOrderPage;
+const FilterPanel = ({ isOpen, onClose, children }: { isOpen: boolean, onClose: () => void, children?: React.ReactNode }) => {
+    return (
+        <>
+            <div className={`filter-panel-overlay ${isOpen ? 'open' : ''}`} onClick={onClose}></div>
+            <div className={`filter-panel ${isOpen ? 'open' : ''}`}>
+                <div className="p-4 border-b border-gray-700 flex justify-between items-center bg-[#1a1f2e]">
+                    <h2 className="text-xl font-bold text-white">Filter Orders</h2>
+                    <button onClick={onClose} className="text-2xl text-gray-400 hover:text-white">&times;</button>
+                </div>
+                <div className="p-6 overflow-y-auto flex-grow bg-[#1a1f2e]">{children}</div>
+                <div className="p-6 border-t border-gray-700 bg-[#1a1f2e]">
+                    <button onClick={onClose} className="btn btn-primary w-full py-4 text-lg font-bold shadow-lg shadow-blue-600/20">Apply Filters</button>
+                </div>
+            </div>
+        </>
+    );
+};
+
+const OrdersDashboard: React.FC<OrdersDashboardProps> = ({ onBack }) => {
+    const { appData, refreshData, refreshTimestamp, currentUser } = useContext(AppContext);
+    const [editingOrderId, setEditingOrderId] = useUrlState<string>('editOrder', '');
+    
+    const [urlTeam, setUrlTeam] = useUrlState<string>('teamFilter', '');
+    const [urlDate, setUrlDate] = useUrlState<string>('dateFilter', 'this_month');
+
+    const [visibleColumns, setVisibleColumns] = useState<Set<string>>(new Set(
+        availableColumns.filter(c => c.key !== 'productInfo').map(c => c.key)
+    ));
+
+    const [allOrders, setAllOrders] = useState<ParsedOrder[]>([]);
+    const [usersList, setUsersList] = useState<User[]>([]); 
+    const [loading, setLoading] = useState(true);
+    const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
+    const [isPdfModalOpen, setIsPdfModalOpen] = useState(false);
+    const [searchQuery, setSearchQuery] = useState('');
+
+    const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+    const [isBulkProcessing, setIsBulkProcessing] = useState(false);
+    
+    const [isBulkCostModalOpen, setIsBulkCostModalOpen] = useState(false);
+    const [isBulkPaymentModalOpen, setIsBulkPaymentModalOpen] = useState(false);
+    const [isBulkShippingModalOpen, setIsBulkShippingModalOpen] = useState(false);
+    const [isBulkDeleteModalOpen, setIsBulkDeleteModalOpen] = useState(false);
+
+    const [bulkCostValue, setBulkCostValue] = useState<string>('');
+    const [bulkPaymentStatus, setBulkPaymentStatus] = useState<string>('Paid');
+    const [bulkPaymentInfo, setBulkPaymentInfo] = useState<string>('');
+    const [bulkShippingMethod, setBulkShippingMethod] = useState<string>('');
+    const [bulkDeletePassword, setBulkDeletePassword] = useState<string>('');
+
+    const [filters, setFilters] = useState(() => {
+        const searchParams = new URLSearchParams(window.location.search);
+        return {
+            datePreset: (searchParams.get('dateFilter') as DateRangePreset) || 'this_month',
+            startDate: '',
+            endDate: '',
+            team: searchParams.get('teamFilter') || '',
+            user: '',
+            paymentStatus: '',
+            shippingService: '',
+            driver: '',
+            product: '',
+            bank: '',
+        };
+    });
+
+    useEffect(() => {
+        if (urlTeam !== filters.team || urlDate !== filters.datePreset) {
+            setFilters(prev => ({
+                ...prev,
+                team: urlTeam || prev.team,
+                datePreset: (urlDate as DateRangePreset) || prev.datePreset
+            }));
+        }
+    }, [urlTeam, urlDate]);
+
+    useEffect(() => {
+        if (filters.team !== urlTeam) setUrlTeam(filters.team);
+        if (filters.datePreset !== urlDate) setUrlDate(filters.datePreset);
+    }, [filters.team, filters.datePreset]);
+
+    const calculatedRange = useMemo(() => {
+        const now = new Date();
+        const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        let start: Date | null = null;
+        let end: Date | null = new Date();
+        switch (filters.datePreset) {
+            case 'today': start = today; break;
+            case 'yesterday': start = new Date(today); start.setDate(today.getDate() - 1); end = new Date(today); end.setMilliseconds(-1); break;
+            case 'this_week': const day = now.getDay(); start = new Date(today); start.setDate(today.getDate() - (day === 0 ? 6 : day - 1)); break;
+            case 'last_week': start = new Date(today); start.setDate(today.getDate() - now.getDay() - 6); end = new Date(start); end.setDate(start.getDate() + 6); end.setHours(23, 59, 59); break;
+            case 'this_month': start = new Date(now.getFullYear(), now.getMonth(), 1); break;
+            case 'last_month': start = new Date(now.getFullYear(), now.getMonth() - 1, 1); end = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59); break;
+            case 'this_year': start = new Date(now.getFullYear(), 0, 1); break;
+            case 'all': return 'All time data';
+            case 'custom': return `${filters.startDate || '...'} to ${filters.endDate || '...'}`;
+        }
+        const formatDate = (d: Date) => d.toISOString().split('T')[0];
+        return start ? `${formatDate(start)} to ${formatDate(end)}` : 'All time data';
+    }, [filters.datePreset, filters.startDate, filters.endDate]);
+
+    const toggleColumn = (key: string) => {
+        setVisibleColumns(prev => {
+            const next = new Set(prev);
+            if (next.has(key)) { if (next.size > 1) next.delete(key); } else { next.add(key); }
+            return next;
+        });
+    };
+
+    const fetchAllOrders = async () => {
+        setLoading(true);
+        try {
+            const [ordersRes, usersRes] = await Promise.all([
+                fetch(`${WEB_APP_URL}/api/admin/all-orders`),
+                fetch(`${WEB_APP_URL}/api/users`)
+            ]);
+            const ordersData = await ordersRes.json();
+            const usersData = await usersRes.json();
+            if (ordersData.status === 'success') {
+                const parsed = (ordersData.data || [])
+                    .filter((o: any) => o !== null && o['Order ID'] !== 'Opening Balance')
+                    .map((o: any) => {
+                        let products = [];
+                        try { if (o['Products (JSON)']) products = JSON.parse(o['Products (JSON)']); } catch (e) {}
+                        const rawVerified: any = o.IsVerified;
+                        const isVerified = rawVerified === true || String(rawVerified).toUpperCase() === 'TRUE' || rawVerified === 1 || rawVerified === "1";
+                        return { ...o, Products: products, IsVerified: isVerified };
+                    });
+                setAllOrders(parsed.sort((a: any, b: any) => new Date(b.Timestamp).getTime() - new Date(a.Timestamp).getTime()));
+            }
+            if (usersData.status === 'success') setUsersList(usersData.data || []);
+        } catch (e) { console.error(e); } finally { setLoading(false); }
+    };
+
+    useEffect(() => { fetchAllOrders(); }, [refreshTimestamp]);
+
+    const enrichedOrders = useMemo(() => {
+        return allOrders.map(order => {
+            let team = (order.Team || '').trim();
+            if (!team) {
+                const u = usersList.find(u => u.UserName === order.User);
+                if (u?.Team) {
+                    team = u.Team.split(',')[0].trim();
+                } else {
+                    const p = appData.pages?.find(pg => pg.PageName === order.Page);
+                    if (p?.Team) team = p.Team;
+                }
+            }
+            return { ...order, Team: team || 'Unassigned' };
+        });
+    }, [allOrders, usersList, appData.pages]);
+
+    const filteredOrders = useMemo(() => {
+        return enrichedOrders.filter(order => {
+            if (filters.datePreset !== 'all') {
+                const orderDate = new Date(order.Timestamp);
+                const now = new Date();
+                const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+                let start: Date | null = null;
+                let end: Date | null = new Date();
+                switch (filters.datePreset) {
+                    case 'today': start = today; break;
+                    case 'yesterday': start = new Date(today); start.setDate(today.getDate() - 1); end = new Date(today); end.setMilliseconds(-1); break;
+                    case 'this_week': const day = now.getDay(); start = new Date(today); start.setDate(today.getDate() - (day === 0 ? 6 : day - 1)); break;
+                    case 'last_week': start = new Date(today); start.setDate(today.getDate() - now.getDay() - 6); end = new Date(start); end.setDate(start.getDate() + 6); end.setHours(23, 59, 59); break;
+                    case 'this_month': start = new Date(now.getFullYear(), now.getMonth(), 1); break;
+                    case 'last_month': start = new Date(now.getFullYear(), now.getMonth() - 1, 1); end = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59); break;
+                    case 'this_year': start = new Date(now.getFullYear(), 0, 1); break;
+                    case 'custom':
+                        if (filters.startDate) start = new Date(filters.startDate + 'T00:00:00');
+                        if (filters.endDate) end = new Date(filters.endDate + 'T23:59:59');
+                        break;
+                }
+                if (start && orderDate < start) return false;
+                if (end && orderDate > end) return false;
+            }
+            if (filters.team && order.Team !== filters.team) return false;
+            if (filters.user && (order.User || '').trim().toLowerCase() !== filters.user.trim().toLowerCase()) return false;
+            if (filters.paymentStatus && order['Payment Status'] !== filters.paymentStatus) return false;
+            if (filters.shippingService && order['Internal Shipping Method'] !== filters.shippingService) return false;
+            if (filters.driver && order['Internal Shipping Details'] !== filters.driver) return false;
+            if (filters.bank && order['Payment Info'] !== filters.bank) return false;
+            if (filters.product && !order.Products.some(p => p.name === filters.product)) return false;
+            if (searchQuery.trim()) {
+                const q = searchQuery.toLowerCase();
+                const match = order['Order ID'].toLowerCase().includes(q) ||
+                              (order['Customer Name'] || '').toLowerCase().includes(q) ||
+                              (order['Customer Phone'] || '').includes(q);
+                if (!match) return false;
+            }
+            return true;
+        });
+    }, [enrichedOrders, filters, searchQuery]);
+
+    const toggleSelection = (id: string) => {
+        setSelectedIds(prev => {
+            const next = new Set(prev);
+            if (next.has(id)) next.delete(id);
+            else next.add(id);
+            return next;
+        });
+    };
+
+    const toggleSelectAll = (ids: string[]) => {
+        const allSelected = ids.length > 0 && ids.every(id => selectedIds.has(id));
+        if (allSelected) {
+            setSelectedIds(prev => {
+                const next = new Set(prev);
+                ids.forEach(id => next.delete(id));
+                return next;
+            });
+        } else {
+            setSelectedIds(prev => new Set([...prev, ...ids]));
+        }
+    };
+
+    const handleBulkUpdate = async (updateData: any, confirmMsg?: string) => {
+        if (selectedIds.size === 0) return;
+        if (confirmMsg && !window.confirm(confirmMsg)) return;
+
+        setIsBulkProcessing(true);
+        try {
+            // Processing in chunks of 5 to avoid overloading
+            const idArray = Array.from(selectedIds);
+            const chunkSize = 5;
+            for (let i = 0; i < idArray.length; i += chunkSize) {
+                const chunk = idArray.slice(i, i + chunkSize);
+                await Promise.all(chunk.map(id => 
+                    fetch(`${WEB_APP_URL}/api/admin/update-sheet`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ 
+                            sheetName: 'AllOrders', 
+                            primaryKey: { 'Order ID': id }, 
+                            newData: updateData 
+                        })
+                    })
+                ));
+            }
+            
+            await refreshData();
+            setSelectedIds(new Set());
+            fetchAllOrders();
+            setIsBulkCostModalOpen(false);
+            setIsBulkPaymentModalOpen(false);
+            setIsBulkShippingModalOpen(false);
+        } catch (e) {
+            alert("Bulk update failed.");
+        } finally {
+            setIsBulkProcessing(false);
+        }
+    };
+
+    const handleBulkDelete = async () => {
+        if (selectedIds.size === 0) return;
+        
+        const activeUser = appData.users?.find(u => u.UserName === currentUser?.UserName);
+        if (bulkDeletePassword !== activeUser?.Password) {
+            alert("លេខសម្ងាត់មិនត្រឹមត្រូវ!");
+            return;
+        }
+
+        setIsBulkProcessing(true);
+        try {
+            const idArray = Array.from(selectedIds);
+            const chunkSize = 3; // Delete is more sensitive, smaller chunk
+            for (let i = 0; i < idArray.length; i += chunkSize) {
+                const chunk = idArray.slice(i, i + chunkSize);
+                await Promise.all(chunk.map(id => {
+                    const order = allOrders.find(o => o['Order ID'] === id);
+                    return fetch(`${WEB_APP_URL}/api/admin/delete-order`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            orderId: id,
+                            team: order?.Team,
+                            userName: currentUser?.UserName,
+                        })
+                    });
+                }));
+            }
+            await refreshData();
+            setSelectedIds(new Set());
+            fetchAllOrders();
+            setIsBulkDeleteModalOpen(false);
+            setBulkDeletePassword('');
+        } catch (e) {
+            alert("Bulk delete failed.");
+        } finally {
+            setIsBulkProcessing(false);
+        }
+    };
+
+    const FiltersComponent = () => (
+        <div className="space-y-6">
+            <div>
+                <label className="text-sm font-medium text-gray-400 mb-2 block uppercase tracking-wide">Date Range</label>
+                <select value={filters.datePreset} onChange={e => setFilters({...filters, datePreset: e.target.value as any})} className="form-select !bg-[#2b3548] border-none !py-3">
+                    {datePresets.map(p => <option key={p.value} value={p.value}>{p.label}</option>)}
+                </select>
+                <div className="mt-2 bg-[#121620] p-3 rounded-lg text-center text-sm font-mono text-gray-500 border border-gray-800/50">
+                    {calculatedRange}
+                </div>
+            </div>
+            {filters.datePreset === 'custom' && (
+                <div className="grid grid-cols-2 gap-4 animate-fade-in">
+                    <div><label className="text-xs text-gray-500 mb-1 block">From</label><input type="date" value={filters.startDate} onChange={e => setFilters({...filters, startDate: e.target.value})} className="form-input !bg-[#2b3548] border-none" /></div>
+                    <div><label className="text-xs text-gray-500 mb-1 block">To</label><input type="date" value={filters.endDate} onChange={e => setFilters({...filters, endDate: e.target.value})} className="form-input !bg-[#2b3548] border-none" /></div>
+                </div>
+            )}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-5">
+                <div>
+                    <label className="text-sm font-medium text-gray-400 mb-2 block uppercase tracking-wide">Team</label>
+                    <select value={filters.team} onChange={e => setFilters({...filters, team: e.target.value})} className="form-select !bg-[#2b3548] border-none !py-3">
+                        <option value="">All Teams</option>
+                        {Array.from(new Set(enrichedOrders.map(o => o.Team))).map(t => <option key={t} value={t}>{t}</option>)}
+                    </select>
+                </div>
+                <div>
+                    <label className="text-sm font-medium text-gray-400 mb-2 block uppercase tracking-wide">User (អ្នកលក់)</label>
+                    <select value={filters.user} onChange={e => setFilters({...filters, user: e.target.value})} className="form-select !bg-[#2b3548] border-none !py-3">
+                        <option value="">All Users</option>
+                        {usersList.map(u => <option key={u.UserName} value={u.UserName}>{u.FullName}</option>)}
+                    </select>
+                </div>
+                <div>
+                    <label className="text-sm font-medium text-gray-400 mb-2 block uppercase tracking-wide">Payment Status</label>
+                    <select value={filters.paymentStatus} onChange={e => setFilters({...filters, paymentStatus: e.target.value})} className="form-select !bg-[#2b3548] border-none !py-3">
+                        <option value="">All Statuses</option>
+                        <option value="Paid">Paid</option>
+                        <option value="Unpaid">Unpaid</option>
+                    </select>
+                </div>
+                <div>
+                    <label className="text-sm font-medium text-gray-400 mb-2 block uppercase tracking-wide">Product</label>
+                    <SearchableProductDropdown products={appData.products} selectedProductName={filters.product} onSelect={val => setFilters({...filters, product: val})} showTagEditor={false} />
+                </div>
+                <div>
+                    <label className="text-sm font-medium text-gray-400 mb-2 block uppercase tracking-wide">Shipping Service</label>
+                    <select value={filters.shippingService} onChange={e => setFilters({...filters, shippingService: e.target.value})} className="form-select !bg-[#2b3548] border-none !py-3">
+                        <option value="">All Services</option>
+                        {appData.shippingMethods?.map(s => <option key={s.MethodName} value={s.MethodName}>{s.MethodName}</option>)}
+                    </select>
+                </div>
+                <div>
+                    <label className="text-sm font-medium text-gray-400 mb-2 block uppercase tracking-wide">Driver</label>
+                    <select value={filters.driver} onChange={e => setFilters({...filters, driver: e.target.value})} className="form-select !bg-[#2b3548] border-none !py-3">
+                        <option value="">All Drivers</option>
+                        {appData.drivers?.map(d => <option key={d.DriverName} value={d.DriverName}>{d.DriverName}</option>)}
+                    </select>
+                </div>
+            </div>
+            <div>
+                <label className="text-sm font-medium text-gray-400 mb-2 block uppercase tracking-wide">Bank Account</label>
+                <select value={filters.bank} onChange={e => setFilters({...filters, bank: e.target.value})} className="form-select !bg-[#2b3548] border-none !py-3">
+                    <option value="">All Bank Accounts</option>
+                    {appData.bankAccounts?.map(b => <option key={b.BankName} value={b.BankName}>{b.BankName}</option>)}
+                </select>
+            </div>
+        </div>
+    );
+
+    if (loading) return <div className="flex h-64 items-center justify-center"><Spinner size="lg" /></div>;
+    if (editingOrderId) {
+        const order = enrichedOrders.find(o => o['Order ID'] === editingOrderId);
+        return order ? <EditOrderPage order={order} onSaveSuccess={() => { setEditingOrderId(''); fetchAllOrders(); refreshData(); }} onCancel={() => setEditingOrderId('')} /> : null;
+    }
+
+    return (
+        <div className="w-full px-2 sm:px-6 lg:px-10 animate-fade-in relative pb-32">
+            <div className="md:hidden"><FilterPanel isOpen={isFilterModalOpen} onClose={() => setIsFilterModalOpen(false)}><FiltersComponent /></FilterPanel></div>
+            <div className="hidden md:block">
+                <Modal isOpen={isFilterModalOpen} onClose={() => setIsFilterModalOpen(false)} maxWidth="max-w-4xl">
+                    <div className="p-6 border-b border-gray-700 flex justify-between items-center bg-[#1a1f2e]"><h2 className="text-2xl font-bold text-white tracking-tight">Filter Orders</h2><button onClick={() => setIsFilterModalOpen(false)} className="text-3xl text-gray-500 hover:text-white">&times;</button></div>
+                    <div className="p-8 bg-[#1a1f2e] max-h-[70vh] overflow-y-auto"><FiltersComponent /></div>
+                    <div className="p-8 border-t border-gray-700 bg-[#1a1f2e] flex justify-center"><button onClick={() => setIsFilterModalOpen(false)} className="btn btn-primary w-full py-4 text-lg font-bold shadow-xl shadow-blue-600/30 active:scale-[0.98] transition-transform">Apply Filters</button></div>
+                </Modal>
+            </div>
+
+            <div className="flex justify-between items-center mb-6">
+                <h1 className="text-2xl font-bold text-white">គ្រប់គ្រងប្រតិបត្តិការណ៍</h1>
+                <button onClick={onBack} className="group flex items-center gap-2 px-6 py-2 bg-gray-800 border border-gray-700 hover:border-blue-500 text-gray-400 hover:text-blue-400 font-black uppercase tracking-widest rounded-xl transition-all shadow-lg active:scale-95">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 transform group-hover:-translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M10 19l-7-7m0 0l7-7m-7 7h18" /></svg>
+                    Back
+                </button>
+            </div>
+
+            <div className="page-card !p-3 mb-6 bg-gray-800/40 border-gray-700/50 relative z-20">
+                <div className="flex flex-col md:flex-row justify-between items-center gap-4">
+                    <div className="relative w-full md:max-w-md">
+                        <input type="text" placeholder="ស្វែងរក ID, ឈ្មោះ, ទូរស័ព្ទ..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="form-input !pl-10 !py-2 bg-gray-900/50" />
+                        <svg className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+                    </div>
+                    <div className="flex gap-2 w-full md:w-auto">
+                        <button onClick={() => setIsFilterModalOpen(true)} className="btn btn-secondary flex-1 md:flex-none !py-2 bg-gray-700 hover:bg-gray-600"><svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" /></svg>Filters</button>
+                        <button onClick={() => setIsPdfModalOpen(true)} className="btn !bg-red-600/80 text-white flex-1 md:flex-none !py-2">Export PDF</button>
+                        <div className="hidden md:block"><ColumnToggler columns={availableColumns} visibleColumns={visibleColumns} onToggle={toggleColumn} /></div>
+                    </div>
+                </div>
+            </div>
+
+            <div className="relative z-10">
+                <OrdersList 
+                    orders={filteredOrders} 
+                    onEdit={o => setEditingOrderId(o['Order ID'])} 
+                    showActions={true} 
+                    visibleColumns={visibleColumns} 
+                    selectedIds={selectedIds}
+                    onToggleSelect={toggleSelection}
+                    onToggleSelectAll={toggleSelectAll}
+                />
+            </div>
+
+            {/* ENHANCED BULK ACTION BAR */}
+            {selectedIds.size > 0 && (
+                <div className="fixed bottom-10 left-1/2 -translate-x-1/2 z-[100] bg-gray-900/95 backdrop-blur-2xl border-t border-x border-blue-500/40 p-4 sm:p-5 rounded-[2.5rem] shadow-[0_30px_100px_rgba(0,0,0,0.8)] flex flex-col items-center gap-4 animate-fade-in-up w-[95vw] max-w-4xl ring-1 ring-white/10">
+                    <div className="flex w-full items-center justify-between border-b border-white/5 pb-3">
+                        <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 bg-blue-600 text-white rounded-2xl flex items-center justify-center font-black text-sm shadow-lg shadow-blue-600/30">
+                                {isBulkProcessing ? <Spinner size="sm" /> : selectedIds.size}
+                            </div>
+                            <div className="text-left">
+                                <p className="text-[11px] font-black text-blue-400 uppercase tracking-widest">Bulk Actions Active</p>
+                                <p className="text-[9px] text-gray-500 font-bold uppercase">គ្រប់គ្រងលើ {selectedIds.size} ប្រតិបត្តិការណ៍</p>
+                            </div>
+                        </div>
+                        <button onClick={() => setSelectedIds(new Set())} className="p-2 hover:bg-white/5 rounded-full text-gray-500 hover:text-white transition-all active:scale-90">
+                            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M6 18L18 6M6 6l12 12" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                        </button>
+                    </div>
+
+                    <div className="flex flex-wrap items-center justify-center gap-2.5 w-full">
+                        <button 
+                            onClick={() => handleBulkUpdate({ 'IsVerified': true }, `តើអ្នកចង់បញ្ជាក់ (Verify) លើការកម្មង់ទាំង ${selectedIds.size} នេះមែនទេ?`)} 
+                            className="px-4 py-2.5 bg-emerald-600 text-white hover:bg-emerald-700 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all flex items-center gap-2 shadow-lg shadow-emerald-900/20 active:scale-95"
+                            disabled={isBulkProcessing}
+                        >
+                            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M5 13l4 4L19 7" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                            Verify
+                        </button>
+                        <button 
+                            onClick={() => handleBulkUpdate({ 'IsVerified': false }, `តើអ្នកចង់បោះបង់ការបញ្ជាក់ (Unverify) លើការកម្មង់ទាំង ${selectedIds.size} នេះមែនទេ?`)} 
+                            className="px-4 py-2.5 bg-gray-700 text-gray-200 hover:bg-gray-600 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all flex items-center gap-2 active:scale-95"
+                            disabled={isBulkProcessing}
+                        >
+                            Unverify
+                        </button>
+                        <div className="w-px h-6 bg-white/10 mx-1"></div>
+                        <button 
+                            onClick={() => setIsBulkCostModalOpen(true)} 
+                            className="px-4 py-2.5 bg-orange-600/20 text-orange-400 hover:bg-orange-600 hover:text-white rounded-xl text-[10px] font-black uppercase tracking-wider transition-all border border-orange-500/20 active:scale-95"
+                            disabled={isBulkProcessing}
+                        >
+                            Cost
+                        </button>
+                        <button 
+                            onClick={() => setIsBulkPaymentModalOpen(true)} 
+                            className="px-4 py-2.5 bg-blue-600/20 text-blue-400 hover:bg-blue-600 hover:text-white rounded-xl text-[10px] font-black uppercase tracking-wider transition-all border border-blue-500/20 active:scale-95"
+                            disabled={isBulkProcessing}
+                        >
+                            Payment
+                        </button>
+                        <button 
+                            onClick={() => setIsBulkShippingModalOpen(true)} 
+                            className="px-4 py-2.5 bg-purple-600/20 text-purple-400 hover:bg-purple-600 hover:text-white rounded-xl text-[10px] font-black uppercase tracking-wider transition-all border border-purple-500/20 active:scale-95"
+                            disabled={isBulkProcessing}
+                        >
+                            Shipping
+                        </button>
+                        <div className="w-px h-6 bg-white/10 mx-1"></div>
+                        <button 
+                            onClick={() => setIsBulkDeleteModalOpen(true)} 
+                            className="px-4 py-2.5 bg-red-600/20 text-red-500 hover:bg-red-600 hover:text-white rounded-xl text-[10px] font-black uppercase tracking-wider transition-all border border-red-500/20 active:scale-95"
+                            disabled={isBulkProcessing}
+                        >
+                            Delete
+                        </button>
+                    </div>
+                    {isBulkProcessing && (
+                        <div className="absolute inset-0 bg-black/20 backdrop-blur-[1px] rounded-[2.5rem] pointer-events-none"></div>
+                    )}
+                </div>
+            )}
+
+            {/* MODALS */}
+            <Modal isOpen={isBulkCostModalOpen} onClose={() => setIsBulkCostModalOpen(false)} maxWidth="max-w-sm">
+                <div className="p-8 bg-[#1a1f2e]">
+                    <div className="text-center mb-8">
+                        <div className="w-14 h-14 bg-orange-600/20 text-orange-500 rounded-2xl flex items-center justify-center mx-auto mb-4 border border-orange-500/20">
+                            <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v.01" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                        </div>
+                        <h3 className="text-xl font-black text-white uppercase tracking-tighter">កែប្រែតម្លៃដឹកដើម (Cost)</h3>
+                        <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest mt-1">អនុវត្តលើ {selectedIds.size} ប្រតិបត្តិការណ៍</p>
+                    </div>
+                    <div className="space-y-4">
+                        <div>
+                            <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest mb-2 block ml-1">តម្លៃថ្មីក្នុងមួយ Order ($)</label>
+                            <div className="relative">
+                                <input 
+                                    type="number" 
+                                    step="0.01"
+                                    value={bulkCostValue} 
+                                    onChange={e => setBulkCostValue(e.target.value)}
+                                    className="form-input bg-black/40 border-gray-700 !py-4 pr-12 text-blue-400 font-black text-lg focus:ring-orange-500/20"
+                                    placeholder="0.00"
+                                />
+                                <span className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 font-black">$</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div className="flex gap-3 mt-10">
+                        <button onClick={() => setIsBulkCostModalOpen(false)} className="px-6 py-4 bg-gray-800 text-gray-400 font-black rounded-2xl uppercase text-[11px] tracking-widest flex-1 hover:bg-gray-700 transition-all">បោះបង់</button>
+                        <button 
+                            onClick={() => { handleBulkUpdate({ 'Internal Cost': Number(bulkCostValue) }); }} 
+                            className="px-6 py-4 bg-orange-600 text-white font-black rounded-2xl uppercase text-[11px] tracking-widest flex-1 shadow-lg shadow-orange-900/20 hover:bg-orange-700 transition-all"
+                            disabled={isBulkProcessing || bulkCostValue === ''}
+                        >
+                            {isBulkProcessing ? <Spinner size="sm" /> : 'រក្សាទុក'}
+                        </button>
+                    </div>
+                </div>
+            </Modal>
+
+            <Modal isOpen={isBulkPaymentModalOpen} onClose={() => setIsBulkPaymentModalOpen(false)} maxWidth="max-w-md">
+                <div className="p-8 bg-[#1a1f2e]">
+                    <div className="text-center mb-8">
+                        <div className="w-14 h-14 bg-blue-600/20 text-blue-500 rounded-2xl flex items-center justify-center mx-auto mb-4 border border-blue-500/20">
+                            <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                        </div>
+                        <h3 className="text-xl font-black text-white uppercase tracking-tighter">កែប្រែព័ត៌មានបង់ប្រាក់</h3>
+                        <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest mt-1">អនុវត្តលើ {selectedIds.size} ប្រតិបត្តិការណ៍</p>
+                    </div>
+                    <div className="space-y-6">
+                        <div>
+                            <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest mb-2 block ml-1">ស្ថានភាព</label>
+                            <select 
+                                value={bulkPaymentStatus} 
+                                onChange={e => setBulkPaymentStatus(e.target.value)}
+                                className="form-select bg-black/40 border-gray-700 !py-4 rounded-2xl font-black"
+                            >
+                                <option value="Paid">ទូទាត់រួច (Paid)</option>
+                                <option value="Unpaid">មិនទាន់ទូទាត់ (Unpaid)</option>
+                            </select>
+                        </div>
+                        {bulkPaymentStatus === 'Paid' && (
+                            <div className="animate-fade-in-down">
+                                <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest mb-2 block ml-1">ធនាគារ / គណនី</label>
+                                <select 
+                                    value={bulkPaymentInfo} 
+                                    onChange={e => setBulkPaymentInfo(e.target.value)}
+                                    className="form-select bg-black/40 border-gray-700 !py-4 rounded-2xl font-black"
+                                >
+                                    <option value="">-- ជ្រើសរើសធនាគារ --</option>
+                                    {appData.bankAccounts?.map((b: any) => (
+                                        <option key={b.BankName} value={b.BankName}>{b.BankName}</option>
+                                    ))}
+                                </select>
+                            </div>
+                        )}
+                    </div>
+                    <div className="flex gap-3 mt-10">
+                        <button onClick={() => setIsBulkPaymentModalOpen(false)} className="px-6 py-4 bg-gray-800 text-gray-400 font-black rounded-2xl uppercase text-[11px] tracking-widest flex-1 hover:bg-gray-700 transition-all">បោះបង់</button>
+                        <button 
+                            onClick={() => { handleBulkUpdate({ 
+                                'Payment Status': bulkPaymentStatus, 
+                                'Payment Info': bulkPaymentStatus === 'Paid' ? bulkPaymentInfo : '' 
+                            }); }} 
+                            className="px-6 py-4 bg-blue-600 text-white font-black rounded-2xl uppercase text-[11px] tracking-widest flex-1 shadow-lg shadow-blue-900/20 hover:bg-blue-700 transition-all"
+                            disabled={isBulkProcessing || (bulkPaymentStatus === 'Paid' && !bulkPaymentInfo)}
+                        >
+                            {isBulkProcessing ? <Spinner size="sm" /> : 'រក្សាទុក'}
+                        </button>
+                    </div>
+                </div>
+            </Modal>
+
+            <Modal isOpen={isBulkShippingModalOpen} onClose={() => setIsBulkShippingModalOpen(false)} maxWidth="max-w-sm">
+                <div className="p-8 bg-[#1a1f2e]">
+                    <div className="text-center mb-8">
+                        <div className="w-14 h-14 bg-purple-600/20 text-purple-500 rounded-2xl flex items-center justify-center mx-auto mb-4 border border-purple-500/20">
+                            <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M13 16V6a1 1 0 00-1-1H4a1 1 0 00-1 1v10a1 1 0 001 1h8a1 1 0 001-1z" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>
+                        </div>
+                        <h3 className="text-xl font-black text-white uppercase tracking-tighter">កែប្រែសេវាដឹក (Bulk)</h3>
+                        <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest mt-1">អនុវត្តលើ {selectedIds.size} ប្រតិបត្តិការណ៍</p>
+                    </div>
+                    <div className="space-y-4">
+                        <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest mb-2 block ml-1">សេវាដឹក</label>
+                        <select 
+                            value={bulkShippingMethod} 
+                            onChange={e => setBulkShippingMethod(e.target.value)}
+                            className="form-select bg-black/40 border-gray-700 !py-4 rounded-2xl font-black"
+                        >
+                            <option value="">-- ជ្រើសរើសសេវាដឹក --</option>
+                            {appData.shippingMethods?.map(m => (
+                                <option key={m.MethodName} value={m.MethodName}>{m.MethodName}</option>
+                            ))}
+                        </select>
+                    </div>
+                    <div className="flex gap-3 mt-10">
+                        <button onClick={() => setIsBulkShippingModalOpen(false)} className="px-6 py-4 bg-gray-800 text-gray-400 font-black rounded-2xl uppercase text-[11px] tracking-widest flex-1 hover:bg-gray-700 transition-all">បោះបង់</button>
+                        <button 
+                            onClick={() => { handleBulkUpdate({ 'Internal Shipping Method': bulkShippingMethod }); }} 
+                            className="px-6 py-4 bg-purple-600 text-white font-black rounded-2xl uppercase text-[11px] tracking-widest flex-1 shadow-lg shadow-purple-900/20 hover:bg-purple-700 transition-all"
+                            disabled={isBulkProcessing || !bulkShippingMethod}
+                        >
+                            {isBulkProcessing ? <Spinner size="sm" /> : 'រក្សាទុក'}
+                        </button>
+                    </div>
+                </div>
+            </Modal>
+
+            <Modal isOpen={isBulkDeleteModalOpen} onClose={() => setIsBulkDeleteModalOpen(false)} maxWidth="max-w-sm">
+                <div className="p-8 bg-[#1a1f2e]">
+                    <div className="flex flex-col items-center text-center mb-8">
+                        <div className="w-16 h-16 bg-red-600/20 text-red-500 rounded-2xl flex items-center justify-center mb-4 border border-red-500/30">
+                            <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
+                        </div>
+                        <h3 className="text-xl font-black text-white uppercase tracking-tighter">បញ្ជាក់ការលុបជាក្រុម</h3>
+                        <p className="text-sm text-gray-500 mt-2 font-medium">តើអ្នកប្រាកដថាចង់លុបប្រតិបត្តិការណ៍ទាំង <span className="text-red-500 font-black">{selectedIds.size}</span> នេះមែនទេ? សកម្មភាពនេះមិនអាចត្រឡប់វិញបានឡើយ។</p>
+                    </div>
+                    
+                    <div className="space-y-4">
+                        <div>
+                            <label className="text-[10px] font-black text-gray-500 uppercase tracking-[0.2em] mb-2 block text-center">បញ្ចូលលេខសម្ងាត់ដើម្បីបន្ត</label>
+                            <input 
+                                type="password" 
+                                value={bulkDeletePassword} 
+                                onChange={e => setBulkDeletePassword(e.target.value)} 
+                                className="form-input bg-black/40 border-gray-700 text-center text-lg tracking-[0.3em] font-black focus:ring-red-500/20 focus:border-red-500 !py-4 rounded-2xl" 
+                                placeholder="••••••••"
+                            />
+                        </div>
+                    </div>
+
+                    <div className="flex gap-3 mt-10">
+                        <button onClick={() => setIsBulkDeleteModalOpen(false)} className="px-6 py-4 bg-gray-800 text-gray-400 font-black rounded-2xl uppercase text-[11px] tracking-widest flex-1 hover:bg-gray-700 transition-all" disabled={isBulkProcessing}>បោះបង់</button>
+                        <button 
+                            onClick={() => { handleBulkDelete(); }} 
+                            className="px-6 py-4 bg-red-600 text-white font-black rounded-2xl uppercase text-[11px] tracking-widest flex-1 shadow-lg shadow-red-900/20 hover:bg-red-700 transition-all" 
+                            disabled={isBulkProcessing || !bulkDeletePassword}
+                        >
+                            {isBulkProcessing ? <Spinner size="sm" /> : 'លុបចេញ'}
+                        </button>
+                    </div>
+                </div>
+            </Modal>
+
+            {isPdfModalOpen && <PdfExportModal isOpen={isPdfModalOpen} onClose={() => setIsPdfModalOpen(false)} orders={filteredOrders} />}
+        </div>
+    );
+};
+
+export default OrdersDashboard;

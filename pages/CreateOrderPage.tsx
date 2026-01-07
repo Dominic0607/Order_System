@@ -7,6 +7,7 @@ import { WEB_APP_URL } from '../constants';
 import Modal from '../components/common/Modal';
 import { convertGoogleDriveUrl } from '../utils/fileUtils';
 import SearchableProductDropdown from '../components/common/SearchableProductDropdown';
+import PageDropdown from '../components/common/PageDropdown';
 import SearchablePageDropdown from '../components/common/SearchablePageDropdown';
 import SearchableShippingMethodDropdown from '../components/common/SearchableShippingMethodDropdown';
 import MapModal from '../components/orders/MapModal';
@@ -23,8 +24,8 @@ interface CreateOrderPageProps {
 type ProductUIState = ProductType & {
     discountType: 'percent' | 'amount' | 'custom';
     discountAmountInput: string; 
-    discountPercentInput: string;  
-    finalPriceInput: string; 
+    discountPercentInput: string; 
+    finalPriceInput: string;
     applyDiscountToTotal: boolean;
 }
 
@@ -62,6 +63,7 @@ const CreateOrderPage: React.FC<CreateOrderPageProps> = ({ team, onSaveSuccess, 
         page: '',
         telegramValue: '',
         fulfillmentStore: '',
+        pageSelectMode: 'cards', // 'cards' or 'search'
         customer: { name: '', phone: '', province: '', district: '', sangkat: '', additionalLocation: '', shippingFee: '' },
         products: [{...initialProductState, id: Date.now()}],
         shipping: { method: '', details: '', cost: '' },
@@ -139,7 +141,7 @@ const CreateOrderPage: React.FC<CreateOrderPageProps> = ({ team, onSaveSuccess, 
     useEffect(() => {
         if (teamPages.length === 1 && !order.page) {
             const pageData = teamPages[0];
-            setOrder((prev: any) => ({ ...prev, page: pageData.PageName, telegramValue: pageData.TelegramValue, fulfillmentStore: pageData.DefaultStore || prev.fulfillmentStore }));
+            setOrder((prev: any) => ({ ...prev, page: pageData.PageName, telegramValue: pageData.TelegramValue, fulfillmentStore: pageData.DefaultStore || order.fulfillmentStore }));
         }
     }, [teamPages, order.page]);
 
@@ -301,7 +303,8 @@ const CreateOrderPage: React.FC<CreateOrderPageProps> = ({ team, onSaveSuccess, 
         let sv = value;
         if (name === 'cost') {
             if (sv.startsWith('0') && sv.length > 1 && !sv.startsWith('0.')) sv = String(parseFloat(sv));
-            sv = String(Math.max(0, parseFloat(sv) || 0)); 
+            const numericValue = parseFloat(sv) || 0;
+            sv = String(Math.max(0, numericValue)); 
         }
         setOrder((prev: any) => ({ ...prev, shipping: { ...prev.shipping, [name]: sv } }));
     };
@@ -410,19 +413,55 @@ const CreateOrderPage: React.FC<CreateOrderPageProps> = ({ team, onSaveSuccess, 
                     <fieldset className="border border-gray-600 p-3 sm:p-4 rounded-lg animate-fade-in space-y-6">
                         <legend className="px-2 text-base sm:text-lg font-semibold text-blue-300">ព័ត៌មានអតិថិជន & Page</legend>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <div className="space-y-4">
-                                <div>
-                                    <label className="input-label font-black text-xs uppercase tracking-widest text-gray-500 mb-2 block">Facebook Page*</label>
-                                    <SearchablePageDropdown 
-                                        pages={teamPages} 
-                                        selectedPageName={order.page} 
-                                        onSelect={(pageData) => setOrder({ 
-                                            ...order, 
-                                            page: pageData.PageName, 
-                                            telegramValue: pageData.TelegramValue, 
-                                            fulfillmentStore: pageData.DefaultStore || order.fulfillmentStore 
-                                        })} 
-                                    />
+                            <div className="md:col-span-2 space-y-4">
+                                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                                    <label className="input-label font-black text-xs uppercase tracking-widest text-gray-500 mb-0 block">Facebook Page*</label>
+                                    
+                                    {/* UI Style Toggle */}
+                                    <div className="flex bg-gray-900/80 p-1 rounded-xl border border-gray-700">
+                                        <button 
+                                            type="button"
+                                            onClick={() => setOrder({ ...order, pageSelectMode: 'cards' })}
+                                            className={`px-3 py-1.5 text-[10px] font-black uppercase rounded-lg transition-all flex items-center gap-2 ${order.pageSelectMode === 'cards' ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/20' : 'text-gray-500 hover:text-gray-300'}`}
+                                        >
+                                            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                                            Card View
+                                        </button>
+                                        <button 
+                                            type="button"
+                                            onClick={() => setOrder({ ...order, pageSelectMode: 'search' })}
+                                            className={`px-3 py-1.5 text-[10px] font-black uppercase rounded-lg transition-all flex items-center gap-2 ${order.pageSelectMode === 'search' ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/20' : 'text-gray-500 hover:text-gray-300'}`}
+                                        >
+                                            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                                            Search View
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <div className="animate-fade-in-down">
+                                    {order.pageSelectMode === 'cards' ? (
+                                        <PageDropdown 
+                                            pages={teamPages} 
+                                            selectedPageName={order.page} 
+                                            onSelect={(pageData) => setOrder({ 
+                                                ...order, 
+                                                page: pageData.PageName, 
+                                                telegramValue: pageData.TelegramValue, 
+                                                fulfillmentStore: pageData.DefaultStore || order.fulfillmentStore 
+                                            })} 
+                                        />
+                                    ) : (
+                                        <SearchablePageDropdown 
+                                            pages={teamPages}
+                                            selectedPageName={order.page}
+                                            onSelect={(pageData) => setOrder({ 
+                                                ...order, 
+                                                page: pageData.PageName, 
+                                                telegramValue: pageData.TelegramValue, 
+                                                fulfillmentStore: pageData.DefaultStore || order.fulfillmentStore 
+                                            })}
+                                        />
+                                    )}
                                 </div>
                             </div>
 
@@ -476,10 +515,29 @@ const CreateOrderPage: React.FC<CreateOrderPageProps> = ({ team, onSaveSuccess, 
                             <div className="md:col-span-2">
                                 <label className="input-label font-black text-[10px] uppercase text-gray-500 tracking-widest mb-2 block">ថ្លៃសេវាដឹកជញ្ជូន</label>
                                 <div className="flex gap-3 mb-3">
-                                    <button type="button" onClick={() => handleShippingOptionChange('charge')} className={`flex-1 py-3 px-4 rounded-xl text-xs font-black uppercase transition-all border ${shippingFeeOption === 'charge' ? 'bg-blue-600 border-blue-500 text-white shadow-lg shadow-blue-600/20 active:scale-95' : 'bg-gray-800 border-gray-700 text-gray-500 hover:text-gray-300'}`}>គិតថ្លៃសេវា</button>
-                                    <button type="button" onClick={() => handleShippingOptionChange('free')} className={`flex-1 py-3 px-4 rounded-xl text-xs font-black uppercase transition-all border ${shippingFeeOption === 'free' ? 'bg-emerald-600 border-emerald-500 text-white shadow-lg shadow-emerald-600/20 active:scale-95' : 'bg-gray-800 border-gray-700 text-gray-500 hover:text-gray-300'}`}>មិនគិតថ្លៃសេវា</button>
+                                    <button type="button" onClick={() => handleShippingOptionChange('charge')} className={`flex-1 py-3 px-4 rounded-xl text-xs font-black uppercase transition-all border ${shippingFeeOption === 'charge' ? 'bg-blue-600 border-blue-500 text-white shadow-lg shadow-blue-600/20' : 'bg-gray-800 border-gray-700 text-gray-500 hover:text-gray-300'}`}>គិតថ្លៃសេវា</button>
+                                    <button type="button" onClick={() => handleShippingOptionChange('free')} className={`flex-1 py-3 px-4 rounded-xl text-xs font-black uppercase transition-all border ${shippingFeeOption === 'free' ? 'bg-emerald-600 border-emerald-500 text-white shadow-lg shadow-emerald-600/20' : 'bg-gray-800 border-gray-700 text-gray-500 hover:text-gray-300'}`}>មិនគិតថ្លៃសេវា</button>
                                 </div>
-                                {shippingFeeOption === 'charge' && <input type="number" min="0" name="shippingFee" value={order.customer.shippingFee} placeholder="តម្លៃដឹកជញ្ជូន (ឧ. 1.5)*" className="form-input !py-3 rounded-xl border-gray-700 bg-gray-900" onChange={handleCustomerChange} required />}
+                                {shippingFeeOption === 'charge' && (
+                                    <div className="space-y-3 animate-fade-in">
+                                        <input type="number" min="0" name="shippingFee" value={order.customer.shippingFee} placeholder="តម្លៃដឹកជញ្ជូន (ឧ. 1.5)*" className="form-input !py-3 rounded-xl border-gray-700 bg-gray-900" onChange={handleCustomerChange} required />
+                                        <div className="flex gap-2">
+                                            {[1, 1.5, 2].map(fee => {
+                                                const isActive = parseFloat(order.customer.shippingFee) === fee;
+                                                return (
+                                                    <button 
+                                                        key={fee} 
+                                                        type="button" 
+                                                        onClick={() => handleCustomerChange({ target: { name: 'shippingFee', value: String(fee) } } as any)}
+                                                        className={`flex-1 py-2 border font-black rounded-xl text-xs transition-all active:scale-95 ${isActive ? 'bg-blue-600 border-blue-500 text-white shadow-lg shadow-blue-600/20' : 'bg-gray-800 border-gray-700 text-gray-400 hover:text-gray-200'}`}
+                                                    >
+                                                        ${fee}
+                                                    </button>
+                                                );
+                                            })}
+                                        </div>
+                                    </div>
+                                )}
                             </div>
                         </div>
                     </fieldset>
@@ -531,7 +589,30 @@ const CreateOrderPage: React.FC<CreateOrderPageProps> = ({ team, onSaveSuccess, 
                 return (
                     <fieldset className="border border-gray-600 p-3 sm:p-4 rounded-lg animate-fade-in space-y-4 sm:space-y-6"><legend className="px-2 text-base sm:text-lg font-semibold text-blue-300">ដឹកជញ្ជូន</legend><div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
                             <div className="space-y-1.5"><label className="input-label font-black text-[10px] uppercase text-gray-500 tracking-widest mb-2 block">វិធីសាស្រ្តដឹកជញ្ជូន*</label><SearchableShippingMethodDropdown methods={appData.shippingMethods || []} selectedMethodName={order.shipping.method} onSelect={handleShippingMethodSelect} /></div>
-                            <div className="space-y-1.5"><label className="input-label font-black text-[10px] uppercase text-gray-500 tracking-widest mb-2 block">ថ្លៃសេវាឲ្យអ្នកដឹក (Cost)*</label><div className="relative"><input type="number" min="0" name="cost" placeholder="0.00" value={order.shipping.cost} className="form-input !py-3 rounded-xl bg-gray-900 border-gray-700 text-blue-400 font-black pr-12" onChange={handleShippingChange} required /><span className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 font-bold">$</span></div></div>
+                            <div className="space-y-1.5">
+                                <label className="input-label font-black text-[10px] uppercase text-gray-500 tracking-widest mb-2 block">ថ្លៃសេវាឲ្យអ្នកដឹក (Cost)*</label>
+                                <div className="space-y-3">
+                                    <div className="relative">
+                                        <input type="number" min="0" step="0.01" name="cost" placeholder="0.00" value={order.shipping.cost} className="form-input !py-3 rounded-xl bg-gray-900 border-gray-700 text-blue-400 font-black pr-12" onChange={handleShippingChange} required />
+                                        <span className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 font-bold">$</span>
+                                    </div>
+                                    <div className="flex gap-2">
+                                        {[1.25, 1.5, 2].map(cost => {
+                                            const isActive = parseFloat(order.shipping.cost) === cost;
+                                            return (
+                                                <button 
+                                                    key={cost} 
+                                                    type="button" 
+                                                    onClick={() => handleShippingChange({ target: { name: 'cost', value: String(cost) } } as any)}
+                                                    className={`flex-1 py-2 border font-black rounded-xl text-xs transition-all active:scale-95 ${isActive ? 'bg-blue-600 border-blue-500 text-white shadow-lg shadow-blue-600/20' : 'bg-gray-800 border-gray-700 text-gray-400 hover:text-gray-200'}`}
+                                                >
+                                                    ${cost}
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+                            </div>
                             {selectedShippingMethod?.RequireDriverSelection && (
                                 <div className="md:col-span-2 space-y-3 sm:space-y-4"><div className="flex items-center gap-2 px-1"><div className="h-4 w-1 bg-blue-500 rounded-full"></div><label className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">ជ្រើសរើសអ្នកដឹក (DriverSelection)*</label></div><div className="grid grid-cols-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2 sm:gap-4">
                                         {appData.drivers?.map((d: Driver) => {
@@ -549,7 +630,7 @@ const CreateOrderPage: React.FC<CreateOrderPageProps> = ({ team, onSaveSuccess, 
                         <div><h3 className="text-[10px] font-black text-gray-500 uppercase tracking-widest mb-2 sm:mb-3 flex items-center gap-2"><span className="w-1.5 h-1.5 rounded-full bg-blue-500"></span> ព័ត៌មានអតិថិជន</h3><div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4 bg-gray-900/60 p-3 sm:p-5 rounded-2xl sm:rounded-3xl border border-white/5 shadow-inner"><div className="space-y-1"><p className="text-[9px] text-gray-500 font-bold uppercase">Customer Info</p><p className="text-white font-black text-base sm:text-lg">{order.customer.name}</p><div className="flex items-center gap-2"><p className="text-blue-400 font-bold font-mono text-sm">{order.customer.phone}</p>{carrierLogo && <img src={carrierLogo} className="h-4 sm:h-5 w-auto object-contain" alt="Carrier" />}</div></div><div className="space-y-1 md:text-right"><p className="text-[9px] text-gray-500 font-bold uppercase">Location / Store</p><p className="text-gray-200 font-bold text-xs sm:text-sm leading-tight">{`${order.customer.additionalLocation}, ${order.customer.sangkat}, ${order.customer.district}, ${order.customer.province}`.replace(/^,|,$/g, '').trim()}</p><p className="text-purple-400 font-black text-[9px] uppercase tracking-wider">Fulfillment: {order.fulfillmentStore}</p></div></div></div>
                         <div><h3 className="text-[10px] font-black text-gray-500 uppercase tracking-widest mb-2 sm:mb-3 flex items-center gap-2"><span className="w-1.5 h-1.5 rounded-full bg-orange-500"></span> ព័ត៌មានដឹកជញ្ជូន</h3><div className="bg-gray-900/40 p-3 sm:p-5 rounded-2xl sm:rounded-3xl border border-white/5 shadow-inner grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6"><div className="space-y-1"><p className="text-[9px] text-gray-500 font-bold uppercase">Shipping Method</p><div className="flex items-center gap-2">{shippingLogo && <img src={shippingLogo} className="h-4 sm:h-5 w-auto object-contain" alt="Logo" />}<p className="text-white font-black text-xs sm:text-sm">{order.shipping.method}</p></div></div><div className="space-y-1"><p className="text-[9px] text-gray-500 font-bold uppercase">Driver / Details</p><div className="flex items-center gap-2">{selectedDriver && (<img src={convertGoogleDriveUrl(selectedDriver.ImageURL)} className="h-6 w-6 sm:h-8 sm:w-8 rounded-full object-cover border border-gray-700 cursor-pointer active:scale-95 transition-transform" alt="Driver" onClick={() => previewImage(convertGoogleDriveUrl(selectedDriver.ImageURL))} />)}<p className="text-white font-bold text-xs sm:text-sm">{order.shipping.details || 'N/A'}</p></div></div><div className="space-y-1 sm:text-right"><p className="text-[9px] text-gray-500 font-bold uppercase">Internal Cost ($)</p><p className="text-orange-400 font-black text-base sm:text-lg font-mono">${(Number(order.shipping.cost) || 0).toFixed(2)}</p></div></div></div>
                         <div><h3 className="text-[10px] font-black text-gray-500 uppercase tracking-widest mb-2 sm:mb-3 flex items-center gap-2"><span className="w-1.5 h-1.5 rounded-full bg-blue-500"></span> បញ្ជីទំនិញកុម្ម៉ង់</h3><div className="space-y-2 sm:space-y-3">{order.products.map((p: any) => (<div key={p.id} className="flex items-center gap-3 sm:gap-4 bg-gray-900/40 p-2 sm:p-3 rounded-xl sm:rounded-2xl border border-white/5 group hover:border-blue-500/30 transition-all"><div className="w-12 h-12 sm:w-16 sm:h-16 bg-gray-800 rounded-lg sm:rounded-xl overflow-hidden border border-gray-700 flex-shrink-0 relative"><img src={convertGoogleDriveUrl(p.image)} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" alt={p.name} /></div><div className="flex-grow min-w-0"><div className="flex justify-between items-start mb-0.5 sm:mb-1"><h4 className="text-white font-black text-xs sm:text-sm truncate leading-tight">{p.name}</h4><div className="flex gap-1.5"><span className="bg-blue-600/10 text-blue-400 text-[9px] sm:text-[10px] font-black px-1.5 sm:px-2.5 py-0.5 sm:py-1 rounded-lg border border-blue-500/20">x{p.quantity}</span></div></div><div className="flex items-center gap-2 sm:gap-3">{p.colorInfo && (<span className="text-[9px] bg-purple-500/10 text-purple-400 px-1.5 py-0.5 rounded-md font-bold">{p.colorInfo}</span>)}<p className="text-[9px] text-gray-500 font-bold uppercase tracking-tight"><span>${(p.finalPrice || 0).toFixed(2)}</span> / unit</p></div></div><div className="text-right"><p className="text-white font-black text-sm sm:text-base tracking-tight">${(p.total || 0).toFixed(2)}</p><p className="text-[8px] text-gray-600 font-bold uppercase">Subtotal</p></div></div>))}</div></div>
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4"><div className="bg-gray-900/40 p-3 sm:p-4 rounded-xl sm:rounded-2xl border border-white/5 text-center"><p className="text-[8px] sm:text-[9px] text-gray-500 font-black uppercase mb-1">សរុបទំនិញ</p><p className="text-white font-black text-base sm:text-lg">${(order.subtotal || 0).toFixed(2)}</p></div><div className="bg-gray-900/40 p-3 sm:p-4 rounded-xl sm:rounded-2xl border border-white/5 text-center"><p className="text-[8px] sm:text-[9px] text-gray-500 font-black uppercase mb-1">សេវាដឹក</p><p className="text-white font-black text-base sm:text-lg">${(Number(order.customer.shippingFee) || 0).toFixed(2)}</p></div><div className="col-span-2 bg-blue-600/10 p-3 sm:p-4 rounded-xl sm:rounded-2xl border border-blue-500/20 text-center shadow-lg shadow-blue-900/20"><p className="text-[9px] sm:text-[10px] text-blue-400 font-black uppercase mb-1 tracking-widest">សរុបរួម (Grand Total)</p><p className="text-white font-black text-2xl sm:text-3xl tracking-tighter">${(order.grandTotal || 0).toFixed(2)}</p></div></div>
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4"><div className="bg-gray-900/40 p-3 sm:p-4 rounded-xl sm:rounded-2xl border border-white/5 text-center"><p className="text-[8px] sm:text-[9px] text-gray-500 font-black uppercase mb-1">សរុបទំនិញ</p><p className="text-white font-black text-base sm:text-lg">${(order.subtotal || 0).toFixed(2)}</p></div><div className="bg-gray-900/40 p-3 sm:p-4 rounded-xl sm:rounded-2xl border border-white/5 text-center"><p className="text-[8px] sm:text-[9px] text-gray-500 font-black uppercase mb-1">សេវាដឹក</p><p className="text-white font-black text-base sm:text-lg">${(Number(order.customer.shippingFee) || 0).toFixed(2)}</p></div><div className="col-span-2 bg-blue-600/10 p-3 sm:p-4 rounded-xl sm:rounded-2xl border border-blue-500/20 text-center shadow-lg shadow-blue-900/10"><p className="text-[9px] sm:text-[10px] text-blue-400 font-black uppercase mb-1 tracking-widest">សរុបរួម (Grand Total)</p><p className="text-white font-black text-2xl sm:text-3xl tracking-tighter">${(order.grandTotal || 0).toFixed(2)}</p></div></div>
                         <fieldset className="border border-gray-700 p-4 sm:p-6 rounded-2xl sm:rounded-3xl bg-gray-900/20"><legend className="px-3 text-[10px] sm:text-xs font-black text-blue-400 uppercase tracking-[0.2em]">ស្ថានភាពទូទាត់</legend><div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4"><select value={order.payment.status} onChange={(e) => setOrder({...order, payment: {...order.payment, status: e.target.value, info: ''}})} className="form-select bg-gray-800 text-sm"><option value="Unpaid">មិនទាន់ទូទាត់ (COD)</option><option value="Paid">ទូទាត់រួច (Paid)</option></select>{order.payment.status === 'Paid' && (<div className="flex items-center gap-2 sm:gap-3 animate-fade-in"><select value={order.payment.info} onChange={(e) => handleBankChange(e.target.value)} className="form-select bg-gray-800 flex-grow text-sm"><option value="">ជ្រើសរើសធនាគារ</option>{appData.bankAccounts?.map((b: any) => <option key={b.BankName} value={b.BankName}>{b.BankName}</option>)}</select>{bankLogo && <img src={bankLogo} className="h-8 w-12 sm:h-10 sm:w-16 object-contain bg-white/10 p-1 rounded-lg sm:rounded-xl active:scale-95 transition-transform" alt="bank" />}</div>)}</div></fieldset>
                         
                         {/* Telegram Scheduling Component */}

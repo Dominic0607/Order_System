@@ -10,11 +10,10 @@ import { useUrlState } from '../hooks/useUrlState';
 
 type DateRangePreset = 'today' | 'yesterday' | 'this_week' | 'this_month' | 'custom';
 
-const UserOrdersView: React.FC<{ team: string }> = ({ team }) => {
+const UserOrdersView: React.FC<{ team: string; onAdd: () => void }> = ({ team, onAdd }) => {
     const [orders, setOrders] = useState<ParsedOrder[]>([]);
     const [globalOrders, setGlobalOrders] = useState<ParsedOrder[]>([]);
     const [loading, setLoading] = useState(true);
-    const [error, setError] = useState('');
     const [searchQuery, setSearchQuery] = useState('');
     
     const [dateRange, setDateRange] = useState<DateRangePreset>('this_month');
@@ -28,7 +27,6 @@ const UserOrdersView: React.FC<{ team: string }> = ({ team }) => {
     useEffect(() => {
         const fetchOrders = async () => {
             setLoading(true);
-            setError('');
             try {
                 const response = await fetch(`${WEB_APP_URL}/api/admin/all-orders`);
                 const result = await response.json();
@@ -44,7 +42,7 @@ const UserOrdersView: React.FC<{ team: string }> = ({ team }) => {
                     const teamOnly = allParsed.filter(o => (o.Team || '').trim() === (team || '').trim());
                     setOrders(teamOnly.sort((a, b) => new Date(b.Timestamp).getTime() - new Date(a.Timestamp).getTime()));
                 }
-            } catch (err: any) { setError(err.message); } finally { setLoading(false); }
+            } catch (err: any) { console.error(err); } finally { setLoading(false); }
         };
         fetchOrders();
     }, [team]);
@@ -77,10 +75,9 @@ const UserOrdersView: React.FC<{ team: string }> = ({ team }) => {
 
             if (searchQuery.trim()) {
                 const q = searchQuery.toLowerCase();
-                const match = o['Order ID'].toLowerCase().includes(q) || 
-                              (o['Customer Name'] || '').toLowerCase().includes(q) || 
-                              (o['Customer Phone'] || '').includes(q);
-                if (!match) return false;
+                return o['Order ID'].toLowerCase().includes(q) || 
+                       (o['Customer Name'] || '').toLowerCase().includes(q) || 
+                       (o['Customer Phone'] || '').includes(q);
             }
             return true;
         });
@@ -92,20 +89,17 @@ const UserOrdersView: React.FC<{ team: string }> = ({ team }) => {
 
     const topTeams = useMemo(() => {
         const { start, end } = getDateBounds(dateRange);
-        
         const periodOrders = globalOrders.filter(o => {
             const orderDate = new Date(o.Timestamp);
             if (start && orderDate < start) return false;
             if (end && orderDate > end) return false;
             return true;
         });
-
         const teamStats: Record<string, number> = {};
         periodOrders.forEach(o => {
             const tName = (o.Team || 'Unassigned').trim();
             teamStats[tName] = (teamStats[tName] || 0) + (Number(o['Grand Total']) || 0);
         });
-
         return Object.entries(teamStats)
             .map(([name, revenue]) => ({ name, revenue }))
             .sort((a, b) => b.revenue - a.revenue)
@@ -118,101 +112,137 @@ const UserOrdersView: React.FC<{ team: string }> = ({ team }) => {
             case 'yesterday': return 'ម្សិលមិញ';
             case 'this_week': return 'សប្តាហ៍នេះ';
             case 'this_month': return 'ខែនេះ';
-            case 'custom': return `${customStart} ដល់ ${customEnd}`;
+            case 'custom': return `តាមកំណត់`;
             default: return '';
         }
-    }, [dateRange, customStart, customEnd]);
+    }, [dateRange]);
 
-    if (loading) return <div className="flex justify-center items-center h-64"><Spinner size="lg"/></div>;
+    if (loading) return (
+        <div className="flex flex-col justify-center items-center h-96 gap-4">
+            <Spinner size="lg" />
+            <p className="text-[10px] font-black text-blue-500 uppercase tracking-[0.4em] animate-pulse">Initializing Data Stream...</p>
+        </div>
+    );
 
     return (
-        <div className="space-y-6 flex flex-col min-h-[2000px]">
-            <div className="flex items-center gap-2 px-1">
-                <div className="h-6 w-1.5 bg-yellow-500 rounded-full shadow-[0_0_10px_rgba(234,179,8,0.3)]"></div>
-                <h3 className="text-sm font-black text-white uppercase tracking-wider">
-                    ចំណាត់ថ្នាក់លក់បានច្រើនជាងគេ ({dateRange === 'custom' ? 'តាមកាលបរិច្ឆេទកំណត់' : periodLabel})
-                </h3>
+        <div className="space-y-6 flex flex-col min-h-screen">
+            <style>{`
+                .hide-scrollbar::-webkit-scrollbar { display: none; }
+                .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+            `}</style>
+
+            {/* Top Teams Horizontal Scroll */}
+            <div className="space-y-4">
+                <div className="flex items-center justify-between px-2">
+                    <div className="flex items-center gap-2">
+                        <div className="w-1 h-5 bg-blue-500 rounded-full"></div>
+                        <h3 className="text-xs font-black text-white uppercase tracking-widest">តារាងក្រុមឆ្នើម</h3>
+                    </div>
+                    <span className="text-[10px] font-black text-gray-500 uppercase">{periodLabel}</span>
+                </div>
+
+                <div className="flex overflow-x-auto gap-4 px-2 pb-4 hide-scrollbar snap-x">
+                    {topTeams.map((t, i) => (
+                        <div key={t.name} className="flex-shrink-0 w-[240px] sm:w-[300px] snap-center bg-gray-900/60 backdrop-blur-xl border border-white/5 p-5 rounded-[2rem] flex items-center gap-4 relative overflow-hidden">
+                            <div className={`w-12 h-12 rounded-xl flex items-center justify-center text-2xl border ${
+                                i === 0 ? 'bg-yellow-500/20 text-yellow-500 border-yellow-500/30' : 
+                                i === 1 ? 'bg-gray-400/20 text-gray-300 border-gray-400/30' : 
+                                'bg-orange-600/20 text-orange-500 border-orange-600/30'
+                            }`}>
+                                {i === 0 ? '🥇' : i === 1 ? '🥈' : '🥉'}
+                            </div>
+                            <div className="min-w-0 flex-1">
+                                <h4 className="text-sm font-black text-white truncate uppercase tracking-tighter">{t.name}</h4>
+                                <p className="text-lg font-black text-blue-400">${t.revenue.toLocaleString(undefined, { maximumFractionDigits: 0 })}</p>
+                            </div>
+                            <div className={`absolute -right-4 -bottom-4 w-20 h-20 rounded-full blur-3xl opacity-10 ${
+                                i === 0 ? 'bg-yellow-500' : i === 1 ? 'bg-gray-400' : 'bg-orange-600'
+                            }`}></div>
+                        </div>
+                    ))}
+                </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                {topTeams.length > 0 ? topTeams.map((t, i) => (
-                    <div key={t.name} className="relative overflow-hidden bg-gray-800/40 border border-white/5 p-4 rounded-2xl flex items-center gap-4 transition-all duration-500 hover:bg-gray-800/60 shadow-xl">
-                        <div className={`w-10 h-10 rounded-full flex items-center justify-center text-xl shadow-lg ${
-                            i === 0 ? 'bg-yellow-500/20 text-yellow-500 border border-yellow-500/50' : 
-                            i === 1 ? 'bg-gray-400/20 text-gray-300 border border-gray-400/50' : 
-                            'bg-orange-600/20 text-orange-500 border border-orange-600/50'
-                        }`}>
-                            {i === 0 ? '🥇' : i === 1 ? '🥈' : '🥉'}
-                        </div>
-                        <div className="min-w-0 flex-1">
-                            <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest">TOP {i+1} TEAM</p>
-                            <h4 className="text-sm font-black text-white truncate">{t.name}</h4>
+            {/* Compact Dashboard Filters */}
+            <div className="bg-gray-900/60 backdrop-blur-3xl p-4 rounded-[2rem] border border-white/5 space-y-4 shadow-2xl mx-1">
+                <div className="flex flex-col gap-4">
+                    <div className="flex items-center gap-1 overflow-x-auto hide-scrollbar bg-black/40 p-1 rounded-xl border border-white/5">
+                        {(['today', 'this_week', 'this_month', 'custom'] as const).map(p => (
+                            <button 
+                                key={p} 
+                                onClick={() => setDateRange(p)} 
+                                className={`flex-shrink-0 px-4 py-2 text-[10px] font-black uppercase rounded-lg transition-all ${dateRange === p ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/40' : 'text-gray-500'}`}
+                            >
+                                {p === 'today' ? 'ថ្ងៃនេះ' : p === 'this_week' ? 'សប្តាហ៍នេះ' : p === 'this_month' ? 'ខែនេះ' : 'កំណត់'}
+                            </button>
+                        ))}
+                    </div>
+
+                    <div className="flex items-center justify-between px-2">
+                         <div className="flex flex-col">
+                            <span className="text-[9px] font-black text-gray-500 uppercase tracking-widest">ប្រតិបត្តិការណ៍</span>
+                            <span className="text-lg font-black text-white">{filteredOrders.length} <span className="text-[10px] text-gray-600 italic">Orders</span></span>
                         </div>
                         <div className="text-right">
-                            <p className="text-blue-400 font-black">${t.revenue.toLocaleString(undefined, { maximumFractionDigits: 0 })}</p>
-                        </div>
-                    </div>
-                )) : (
-                    <div className="col-span-full py-4 text-center bg-gray-800/20 rounded-2xl border border-dashed border-gray-700">
-                        <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">មិនទាន់មានទិន្នន័យលក់</p>
-                    </div>
-                )}
-            </div>
-
-            <div className="bg-gray-900/40 p-4 rounded-2xl border border-gray-700 space-y-4">
-                <div className="flex flex-col sm:flex-row gap-4 justify-between items-start sm:items-center">
-                    <div className="relative w-full sm:max-w-xs">
-                        <input type="text" placeholder="ស្វែងរក ID, ឈ្មោះ..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="form-input !pl-10 w-full !py-2 bg-gray-900/60" />
-                        <svg className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>
-                    </div>
-                    
-                    <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto">
-                        <div className="bg-blue-600/10 px-4 py-2 rounded-xl border border-blue-500/20 hidden sm:block">
-                            <p className="text-[9px] font-black text-blue-400 uppercase tracking-widest leading-none mb-1">សរុបលក់បាន ({dateRange === 'custom' ? 'កំណត់' : periodLabel})</p>
-                            <p className="text-lg font-black text-white leading-none">${totalFilteredRevenue.toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
-                        </div>
-
-                        <div className="flex items-center gap-1 bg-gray-800/80 p-1 rounded-lg border border-gray-700">
-                            {(['today', 'this_week', 'this_month', 'custom'] as const).map(p => (
-                                <button key={p} onClick={() => setDateRange(p)} className={`px-3 py-1.5 text-[10px] font-bold uppercase rounded-md transition-all ${dateRange === p ? 'bg-blue-600 text-white shadow-md' : 'text-gray-500 hover:text-gray-300'}`}>
-                                    {p === 'today' ? 'ថ្ងៃនេះ' : p === 'this_week' ? 'សប្តាហ៍នេះ' : p === 'this_month' ? 'ខែនេះ' : 'កំណត់'}
-                                </button>
-                            ))}
+                            <span className="text-[9px] font-black text-blue-500 uppercase tracking-widest">ទឹកប្រាក់សរុប</span>
+                            <p className="text-xl font-black text-transparent bg-clip-text bg-gradient-to-r from-white via-blue-200 to-blue-400">
+                                ${totalFilteredRevenue.toLocaleString(undefined, { minimumFractionDigits: 0 })}
+                            </p>
                         </div>
                     </div>
                 </div>
 
                 {dateRange === 'custom' && (
-                    <div className="flex flex-wrap items-center gap-4 pt-3 border-t border-gray-800 animate-fade-in-down">
-                        <div className="flex items-center gap-2">
-                            <span className="text-[10px] font-black text-gray-500 uppercase tracking-widest">ចាប់ពី</span>
-                            <input type="date" value={customStart} onChange={e => setCustomStart(e.target.value)} className="form-input !py-1.5 !px-3 bg-gray-800 border-gray-700 text-xs rounded-xl" />
-                        </div>
-                        <div className="flex items-center gap-2">
-                            <span className="text-[10px] font-black text-gray-500 uppercase tracking-widest">ដល់</span>
-                            <input type="date" value={customEnd} onChange={e => setCustomEnd(e.target.value)} className="form-input !py-1.5 !px-3 bg-gray-800 border-gray-700 text-xs rounded-xl" />
-                        </div>
+                    <div className="grid grid-cols-2 gap-2 animate-fade-in-down">
+                        <input type="date" value={customStart} onChange={e => setCustomStart(e.target.value)} className="bg-gray-800 border-none text-[10px] font-black text-white rounded-lg p-2" />
+                        <input type="date" value={customEnd} onChange={e => setCustomEnd(e.target.value)} className="bg-gray-800 border-none text-[10px] font-black text-white rounded-lg p-2" />
+                    </div>
+                )}
+                
+                <div className="relative group">
+                    <input 
+                        type="text" 
+                        placeholder="ស្វែងរកតាម ID, ឈ្មោះ, ឬទូរស័ព្ទ..." 
+                        value={searchQuery} 
+                        onChange={e => setSearchQuery(e.target.value)} 
+                        className="w-full bg-black/40 border border-gray-800 rounded-xl py-3 pl-10 pr-4 text-xs font-bold text-white placeholder:text-gray-700 focus:border-blue-500/50 transition-all" 
+                    />
+                    <svg className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                </div>
+            </div>
+
+            {/* List View */}
+            <div className="px-1">
+                {filteredOrders.length === 0 ? (
+                    <div className="text-center py-20 bg-gray-800/10 rounded-[2rem] border-2 border-dashed border-gray-800/50">
+                        <p className="text-[10px] font-black text-gray-600 uppercase tracking-widest italic">រកមិនឃើញទិន្នន័យ</p>
+                    </div>
+                ) : (
+                    <div className="animate-fade-in-up">
+                        <OrdersList orders={filteredOrders} showActions={false} visibleColumns={userVisibleColumns} />
                     </div>
                 )}
             </div>
 
-            {filteredOrders.length === 0 ? (
-                <div className="text-center py-20 bg-gray-800/20 rounded-3xl border-2 border-dashed border-gray-700/50">
-                    <p className="text-gray-500 font-bold uppercase tracking-widest text-xs">មិនមានទិន្នន័យត្រូវបានរកឃើញ</p>
-                </div>
-            ) : (
-                <div className="space-y-4 flex-grow">
-                    <OrdersList orders={filteredOrders} showActions={false} visibleColumns={userVisibleColumns} />
-                    
-                    <div className="md:hidden bg-blue-600 p-5 rounded-[2rem] shadow-2xl flex justify-between items-center border border-white/10">
-                        <span className="text-white font-black uppercase text-xs tracking-widest">សរុបលក់បាន ({filteredOrders.length})</span>
-                        <span className="text-white font-black text-xl">${totalFilteredRevenue.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+            {/* Mobile Sticky Action Bar */}
+            <div className="md:hidden fixed bottom-6 left-6 right-6 z-40">
+                <div className="bg-gray-900/95 backdrop-blur-3xl p-4 rounded-3xl shadow-2xl border border-white/10 flex justify-between items-center ring-1 ring-white/5">
+                    <div className="flex flex-col">
+                        <span className="text-[8px] font-black text-blue-500 uppercase tracking-[0.2em] mb-0.5">Session Revenue</span>
+                        <span className="text-white font-black text-xl tracking-tighter">${totalFilteredRevenue.toLocaleString()}</span>
                     </div>
+                    <button 
+                        onClick={onAdd}
+                        className="bg-blue-600 hover:bg-blue-500 text-white p-4 rounded-2xl shadow-lg shadow-blue-600/40 active:scale-90 transition-all"
+                    >
+                        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M12 4v16m8-8H4" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                    </button>
                 </div>
-            )}
+            </div>
 
-            {/* Bottom Spacer សម្រាប់ការពារ Tooltip និងរក្សាកម្ពស់ */}
-            <div className="h-64 md:h-[600px] pointer-events-none opacity-0 shrink-0"></div>
+            <div className="h-32 md:hidden"></div>
         </div>
     );
 };
@@ -223,22 +253,66 @@ const UserJourney: React.FC<{ onBackToRoleSelect: () => void }> = ({ onBackToRol
     const [selectedTeam, setSelectedTeam] = useUrlState<string>('team', '');
     const userTeams = useMemo(() => (currentUser?.Team || '').split(',').map(t => t.trim()).filter(Boolean), [currentUser]);
 
-    useEffect(() => { setChatVisibility(view !== 'create'); }, [view]);
-    useEffect(() => { if (userTeams.length === 1 && !selectedTeam) setSelectedTeam(userTeams[0]); }, [userTeams, selectedTeam]);
+    useEffect(() => { setChatVisibility(view !== 'create'); }, [view, setChatVisibility]);
+    useEffect(() => { if (userTeams.length === 1 && !selectedTeam) setSelectedTeam(userTeams[0]); }, [userTeams, selectedTeam, setSelectedTeam]);
 
-    if (userTeams.length === 0) return <div className="page-card text-center p-12 mt-20 max-w-2xl mx-auto"><h2 className="text-2xl font-bold text-white mb-2">សួស្តី, {currentUser?.FullName}</h2><p className="text-gray-400">មិនមានទិន្នន័យក្រុម</p><button onClick={onBackToRoleSelect} className="btn btn-secondary mt-6">ត្រឡប់</button></div>;
+    if (userTeams.length === 0) return (
+        <div className="page-card text-center p-12 mt-20 max-w-lg mx-auto bg-gray-900/60 backdrop-blur-xl border border-white/5 rounded-[3rem]">
+            <h2 className="text-xl font-black text-white mb-4">សួស្តី, {currentUser?.FullName}</h2>
+            <p className="text-gray-500 text-sm">គណនីរបស់អ្នកមិនទាន់មានក្រុមការងារនៅឡើយទេ។</p>
+            <button onClick={onBackToRoleSelect} className="btn btn-secondary mt-8 w-full rounded-2xl font-black">ត្រឡប់ក្រោយ</button>
+        </div>
+    );
 
     if (!selectedTeam) {
         return (
-             <div className="w-full max-w-5xl mx-auto p-4 mt-10 md:mt-20 animate-fade-in text-center">
-                <h2 className="text-3xl font-bold text-white mb-8">សូមជ្រើសរើសក្រុមដើម្បីបន្ត</h2>
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-                    {userTeams.map(team => (
-                        <button key={team} onClick={() => setSelectedTeam(team)} className="bg-gray-800/50 border border-gray-700 rounded-2xl p-8 hover:border-blue-500 transition-all group shadow-xl">
-                            <span className="text-xl font-bold text-white group-hover:text-blue-400 transition-colors">{team}</span>
+             <div className="w-full max-w-4xl mx-auto p-4 mt-6 animate-fade-in flex flex-col items-center">
+                <div className="text-center space-y-3 mb-10">
+                    <p className="text-blue-500 font-black uppercase tracking-[0.4em] text-[10px]">Access Identification</p>
+                    <h2 className="text-4xl sm:text-5xl font-black text-white tracking-tighter italic">ជ្រើសរើសក្រុមការងារ</h2>
+                    <div className="w-16 h-1.5 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-full mx-auto shadow-[0_0_15px_rgba(59,130,246,0.5)]"></div>
+                </div>
+
+                <div className="w-full space-y-4 max-w-md">
+                    {userTeams.map((team, idx) => (
+                        <button 
+                            key={team} 
+                            onClick={() => setSelectedTeam(team)} 
+                            className="group relative w-full overflow-hidden bg-gray-900/60 backdrop-blur-3xl border border-white/5 rounded-[2.5rem] p-6 hover:border-blue-500/40 transition-all duration-500 active:scale-[0.97] shadow-xl flex items-center gap-6"
+                        >
+                            {/* Interactive Pulse Halo */}
+                            <div className="absolute top-4 left-6">
+                                <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-ping opacity-75"></div>
+                                <div className="absolute top-0 w-1.5 h-1.5 bg-emerald-500 rounded-full"></div>
+                            </div>
+                            
+                            <div className="relative z-10 w-16 h-16 sm:w-20 sm:h-20 bg-gray-800 rounded-3xl flex items-center justify-center border border-white/5 shadow-inner group-hover:bg-blue-600/10 group-hover:border-blue-500/20 transition-all duration-500 group-hover:rotate-6">
+                                 <span className="text-3xl sm:text-4xl font-black text-transparent bg-clip-text bg-gradient-to-br from-blue-400 to-blue-600">{team.charAt(0)}</span>
+                            </div>
+                            
+                            <div className="relative z-10 flex-grow text-left">
+                                <h3 className="text-xl sm:text-2xl font-black text-white uppercase tracking-tight mb-1">{team}</h3>
+                                <p className="text-[9px] text-gray-500 font-bold uppercase tracking-widest opacity-60">Team Operational Node {idx + 1}</p>
+                            </div>
+
+                            <div className="relative z-10 p-3 bg-white/5 rounded-2xl group-hover:bg-blue-600 group-hover:text-white transition-all text-gray-600">
+                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={3}><path d="M9 5l7 7-7 7" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                            </div>
+
+                            {/* Background Aesthetics */}
+                            <div className="absolute inset-0 bg-gradient-to-r from-blue-600/0 via-blue-600/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700"></div>
+                            <div className="absolute -bottom-10 -right-10 w-32 h-32 bg-blue-500 opacity-0 group-hover:opacity-5 blur-[40px] transition-opacity"></div>
                         </button>
                     ))}
                 </div>
+                
+                <button 
+                    onClick={onBackToRoleSelect} 
+                    className="mt-12 flex items-center gap-2 text-[10px] font-black text-gray-600 uppercase tracking-widest hover:text-blue-500 transition-all active:scale-95"
+                >
+                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={3}><path d="M15 19l-7-7 7-7" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                    ត្រឡប់ទៅតួនាទី
+                </button>
             </div>
         );
     }
@@ -246,39 +320,36 @@ const UserJourney: React.FC<{ onBackToRoleSelect: () => void }> = ({ onBackToRol
     if (view === 'create') return <CreateOrderPage team={selectedTeam} onSaveSuccess={() => setView('list')} onCancel={() => setView('list')} />;
 
     return (
-        <div className="w-full max-w-[115rem] mx-auto p-2 sm:p-4 animate-fade-in overflow-x-hidden min-h-[2000px]">
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
-                <div>
-                    <h1 className="text-2xl font-black text-white flex items-center gap-3">
-                        ការកម្មង់របស់ខ្ញុំ 
-                        <span className="text-[10px] bg-blue-600/20 text-blue-400 px-3 py-1 rounded-full border border-blue-500/20 uppercase tracking-[0.2em]">{selectedTeam}</span>
-                    </h1>
-                    <div className="mt-4 flex flex-wrap gap-3">
+        <div className="w-full max-w-[100rem] mx-auto p-2 sm:p-4 animate-fade-in min-h-screen relative overflow-x-hidden">
+            {/* Optimized Header for Mobile */}
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-8 gap-4 px-2">
+                <div className="space-y-2">
+                    <div className="flex items-center gap-3">
+                        <h1 className="text-2xl sm:text-4xl font-black text-white italic tracking-tighter leading-none">MY ORDERS</h1>
+                        <div className="h-6 w-px bg-white/10"></div>
+                        <span className="text-blue-500 font-black text-xs uppercase tracking-widest">{selectedTeam}</span>
+                    </div>
+                    <div className="flex gap-2">
                          {userTeams.length > 1 && (
-                            <button 
-                                onClick={() => setSelectedTeam('')} 
-                                className="flex items-center gap-2 px-4 py-2 bg-gray-800 hover:bg-blue-600 text-gray-300 hover:text-white rounded-xl text-[11px] font-black uppercase transition-all border border-gray-700 hover:border-blue-500 hover:shadow-lg hover:shadow-blue-600/20 active:scale-95"
-                            >
-                                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" /></svg>
-                                ប្តូរក្រុម
-                            </button>
-                         )}
-                         {currentUser?.IsSystemAdmin && (
-                            <button 
-                                onClick={onBackToRoleSelect} 
-                                className="flex items-center gap-2 px-4 py-2 bg-gray-800 hover:bg-yellow-600 text-gray-300 hover:text-white rounded-xl text-[11px] font-black uppercase transition-all border border-gray-700 hover:border-yellow-500 hover:shadow-lg hover:shadow-yellow-600/20 active:scale-95"
-                            >
-                                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 15l-3-3m0 0l3-3m-3 3h8M3 12a9 9 0 1118 0 9 9 0 01-18 0z" /></svg>
-                                ជ្រើសរើសតួនាទី
+                            <button onClick={() => setSelectedTeam('')} className="text-[9px] font-black uppercase text-gray-500 hover:text-blue-400 transition-colors flex items-center gap-1.5 bg-gray-800/50 px-3 py-1.5 rounded-lg border border-white/5 active:scale-95">
+                                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" strokeWidth={3} /></svg>
+                                Switch Team
                             </button>
                          )}
                     </div>
                 </div>
-                <button onClick={() => setView('create')} className="btn btn-primary w-full md:w-auto px-10 shadow-xl shadow-blue-600/20 h-14 text-base font-black active:scale-95 transition-all rounded-2xl uppercase tracking-widest">បង្កើតការកម្មង់ថ្មី</button>
+
+                <button 
+                    onClick={() => setView('create')} 
+                    className="hidden md:flex px-10 py-4 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-500 hover:to-blue-600 text-white font-black uppercase tracking-widest text-xs rounded-2xl shadow-xl shadow-blue-900/20 transition-all active:scale-95 items-center gap-3 border border-blue-400/20"
+                >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={3}><path d="M12 4v16m8-8H4"/></svg>
+                    Create Order
+                </button>
             </div>
             
-            <div className="bg-gray-800/20 border border-gray-700/50 rounded-[2.5rem] p-2 sm:p-6 shadow-2xl overflow-visible min-h-[2000px]">
-                <UserOrdersView team={selectedTeam} />
+            <div className="relative">
+                <UserOrdersView team={selectedTeam} onAdd={() => setView('create')} />
             </div>
         </div>
     );
