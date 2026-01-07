@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="km">
 <head>
@@ -15,7 +16,6 @@
     <script>
       /**
        * ULTIMATE SANDBOX PROTECTION v5
-       * បិទរាល់ការចូលទៅកាន់ location.href ដែលអាចបង្កកំហុស Security ក្នុង iFrame
        */
       (function() {
         window.global = window;
@@ -25,7 +25,6 @@
           version: ''
         };
 
-        // Suppress restricted access errors
         window.onerror = function(msg) {
           if (msg && (msg.indexOf('Location') !== -1 || msg.indexOf('cross-origin') !== -1)) {
             return true; 
@@ -48,7 +47,8 @@
     "url": "https://aistudiocdn.com/url@^0.11.4",
     "jspdf": "https://aistudiocdn.com/jspdf@^2.5.2",
     "jspdf-autotable": "https://aistudiocdn.com/jspdf-autotable@^3.8.4",
-    "lucide-react": "https://esm.sh/lucide-react@^0.562.0"
+    "lucide-react": "https://esm.sh/lucide-react@^0.562.0",
+    "html2canvas": "https://esm.sh/html2canvas@^1.4.1"
   }
 }
 </script>
