@@ -1,6 +1,9 @@
-import React, { useContext } from 'react';
+
+import React, { useContext, useEffect, useState } from 'react';
 import { AppContext } from '../context/AppContext';
 import UserAvatar from '../components/common/UserAvatar';
+import { convertGoogleDriveUrl } from '../utils/fileUtils';
+import { APP_LOGO_URL } from '../constants';
 
 interface RoleSelectionPageProps {
     onSelect: (role: 'admin_dashboard' | 'user_journey') => void;
@@ -8,106 +11,195 @@ interface RoleSelectionPageProps {
 
 const RoleSelectionPage: React.FC<RoleSelectionPageProps> = ({ onSelect }) => {
     const { currentUser } = useContext(AppContext);
+    const [mounted, setMounted] = useState(false);
+
+    useEffect(() => {
+        setMounted(true);
+    }, []);
+
+    if (!currentUser) return null;
 
     return (
-        <div className="h-screen flex flex-col items-center justify-center p-6 bg-transparent relative overflow-hidden">
-            {/* Subtle Decorative Accents (Ultra-subtle to not distract from flare-light) */}
-            <div className="absolute top-[-10%] right-[-10%] w-96 h-96 bg-blue-500/5 rounded-full blur-[150px] pointer-events-none"></div>
-            <div className="absolute bottom-[-10%] left-[-10%] w-96 h-96 bg-indigo-500/5 rounded-full blur-[150px] pointer-events-none"></div>
+        <div className="min-h-screen flex flex-col items-center justify-center p-4 sm:p-6 bg-transparent relative overflow-hidden">
+            {/* Background Decorative Blobs - Optimized for Mobile */}
+            <div className="absolute top-[-5%] left-[-10%] w-[300px] sm:w-[500px] h-[300px] sm:h-[500px] bg-blue-600/10 rounded-full blur-[80px] sm:blur-[120px] animate-pulse pointer-events-none"></div>
+            <div className="absolute bottom-[-5%] right-[-10%] w-[300px] sm:w-[500px] h-[300px] sm:h-[500px] bg-indigo-600/10 rounded-full blur-[80px] sm:blur-[120px] animate-pulse pointer-events-none" style={{ animationDelay: '2s' }}></div>
 
             <style>{`
-                @keyframes fadeInUp {
-                    from { opacity: 0; transform: translateY(20px); }
-                    to { opacity: 1; transform: translateY(0); }
+                @keyframes float {
+                    0%, 100% { transform: translateY(0px); }
+                    50% { transform: translateY(-8px); }
                 }
-                .animate-stagger-1 { animation: fadeInUp 0.6s cubic-bezier(0.22, 1, 0.36, 1) forwards; }
-                .animate-stagger-2 { animation: fadeInUp 0.6s cubic-bezier(0.22, 1, 0.36, 1) 0.1s forwards; opacity: 0; }
-                .animate-stagger-3 { animation: fadeInUp 0.6s cubic-bezier(0.22, 1, 0.36, 1) 0.2s forwards; opacity: 0; }
-                .animate-stagger-4 { animation: fadeInUp 0.6s cubic-bezier(0.22, 1, 0.36, 1) 0.3s forwards; opacity: 0; }
+                .animate-float { animation: float 4s ease-in-out infinite; }
                 
-                .role-card {
-                    background: rgba(31, 41, 55, 0.4);
-                    backdrop-filter: blur(24px);
-                    border: 1px solid rgba(255, 255, 255, 0.05);
-                    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+                @keyframes reveal {
+                    from { opacity: 0; transform: scale(0.95) translateY(20px); filter: blur(8px); }
+                    to { opacity: 1; transform: scale(1) translateY(0); filter: blur(0); }
                 }
-                .role-card:hover { 
-                    background: rgba(31, 41, 55, 0.6); 
-                    border-color: rgba(59, 130, 246, 0.3);
-                    transform: translateY(-4px);
-                    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+                
+                @keyframes profile-reveal {
+                    0% { opacity: 0; transform: scale(0.7) rotate(-10deg); filter: blur(15px); }
+                    100% { opacity: 1; transform: scale(1) rotate(0deg); filter: blur(0); }
                 }
-                .role-card:active { transform: scale(0.97); }
+                
+                @keyframes ring-rotate-cw {
+                    from { transform: translate(-50%, -50%) rotate(0deg); }
+                    to { transform: translate(-50%, -50%) rotate(360deg); }
+                }
+                
+                @keyframes status-ripple {
+                    0% { transform: translate(-50%, -50%) scale(1); opacity: 0.4; }
+                    100% { transform: translate(-50%, -50%) scale(1.4); opacity: 0; }
+                }
+
+                .profile-entrance { animation: profile-reveal 1s cubic-bezier(0.34, 1.56, 0.64, 1) forwards; }
+                .reveal-0 { animation: reveal 0.6s cubic-bezier(0.2, 0.8, 0.2, 1) 0.3s forwards; opacity: 0; }
+                .reveal-1 { animation: reveal 0.6s cubic-bezier(0.2, 0.8, 0.2, 1) 0.5s forwards; opacity: 0; }
+                .reveal-2 { animation: reveal 0.6s cubic-bezier(0.2, 0.8, 0.2, 1) 0.6s forwards; opacity: 0; }
+                
+                .premium-glass-mobile {
+                    background: rgba(15, 23, 42, 0.4);
+                    backdrop-filter: blur(20px) saturate(160%);
+                    -webkit-backdrop-filter: blur(20px) saturate(160%);
+                    border: 1px solid rgba(255, 255, 255, 0.08);
+                    box-shadow: 0 15px 35px -12px rgba(0, 0, 0, 0.6);
+                }
+                
+                /* Mobile-specific button tap effect */
+                .role-btn:active { 
+                    transform: scale(0.96);
+                    background: rgba(255, 255, 255, 0.05);
+                }
+
+                .status-ring-mobile { 
+                    position: absolute; top: 50%; left: 50%; width: 120%; height: 120%; 
+                    border: 1.5px dashed rgba(59, 130, 246, 0.3); border-radius: 50%;
+                    animation: ring-rotate-cw 12s linear infinite;
+                }
+                
+                .status-ripple-mobile {
+                    position: absolute; top: 50%; left: 50%; width: 100%; height: 100%;
+                    border-radius: 50%; border: 3px solid rgba(59, 130, 246, 0.3);
+                    animation: status-ripple 2s infinite ease-out;
+                }
+
+                .tap-indicator {
+                    width: 4px;
+                    height: 4px;
+                    background: #3b82f6;
+                    border-radius: 50%;
+                    box-shadow: 0 0 10px #3b82f6;
+                    animation: pulse 1.5s infinite;
+                }
+
+                @keyframes pulse {
+                    0% { transform: scale(1); opacity: 1; }
+                    100% { transform: scale(3); opacity: 0; }
+                }
             `}</style>
 
-            <div className="w-full max-w-md z-10">
-                {/* Header Section */}
-                <div className="text-center mb-12 animate-stagger-1">
-                    <div className="inline-block relative mb-6">
-                        <div className="absolute inset-0 bg-blue-500/20 rounded-full blur-2xl animate-pulse"></div>
+            <div className="w-full max-w-lg sm:max-w-4xl z-10 space-y-10 sm:space-y-16">
+                {/* Header Welcome Section */}
+                <div className="text-center px-2">
+                    <div className="inline-block relative mb-8 sm:mb-12 profile-entrance">
+                        {/* Holographic Status Rings */}
+                        <div className="status-ripple-mobile"></div>
+                        <div className="status-ring-mobile"></div>
+                        
+                        <div className="absolute inset-0 bg-blue-500/10 rounded-full blur-2xl animate-pulse"></div>
+                        
                         <UserAvatar 
-                            avatarUrl={currentUser?.ProfilePictureURL} 
-                            name={currentUser?.FullName || ''} 
+                            avatarUrl={currentUser.ProfilePictureURL} 
+                            name={currentUser.FullName} 
                             size="xl"
-                            className="border-4 border-gray-900 shadow-2xl relative z-10 ring-4 ring-blue-500/10"
+                            className="w-24 h-24 sm:w-36 sm:h-36 border-[4px] sm:border-[6px] border-gray-950 shadow-2xl relative z-10 ring-1 ring-white/10"
                         />
+                        
+                        {/* Verified Badge - Resized for Mobile */}
+                        <div className="absolute -bottom-0.5 -right-0.5 w-6 h-6 sm:w-10 sm:h-10 bg-blue-600 rounded-lg sm:rounded-2xl flex items-center justify-center border-2 sm:border-4 border-gray-950 shadow-lg text-white z-20 animate-float">
+                            <svg className="w-3 h-3 sm:w-6 sm:h-6" fill="currentColor" viewBox="0 0 20 20">
+                                <path fillRule="evenodd" d="M6.267 3.455a3.066 3.066 0 001.745-.723 3.066 3.066 0 013.976 0 3.066 3.066 0 001.745.723 3.066 3.066 0 012.812 2.812c.051.643.304 1.254.723 1.745a3.066 3.066 0 010 3.976 3.066 3.066 0 00-.723 1.745 3.066 3.066 0 01-2.812 2.812 3.066 3.066 0 00-1.745.723 3.066 3.066 0 01-3.976 0 3.066 3.066 0 00-1.745-.723 3.066 3.066 0 01-2.812-2.812 3.066 3.066 0 00-.723-1.745 3.066 3.066 0 010-3.976 3.066 3.066 0 00.723-1.745 3.066 3.066 0 012.812-2.812zm7.44 5.252a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                            </svg>
+                        </div>
                     </div>
-                    <h2 className="text-gray-500 font-bold uppercase tracking-[0.25em] text-[10px] mb-2">សូមស្វាគមន៍ត្រឡប់មកវិញ</h2>
-                    <h1 className="text-4xl font-black text-white tracking-tight">
-                        {currentUser?.FullName.split(' ')[0]} <span className="text-blue-500 text-3xl font-normal">👋</span>
-                    </h1>
-                    <p className="text-gray-400 text-sm mt-3 font-medium opacity-80">តើអ្នកចង់បន្តការងារក្នុងតួនាទីអ្វី?</p>
+                    
+                    <div className="reveal-0">
+                        <h2 className="text-blue-500 font-black uppercase tracking-[0.3em] text-[9px] sm:text-[10px] mb-3">System Access Authorization</h2>
+                        <h1 className="text-3xl sm:text-6xl font-black text-white tracking-tighter mb-3 italic leading-none">
+                            សួស្តី, <span className="text-transparent bg-clip-text bg-gradient-to-r from-white to-gray-400">{currentUser.FullName.split(' ')[0]}</span>
+                        </h1>
+                        <p className="text-gray-500 text-sm sm:text-lg font-bold max-w-xs sm:max-w-md mx-auto leading-relaxed opacity-80">
+                            សូមជ្រើសរើសទិសដៅសម្រាប់ <span className="text-blue-500 font-black">O-System</span>
+                        </p>
+                    </div>
                 </div>
 
-                {/* Selection Cards */}
-                <div className="space-y-5 mb-12">
-                    {/* Admin Role Card */}
+                {/* Role Selection - Specialized Mobile Layout */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-8 w-full">
+                    {/* ADMIN ROLE */}
                     <button 
                         onClick={() => onSelect('admin_dashboard')}
-                        className="role-card w-full p-6 rounded-[2.5rem] text-left flex items-center gap-5 group animate-stagger-2 shadow-2xl"
+                        className="role-btn premium-glass-mobile p-5 sm:p-10 rounded-[2rem] sm:rounded-[3rem] text-left transition-all duration-300 reveal-1 flex md:flex-col items-center md:items-start gap-5 sm:gap-0"
                     >
-                        <div className="w-16 h-16 bg-blue-600/20 rounded-2xl flex items-center justify-center border border-blue-500/20 shadow-inner group-hover:bg-blue-600 group-hover:shadow-blue-600/40 transition-all duration-500">
-                            <svg className="w-8 h-8 text-blue-400 group-hover:text-white transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 00 1.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                                <path d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                        <div className="w-14 h-14 sm:w-20 sm:h-20 bg-gradient-to-br from-blue-600 to-indigo-700 rounded-2xl sm:rounded-[1.8rem] flex items-center justify-center text-white sm:mb-8 transition-all shadow-xl flex-shrink-0">
+                            <svg className="w-7 h-7 sm:w-10 sm:h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5}>
+                                <path d="M11 3.055A9.001 9.001 0 1020.945 13H11V3.055z" />
+                                <path d="M20.488 9H15V3.512A9.025 9.025 0 0120.488 9z" />
                             </svg>
                         </div>
-                        <div className="flex-grow">
-                            <h3 className="text-xl font-black text-white tracking-tight uppercase group-hover:text-blue-400 transition-colors">គ្រប់គ្រងប្រព័ន្ធ</h3>
-                            <p className="text-xs text-gray-500 font-bold leading-relaxed mt-1 uppercase tracking-widest opacity-60">Admin Panel & Analysis</p>
+                        <div className="flex-grow min-w-0">
+                            <h3 className="text-lg sm:text-3xl font-black text-white uppercase tracking-tight mb-1 sm:mb-3">គ្រប់គ្រងប្រព័ន្ធ</h3>
+                            <p className="text-[11px] sm:text-sm text-gray-500 font-bold leading-snug opacity-70 line-clamp-2">
+                                ផ្ទាំងបញ្ជាលក់ របាយការណ៍សង្ខេប និងបច្ចេកទេស។
+                            </p>
                         </div>
-                        <div className="w-10 h-10 rounded-full bg-gray-800/50 flex items-center justify-center group-hover:bg-blue-600 transition-colors border border-white/5">
-                            <svg className="w-5 h-5 text-gray-500 group-hover:text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M9 5l7 7-7 7" /></svg>
+                        <div className="md:mt-10 hidden sm:flex items-center gap-3 text-blue-500 font-black text-xs uppercase tracking-widest">
+                            <span>Admin Console</span>
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={3}><path d="M13 7l5 5-5 5M6 7l5 5-5 5" /></svg>
+                        </div>
+                        {/* Mobile chevron */}
+                        <div className="sm:hidden text-gray-600">
+                             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M9 5l7 7-7 7" strokeWidth={3} strokeLinecap="round" strokeLinejoin="round"/></svg>
                         </div>
                     </button>
 
-                    {/* User Role Card */}
+                    {/* USER/SALES ROLE */}
                     <button 
                         onClick={() => onSelect('user_journey')}
-                        className="role-card w-full p-6 rounded-[2.5rem] text-left flex items-center gap-5 group animate-stagger-3 shadow-2xl"
+                        className="role-btn premium-glass-mobile p-5 sm:p-10 rounded-[2rem] sm:rounded-[3rem] text-left transition-all duration-300 reveal-2 flex md:flex-col items-center md:items-start gap-5 sm:gap-0"
                     >
-                        <div className="w-16 h-16 bg-emerald-600/20 rounded-2xl flex items-center justify-center border border-emerald-500/20 shadow-inner group-hover:bg-emerald-600 group-hover:shadow-emerald-600/40 transition-all duration-500">
-                            <svg className="w-8 h-8 text-emerald-400 group-hover:text-white transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
+                        <div className="w-14 h-14 sm:w-20 sm:h-20 bg-gradient-to-br from-emerald-500 to-cyan-600 rounded-2xl sm:rounded-[1.8rem] flex items-center justify-center text-white sm:mb-8 transition-all shadow-xl flex-shrink-0">
+                            <svg className="w-7 h-7 sm:w-10 sm:h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5}>
+                                <path d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
                             </svg>
                         </div>
-                        <div className="flex-grow">
-                            <h3 className="text-xl font-black text-white tracking-tight uppercase group-hover:text-emerald-400 transition-colors">ផ្នែកលក់ (User)</h3>
-                            <p className="text-xs text-gray-500 font-bold leading-relaxed mt-1 uppercase tracking-widest opacity-60">Order Entry & History</p>
+                        <div className="flex-grow min-w-0">
+                            <h3 className="text-lg sm:text-3xl font-black text-white uppercase tracking-tight mb-1 sm:mb-3">ប្រតិបត្តិការលក់</h3>
+                            <p className="text-[11px] sm:text-sm text-gray-500 font-bold leading-snug opacity-70 line-clamp-2">
+                                បង្កើតកម្មង់ ពិនិត្យប្រវត្តិលក់ និងតាមដានទិន្នន័យ។
+                            </p>
                         </div>
-                        <div className="w-10 h-10 rounded-full bg-gray-800/50 flex items-center justify-center group-hover:bg-emerald-600 transition-colors border border-white/5">
-                            <svg className="w-5 h-5 text-gray-500 group-hover:text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M9 5l7 7-7 7" /></svg>
+                        <div className="md:mt-10 hidden sm:flex items-center gap-3 text-emerald-500 font-black text-xs uppercase tracking-widest">
+                            <span>Sales Portal</span>
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={3}><path d="M13 7l5 5-5 5M6 7l5 5-5 5" /></svg>
+                        </div>
+                        {/* Mobile chevron */}
+                        <div className="sm:hidden text-gray-600">
+                             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M9 5l7 7-7 7" strokeWidth={3} strokeLinecap="round" strokeLinejoin="round"/></svg>
                         </div>
                     </button>
                 </div>
 
-                {/* Footer Section */}
-                <div className="text-center animate-stagger-4 opacity-0">
-                    <p className="text-[10px] text-gray-600 font-black uppercase tracking-[0.3em]">Version 2.0 • Premium Experience</p>
+                {/* Brand Footer */}
+                <div className="mt-10 sm:mt-20 text-center reveal-2" style={{ animationDelay: '0.8s' }}>
+                    <div className="inline-flex items-center gap-3 bg-white/5 px-4 py-2 rounded-full border border-white/5 opacity-40 hover:opacity-100 transition-opacity duration-500">
+                        <img src={convertGoogleDriveUrl(APP_LOGO_URL)} alt="Logo" className="w-5 h-5 object-contain" />
+                        <div className="h-3 w-px bg-white/20"></div>
+                        <p className="text-[8px] sm:text-[10px] text-white font-black uppercase tracking-[0.3em]">O-System V2.0.1</p>
+                    </div>
                 </div>
             </div>
         </div>
     );
 };
-
 export default RoleSelectionPage;
