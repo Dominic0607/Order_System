@@ -144,16 +144,21 @@ const OrdersDashboard: React.FC<OrdersDashboardProps> = ({ onBack }) => {
         };
     });
 
+    // Sync URL params to filters (when URL changes)
     useEffect(() => {
-        if (urlTeam !== filters.team || urlDate !== filters.datePreset) {
-            setFilters(prev => ({
-                ...prev,
-                team: urlTeam || prev.team,
-                datePreset: (urlDate as DateRangePreset) || prev.datePreset
-            }));
-        }
+        setFilters(prev => {
+            if (urlTeam !== prev.team || urlDate !== prev.datePreset) {
+                return {
+                    ...prev,
+                    team: urlTeam || prev.team,
+                    datePreset: (urlDate as DateRangePreset) || prev.datePreset
+                };
+            }
+            return prev;
+        });
     }, [urlTeam, urlDate]);
 
+    // Sync filters to URL params (when filters change)
     useEffect(() => {
         if (filters.team !== urlTeam) setUrlTeam(filters.team);
         if (filters.datePreset !== urlDate) setUrlDate(filters.datePreset);
@@ -261,10 +266,10 @@ const OrdersDashboard: React.FC<OrdersDashboardProps> = ({ onBack }) => {
             if (filters.shippingService && order['Internal Shipping Method'] !== filters.shippingService) return false;
             if (filters.driver && order['Internal Shipping Details'] !== filters.driver) return false;
             if (filters.bank && order['Payment Info'] !== filters.bank) return false;
-            if (filters.product && !order.Products.some(p => p.name === filters.product)) return false;
+            if (filters.product && (!Array.isArray(order.Products) || !order.Products.some(p => p.name === filters.product))) return false;
             if (searchQuery.trim()) {
                 const q = searchQuery.toLowerCase();
-                const match = order['Order ID'].toLowerCase().includes(q) ||
+                const match = (order['Order ID'] || '').toLowerCase().includes(q) ||
                               (order['Customer Name'] || '').toLowerCase().includes(q) ||
                               (order['Customer Phone'] || '').includes(q);
                 if (!match) return false;
@@ -317,6 +322,11 @@ const OrdersDashboard: React.FC<OrdersDashboardProps> = ({ onBack }) => {
             setIsBulkCostModalOpen(false);
             setIsBulkPaymentModalOpen(false);
             setIsBulkShippingModalOpen(false);
+            // Reset form fields
+            setBulkCostValue('');
+            setBulkPaymentStatus('Paid');
+            setBulkPaymentInfo('');
+            setBulkShippingMethod('');
         } catch (e) {
             alert("Bulk update failed.");
         } finally {
@@ -515,9 +525,16 @@ const OrdersDashboard: React.FC<OrdersDashboardProps> = ({ onBack }) => {
                     <div className="flex gap-3 mt-8">
                         <button onClick={() => setIsBulkCostModalOpen(false)} className="btn btn-secondary flex-1">បោះបង់</button>
                         <button 
-                            onClick={() => { handleBulkUpdate({ 'Internal Cost': Number(bulkCostValue) }); }} 
+                            onClick={() => { 
+                                const costValue = Number(bulkCostValue);
+                                if (isNaN(costValue) || bulkCostValue.trim() === '') {
+                                    alert("សូមបញ្ចូលតម្លៃដឹកដើមដែលត្រឹមត្រូវ");
+                                    return;
+                                }
+                                handleBulkUpdate({ 'Internal Cost': costValue }); 
+                            }} 
                             className="btn btn-primary flex-1 shadow-lg shadow-blue-600/20"
-                            disabled={isBulkProcessing || bulkCostValue === ''}
+                            disabled={isBulkProcessing || bulkCostValue.trim() === ''}
                         >
                             {isBulkProcessing ? <Spinner size="sm" /> : 'រក្សាទុក'}
                         </button>
