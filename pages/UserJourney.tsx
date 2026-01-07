@@ -7,8 +7,8 @@ import Spinner from '../components/common/Spinner';
 import OrdersList from '../components/orders/OrdersList';
 import CreateOrderPage from './CreateOrderPage';
 import { useUrlState } from '../hooks/useUrlState';
-import DateRangeFilter, { DateRangePreset } from '../components/common/DateRangeFilter';
-import TeamLeaderboard from '../components/performance/TeamLeaderboard';
+
+type DateRangePreset = 'today' | 'yesterday' | 'this_week' | 'this_month' | 'custom';
 
 const UserOrdersView: React.FC<{ team: string }> = ({ team }) => {
     const [orders, setOrders] = useState<ParsedOrder[]>([]);
@@ -17,8 +17,7 @@ const UserOrdersView: React.FC<{ team: string }> = ({ team }) => {
     const [error, setError] = useState('');
     const [searchQuery, setSearchQuery] = useState('');
     
-    // កំណត់ Default ជា "ថ្ងៃនេះ"
-    const [dateRange, setDateRange] = useState<DateRangePreset>('today');
+    const [dateRange, setDateRange] = useState<DateRangePreset>('this_month');
     const [customStart, setCustomStart] = useState(new Date().toISOString().split('T')[0]);
     const [customEnd, setCustomEnd] = useState(new Date().toISOString().split('T')[0]);
 
@@ -42,7 +41,7 @@ const UserOrdersView: React.FC<{ team: string }> = ({ team }) => {
                     });
                     
                     setGlobalOrders(allParsed);
-                    const teamOnly = allParsed.filter(o => o.Team === team);
+                    const teamOnly = allParsed.filter(o => (o.Team || '').trim() === (team || '').trim());
                     setOrders(teamOnly.sort((a, b) => new Date(b.Timestamp).getTime() - new Date(a.Timestamp).getTime()));
                 }
             } catch (err: any) { setError(err.message); } finally { setLoading(false); }
@@ -58,6 +57,7 @@ const UserOrdersView: React.FC<{ team: string }> = ({ team }) => {
 
         switch (preset) {
             case 'today': start = today; break;
+            case 'yesterday': start = new Date(today); start.setDate(today.getDate() - 1); end = new Date(today); end.setMilliseconds(-1); break;
             case 'this_week': const d = now.getDay(); start = new Date(today); start.setDate(today.getDate() - (d === 0 ? 6 : d - 1)); break;
             case 'this_month': start = new Date(now.getFullYear(), now.getMonth(), 1); break;
             case 'custom': 
@@ -68,9 +68,8 @@ const UserOrdersView: React.FC<{ team: string }> = ({ team }) => {
         return { start, end };
     };
 
-    const { start, end } = useMemo(() => getDateBounds(dateRange), [dateRange, customStart, customEnd]);
-
     const filteredOrders = useMemo(() => {
+        const { start, end } = getDateBounds(dateRange);
         return orders.filter(o => {
             const orderDate = new Date(o.Timestamp);
             if (start && orderDate < start) return false;
@@ -85,15 +84,38 @@ const UserOrdersView: React.FC<{ team: string }> = ({ team }) => {
             }
             return true;
         });
-    }, [orders, searchQuery, start, end]);
+    }, [orders, searchQuery, dateRange, customStart, customEnd]);
 
     const totalFilteredRevenue = useMemo(() => {
         return filteredOrders.reduce((sum, o) => sum + (Number(o['Grand Total']) || 0), 0);
     }, [filteredOrders]);
 
+    const topTeams = useMemo(() => {
+        const { start, end } = getDateBounds(dateRange);
+        
+        const periodOrders = globalOrders.filter(o => {
+            const orderDate = new Date(o.Timestamp);
+            if (start && orderDate < start) return false;
+            if (end && orderDate > end) return false;
+            return true;
+        });
+
+        const teamStats: Record<string, number> = {};
+        periodOrders.forEach(o => {
+            const tName = (o.Team || 'Unassigned').trim();
+            teamStats[tName] = (teamStats[tName] || 0) + (Number(o['Grand Total']) || 0);
+        });
+
+        return Object.entries(teamStats)
+            .map(([name, revenue]) => ({ name, revenue }))
+            .sort((a, b) => b.revenue - a.revenue)
+            .slice(0, 3);
+    }, [globalOrders, dateRange, customStart, customEnd]);
+
     const periodLabel = useMemo(() => {
         switch (dateRange) {
             case 'today': return 'ថ្ងៃនេះ';
+            case 'yesterday': return 'ម្សិលមិញ';
             case 'this_week': return 'សប្តាហ៍នេះ';
             case 'this_month': return 'ខែនេះ';
             case 'custom': return `${customStart} ដល់ ${customEnd}`;
@@ -104,59 +126,93 @@ const UserOrdersView: React.FC<{ team: string }> = ({ team }) => {
     if (loading) return <div className="flex justify-center items-center h-64"><Spinner size="lg"/></div>;
 
     return (
-        <div className="space-y-10">
-            {/* Top 3 Leaderboard Component */}
-            <TeamLeaderboard 
-                globalOrders={globalOrders} 
-                startDate={start} 
-                endDate={end} 
-                periodLabel={dateRange === 'custom' ? 'តាមការកំណត់' : periodLabel} 
-            />
-
-            {/* Filter & Search Section */}
-            <div className="bg-gray-800/20 backdrop-blur-md border border-white/5 p-6 rounded-[2.5rem] shadow-xl space-y-6">
-                <div className="flex flex-col lg:flex-row gap-6 justify-between items-start lg:items-center">
-                    <div className="relative w-full lg:max-w-md">
-                        <input type="text" placeholder="ស្វែងរក ID, ឈ្មោះ, ទូរស័ព្ទ..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="form-input !pl-12 w-full !py-3 bg-gray-900/60 rounded-2xl border-gray-700" />
-                        <svg className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>
-                    </div>
-                    
-                    <div className="flex flex-wrap items-center gap-6 w-full lg:w-auto">
-                        <div className="bg-blue-600/10 px-6 py-2.5 rounded-2xl border border-blue-500/20 flex flex-col items-end">
-                            <p className="text-[10px] font-black text-blue-400 uppercase tracking-widest leading-none mb-1.5">សរុបលក់បាន ({periodLabel})</p>
-                            <p className="text-2xl font-black text-white leading-none">${totalFilteredRevenue.toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
-                        </div>
-
-                        {/* Date Range Filter Component */}
-                        <DateRangeFilter 
-                            dateRange={dateRange} 
-                            onRangeChange={setDateRange} 
-                            customStart={customStart} 
-                            onCustomStartChange={setCustomStart} 
-                            customEnd={customEnd} 
-                            onCustomEndChange={setCustomEnd} 
-                        />
-                    </div>
-                </div>
+        <div className="space-y-6 flex flex-col min-h-[2000px]">
+            <div className="flex items-center gap-2 px-1">
+                <div className="h-6 w-1.5 bg-yellow-500 rounded-full shadow-[0_0_10px_rgba(234,179,8,0.3)]"></div>
+                <h3 className="text-sm font-black text-white uppercase tracking-wider">
+                    ចំណាត់ថ្នាក់លក់បានច្រើនជាងគេ ({dateRange === 'custom' ? 'តាមកាលបរិច្ឆេទកំណត់' : periodLabel})
+                </h3>
             </div>
 
-            {/* Orders List Section */}
-            {filteredOrders.length === 0 ? (
-                <div className="text-center py-20 bg-gray-800/10 rounded-[3rem] border-2 border-dashed border-gray-700/50">
-                    <div className="w-20 h-20 bg-gray-800/50 rounded-full flex items-center justify-center mx-auto mb-4 border border-gray-700">
-                         <svg className="w-10 h-10 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" /></svg>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {topTeams.length > 0 ? topTeams.map((t, i) => (
+                    <div key={t.name} className="relative overflow-hidden bg-gray-800/40 border border-white/5 p-4 rounded-2xl flex items-center gap-4 transition-all duration-500 hover:bg-gray-800/60 shadow-xl">
+                        <div className={`w-10 h-10 rounded-full flex items-center justify-center text-xl shadow-lg ${
+                            i === 0 ? 'bg-yellow-500/20 text-yellow-500 border border-yellow-500/50' : 
+                            i === 1 ? 'bg-gray-400/20 text-gray-300 border border-gray-400/50' : 
+                            'bg-orange-600/20 text-orange-500 border border-orange-600/50'
+                        }`}>
+                            {i === 0 ? '🥇' : i === 1 ? '🥈' : '🥉'}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                            <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest">TOP {i+1} TEAM</p>
+                            <h4 className="text-sm font-black text-white truncate">{t.name}</h4>
+                        </div>
+                        <div className="text-right">
+                            <p className="text-blue-400 font-black">${t.revenue.toLocaleString(undefined, { maximumFractionDigits: 0 })}</p>
+                        </div>
                     </div>
-                    <p className="text-gray-500 font-black uppercase tracking-[0.2em] text-sm">មិនមានទិន្នន័យត្រូវបានរកឃើញសម្រាប់ {periodLabel} ទេ</p>
+                )) : (
+                    <div className="col-span-full py-4 text-center bg-gray-800/20 rounded-2xl border border-dashed border-gray-700">
+                        <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">មិនទាន់មានទិន្នន័យលក់</p>
+                    </div>
+                )}
+            </div>
+
+            <div className="bg-gray-900/40 p-4 rounded-2xl border border-gray-700 space-y-4">
+                <div className="flex flex-col sm:flex-row gap-4 justify-between items-start sm:items-center">
+                    <div className="relative w-full sm:max-w-xs">
+                        <input type="text" placeholder="ស្វែងរក ID, ឈ្មោះ..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="form-input !pl-10 w-full !py-2 bg-gray-900/60" />
+                        <svg className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>
+                    </div>
+                    
+                    <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto">
+                        <div className="bg-blue-600/10 px-4 py-2 rounded-xl border border-blue-500/20 hidden sm:block">
+                            <p className="text-[9px] font-black text-blue-400 uppercase tracking-widest leading-none mb-1">សរុបលក់បាន ({dateRange === 'custom' ? 'កំណត់' : periodLabel})</p>
+                            <p className="text-lg font-black text-white leading-none">${totalFilteredRevenue.toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
+                        </div>
+
+                        <div className="flex items-center gap-1 bg-gray-800/80 p-1 rounded-lg border border-gray-700">
+                            {(['today', 'this_week', 'this_month', 'custom'] as const).map(p => (
+                                <button key={p} onClick={() => setDateRange(p)} className={`px-3 py-1.5 text-[10px] font-bold uppercase rounded-md transition-all ${dateRange === p ? 'bg-blue-600 text-white shadow-md' : 'text-gray-500 hover:text-gray-300'}`}>
+                                    {p === 'today' ? 'ថ្ងៃនេះ' : p === 'this_week' ? 'សប្តាហ៍នេះ' : p === 'this_month' ? 'ខែនេះ' : 'កំណត់'}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+
+                {dateRange === 'custom' && (
+                    <div className="flex flex-wrap items-center gap-4 pt-3 border-t border-gray-800 animate-fade-in-down">
+                        <div className="flex items-center gap-2">
+                            <span className="text-[10px] font-black text-gray-500 uppercase tracking-widest">ចាប់ពី</span>
+                            <input type="date" value={customStart} onChange={e => setCustomStart(e.target.value)} className="form-input !py-1.5 !px-3 bg-gray-800 border-gray-700 text-xs rounded-xl" />
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <span className="text-[10px] font-black text-gray-500 uppercase tracking-widest">ដល់</span>
+                            <input type="date" value={customEnd} onChange={e => setCustomEnd(e.target.value)} className="form-input !py-1.5 !px-3 bg-gray-800 border-gray-700 text-xs rounded-xl" />
+                        </div>
+                    </div>
+                )}
+            </div>
+
+            {filteredOrders.length === 0 ? (
+                <div className="text-center py-20 bg-gray-800/20 rounded-3xl border-2 border-dashed border-gray-700/50">
+                    <p className="text-gray-500 font-bold uppercase tracking-widest text-xs">មិនមានទិន្នន័យត្រូវបានរកឃើញ</p>
                 </div>
             ) : (
-                <div className="space-y-6">
-                    <div className="flex items-center gap-2 px-1">
-                        <div className="h-5 w-1 bg-blue-500 rounded-full"></div>
-                        <h4 className="text-xs font-black text-gray-400 uppercase tracking-[0.2em]">បញ្ជីប្រតិបត្តិការណ៍ ({filteredOrders.length})</h4>
-                    </div>
+                <div className="space-y-4 flex-grow">
                     <OrdersList orders={filteredOrders} showActions={false} visibleColumns={userVisibleColumns} />
+                    
+                    <div className="md:hidden bg-blue-600 p-5 rounded-[2rem] shadow-2xl flex justify-between items-center border border-white/10">
+                        <span className="text-white font-black uppercase text-xs tracking-widest">សរុបលក់បាន ({filteredOrders.length})</span>
+                        <span className="text-white font-black text-xl">${totalFilteredRevenue.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                    </div>
                 </div>
             )}
+
+            {/* Bottom Spacer សម្រាប់ការពារ Tooltip និងរក្សាកម្ពស់ */}
+            <div className="h-64 md:h-[600px] pointer-events-none opacity-0 shrink-0"></div>
         </div>
     );
 };
@@ -170,17 +226,16 @@ const UserJourney: React.FC<{ onBackToRoleSelect: () => void }> = ({ onBackToRol
     useEffect(() => { setChatVisibility(view !== 'create'); }, [view]);
     useEffect(() => { if (userTeams.length === 1 && !selectedTeam) setSelectedTeam(userTeams[0]); }, [userTeams, selectedTeam]);
 
-    if (userTeams.length === 0) return <div className="page-card text-center p-12 mt-20 max-w-2xl mx-auto animate-fade-in"><h2 className="text-2xl font-black text-white mb-2">សួស្តី, {currentUser?.FullName}</h2><p className="text-gray-400 font-bold">មិនមានទិន្នន័យក្រុមនៅក្នុងគណនីរបស់អ្នកទេ</p><button onClick={onBackToRoleSelect} className="btn btn-secondary mt-8 px-10 rounded-2xl">ត្រឡប់ក្រោយ</button></div>;
+    if (userTeams.length === 0) return <div className="page-card text-center p-12 mt-20 max-w-2xl mx-auto"><h2 className="text-2xl font-bold text-white mb-2">សួស្តី, {currentUser?.FullName}</h2><p className="text-gray-400">មិនមានទិន្នន័យក្រុម</p><button onClick={onBackToRoleSelect} className="btn btn-secondary mt-6">ត្រឡប់</button></div>;
 
     if (!selectedTeam) {
         return (
              <div className="w-full max-w-5xl mx-auto p-4 mt-10 md:mt-20 animate-fade-in text-center">
-                <h2 className="text-3xl font-black text-white mb-2 uppercase tracking-tighter">សូមជ្រើសរើសក្រុម</h2>
-                <p className="text-gray-500 font-bold uppercase tracking-widest text-[10px] mb-12">ជ្រើសរើសក្រុមដែលអ្នកកំពុងបំពេញការងារ</p>
+                <h2 className="text-3xl font-bold text-white mb-8">សូមជ្រើសរើសក្រុមដើម្បីបន្ត</h2>
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
                     {userTeams.map(team => (
-                        <button key={team} onClick={() => setSelectedTeam(team)} className="bg-gray-800/30 backdrop-blur-xl border border-white/5 rounded-[2.5rem] p-10 hover:border-blue-500 hover:bg-gray-800/50 transition-all group shadow-2xl active:scale-95">
-                            <span className="text-xl font-black text-white group-hover:text-blue-400 transition-colors uppercase tracking-tight">{team}</span>
+                        <button key={team} onClick={() => setSelectedTeam(team)} className="bg-gray-800/50 border border-gray-700 rounded-2xl p-8 hover:border-blue-500 transition-all group shadow-xl">
+                            <span className="text-xl font-bold text-white group-hover:text-blue-400 transition-colors">{team}</span>
                         </button>
                     ))}
                 </div>
@@ -191,50 +246,40 @@ const UserJourney: React.FC<{ onBackToRoleSelect: () => void }> = ({ onBackToRol
     if (view === 'create') return <CreateOrderPage team={selectedTeam} onSaveSuccess={() => setView('list')} onCancel={() => setView('list')} />;
 
     return (
-        <div className="w-full max-w-[95rem] mx-auto p-2 sm:p-4 animate-fade-in">
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-10 gap-6">
+        <div className="w-full max-w-[115rem] mx-auto p-2 sm:p-4 animate-fade-in overflow-x-hidden min-h-[2000px]">
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
                 <div>
-                    <h1 className="text-3xl font-black text-white flex items-center gap-4 uppercase tracking-tighter">
+                    <h1 className="text-2xl font-black text-white flex items-center gap-3">
                         ការកម្មង់របស់ខ្ញុំ 
-                        <span className="text-[10px] bg-blue-600/20 text-blue-400 px-4 py-1.5 rounded-full border border-blue-500/20 uppercase tracking-[0.2em]">{selectedTeam}</span>
+                        <span className="text-[10px] bg-blue-600/20 text-blue-400 px-3 py-1 rounded-full border border-blue-500/20 uppercase tracking-[0.2em]">{selectedTeam}</span>
                     </h1>
-                    <div className="mt-6 flex flex-wrap gap-3">
+                    <div className="mt-4 flex flex-wrap gap-3">
                          {userTeams.length > 1 && (
                             <button 
                                 onClick={() => setSelectedTeam('')} 
-                                className="flex items-center gap-2 px-5 py-2.5 bg-gray-800 hover:bg-blue-600 text-gray-300 hover:text-white rounded-2xl text-[11px] font-black uppercase transition-all border border-gray-700 hover:border-blue-500 shadow-xl active:scale-95"
+                                className="flex items-center gap-2 px-4 py-2 bg-gray-800 hover:bg-blue-600 text-gray-300 hover:text-white rounded-xl text-[11px] font-black uppercase transition-all border border-gray-700 hover:border-blue-500 hover:shadow-lg hover:shadow-blue-600/20 active:scale-95"
                             >
-                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" /></svg>
+                                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" /></svg>
                                 ប្តូរក្រុម
                             </button>
                          )}
                          {currentUser?.IsSystemAdmin && (
                             <button 
                                 onClick={onBackToRoleSelect} 
-                                className="flex items-center gap-2 px-5 py-2.5 bg-gray-800 hover:bg-yellow-600 text-gray-300 hover:text-white rounded-2xl text-[11px] font-black uppercase transition-all border border-gray-700 hover:border-yellow-500 shadow-xl active:scale-95"
+                                className="flex items-center gap-2 px-4 py-2 bg-gray-800 hover:bg-yellow-600 text-gray-300 hover:text-white rounded-xl text-[11px] font-black uppercase transition-all border border-gray-700 hover:border-yellow-500 hover:shadow-lg hover:shadow-yellow-600/20 active:scale-95"
                             >
-                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 15l-3-3m0 0l3-3m-3 3h8M3 12a9 9 0 1118 0 9 9 0 01-18 0z" /></svg>
-                                ត្រឡប់ទៅជ្រើសរើសតួនាទី
+                                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 15l-3-3m0 0l3-3m-3 3h8M3 12a9 9 0 1118 0 9 9 0 01-18 0z" /></svg>
+                                ជ្រើសរើសតួនាទី
                             </button>
                          )}
                     </div>
                 </div>
-                
-                {/* ប៊ូតុង បង្កើតការកម្មង់ថ្មី ដែលបានកែសម្រួលម៉ូតថ្មី */}
-                <button 
-                    onClick={() => setView('create')} 
-                    className="relative group flex items-center justify-center gap-3 px-8 py-4 bg-gradient-to-br from-blue-600 to-indigo-700 text-white rounded-2xl shadow-[0_10px_40px_-10px_rgba(37,99,235,0.5)] hover:shadow-[0_20px_50px_-10px_rgba(37,99,235,0.6)] transition-all duration-300 active:scale-95 overflow-hidden w-full md:w-auto"
-                >
-                    {/* Light Glow effect on hover */}
-                    <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000 ease-in-out"></div>
-                    
-                    <svg className="w-6 h-6 transform group-hover:rotate-90 transition-transform duration-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                    </svg>
-                    <span className="text-sm font-black uppercase tracking-[0.15em] relative z-10">បង្កើតការកម្មង់ថ្មី</span>
-                </button>
+                <button onClick={() => setView('create')} className="btn btn-primary w-full md:w-auto px-10 shadow-xl shadow-blue-600/20 h-14 text-base font-black active:scale-95 transition-all rounded-2xl uppercase tracking-widest">បង្កើតការកម្មង់ថ្មី</button>
             </div>
-            <UserOrdersView team={selectedTeam} />
+            
+            <div className="bg-gray-800/20 border border-gray-700/50 rounded-[2.5rem] p-2 sm:p-6 shadow-2xl overflow-visible min-h-[2000px]">
+                <UserOrdersView team={selectedTeam} />
+            </div>
         </div>
     );
 };

@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback, Suspense, useMemo } from 'react';
 import { User, AppData } from './types';
 import { WEB_APP_URL } from './constants';
@@ -170,10 +171,10 @@ const App: React.FC = () => {
         return isMobile; 
     }, [appState, isMobile]);
 
-    // Container width logic: Full for Admin and Role Selection, centered container for User Journey
+    // Container width logic: Full for Admin and Role Selection, wide layout for User Journey
     const containerClass = useMemo(() => {
         if (appState === 'admin_dashboard' || appState === 'role_selection') return 'w-full';
-        return 'container mx-auto px-4';
+        return 'w-full px-2 sm:px-6'; // Expanded for User Journey as requested
     }, [appState]);
 
     // Padding logic: No top padding for Role Selection to ensure 100vh height fits perfectly
