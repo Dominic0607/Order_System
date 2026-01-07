@@ -88,7 +88,6 @@ const App: React.FC = () => {
             if (cached) {
                 try {
                     const { data, timestamp } = JSON.parse(cached);
-                    // Updated: Cache duration set to 5 minutes to match backend cache logic
                     if (Date.now() - timestamp < 5 * 60 * 1000) { 
                         setAppData(data);
                         return;
@@ -102,25 +101,19 @@ const App: React.FC = () => {
             if (response.ok) {
                 const result = await response.json();
                 if (result.status === 'success') {
-                    // Data Normalization: Ensure keys match interface regardless of backend casing
                     const rawData = result.data || {};
                     const normalized: AppData = {
                         ...initialAppData,
                         ...rawData,
-                        // Handle potential casing differences or missing keys
                         pages: rawData.pages || rawData.TeamsPages || rawData.teamsPages || [],
                         users: rawData.users || rawData.Users || [],
                         products: rawData.products || rawData.Products || [],
-                        // Explicitly capture Stores data
                         stores: rawData.stores || rawData.Stores || [], 
-                        // Settings might come as an array or object, frontend types expect any
                         settings: rawData.settings || rawData.Settings || {}, 
-                        
                         shippingMethods: rawData.shippingMethods || rawData.ShippingMethods || [],
                         bankAccounts: rawData.bankAccounts || rawData.BankAccounts || [],
                         drivers: rawData.drivers || rawData.Drivers || [],
                     };
-                    
                     setAppData(normalized);
                     localStorage.setItem(cacheKey, JSON.stringify({ data: normalized, timestamp: Date.now() }));
                 }
@@ -165,19 +158,18 @@ const App: React.FC = () => {
         setRefreshTimestamp(Date.now());
     };
 
-    // Header logic: Show ALWAYS on User views, but ONLY on Mobile for Admin view
+    // Header logic
     const shouldShowHeader = useMemo(() => {
         if (appState !== 'admin_dashboard') return true;
         return isMobile; 
     }, [appState, isMobile]);
 
-    // Container width logic: Full for Admin and Role Selection, wide layout for User Journey
+    // Container width logic
     const containerClass = useMemo(() => {
         if (appState === 'admin_dashboard' || appState === 'role_selection') return 'w-full';
-        return 'w-full px-2 sm:px-6'; // Expanded for User Journey as requested
+        return 'w-full px-2 sm:px-6';
     }, [appState]);
 
-    // Padding logic: No top padding for Role Selection to ensure 100vh height fits perfectly
     const paddingClass = useMemo(() => {
         if (appState === 'role_selection') return 'pt-0 pb-0';
         return `${shouldShowHeader ? (originalAdminUser ? 'pt-24' : 'pt-20') : 'pt-0'} pb-24 md:pb-8`;
@@ -188,9 +180,9 @@ const App: React.FC = () => {
             currentUser, appData, login, logout, refreshData, refreshTimestamp,
             originalAdminUser, returnToAdmin: () => {}, previewImage: (u) => setPreviewImageUrl(u),
             updateCurrentUser: (d) => currentUser && setCurrentUser({ ...currentUser, ...d }),
-            setUnreadCount, updateProductInData: () => {}, apiKey: '',
+            setUnreadCount, unreadCount, updateProductInData: () => {}, apiKey: '',
             setAppState, setOriginalAdminUser, fetchData, setCurrentUser, setChatVisibility: setChatVisible,
-            isSidebarCollapsed, setIsSidebarCollapsed
+            isSidebarCollapsed, setIsSidebarCollapsed, setIsChatOpen
         }}>
             <div className={`min-h-screen relative z-10 ${originalAdminUser ? 'impersonating' : ''}`}>
                 <BackgroundMusic />
@@ -210,18 +202,6 @@ const App: React.FC = () => {
                                 {appState === 'role_selection' && <RoleSelectionPage onSelect={(s) => setAppState(s as any)} />}
                             </main>
 
-                            {isChatVisible && (
-                                <button 
-                                    onClick={() => setIsChatOpen(true)}
-                                    className="chat-fab group"
-                                    aria-label="Open Chat"
-                                >
-                                    <svg className="w-8 h-8 group-hover:scale-110 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-                                    </svg>
-                                    {unreadCount > 0 && <span className="unread-badge">{unreadCount}</span>}
-                                </button>
-                            )}
                             <ChatWidget isOpen={isChatOpen} onClose={() => setIsChatOpen(false)} />
                         </>
                     ) : (
