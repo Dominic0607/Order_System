@@ -23,8 +23,8 @@ interface CreateOrderPageProps {
 type ProductUIState = ProductType & {
     discountType: 'percent' | 'amount' | 'custom';
     discountAmountInput: string; 
-    discountPercentInput: string; 
-    finalPriceInput: string;
+    discountPercentInput: string;  
+    finalPriceInput: string; 
     applyDiscountToTotal: boolean;
 }
 
