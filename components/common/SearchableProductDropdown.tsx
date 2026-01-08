@@ -64,7 +64,6 @@ const SearchableProductDropdown: React.FC<SearchableProductDropdownProps> = ({ p
         setSearchTerm(selectedProductName);
     }, [selectedProductName]);
 
-    // Handle smooth scrolling on mobile when preview opens
     useEffect(() => {
         if (previewProduct) {
             const timer = setTimeout(() => {
@@ -162,13 +161,13 @@ const SearchableProductDropdown: React.FC<SearchableProductDropdownProps> = ({ p
                 />
                 <div className="absolute right-4 top-1/2 -translate-y-1/2 flex items-center gap-2">
                     {searchTerm && <button type="button" onClick={handleClear} className="text-gray-500 hover:text-white text-2xl">&times;</button>}
-                    <svg className="h-5 w-5 text-gray-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+                    <svg className="h-5 w-5 text-gray-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
                 </div>
             </div>
             
             {isOpen && (
-                <div className="absolute z-[100] w-full mt-2 bg-gray-800/95 backdrop-blur-xl border border-white/10 rounded-[1.5rem] shadow-[0_20px_50px_rgba(0,0,0,0.5)] overflow-hidden animate-fade-in-down max-h-80">
-                    <ul className="overflow-y-auto p-2 space-y-1 custom-scrollbar">
+                <div className="absolute z-[100] w-full mt-2 bg-gray-800/95 backdrop-blur-xl border border-white/10 rounded-[1.5rem] shadow-[0_20px_50px_rgba(0,0,0,0.5)] overflow-hidden animate-fade-in-down max-h-80 overflow-y-auto custom-scrollbar">
+                    <ul className="p-2 space-y-1">
                         {itemsForNavigation.length === 0 ? (
                             <li className="p-4 text-center text-xs text-gray-500 font-black uppercase tracking-widest">រកមិនឃើញផលិតផលទេ</li>
                         ) : itemsForNavigation.map((item, index) => {
@@ -202,8 +201,6 @@ const SearchableProductDropdown: React.FC<SearchableProductDropdownProps> = ({ p
             {previewProduct && (
                 <Modal isOpen={true} onClose={() => setPreviewProduct(null)} maxWidth={isMobile ? "max-w-[95vw]" : "max-w-2xl"}>
                     <div ref={modalContentRef} className="bg-[#0f172a] rounded-[2rem] sm:rounded-[3rem] overflow-hidden shadow-[0_30px_100px_rgba(0,0,0,0.8)] border border-white/5 relative">
-                        
-                        {/* Header Image Area with Blur Background */}
                         <div className="relative h-48 sm:h-72 w-full">
                             <div className="absolute inset-0 z-0">
                                 <img src={convertGoogleDriveUrl(previewProduct.ImageURL)} className="w-full h-full object-cover blur-3xl opacity-30" alt="" />
@@ -221,8 +218,6 @@ const SearchableProductDropdown: React.FC<SearchableProductDropdownProps> = ({ p
                                 </div>
                             </div>
                         </div>
-
-                        {/* Content Area */}
                         <div className="p-6 sm:p-10 text-center space-y-6 sm:space-y-8 bg-gradient-to-b from-transparent to-black/40">
                             <div>
                                 <p className="text-blue-500 text-[10px] sm:text-xs font-black uppercase tracking-[0.4em] mb-3">បញ្ជាក់ការជ្រើសរើស</p>
@@ -236,8 +231,6 @@ const SearchableProductDropdown: React.FC<SearchableProductDropdownProps> = ({ p
                                     </div>
                                 )}
                             </div>
-
-                            {/* Action Buttons - Always visible and at the bottom */}
                             <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 w-full">
                                 <button 
                                     onClick={() => setPreviewProduct(null)} 
@@ -254,8 +247,6 @@ const SearchableProductDropdown: React.FC<SearchableProductDropdownProps> = ({ p
                                 </button>
                             </div>
                         </div>
-
-                        {/* Extra Visual Flair */}
                         <div className="absolute -bottom-20 -left-20 w-64 h-64 bg-blue-600/10 rounded-full blur-[80px] pointer-events-none"></div>
                         <div className="absolute -top-20 -right-20 w-64 h-64 bg-indigo-600/10 rounded-full blur-[80px] pointer-events-none"></div>
                     </div>

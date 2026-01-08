@@ -14,6 +14,7 @@ import MapModal from '../components/orders/MapModal';
 import BarcodeScannerModal from '../components/orders/BarcodeScannerModal';
 import SearchableProvinceDropdown from '../components/orders/SearchableProvinceDropdown';
 import TelegramScheduler from '../components/orders/TelegramScheduler';
+import SetQuantity from '../components/orders/SetQuantity';
 
 interface CreateOrderPageProps {
     team: string;
@@ -260,6 +261,8 @@ const CreateOrderPage: React.FC<CreateOrderPageProps> = ({ team, onSaveSuccess, 
                 if (stringValue.startsWith('0') && stringValue.length > 1 && !stringValue.startsWith('0.')) stringValue = String(parseFloat(stringValue));
                 // @ts-ignore
                 productToUpdate[field] = stringValue;
+            } else if (field === 'quantity') {
+                productToUpdate[field] = value === '' ? 0 : Math.max(0, parseInt(value) || 0);
             } else {
                 // @ts-ignore
                 productToUpdate[field] = value;
@@ -424,7 +427,7 @@ const CreateOrderPage: React.FC<CreateOrderPageProps> = ({ team, onSaveSuccess, 
                                             onClick={() => setOrder({ ...order, pageSelectMode: 'cards' })}
                                             className={`px-3 py-1.5 text-[10px] font-black uppercase rounded-lg transition-all flex items-center gap-2 ${order.pageSelectMode === 'cards' ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/20' : 'text-gray-500 hover:text-gray-300'}`}
                                         >
-                                            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                                            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2z" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
                                             Card View
                                         </button>
                                         <button 
@@ -515,8 +518,8 @@ const CreateOrderPage: React.FC<CreateOrderPageProps> = ({ team, onSaveSuccess, 
                             <div className="md:col-span-2">
                                 <label className="input-label font-black text-[10px] uppercase text-gray-500 tracking-widest mb-2 block">ថ្លៃសេវាដឹកជញ្ជូន</label>
                                 <div className="flex gap-3 mb-3">
-                                    <button type="button" onClick={() => handleShippingOptionChange('charge')} className={`flex-1 py-3 px-4 rounded-xl text-xs font-black uppercase transition-all border ${shippingFeeOption === 'charge' ? 'bg-blue-600 border-blue-500 text-white shadow-lg shadow-blue-600/20' : 'bg-gray-800 border-gray-700 text-gray-500 hover:text-gray-300'}`}>គិតថ្លៃសេវា</button>
-                                    <button type="button" onClick={() => handleShippingOptionChange('free')} className={`flex-1 py-3 px-4 rounded-xl text-xs font-black uppercase transition-all border ${shippingFeeOption === 'free' ? 'bg-emerald-600 border-emerald-500 text-white shadow-lg shadow-emerald-600/20' : 'bg-gray-800 border-gray-700 text-gray-500 hover:text-gray-300'}`}>មិនគិតថ្លៃសេវា</button>
+                                    <button type="button" onClick={() => handleShippingOptionChange('charge')} className={`flex-1 py-3 px-4 rounded-xl text-xs font-black uppercase transition-all border ${shippingFeeOption === 'charge' ? 'bg-blue-600 border-blue-500 text-white shadow-lg shadow-blue-600/20' : 'bg-gray-800 border-gray-700 text-gray-400 hover:text-gray-300'}`}>គិតថ្លៃសេវា</button>
+                                    <button type="button" onClick={() => handleShippingOptionChange('free')} className={`flex-1 py-3 px-4 rounded-xl text-xs font-black uppercase transition-all border ${shippingFeeOption === 'free' ? 'bg-emerald-600 border-emerald-500 text-white shadow-lg shadow-emerald-600/20' : 'bg-gray-800 border-gray-700 text-gray-400 hover:text-gray-300'}`}>មិនគិតថ្លៃសេវា</button>
                                 </div>
                                 {shippingFeeOption === 'charge' && (
                                     <div className="space-y-3 animate-fade-in">
@@ -560,7 +563,10 @@ const CreateOrderPage: React.FC<CreateOrderPageProps> = ({ team, onSaveSuccess, 
                                             <div className="md:col-span-10 grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                                                 <div className="space-y-1.5"><label className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-1">ឈ្មោះផលិតផល*</label><SearchableProductDropdown products={appData.products || []} selectedProductName={p.name} onSelect={(val) => handleProductUpdate(index, 'name', val)} /></div>
                                                 <div className="grid grid-cols-2 gap-3 sm:gap-4">
-                                                    <div className="space-y-1.5"><label className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-1">ចំនួន*</label><div className="quantity-stepper !max-w-full"><button type="button" className="active:scale-95 transition-transform" onClick={() => handleProductUpdate(index, 'quantity', Math.max(1, p.quantity - 1))} disabled={p.quantity <= 1}>-</button><span className="quantity-display text-sm">{p.quantity}</span><button type="button" className="active:scale-95 transition-transform" onClick={() => handleProductUpdate(index, 'quantity', p.quantity + 1)}>+</button></div></div>
+                                                    <SetQuantity 
+                                                        value={p.quantity} 
+                                                        onChange={(val) => handleProductUpdate(index, 'quantity', val)} 
+                                                    />
                                                     <div className="space-y-1.5"><label className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-1">ពណ៌/សម្គាល់</label><input type="text" list={`colors-datalist-${p.id}`} value={p.colorInfo} onChange={(e) => handleProductUpdate(index, 'colorInfo', e.target.value)} className="form-input text-sm !py-2.5 rounded-xl bg-gray-900 border-gray-700" placeholder="ឧ. ខៀវ, XL" /><datalist id={`colors-datalist-${p.id}`}>{(appData.colors || []).map((c:any,i:number)=><option key={i} value={c.ColorName}/>)}</datalist></div>
                                                 </div>
                                             </div>
