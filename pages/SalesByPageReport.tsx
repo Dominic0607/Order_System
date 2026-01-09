@@ -24,7 +24,7 @@ const SalesByPageReport: React.FC<SalesByPageReportProps> = ({ orders, onBack })
     const [isFrozen, setIsFrozen] = useState(false);
     const [showFillColor, setShowFillColor] = useState(true);
     const [isMerged, setIsMerged] = useState(true);
-    const [showAllPages, setShowAllPages] = useState(true); // Default to true (Show all including 0)
+    const [showAllPages, setShowAllPages] = useState(true); 
     const [isExporting, setIsExporting] = useState(false);
     const [sortConfig, setSortConfig] = useState<{ key: SortKey, direction: 'asc' | 'desc' }>({ key: 'teamName', direction: 'asc' });
 
@@ -38,7 +38,6 @@ const SalesByPageReport: React.FC<SalesByPageReportProps> = ({ orders, onBack })
     const pageStats = useMemo(() => {
         const stats: Record<string, any> = {};
         
-        // Initialize with ALL defined pages from system settings first
         if (appData.pages) {
             appData.pages.forEach(p => {
                 stats[p.PageName] = {
@@ -53,7 +52,6 @@ const SalesByPageReport: React.FC<SalesByPageReportProps> = ({ orders, onBack })
             });
         }
 
-        // Aggregate order data
         orders.forEach(o => {
             const page = o.Page || 'Unknown';
             if (!stats[page]) {
@@ -82,8 +80,6 @@ const SalesByPageReport: React.FC<SalesByPageReportProps> = ({ orders, onBack })
         });
 
         let result = Object.values(stats);
-
-        // Filter out zero revenue pages if the toggle is OFF
         if (!showAllPages) {
             result = result.filter(item => item.revenue > 0);
         }
@@ -131,30 +127,8 @@ const SalesByPageReport: React.FC<SalesByPageReportProps> = ({ orders, onBack })
             try {
                 const doc = new jsPDF({ orientation: 'landscape' }) as any;
                 const pageWidth = doc.internal.pageSize.width;
-
                 doc.setFontSize(18);
                 doc.text("Sales Report by Page", pageWidth / 2, 15, { align: 'center' });
-                doc.setFontSize(10);
-                doc.text(`Generated on: ${new Date().toLocaleString()}`, pageWidth / 2, 22, { align: 'center' });
-
-                const head = [['#', 'Team', 'Page Name', 'Total Revenue', ...MONTHS]];
-                const body = pageStats.map((p: any, i) => [
-                    i + 1,
-                    p.teamName,
-                    p.pageName,
-                    `$${p.revenue.toLocaleString()}`,
-                    ...MONTHS.map(m => `$${p[`rev_${m}`].toLocaleString()}`)
-                ]);
-
-                doc.autoTable({
-                    startY: 30,
-                    head: head,
-                    body: body,
-                    theme: 'grid',
-                    headStyles: { fillColor: [37, 99, 235], textColor: 255 },
-                    styles: { fontSize: 7 },
-                });
-
                 doc.save(`Page_Sales_Report_${Date.now()}.pdf`);
             } catch (err) {
                 console.error(err);
@@ -172,6 +146,7 @@ const SalesByPageReport: React.FC<SalesByPageReportProps> = ({ orders, onBack })
             .map(p => ({ label: p.pageName, value: p.revenue, imageUrl: p.logoUrl }));
     }, [pageStats]);
 
+    // --- Desktop View (ហាមប៉ះពាល់) ---
     const renderTable = (type: 'Revenue' | 'Profit', prefix: string) => {
         const columns = [
             { key: 'index', label: '#' },
@@ -209,88 +184,89 @@ const SalesByPageReport: React.FC<SalesByPageReportProps> = ({ orders, onBack })
                         <button onClick={() => setIsMerged(!isMerged)} className={`btn !py-1 !px-3 text-[10px] font-black border transition-all ${isMerged ? 'bg-indigo-600 border-indigo-500 text-white' : 'bg-gray-800 border-gray-700 text-gray-400'}`}>MERGE</button>
                         <button onClick={() => setShowFillColor(!showFillColor)} className={`btn !py-1 !px-3 text-[10px] font-black border transition-all ${showFillColor ? 'bg-orange-600 border-orange-500 text-white' : 'bg-gray-800 border-gray-700 text-gray-400'}`}>COLOR</button>
                         <button onClick={() => setIsFrozen(!isFrozen)} className={`btn !py-1 !px-3 text-[10px] font-black border transition-all ${isFrozen ? 'bg-blue-600 border-blue-500 text-white shadow-lg' : 'bg-gray-800 border-gray-700 text-gray-400'}`}>FREEZE</button>
+                        <button onClick={() => setShowBorders(!showBorders)} className={`btn !py-1 !px-3 text-[10px] font-black border transition-all ${showBorders ? 'bg-gray-700 border-gray-600 text-white shadow-lg' : 'bg-gray-800 border-gray-700 text-gray-400'}`}>BORDER</button>
                     </div>
                 </div>
 
-                <div className={`overflow-x-auto custom-scrollbar pb-2 ${showBorders ? 'border border-gray-700/50 rounded-xl' : ''}`}>
-                    <table className="report-table w-full border-separate border-spacing-0 text-sm">
-                        <thead className="bg-gray-800/90 backdrop-blur-md">
-                            <tr>
+                <div className={`overflow-x-auto custom-scrollbar pb-2 ${showBorders ? 'border-2 border-white/20 rounded-2xl shadow-[0_0_40px_rgba(0,0,0,0.6)]' : ''}`}>
+                    <table className={`report-table w-full border-separate border-spacing-0 text-sm ${showBorders ? 'border-collapse' : ''}`}>
+                        <thead className="bg-[#0f172a] backdrop-blur-md">
+                            <tr className="border-b-2 border-white/20">
                                 {active.map(col => {
                                     let stickyClass = "";
                                     let stickyStyle: React.CSSProperties = {};
                                     if (isFrozen) {
-                                        if (col.key === 'index') { stickyClass = "sticky left-0 z-30 bg-gray-800"; stickyStyle = { width: '45px', minWidth: '45px' }; }
-                                        else if (col.key === 'teamName') { stickyClass = "sticky left-[45px] z-30 bg-gray-800 border-r border-gray-700 shadow-md"; stickyStyle = { minWidth: '130px' }; }
-                                        else if (col.key === 'logo') { stickyClass = `sticky z-30 bg-gray-800`; stickyStyle = { left: '175px', width: '50px', minWidth: '50px' }; }
-                                        else if (col.key === 'pageName') { stickyClass = `sticky z-30 bg-gray-800 shadow-md`; stickyStyle = { left: '225px', minWidth: '160px' }; }
-                                        else if (col.key.includes('total')) { stickyClass = `sticky z-30 bg-gray-800 border-r border-gray-700 shadow-lg`; stickyStyle = { left: '385px', width: '100px', minWidth: '100px' }; }
+                                        if (col.key === 'index') { stickyClass = "sticky left-0 z-30 bg-[#0f172a]"; stickyStyle = { width: '45px', minWidth: '45px' }; }
+                                        else if (col.key === 'teamName') { stickyClass = "sticky left-[45px] z-30 bg-[#0f172a] border-r border-white/20 shadow-md"; stickyStyle = { minWidth: '130px' }; }
+                                        else if (col.key === 'logo') { stickyClass = `sticky z-30 bg-[#0f172a]`; stickyStyle = { left: '175px', width: '50px', minWidth: '50px' }; }
+                                        else if (col.key === 'pageName') { stickyClass = `sticky z-30 bg-[#0f172a] shadow-md`; stickyStyle = { left: '225px', minWidth: '160px' }; }
+                                        else if (col.key.includes('total')) { stickyClass = `sticky z-30 bg-[#0f172a] border-r border-white/20 shadow-lg`; stickyStyle = { left: '385px', width: '100px', minWidth: '100px' }; }
                                     }
-                                    const headerBg = col.key.includes('total') ? (type === 'Revenue' ? 'bg-blue-900/50' : 'bg-green-900/50') : '';
+                                    const headerBg = col.key.includes('total') ? (type === 'Revenue' ? 'bg-blue-900/80' : 'bg-green-900/80') : '';
                                     return (
-                                        <th key={col.key} onClick={() => col.sortable && toggleSort(col.sortKey!)} className={`px-4 py-4 whitespace-nowrap text-left font-black uppercase tracking-wider border-b border-gray-700 ${stickyClass} ${headerBg} ${col.sortable ? 'cursor-pointer hover:bg-gray-700' : ''}`} style={stickyStyle}>
+                                        <th key={col.key} onClick={() => col.sortable && toggleSort(col.sortKey!)} className={`px-4 py-5 whitespace-nowrap text-left font-black uppercase tracking-wider border-b-2 border-white/20 ${showBorders ? 'border-x border-white/10' : ''} ${stickyClass} ${headerBg} ${col.sortable ? 'cursor-pointer hover:bg-gray-700' : ''}`} style={stickyStyle}>
                                             <div className="flex items-center gap-1">{col.label} {col.sortable && sortConfig.key === col.sortKey && (<span>{sortConfig.direction === 'asc' ? '↑' : '↓'}</span>)}</div>
                                         </th>
                                     );
                                 })}
                             </tr>
                         </thead>
-                        <tbody className="divide-y divide-gray-800">
+                        <tbody className="divide-y divide-white/10">
                             {pageStats.map((item: any, idx) => {
                                 const isTeamFirstRow = teamSpanCounts.firstIndices[item.teamName] === idx;
                                 const teamRowSpan = isMerged ? teamSpanCounts.counts[item.teamName] : 1;
                                 const teamColorIndex = Array.from(String(item.teamName)).reduce((acc: number, char: string) => acc + char.charCodeAt(0), 0) % 5;
-                                const groupColors = [{ bg: 'bg-blue-500/10', border: 'border-l-4 border-l-blue-500' }, { bg: 'bg-purple-500/10', border: 'border-l-4 border-l-purple-500' }, { bg: 'bg-emerald-500/10', border: 'border-l-4 border-l-emerald-500' }, { bg: 'bg-orange-500/10', border: 'border-l-4 border-l-orange-500' }, { bg: 'bg-pink-500/10', border: 'border-l-4 border-l-pink-500' }];
+                                const groupColors = [{ bg: 'bg-blue-500/5', border: 'border-l-4 border-l-blue-500' }, { bg: 'bg-purple-500/5', border: 'border-l-4 border-l-purple-500' }, { bg: 'bg-emerald-500/5', border: 'border-l-4 border-l-emerald-500' }, { bg: 'bg-orange-500/5', border: 'border-l-4 border-l-orange-500' }, { bg: 'bg-pink-500/5', border: 'border-l-4 border-l-pink-500' }];
                                 const colorSet = groupColors[teamColorIndex];
                                 const rowBgClass = showFillColor ? colorSet.bg : 'hover:bg-blue-500/5';
                                 return (
-                                    <tr key={item.pageName} className={`${rowBgClass} transition-colors group`}>
+                                    <tr key={item.pageName} className={`${rowBgClass} transition-colors group border-b border-white/10`}>
                                         {active.map(col => {
-                                            const cellClass = `px-4 py-3 lg:py-4 whitespace-nowrap border-gray-800`;
+                                            const cellClass = `px-4 py-4 lg:py-5 whitespace-nowrap border-white/10 ${showBorders ? 'border-x border-white/10' : ''}`;
                                             let stickyClass = "";
                                             let stickyStyle: React.CSSProperties = {};
                                             if (isFrozen) {
-                                                if (col.key === 'index') { stickyClass = "sticky left-0 z-10 bg-gray-900"; stickyStyle = { width: '45px', minWidth: '45px' }; }
-                                                else if (col.key === 'teamName') { stickyClass = "sticky left-[45px] z-10 bg-gray-900 border-r border-gray-800 shadow-md"; stickyStyle = { width: '130px', minWidth: '130px' }; }
-                                                else if (col.key === 'logo') { stickyClass = `sticky z-10 bg-gray-900`; stickyStyle = { left: '175px', width: '50px', minWidth: '50px' }; }
-                                                else if (col.key === 'pageName') { stickyClass = `sticky z-10 bg-gray-900 shadow-md`; stickyStyle = { left: '225px', minWidth: '160px' }; }
-                                                else if (col.key.includes('total')) { stickyClass = `sticky z-10 bg-gray-900 border-r border-gray-800 shadow-lg`; stickyStyle = { left: '385px', width: '100px', minWidth: '100px' }; }
+                                                if (col.key === 'index') { stickyClass = "sticky left-0 z-10 bg-[#020617]"; stickyStyle = { width: '45px', minWidth: '45px' }; }
+                                                else if (col.key === 'teamName') { stickyClass = "sticky left-[45px] z-10 bg-[#020617] border-r border-white/20 shadow-md"; stickyStyle = { width: '130px', minWidth: '130px' }; }
+                                                else if (col.key === 'logo') { stickyClass = `sticky z-10 bg-[#020617]`; stickyStyle = { left: '175px', width: '50px', minWidth: '50px' }; }
+                                                else if (col.key === 'pageName') { stickyClass = `sticky z-10 bg-[#020617] shadow-md`; stickyStyle = { left: '225px', minWidth: '160px' }; }
+                                                else if (col.key.includes('total')) { stickyClass = `sticky z-10 bg-[#020617] border-r border-white/20 shadow-lg`; stickyStyle = { left: '385px', width: '100px', minWidth: '100px' }; }
                                             }
                                             if (col.key === 'index') return <td key={col.key} className={`${cellClass} text-center font-bold text-gray-500 ${stickyClass}`} style={stickyStyle}>{idx + 1}</td>;
                                             if (col.key === 'teamName') {
                                                 if (isMerged && !isTeamFirstRow) return null;
-                                                return <td key={col.key} rowSpan={teamRowSpan} className={`${cellClass} font-black text-white bg-gray-900/90 align-middle text-center ${stickyClass} ${showFillColor ? colorSet.border : ''}`} style={stickyStyle}><div className="bg-gray-800/50 py-1 px-2 rounded-md inline-block">{item.teamName}</div></td>;
+                                                return <td key={col.key} rowSpan={teamRowSpan} className={`${cellClass} font-black text-white bg-gray-900/95 align-middle text-center ${stickyClass} ${showFillColor ? colorSet.border : ''} border-b border-white/10`} style={stickyStyle}><div className="bg-gray-800/80 py-1 px-3 rounded-xl border border-white/5 shadow-sm inline-block">{item.teamName}</div></td>;
                                             }
-                                            if (col.key === 'logo') return <td key={col.key} className={`${cellClass} text-center ${stickyClass}`} style={stickyStyle}><img src={convertGoogleDriveUrl(item.logoUrl)} className="w-8 h-8 rounded-full border border-gray-700 mx-auto" alt="logo" onClick={() => previewImage(convertGoogleDriveUrl(item.logoUrl))} /></td>;
-                                            if (col.key === 'pageName') return <td key={col.key} className={`${cellClass} font-black text-white ${stickyClass}`} style={stickyStyle}>{item.pageName}</td>;
-                                            if (col.key.includes('total')) return <td key={col.key} className={`${cellClass} text-right font-black ${stickyClass} ${type === 'Revenue' ? 'text-blue-100 bg-blue-600/15' : 'text-green-100 bg-green-600/15'}`} style={stickyStyle}>${(type === 'Revenue' ? item.revenue : item.profit).toLocaleString(undefined, {minimumFractionDigits: 2})}</td>;
+                                            if (col.key === 'logo') return <td key={col.key} className={`${cellClass} text-center ${stickyClass} border-b border-white/10`} style={stickyStyle}><img src={convertGoogleDriveUrl(item.logoUrl)} className="w-9 h-9 rounded-full border border-gray-700 mx-auto shadow-md" alt="logo" onClick={() => previewImage(convertGoogleDriveUrl(item.logoUrl))} /></td>;
+                                            if (col.key === 'pageName') return <td key={col.key} className={`${cellClass} font-black text-white ${stickyClass} border-b border-white/10`} style={stickyStyle}>{item.pageName}</td>;
+                                            if (col.key.includes('total')) return <td key={col.key} className={`${cellClass} text-right font-black ${stickyClass} ${type === 'Revenue' ? 'text-blue-100 bg-blue-600/10' : 'text-green-100 bg-green-600/10'} border-b border-white/10`} style={stickyStyle}>${(type === 'Revenue' ? item.revenue : item.profit).toLocaleString(undefined, {minimumFractionDigits: 2})}</td>;
                                             if (col.key.startsWith(prefix)) {
                                                 const val = item[col.key] || 0;
-                                                const color = type === 'Profit' ? (val > 0 ? 'text-green-400' : val < 0 ? 'text-red-400' : 'text-gray-600') : (val > 0 ? 'text-blue-300' : 'text-gray-600');
-                                                return <td key={col.key} className={`${cellClass} text-right font-medium font-mono ${color}`}>{val !== 0 ? `$${val.toLocaleString(undefined, {minimumFractionDigits: 2})}` : '-'}</td>;
+                                                const color = type === 'Profit' ? (val > 0 ? 'text-green-400' : val < 0 ? 'text-red-400' : 'text-gray-500') : (val > 0 ? 'text-blue-300' : 'text-gray-500');
+                                                return <td key={col.key} className={`${cellClass} text-right font-bold font-mono ${color} border-b border-white/10`}>{val !== 0 ? `$${val.toLocaleString(undefined, {minimumFractionDigits: 2})}` : '-'}</td>;
                                             }
-                                            return <td key={col.key} className={cellClass}>-</td>;
+                                            return <td key={col.key} className={`${cellClass} border-b border-white/10`}>-</td>;
                                         })}
                                     </tr>
                                 );
                             })}
                         </tbody>
-                        <tfoot className="bg-gray-800/90 font-black">
-                            <tr>
+                        <tfoot className="bg-[#0f172a] font-black border-t-2 border-white/20">
+                            <tr className="border-t-2 border-white/20">
                                 {active.map((col, idx) => {
-                                    const cellClass = `px-4 py-4 whitespace-nowrap border-t-2 border-gray-700`;
+                                    const cellClass = `px-4 py-5 whitespace-nowrap border-t-2 border-white/20 ${showBorders ? 'border-x border-white/10' : ''}`;
                                     let stickyClass = "";
                                     let stickyStyle: React.CSSProperties = {};
                                     if (isFrozen) {
-                                        if (col.key === 'index') { stickyClass = "sticky left-0 z-30 bg-gray-800"; stickyStyle = { width: '45px', minWidth: '45px' }; }
-                                        else if (col.key === 'teamName') { stickyClass = "sticky left-[45px] z-30 bg-gray-800 border-r border-gray-700 shadow-md"; stickyStyle = { minWidth: '130px' }; }
-                                        else if (col.key === 'logo') { stickyClass = `sticky z-30 bg-gray-800`; stickyStyle = { left: '175px', width: '50px', minWidth: '50px' }; }
-                                        else if (col.key === 'pageName') { stickyClass = `sticky z-30 bg-gray-800 shadow-md`; stickyStyle = { left: '225px', minWidth: '160px' }; }
-                                        else if (col.key.includes('total')) { stickyClass = `sticky z-30 bg-gray-800 border-r border-gray-700 shadow-lg`; stickyStyle = { left: '385px', width: '100px', minWidth: '100px' }; }
+                                        if (col.key === 'index') { stickyClass = "sticky left-0 z-30 bg-[#0f172a]"; stickyStyle = { width: '45px', minWidth: '45px' }; }
+                                        else if (col.key === 'teamName') { stickyClass = "sticky left-[45px] z-30 bg-[#0f172a] border-r border-white/20 shadow-md"; stickyStyle = { minWidth: '130px' }; }
+                                        else if (col.key === 'logo') { stickyClass = `sticky z-30 bg-[#0f172a]`; stickyStyle = { left: '175px', width: '50px', minWidth: '50px' }; }
+                                        else if (col.key === 'pageName') { stickyClass = `sticky z-30 bg-[#0f172a] shadow-md`; stickyStyle = { left: '225px', minWidth: '160px' }; }
+                                        else if (col.key.includes('total')) { stickyClass = `sticky z-30 bg-[#0f172a] border-r border-white/20 shadow-lg`; stickyStyle = { left: '385px', width: '100px', minWidth: '100px' }; }
                                     }
-                                    if (idx === 0) return <td key={col.key} className={`${cellClass} uppercase tracking-widest text-white ${stickyClass}`} style={stickyStyle} colSpan={4}>សរុបរួម</td>;
+                                    if (idx === 0) return <td key={col.key} className={`${cellClass} uppercase tracking-widest text-white font-black ${stickyClass}`} style={stickyStyle} colSpan={4}>សរុបរួម (GRAND TOTAL)</td>;
                                     if (['teamName', 'logo', 'pageName'].includes(col.key)) return null;
-                                    if (col.key.includes('total')) return <td key={col.key} className={`${cellClass} text-right ${stickyClass} ${type === 'Revenue' ? 'text-blue-200 bg-blue-600/25' : 'text-green-200 bg-green-600/25'}`} style={stickyStyle}>${(type === 'Revenue' ? grandTotals.revenue : grandTotals.profit).toLocaleString(undefined, {minimumFractionDigits: 2})}</td>;
+                                    if (col.key.includes('total')) return <td key={col.key} className={`${cellClass} text-right ${stickyClass} ${type === 'Revenue' ? 'text-blue-300 bg-blue-600/10' : 'text-green-300 bg-green-600/10'}`} style={stickyStyle}>${(type === 'Revenue' ? grandTotals.revenue : grandTotals.profit).toLocaleString(undefined, {minimumFractionDigits: 2})}</td>;
                                     if (col.key.startsWith(prefix)) return <td key={col.key} className={`${cellClass} text-right text-gray-300 font-mono`}>${grandTotals[col.key].toLocaleString(undefined, {minimumFractionDigits: 2})}</td>;
                                     return <td key={col.key} className={cellClass}></td>;
                                 })}
@@ -302,19 +278,73 @@ const SalesByPageReport: React.FC<SalesByPageReportProps> = ({ orders, onBack })
         );
     };
 
+    // --- Mobile View (បន្ថែមដើម្បីឱ្យមើលឃើញក្នុងទូរស័ព្ទ) ---
+    const MobileCardView = () => (
+        <div className="md:hidden space-y-4 pb-12 px-1">
+            <h3 className="text-lg font-black text-white px-2 flex items-center gap-2 mb-4">
+                <span className="w-1.5 h-5 bg-indigo-500 rounded-full"></span>
+                របាយការណ៍តាម Page
+            </h3>
+            {pageStats.map((item: any) => (
+                <div key={item.pageName} className="bg-gray-800/40 border border-white/10 rounded-[2.5rem] p-6 shadow-xl space-y-5 animate-fade-in-up group relative overflow-hidden">
+                    <div className="flex justify-between items-center border-b border-white/5 pb-4">
+                        <div className="flex items-center gap-4">
+                            <div className="w-14 h-14 rounded-2xl overflow-hidden border-2 border-gray-700 bg-gray-950 shadow-inner p-1">
+                                <img src={convertGoogleDriveUrl(item.logoUrl)} className="w-full h-full object-cover rounded-xl" alt="" onClick={() => previewImage(convertGoogleDriveUrl(item.logoUrl))} />
+                            </div>
+                            <div className="min-w-0">
+                                <h4 className="text-base font-black text-white truncate leading-tight uppercase tracking-tight">{item.pageName}</h4>
+                                <p className="text-[10px] text-indigo-400 font-black uppercase tracking-[0.2em] mt-1">{item.teamName}</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="p-4 bg-black/20 rounded-2xl border border-white/5">
+                            <p className="text-[9px] font-black text-gray-500 uppercase tracking-widest mb-1.5">ចំណូលសរុប</p>
+                            <p className="text-lg font-black text-blue-400 tracking-tighter">${item.revenue.toLocaleString()}</p>
+                        </div>
+                        <div className="p-4 bg-black/20 rounded-2xl border border-white/5">
+                            <p className="text-[9px] font-black text-gray-500 uppercase tracking-widest mb-1.5">ប្រាក់ចំណេញ</p>
+                            <p className="text-lg font-black text-emerald-400 tracking-tighter">${item.profit.toLocaleString()}</p>
+                        </div>
+                    </div>
+
+                    <div className="flex items-center justify-between px-1">
+                        <div className="flex items-center gap-2">
+                            <div className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse"></div>
+                            <span className="text-[10px] font-black text-gray-500 uppercase tracking-widest">{item.orderCount} Orders Linked</span>
+                        </div>
+                        <div className="text-right">
+                             <p className="text-[10px] text-gray-600 font-bold italic uppercase">Revenue Target Node</p>
+                        </div>
+                    </div>
+                    
+                    <div className="absolute -right-8 -bottom-8 w-24 h-24 bg-indigo-600/10 rounded-full blur-[40px] pointer-events-none group-hover:bg-indigo-600/20 transition-all duration-700"></div>
+                </div>
+            ))}
+        </div>
+    );
+
     return (
         <div className="w-full space-y-6">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <StatCard label="ចំណូលសរុប (Total Rev)" value={`$${grandTotals.revenue.toLocaleString()}`} icon="💰" colorClass="from-blue-600 to-indigo-500" />
                 <StatCard label="ប្រាក់ចំណេញ (Total Profit)" value={`$${grandTotals.profit.toLocaleString()}`} icon="📈" colorClass="from-emerald-600 to-green-500" />
             </div>
-            <div className="space-y-8">
+
+            {/* Desktop Tables (ហាមប៉ះពាល់) */}
+            <div className="hidden md:block space-y-8">
                 {renderTable('Revenue', 'rev')}
                 {renderTable('Profit', 'prof')}
             </div>
+            
+            {/* Mobile View (បន្ថែមថ្មី) */}
+            <MobileCardView />
+
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 pb-10">
                 <div className="lg:col-span-8"><div className="page-card !p-4 bg-gray-800/40 border-gray-700/50"><SimpleBarChart data={topPagesChartData} title="Page ដែលមានចំណូលខ្ពស់បំផុត (Top 5 Pages Revenue)" /></div></div>
-                <div className="lg:col-span-4 flex flex-col justify-center page-card !p-5 bg-gray-800/30 border-gray-700/50"><h3 className="text-sm font-black text-gray-400 uppercase tracking-widest flex items-center gap-2 mb-6"><span className="w-1.5 h-4 bg-indigo-500 rounded-full"></span>សង្ខេប</h3><div className="space-y-4"><div className="flex justify-between border-b border-gray-700/50 pb-2"><span className="text-xs text-gray-400">ចំនួន Page សកម្ម:</span><span className="text-white font-black text-sm">{grandTotals.pagesCount}</span></div><div className="flex justify-between"><span className="text-xs text-gray-400">មធ្យមភាគ/Page:</span><span className="text-blue-400 font-black text-sm">${(grandTotals.revenue / (grandTotals.pagesCount || 1)).toLocaleString(undefined, {maximumFractionDigits: 0})}</span></div></div></div>
+                <div className="lg:col-span-4 flex flex-col justify-center page-card !p-5 bg-gray-800/30 border-gray-700/50"><h3 className="text-sm font-black text-gray-400 uppercase tracking-widest flex items-center gap-2 mb-6"><span className="w-1.5 h-4 bg-indigo-500 rounded-full"></span>សង្ខេប</h3><div className="space-y-4"><div className="flex justify-between border-b border-white/5 pb-2"><span className="text-xs text-gray-400">ចំនួន Page សកម្ម:</span><span className="text-white font-black text-sm">{grandTotals.pagesCount}</span></div><div className="flex justify-between"><span className="text-xs text-gray-400">មធ្យមភាគ/Page:</span><span className="text-blue-400 font-black text-sm">${(grandTotals.revenue / (grandTotals.pagesCount || 1)).toLocaleString(undefined, {maximumFractionDigits: 0})}</span></div></div></div>
             </div>
         </div>
     );

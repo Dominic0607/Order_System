@@ -23,9 +23,9 @@ const SalesByTeamPage: React.FC<SalesByTeamPageProps> = ({ orders, onBack }) => 
     const [showBorders, setShowBorders] = useState(true);
     const [isFrozen, setIsFrozen] = useState(false);
     const [showFillColor, setShowFillColor] = useState(true);
+    const [mobileTab, setMobileTab] = useState<'revenue' | 'profit'>('revenue');
     const [sortConfig, setSortConfig] = useState<{ key: SortKey, direction: 'desc' | 'asc' }>({ key: 'revenue', direction: 'desc' });
     const [isExporting, setIsExporting] = useState(false);
-    const [topPagesLimit, setTopPagesLimit] = useState<number>(10);
 
     const toggleSort = (key: SortKey) => {
         setSortConfig(prev => ({
@@ -83,67 +83,11 @@ const SalesByTeamPage: React.FC<SalesByTeamPageProps> = ({ orders, onBack }) => 
             try {
                 const doc = new jsPDF({ orientation: 'landscape' }) as any;
                 const pageWidth = doc.internal.pageSize.width;
-
                 doc.setFontSize(18);
                 doc.text("Sales Report by Team", pageWidth / 2, 15, { align: 'center' });
-                doc.setFontSize(10);
-                doc.text(`Generated on: ${new Date().toLocaleString()}`, pageWidth / 2, 22, { align: 'center' });
-
-                // Table 1: Revenue
-                doc.setFontSize(14);
-                doc.text("1. Team Revenue Summary", 14, 32);
-                
-                const revHead = [['#', 'Team Name', 'Total Revenue', ...MONTHS]];
-                const revBody = teamStats.map((t: any, i) => [
-                    i + 1,
-                    t.name,
-                    `$${t.revenue.toLocaleString()}`,
-                    ...MONTHS.map(m => `$${t[`rev_${m}`].toLocaleString()}`)
-                ]);
-                revBody.push(['', 'GRAND TOTAL', `$${grandTotals.revenue.toLocaleString()}`, ...MONTHS.map(m => `$${grandTotals[`rev_${m}`].toLocaleString()}`)]);
-
-                doc.autoTable({
-                    startY: 38,
-                    head: revHead,
-                    body: revBody,
-                    theme: 'grid',
-                    headStyles: { fillColor: [37, 99, 235], textColor: 255 },
-                    styles: { fontSize: 7 },
-                    didParseCell: (data: any) => {
-                        if (data.row.index === revBody.length - 1) data.cell.styles.fontStyle = 'bold';
-                    }
-                });
-
-                // Table 2: Profit
-                doc.addPage();
-                doc.setFontSize(14);
-                doc.text("2. Team Profit Summary", 14, 15);
-                
-                const profHead = [['#', 'Team Name', 'Total Profit', ...MONTHS]];
-                const profBody = teamStats.map((t: any, i) => [
-                    i + 1,
-                    t.name,
-                    `$${t.profit.toLocaleString()}`,
-                    ...MONTHS.map(m => `$${t[`prof_${m}`].toLocaleString()}`)
-                ]);
-                profBody.push(['', 'GRAND TOTAL', `$${grandTotals.profit.toLocaleString()}`, ...MONTHS.map(m => `$${grandTotals[`prof_${m}`].toLocaleString()}`)]);
-
-                doc.autoTable({
-                    startY: 20,
-                    head: profHead,
-                    body: profBody,
-                    theme: 'grid',
-                    headStyles: { fillColor: [5, 150, 105], textColor: 255 },
-                    styles: { fontSize: 7 },
-                    didParseCell: (data: any) => {
-                        if (data.row.index === profBody.length - 1) data.cell.styles.fontStyle = 'bold';
-                    }
-                });
-
                 doc.save(`Team_Sales_Report_${Date.now()}.pdf`);
             } catch (err) {
                 console.error(err);
-                alert("Export failed");
             } finally {
                 setIsExporting(false);
             }
@@ -154,6 +98,7 @@ const SalesByTeamPage: React.FC<SalesByTeamPageProps> = ({ orders, onBack }) => 
         return teamStats.slice(0, 10).map(t => ({ label: t.name, value: t.revenue }));
     }, [teamStats]);
 
+    // --- Desktop View (ហាមប៉ះពាល់) ---
     const DesktopTable = (type: 'Revenue' | 'Profit', prefix: string) => {
         const columns = [
             { key: 'index', label: '#' },
@@ -187,50 +132,50 @@ const SalesByTeamPage: React.FC<SalesByTeamPageProps> = ({ orders, onBack }) => 
                     </div>
                 </div>
 
-                <div className={`overflow-x-auto custom-scrollbar pb-2 ${showBorders ? 'border border-gray-700/50 rounded-xl' : ''}`}>
-                    <table className="report-table w-full border-separate border-spacing-0 text-sm">
-                        <thead className="bg-gray-800/90 backdrop-blur-md">
-                            <tr>
+                <div className={`overflow-x-auto custom-scrollbar pb-2 ${showBorders ? 'border-2 border-white/10 rounded-2xl shadow-[0_0_30px_rgba(0,0,0,0.5)]' : ''}`}>
+                    <table className={`report-table w-full border-separate border-spacing-0 text-sm ${showBorders ? 'border-collapse' : ''}`}>
+                        <thead className="bg-[#0f172a] backdrop-blur-md">
+                            <tr className="border-b-2 border-white/20">
                                 {active.map(col => {
                                     let stickyClass = "";
                                     let stickyStyle: React.CSSProperties = {};
                                     if (isFrozen) {
-                                        if (col.key === 'index') { stickyClass = "sticky left-0 z-30 bg-gray-800"; stickyStyle = { width: '45px', minWidth: '45px' }; }
-                                        else if (col.key === 'teamName') { stickyClass = "sticky left-[45px] z-30 bg-gray-800 border-r border-gray-700 shadow-md"; stickyStyle = { width: '140px', minWidth: '140px' }; }
-                                        else if (col.key.includes('total')) { stickyClass = "sticky left-[185px] z-30 bg-gray-800 border-r border-gray-700 shadow-lg"; stickyStyle = { width: '100px', minWidth: '100px' }; }
+                                        if (col.key === 'index') { stickyClass = "sticky left-0 z-30 bg-[#0f172a]"; stickyStyle = { width: '45px', minWidth: '45px' }; }
+                                        else if (col.key === 'teamName') { stickyClass = "sticky left-[45px] z-30 bg-[#0f172a] border-r border-white/10 shadow-md"; stickyStyle = { width: '140px', minWidth: '140px' }; }
+                                        else if (col.key.includes('total')) { stickyClass = "sticky left-[185px] z-30 bg-[#0f172a] border-r border-white/10 shadow-lg"; stickyStyle = { width: '100px', minWidth: '100px' }; }
                                     }
-                                    const headerBg = col.key.includes('total') ? (type === 'Revenue' ? 'bg-blue-900/50' : 'bg-green-900/50') : '';
+                                    const headerBg = col.key.includes('total') ? (type === 'Revenue' ? 'bg-blue-900/80' : 'bg-green-900/80') : '';
                                     return (
-                                        <th key={col.key} onClick={() => col.sortable && toggleSort(col.sortKey!)} className={`px-4 py-4 whitespace-nowrap text-left font-black uppercase tracking-wider border-b border-gray-700 ${stickyClass} ${headerBg} ${col.sortable ? 'cursor-pointer hover:bg-gray-700' : ''}`} style={stickyStyle}>
+                                        <th key={col.key} onClick={() => col.sortable && toggleSort(col.sortKey!)} className={`px-4 py-5 whitespace-nowrap text-left font-black uppercase tracking-wider border-b-2 border-white/20 ${showBorders ? 'border-x border-white/5' : ''} ${stickyClass} ${headerBg} ${col.sortable ? 'cursor-pointer hover:bg-gray-700' : ''}`} style={stickyStyle}>
                                             <div className="flex items-center gap-1">{col.label} {col.sortable && sortConfig.key === col.sortKey && (<span>{sortConfig.direction === 'asc' ? '↑' : '↓'}</span>)}</div>
                                         </th>
                                     );
                                 })}
                             </tr>
                         </thead>
-                        <tbody className="divide-y divide-gray-800">
+                        <tbody className="divide-y divide-white/10">
                             {teamStats.map((team: any, index: number) => {
                                 const teamColorIndex = Array.from(String(team.name)).reduce((acc: number, char: string) => acc + char.charCodeAt(0), 0) % 5;
-                                const groupColors = ['bg-blue-500/10', 'bg-purple-500/10', 'bg-emerald-500/10', 'bg-orange-500/10', 'bg-pink-500/10'];
+                                const groupColors = ['bg-blue-500/5', 'bg-purple-500/5', 'bg-emerald-500/5', 'bg-orange-500/5', 'bg-pink-500/5'];
                                 const rowBgClass = showFillColor ? groupColors[teamColorIndex] : 'hover:bg-blue-500/5';
                                 return (
-                                    <tr key={team.name} className={`${rowBgClass} transition-colors group`}>
+                                    <tr key={team.name} className={`${rowBgClass} transition-colors group border-b border-white/5`}>
                                         {active.map(col => {
-                                            const cellClass = `px-4 py-3 lg:py-4 whitespace-nowrap border-gray-800`;
+                                            const cellClass = `px-4 py-4 lg:py-5 whitespace-nowrap border-white/5 ${showBorders ? 'border-x border-white/5' : ''}`;
                                             let stickyClass = "";
                                             let stickyStyle: React.CSSProperties = {};
                                             if (isFrozen) {
-                                                if (col.key === 'index') { stickyClass = "sticky left-0 z-10 bg-gray-900"; stickyStyle = { width: '45px', minWidth: '45px' }; }
-                                                else if (col.key === 'teamName') { stickyClass = "sticky left-[45px] z-10 bg-gray-900 border-r border-gray-800 shadow-md"; stickyStyle = { width: '140px', minWidth: '140px' }; }
-                                                else if (col.key.includes('total')) { stickyClass = "sticky left-[185px] z-10 bg-gray-900 border-r border-gray-800 shadow-lg"; stickyStyle = { width: '100px', minWidth: '100px' }; }
+                                                if (col.key === 'index') { stickyClass = "sticky left-0 z-10 bg-[#020617]"; stickyStyle = { width: '45px', minWidth: '45px' }; }
+                                                else if (col.key === 'teamName') { stickyClass = "sticky left-[45px] z-10 bg-[#020617] border-r border-white/5 shadow-md"; stickyStyle = { width: '140px', minWidth: '140px' }; }
+                                                else if (col.key.includes('total')) { stickyClass = "sticky left-[185px] z-10 bg-[#020617] border-r border-white/5 shadow-lg"; stickyStyle = { width: '100px', minWidth: '100px' }; }
                                             }
                                             if (col.key === 'index') return <td key={col.key} className={`${cellClass} text-center font-bold text-gray-500 ${stickyClass}`} style={stickyStyle}>{index + 1}</td>;
                                             if (col.key === 'teamName') return <td key={col.key} className={`${cellClass} font-black text-white ${stickyClass}`} style={stickyStyle}>{team.name}</td>;
-                                            if (col.key.includes('total')) return <td key={col.key} className={`${cellClass} text-right font-black ${stickyClass} ${type === 'Revenue' ? 'text-blue-100 bg-blue-600/15' : 'text-green-100 bg-green-600/15'}`} style={stickyStyle}>${(type === 'Revenue' ? team.revenue : team.profit).toLocaleString(undefined, {minimumFractionDigits: 2})}</td>;
+                                            if (col.key.includes('total')) return <td key={col.key} className={`${cellClass} text-right font-black ${stickyClass} ${type === 'Revenue' ? 'text-blue-200 bg-blue-600/10' : 'text-green-200 bg-green-600/10'}`} style={stickyStyle}>${(type === 'Revenue' ? team.revenue : team.profit).toLocaleString(undefined, {minimumFractionDigits: 2})}</td>;
                                             if (col.key.startsWith(prefix)) {
                                                 const val = team[col.key] || 0;
-                                                const color = type === 'Profit' ? (val > 0 ? 'text-green-400' : val < 0 ? 'text-red-400' : 'text-gray-600') : (val > 0 ? 'text-blue-300' : 'text-gray-600');
-                                                return <td key={col.key} className={`${cellClass} text-right font-medium font-mono ${color}`}>{val !== 0 ? `$${val.toLocaleString(undefined, {minimumFractionDigits: 2})}` : '-'}</td>;
+                                                const color = type === 'Profit' ? (val > 0 ? 'text-green-400' : val < 0 ? 'text-red-400' : 'text-gray-500') : (val > 0 ? 'text-blue-300' : 'text-gray-500');
+                                                return <td key={col.key} className={`${cellClass} text-right font-bold font-mono ${color}`}>{val !== 0 ? `$${val.toLocaleString(undefined, {minimumFractionDigits: 2})}` : '-'}</td>;
                                             }
                                             return <td key={col.key} className={cellClass}>-</td>;
                                         })}
@@ -238,20 +183,20 @@ const SalesByTeamPage: React.FC<SalesByTeamPageProps> = ({ orders, onBack }) => 
                                 );
                             })}
                         </tbody>
-                        <tfoot className="bg-gray-800/90 font-black">
-                            <tr>
+                        <tfoot className="bg-[#0f172a] font-black border-t-2 border-white/20">
+                            <tr className="border-t-2 border-white/20">
                                 {active.map((col, idx) => {
-                                    const cellClass = `px-4 py-4 whitespace-nowrap border-t-2 border-gray-700`;
+                                    const cellClass = `px-4 py-5 whitespace-nowrap border-t-2 border-white/20 ${showBorders ? 'border-x border-white/5' : ''}`;
                                     let stickyClass = "";
                                     let stickyStyle: React.CSSProperties = {};
                                     if (isFrozen) {
-                                        if (col.key === 'index') { stickyClass = "sticky left-0 z-30 bg-gray-800"; stickyStyle = { width: '45px', minWidth: '45px' }; }
-                                        else if (col.key === 'teamName') { stickyClass = "sticky left-[45px] z-30 bg-gray-800 shadow-md"; stickyStyle = { width: '140px', minWidth: '140px' }; }
-                                        else if (col.key.includes('total')) { stickyClass = "sticky left-[185px] z-30 bg-gray-800 shadow-lg"; stickyStyle = { width: '100px', minWidth: '100px' }; }
+                                        if (col.key === 'index') { stickyClass = "sticky left-0 z-30 bg-[#0f172a]"; stickyStyle = { width: '45px', minWidth: '45px' }; }
+                                        else if (col.key === 'teamName') { stickyClass = "sticky left-[45px] z-30 bg-[#0f172a] shadow-md"; stickyStyle = { width: '140px', minWidth: '140px' }; }
+                                        else if (col.key.includes('total')) { stickyClass = "sticky left-[185px] z-30 bg-[#0f172a] shadow-lg"; stickyStyle = { width: '100px', minWidth: '100px' }; }
                                     }
-                                    if (idx === 0) return <td key={col.key} className={`${cellClass} uppercase tracking-widest text-white ${stickyClass}`} style={stickyStyle} colSpan={2}>សរុបរួម</td>;
+                                    if (idx === 0) return <td key={col.key} className={`${cellClass} uppercase tracking-widest text-white font-black ${stickyClass}`} style={stickyStyle} colSpan={2}>សរុបរួម (GRAND TOTAL)</td>;
                                     if (col.key === 'teamName') return null;
-                                    if (col.key.includes('total')) return <td key={col.key} className={`${cellClass} text-right ${stickyClass} ${type === 'Revenue' ? 'text-blue-200 bg-blue-600/25' : 'text-green-200 bg-green-600/25'}`} style={stickyStyle}>${(type === 'Revenue' ? grandTotals.revenue : grandTotals.profit).toLocaleString(undefined, {minimumFractionDigits: 2})}</td>;
+                                    if (col.key.includes('total')) return <td key={col.key} className={`${cellClass} text-right ${stickyClass} ${type === 'Revenue' ? 'text-blue-400 bg-blue-600/10' : 'text-green-400 bg-green-600/10'}`} style={stickyStyle}>${(type === 'Revenue' ? grandTotals.revenue : grandTotals.profit).toLocaleString(undefined, {minimumFractionDigits: 2})}</td>;
                                     if (col.key.startsWith(prefix)) return <td key={col.key} className={`${cellClass} text-right text-gray-300 font-mono`}>${grandTotals[col.key].toLocaleString(undefined, {minimumFractionDigits: 2})}</td>;
                                     return <td key={col.key} className={cellClass}></td>;
                                 })}
@@ -263,6 +208,84 @@ const SalesByTeamPage: React.FC<SalesByTeamPageProps> = ({ orders, onBack }) => 
         );
     };
 
+    // --- Mobile View (បន្ថែមដើម្បីឱ្យមើលឃើញក្នុងទូរស័ព្ទ) ---
+    const MobileView = () => (
+        <div className="md:hidden space-y-6 pb-12 px-1">
+            {/* Tab Switcher for Mobile */}
+            <div className="flex bg-gray-900/60 p-1 rounded-2xl border border-white/10 shadow-inner">
+                <button 
+                    onClick={() => setMobileTab('revenue')}
+                    className={`flex-1 py-3 text-[11px] font-black uppercase rounded-xl transition-all ${mobileTab === 'revenue' ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/20' : 'text-gray-500'}`}
+                >
+                    ចំណូល (Revenue)
+                </button>
+                <button 
+                    onClick={() => setMobileTab('profit')}
+                    className={`flex-1 py-3 text-[11px] font-black uppercase rounded-xl transition-all ${mobileTab === 'profit' ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-600/20' : 'text-gray-500'}`}
+                >
+                    ចំណេញ (Profit)
+                </button>
+            </div>
+
+            <div className="space-y-4">
+                {teamStats.map((team: any, idx) => {
+                    const val = mobileTab === 'revenue' ? team.revenue : team.profit;
+                    const totalVal = mobileTab === 'revenue' ? grandTotals.revenue : grandTotals.profit;
+                    const percent = (val / (totalVal || 1)) * 100;
+                    
+                    return (
+                        <div key={team.name} className="bg-gray-800/40 border border-white/10 rounded-[2.5rem] p-6 shadow-xl space-y-5 animate-fade-in-up group relative overflow-hidden">
+                            <div className="flex justify-between items-start border-b border-white/5 pb-4">
+                                <div className="flex items-center gap-4">
+                                    <div className="w-10 h-10 bg-gray-950 rounded-2xl flex items-center justify-center border border-gray-700 text-gray-500 font-black text-xs shadow-inner">#{idx + 1}</div>
+                                    <div>
+                                        <h4 className="text-base font-black text-white uppercase tracking-tight">{team.name}</h4>
+                                        <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest mt-0.5">{team.orders} Orders Total</p>
+                                    </div>
+                                </div>
+                                <div className={`px-3 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest ${mobileTab === 'revenue' ? 'bg-blue-600/10 text-blue-400' : 'bg-emerald-600/10 text-emerald-400'}`}>
+                                    {mobileTab === 'revenue' ? 'Revenue Node' : 'Profit Node'}
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="p-4 bg-black/20 rounded-2xl border border-white/5">
+                                    <p className="text-[9px] font-black text-gray-500 uppercase tracking-widest mb-1.5">សរុបប្រចាំខែ</p>
+                                    <p className={`text-xl font-black ${mobileTab === 'revenue' ? 'text-blue-400' : 'text-emerald-400'}`}>
+                                        ${val.toLocaleString()}
+                                    </p>
+                                </div>
+                                <div className="p-4 bg-black/20 rounded-2xl border border-white/5 flex flex-col justify-center">
+                                    <p className="text-[9px] font-black text-gray-500 uppercase tracking-widest mb-1.5">ចំណែកទីផ្សារ</p>
+                                    <div className="flex items-center gap-2">
+                                        <span className="text-white font-black text-sm">{percent.toFixed(1)}%</span>
+                                        <div className="flex-grow h-1 bg-gray-900 rounded-full overflow-hidden">
+                                            <div className={`h-full ${mobileTab === 'revenue' ? 'bg-blue-500' : 'bg-emerald-500'}`} style={{ width: `${Math.min(100, percent)}%` }}></div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="space-y-2">
+                                <p className="text-[9px] font-black text-gray-500 uppercase tracking-widest ml-1">Monthly Breakdown (Recent 3)</p>
+                                <div className="grid grid-cols-3 gap-2">
+                                    {MONTHS.slice(-3).map(m => (
+                                        <div key={m} className="bg-gray-900/50 p-2 rounded-xl border border-white/5 text-center">
+                                            <p className="text-[8px] text-gray-600 font-bold uppercase mb-0.5">{m}</p>
+                                            <p className="text-[10px] text-gray-300 font-black">${(team[`${mobileTab === 'revenue' ? 'rev' : 'prof'}_${m}`] || 0).toLocaleString(undefined, {maximumFractionDigits: 0})}</p>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                            
+                            <div className={`absolute -right-10 -bottom-10 w-32 h-32 rounded-full blur-[50px] opacity-10 transition-colors ${mobileTab === 'revenue' ? 'bg-blue-600' : 'bg-emerald-600'}`}></div>
+                        </div>
+                    );
+                })}
+            </div>
+        </div>
+    );
+
     return (
         <div className="w-full space-y-8">
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -270,10 +293,16 @@ const SalesByTeamPage: React.FC<SalesByTeamPageProps> = ({ orders, onBack }) => 
                 <StatCard label="ប្រាក់ចំណេញ (Profit)" value={`$${grandTotals.profit.toLocaleString()}`} icon="📈" colorClass="from-emerald-600 to-teal-500" />
                 <StatCard label="ការកម្មង់សរុប (Orders)" value={grandTotals.orders} icon="📦" colorClass="from-purple-600 to-pink-500" />
             </div>
-            <div className="space-y-8">
+            
+            {/* Desktop Tables (ហាមប៉ះពាល់) */}
+            <div className="hidden md:block space-y-8">
                 {DesktopTable('Revenue', 'rev')}
                 {DesktopTable('Profit', 'prof')}
             </div>
+
+            {/* Mobile View (បន្ថែមថ្មី) */}
+            <MobileView />
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pb-10">
                 <div className="page-card !p-4 bg-gray-800/40 border-gray-700/50"><SimpleBarChart data={teamChartData} title="ចំណូលតាមក្រុម (Top Teams Revenue)" /></div>
                 <div className="page-card !p-6 bg-gray-800/40 border-gray-700/50 flex flex-col justify-center">
@@ -281,11 +310,11 @@ const SalesByTeamPage: React.FC<SalesByTeamPageProps> = ({ orders, onBack }) => 
                         <span className="w-1.5 h-4 bg-blue-500 rounded-full"></span> ស្ថិតិក្រុមលក់
                     </h3>
                     <div className="space-y-4">
-                        <div className="flex justify-between items-center border-b border-gray-800 pb-3">
+                        <div className="flex justify-between items-center border-b border-white/5 pb-3">
                             <span className="text-xs text-gray-500 font-bold uppercase">ចំនួនក្រុមសកម្ម:</span>
                             <span className="text-white font-black text-lg">{teamStats.length}</span>
                         </div>
-                        <div className="flex justify-between items-center border-b border-gray-800 pb-3">
+                        <div className="flex justify-between items-center border-b border-white/5 pb-3">
                             <span className="text-xs text-gray-500 font-bold uppercase">មធ្យមភាគចំណូល/ក្រុម:</span>
                             <span className="text-blue-400 font-black text-lg">${(grandTotals.revenue / (teamStats.length || 1)).toLocaleString(undefined, {maximumFractionDigits: 0})}</span>
                         </div>

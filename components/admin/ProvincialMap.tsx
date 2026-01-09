@@ -12,9 +12,9 @@ interface ProvincialMapProps {
 }
 
 /**
- * ប្រើប្រាស់ GitHub Raw URL ត្រឹមត្រូវទៅកាន់ Master Branch
+ * ប្រើប្រាស់ GitHub Raw URL ត្រឹមត្រូវទៅកាន់ Master Branch (Fixed path)
  */
-const CAMBODIA_GEOJSON_URL = "https://raw.githubusercontent.com/seanghai/cambodia-geojson/master/provinces.json";
+const CAMBODIA_GEOJSON_URL = "https://raw.githubusercontent.com/seanghai/cambodia-geojson/master/geojson/provinces.json";
 
 // Projection coordinates for Cambodia
 const BOUNDS = {

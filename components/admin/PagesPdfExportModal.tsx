@@ -278,7 +278,8 @@ const PagesPdfExportModal: React.FC<PagesPdfExportModalProps> = ({ isOpen, onClo
                                 <div className="space-y-2">
                                     {(Object.keys(columns) as Array<keyof typeof columns>).map((key) => (
                                         <label key={key} className="flex items-center justify-between p-4 bg-gray-900/50 rounded-2xl border border-gray-800 cursor-pointer hover:bg-blue-600/5 transition-colors group">
-                                            <span className="text-xs font-bold text-gray-400 group-hover:text-gray-200 capitalize">{key.replace(/([A-Z])/g, ' $1')}</span>
+                                            {/* Fix: cast key to string to avoid TypeScript error on replace() when keyof is used */}
+                                            <span className="text-xs font-bold text-gray-400 group-hover:text-gray-200 capitalize">{(key as string).replace(/([A-Z])/g, ' $1')}</span>
                                             <div className="relative">
                                                 <input type="checkbox" checked={columns[key]} onChange={() => toggleColumn(key)} className="sr-only peer" />
                                                 <div className="w-10 h-5 bg-gray-700 rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600"></div>
@@ -306,7 +307,8 @@ const PagesPdfExportModal: React.FC<PagesPdfExportModalProps> = ({ isOpen, onClo
                             {Object.entries(storesHierarchy).map(([storeName, teams]) => (
                                 <div key={storeName} className="space-y-6">
                                     <div className="flex items-center gap-4 group">
-                                        <input type="checkbox" onChange={() => toggleStoreSelection(teams)} className="w-6 h-6 rounded-lg border-gray-700 bg-gray-900 text-blue-600 focus:ring-blue-500/20 cursor-pointer" />
+                                        {/* Fix: cast teams to avoid 'unknown' type error from Object.entries result in some versions */}
+                                        <input type="checkbox" onChange={() => toggleStoreSelection(teams as Record<string, TeamPage[]>)} className="w-6 h-6 rounded-lg border-gray-700 bg-gray-900 text-blue-600 focus:ring-blue-500/20 cursor-pointer" />
                                         <h4 className="text-2xl font-black text-white uppercase tracking-tighter flex items-center gap-4 group-hover:text-blue-400 transition-colors">
                                             <div className="w-1.5 h-8 bg-blue-600 rounded-full"></div>
                                             {storeName}

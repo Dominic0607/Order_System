@@ -2,8 +2,8 @@
 import React, { useState, useContext, useEffect, useMemo } from 'react';
 import { AppContext } from '../context/AppContext';
 import Spinner from '../components/common/Spinner';
-import BottomNavBar from '../components/admin/BottomNavBar';
-import Sidebar from '../components/admin/Sidebar';
+import DesktopAdminLayout from '../components/admin/DesktopAdminLayout';
+import MobileAdminLayout from '../components/admin/MobileAdminLayout';
 import DashboardOverview from '../components/admin/DashboardOverview';
 import PerformanceTrackingPage from './PerformanceTrackingPage';
 import ReportDashboard from './ReportDashboard';
@@ -13,8 +13,8 @@ import FulfillmentDashboard from './FulfillmentDashboard';
 import EditProfileModal from '../components/common/EditProfileModal';
 import { useUrlState } from '../hooks/useUrlState';
 import { WEB_APP_URL } from '../constants';
-import { FullOrder, ParsedOrder, User, TeamPage } from '../types';
-
+import { FullOrder, ParsedOrder } from '../types';
+ 
 type ActiveDashboard = 'admin' | 'orders' | 'reports' | 'settings' | 'fulfillment';
 type AdminView = 'dashboard' | 'performance';
 type ReportType = 'overview' | 'performance' | 'profitability' | 'forecasting' | 'shipping' | 'sales_team' | 'sales_page';
@@ -22,7 +22,7 @@ type ReportType = 'overview' | 'performance' | 'profitability' | 'forecasting' |
 const AdminDashboard: React.FC = () => {
     const { 
         appData, currentUser, refreshTimestamp, 
-        isSidebarCollapsed, setAppState 
+        isSidebarCollapsed
     } = useContext(AppContext);
     
     const [activeDashboard, setActiveDashboard] = useUrlState<ActiveDashboard>('tab', 'admin');
@@ -30,14 +30,20 @@ const AdminDashboard: React.FC = () => {
     const [activeReport, setActiveReport] = useUrlState<ReportType>('reportType', 'overview');
     
     const [loading, setLoading] = useState(false);
-    const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
     const [isReportSubMenuOpen, setIsReportSubMenuOpen] = useState(false);
     const [isProfileSubMenuOpen, setIsProfileSubMenuOpen] = useState(false);
     const [editProfileModalOpen, setEditProfileModalOpen] = useState(false);
+    const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
     
     const [parsedOrders, setParsedOrders] = useState<ParsedOrder[]>([]);
     const [revenueBreakdownPeriod, setRevenueBreakdownPeriod] = useState<'today' | 'this_month' | 'this_year'>('today');
     const [, setTeamFilter] = useUrlState<string>('teamFilter', '');
+
+    useEffect(() => {
+        const handleResize = () => setIsMobile(window.innerWidth < 768);
+        window.addEventListener('resize', handleResize);
+        return () => window.removeEventListener('resize', handleResize);
+    }, []);
 
     const fetchOrders = async () => {
         if (parsedOrders.length === 0) setLoading(true);
@@ -65,47 +71,23 @@ const AdminDashboard: React.FC = () => {
 
     useEffect(() => { fetchOrders(); }, [refreshTimestamp]);
 
-    // Enhanced Team Name Resolution Logic
     const teamRevenueStats = useMemo(() => {
         const stats: Record<string, { name: string, revenue: number, orders: number }> = {};
         const now = new Date();
-        
         parsedOrders.forEach(order => {
             if (!order.Timestamp) return;
             const d = new Date(order.Timestamp);
-            
-            // Date Filtering
             if (revenueBreakdownPeriod === 'today' && d.toDateString() !== now.toDateString()) return;
             if (revenueBreakdownPeriod === 'this_month' && (d.getMonth() !== now.getMonth() || d.getFullYear() !== now.getFullYear())) return;
             if (revenueBreakdownPeriod === 'this_year' && d.getFullYear() !== now.getFullYear()) return;
 
-            // 1. Try to get team from order data (Column AB)
-            let teamName = (order.Team || '').trim();
-            
-            // 2. Fallback: Search from User List if Column AB is missing or empty
-            if (!teamName) {
-                const user = appData.users?.find(u => u.UserName === order.User);
-                if (user?.Team) {
-                    teamName = user.Team.split(',')[0].trim();
-                } 
-                // 3. Last Resort: Search from Page configuration
-                else {
-                    const pageInfo = appData.pages?.find(p => p.PageName === order.Page);
-                    if (pageInfo?.Team) {
-                        teamName = pageInfo.Team;
-                    }
-                }
-            }
-
-            if (!teamName) teamName = 'Unassigned';
-
+            let teamName = order.Team || 'Unassigned';
             if (!stats[teamName]) stats[teamName] = { name: teamName, revenue: 0, orders: 0 };
             stats[teamName].revenue += (Number(order['Grand Total']) || 0);
             stats[teamName].orders += 1;
         });
-        
         return Object.values(stats).sort((a, b) => b.revenue - a.revenue);
-    }, [parsedOrders, revenueBreakdownPeriod, appData.users, appData.pages]);
+    }, [parsedOrders, revenueBreakdownPeriod]);
 
     const provinceStats = useMemo(() => {
         const stats: Record<string, { name: string, revenue: number, orders: number }> = {};
@@ -136,7 +118,6 @@ const AdminDashboard: React.FC = () => {
             } else {
                 setActiveDashboard(id as ActiveDashboard);
             }
-            setIsMobileSidebarOpen(false);
             setIsReportSubMenuOpen(false);
         }
     };
@@ -144,7 +125,6 @@ const AdminDashboard: React.FC = () => {
     const handleReportSubNav = (reportId: ReportType) => {
         setActiveDashboard('reports');
         setActiveReport(reportId);
-        setIsMobileSidebarOpen(false);
     };
 
     const renderContent = () => {
@@ -173,63 +153,28 @@ const AdminDashboard: React.FC = () => {
         }
     };
 
+    const layoutProps = {
+        activeDashboard,
+        currentAdminView,
+        isReportSubMenuOpen,
+        setIsReportSubMenuOpen,
+        isProfileSubMenuOpen,
+        setIsProfileSubMenuOpen,
+        onNavChange: handleNavChange,
+        onReportSubNav: handleReportSubNav,
+        setEditProfileModalOpen,
+        children: renderContent()
+    };
+
     return (
-        <div className="flex min-h-screen bg-transparent text-gray-200">
-            <div className="hidden md:block">
-                <Sidebar 
-                    activeDashboard={activeDashboard}
-                    currentAdminView={currentAdminView}
-                    isReportSubMenuOpen={isReportSubMenuOpen}
-                    isProfileSubMenuOpen={isProfileSubMenuOpen}
-                    onNavChange={handleNavChange}
-                    onReportSubNav={handleReportSubNav}
-                    setIsReportSubMenuOpen={setIsReportSubMenuOpen}
-                    setIsProfileSubMenuOpen={setIsProfileSubMenuOpen}
-                    setEditProfileModalOpen={setEditProfileModalOpen}
-                />
-            </div>
-            
-            <div className="md:hidden">
-                {isMobileSidebarOpen && <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[90]" onClick={() => setIsMobileSidebarOpen(false)} />}
-                <Sidebar 
-                    isMobile={true}
-                    isMobileOpen={isMobileSidebarOpen}
-                    activeDashboard={activeDashboard}
-                    currentAdminView={currentAdminView}
-                    isReportSubMenuOpen={isReportSubMenuOpen}
-                    isProfileSubMenuOpen={isProfileSubMenuOpen}
-                    onNavChange={handleNavChange}
-                    onReportSubNav={handleReportSubNav}
-                    setIsReportSubMenuOpen={setIsReportSubMenuOpen}
-                    setIsProfileSubMenuOpen={setIsProfileSubMenuOpen}
-                    setEditProfileModalOpen={setEditProfileModalOpen}
-                />
-            </div>
-
-            <main className={`flex-1 transition-all duration-300 ease-in-out ${isSidebarCollapsed ? 'md:pl-16' : 'md:pl-52'}`}>
-                <div className="p-2 md:p-3 lg:p-4 pb-24 lg:pb-10 w-full max-w-full overflow-x-hidden relative">
-                    <button 
-                        onClick={() => setIsMobileSidebarOpen(true)}
-                        className="md:hidden fixed top-24 left-4 z-40 p-3 bg-gray-800 rounded-2xl border border-gray-700 shadow-xl"
-                    >
-                        <svg className="w-6 h-6 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M4 6h16M4 12h16M4 18h16" /></svg>
-                    </button>
-                    {renderContent()}
-                </div>
-            </main>
-
-            <BottomNavBar 
-                currentView={activeDashboard === 'admin' ? currentAdminView : activeDashboard} 
-                onViewChange={handleNavChange} 
-                viewConfig={{
-                    dashboard: { label: 'សង្ខេប', icon: <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path d="M11 3.055A9.001 9.001 0 1020.945 13H11V3.055z" /></svg> },
-                    fulfillment: { label: 'វេចខ្ចប់', icon: <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" strokeWidth={2} /></svg> },
-                    orders: { label: 'កម្មង់', icon: <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2" /></svg> },
-                    reports: { label: 'របាយការណ៍', icon: <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414" /></svg> }
-                }} 
-            />
+        <>
+            {isMobile ? (
+                <MobileAdminLayout {...layoutProps} />
+            ) : (
+                <DesktopAdminLayout {...layoutProps} isSidebarCollapsed={isSidebarCollapsed} />
+            )}
             {editProfileModalOpen && <EditProfileModal onClose={() => setEditProfileModalOpen(false)} />}
-        </div>
+        </>
     );
 };
 

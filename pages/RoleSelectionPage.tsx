@@ -202,4 +202,5 @@ const RoleSelectionPage: React.FC<RoleSelectionPageProps> = ({ onSelect }) => {
         </div>
     );
 };
+
 export default RoleSelectionPage;

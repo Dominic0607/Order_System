@@ -109,7 +109,7 @@ const OrdersList: React.FC<OrdersListProps> = ({
     return (
         <div className="w-full flex flex-col">
             <div className="flex-grow space-y-4">
-                {/* Desktop View Table - Expanded Height & No internal scrollbars */}
+                {/* Desktop View Table */}
                 <div className="hidden md:block page-card !p-0 shadow-2xl border-gray-700/50 min-h-[1500px] overflow-visible">
                     <table className="admin-table w-full border-collapse" style={{ tableLayout: 'fixed' }}>
                         <thead>
@@ -137,7 +137,7 @@ const OrdersList: React.FC<OrdersListProps> = ({
                                 {isVisible('date') && <th className="px-5 py-4 text-xs font-black uppercase tracking-wider text-left text-gray-400 w-32">កាលបរិច្ឆេទ</th>}
                                 {isVisible('print') && <th className="px-4 py-4 text-xs font-black uppercase tracking-wider text-center text-gray-400 w-16">ព្រីន</th>}
                                 {isVisible('actions') && <th className="px-4 py-4 text-xs font-black uppercase tracking-wider text-center text-gray-400 w-24">សកម្មភាព</th>}
-                                {isVisible('check') && <th className="px-4 py-4 text-xs font-black uppercase tracking-wider text-center text-emerald-500 w-16">Verified</th>}
+                                {isVisible('check') && <th className="px-4 py-4 text-xs font-black uppercase tracking-wider text-center text-emerald-500 w-28">VERIFIED</th>}
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-700/50">
@@ -255,7 +255,7 @@ const OrdersList: React.FC<OrdersListProps> = ({
                     </table>
                 </div>
 
-                {/* Mobile View Card List - Expanded with plenty of bottom padding */}
+                {/* Mobile View Card List */}
                 <div className="md:hidden space-y-4 min-h-[1200px] pb-64">
                     {localOrders.map((order, idx) => {
                         const pageInfo = appData.pages?.find((p: any) => p.PageName === order.Page);

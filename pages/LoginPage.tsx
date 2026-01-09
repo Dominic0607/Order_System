@@ -253,7 +253,7 @@ const LoginPage: React.FC = () => {
                                 <span className="text-[9px] font-black text-gray-400 uppercase tracking-[0.2em]">Connection Secured</span>
                             </div>
                             <div className="text-[9px] font-mono text-gray-500 flex gap-4 uppercase font-bold tracking-widest">
-                                <span>v2.0.1</span>
+                                <span>v10.5.2</span>
                                 <span>Core Node Active</span>
                             </div>
                         </div>
