@@ -24,7 +24,7 @@ export const translations = {
     loading: "កំពុងដំណើរការ...",
     no_data: "មិនមានទិន្នន័យ",
     confirm_delete: "តើអ្នកពិតជាចង់លុបមែនទេ?",
-    language: "ភាសា",
+    language: "ប្តូរភាសា",
     
     // Missing keys for table headers and dashboard titles
     customer: "អតិថិជន",
@@ -174,7 +174,7 @@ export const translations = {
     loading: "Loading...",
     no_data: "No data available",
     confirm_delete: "Are you sure you want to delete?",
-    language: "Language",
+    language: "Change Language",
 
     // Missing keys for table headers and dashboard titles
     customer: "Customer",
@@ -207,7 +207,7 @@ export const translations = {
     team_name: "Team Name",
     order_count: "Order Count",
     revenue: "Revenue",
-    grand_total: "Grand Total",
+    brand_total: "Grand Total",
     system_management: "System Management",
 
     // User Journey
@@ -301,5 +301,3 @@ export const translations = {
     write_message: "Write message..."
   }
 };
-
-export type TranslationKey = keyof typeof translations.km;

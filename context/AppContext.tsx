@@ -1,5 +1,8 @@
+
 import React, { createContext } from 'react';
 import { User, AppData, MasterProduct } from '../types';
+
+export type Language = 'en' | 'km';
 
 export interface AppContextType {
     currentUser: User | null;
@@ -13,6 +16,7 @@ export interface AppContextType {
     previewImage: (url: string) => void;
     updateCurrentUser: (updatedData: Partial<User>) => void;
     setUnreadCount: React.Dispatch<React.SetStateAction<number>>;
+    unreadCount: number;
     updateProductInData: (productName: string, newData: Partial<MasterProduct>) => void;
     apiKey: string;
     setAppState: (newState: 'login' | 'role_selection' | 'admin_dashboard' | 'user_journey') => void;
@@ -22,6 +26,11 @@ export interface AppContextType {
     setChatVisibility: (visible: boolean) => void;
     isSidebarCollapsed: boolean;
     setIsSidebarCollapsed: (collapsed: boolean) => void;
+    setIsChatOpen: (isOpen: boolean) => void;
+    isMobileMenuOpen: boolean;
+    setIsMobileMenuOpen: (isOpen: boolean) => void;
+    language: Language;
+    setLanguage: (lang: Language) => void;
 }
 
 export const AppContext = createContext<AppContextType>({} as AppContextType);
