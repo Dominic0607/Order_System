@@ -137,7 +137,7 @@ const OrdersList: React.FC<OrdersListProps> = ({
                                 {isVisible('date') && <th className="px-5 py-4 text-xs font-black uppercase tracking-wider text-left text-gray-400 w-32">កាលបរិច្ឆេទ</th>}
                                 {isVisible('print') && <th className="px-4 py-4 text-xs font-black uppercase tracking-wider text-center text-gray-400 w-16">ព្រីន</th>}
                                 {isVisible('actions') && <th className="px-4 py-4 text-xs font-black uppercase tracking-wider text-center text-gray-400 w-24">សកម្មភាព</th>}
-                                {isVisible('check') && <th className="px-4 py-4 text-[10px] font-medium uppercase tracking-wider text-center text-emerald-500 w-20">VERIFIED</th>}
+                                {isVisible('check') && <th className="px-4 py-4 text-[9px] font-normal uppercase tracking-wider text-center text-emerald-500 w-20">VERIFIED</th>}
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-700/50">
