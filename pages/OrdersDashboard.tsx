@@ -7,29 +7,14 @@ import EditOrderPage from './EditOrderPage';
 import OrdersList from '../components/orders/OrdersList';
 import { WEB_APP_URL } from '../constants';
 import Modal from '../components/common/Modal';
-import SearchableProductDropdown from '../components/common/SearchableProductDropdown';
 import { useUrlState } from '../hooks/useUrlState';
 import PdfExportModal from '../components/admin/PdfExportModal';
 import BulkActionManager from '../components/admin/BulkActionManager';
+import OrderFilters, { FilterState } from '../components/orders/OrderFilters';
 
 interface OrdersDashboardProps {
     onBack: () => void;
 }
-
-type DateRangePreset = 'all' | 'today' | 'yesterday' | 'this_week' | 'last_week' | 'this_month' | 'last_month' | 'this_year' | 'last_year' | 'custom';
-
-const datePresets: { label: string, value: DateRangePreset }[] = [
-    { label: 'ទាំងអស់ (All Time)', value: 'all' },
-    { label: 'ថ្ងៃនេះ (Today)', value: 'today' },
-    { label: 'ម្សិលមិញ (Yesterday)', value: 'yesterday' },
-    { label: 'សប្តាហ៍នេះ (This Week)', value: 'this_week' },
-    { label: 'សប្តាហ៍មុន (Last Week)', value: 'last_week' },
-    { label: 'ខែនេះ (This Month)', value: 'this_month' },
-    { label: 'ខែមុន (Last Month)', value: 'last_month' },
-    { label: 'ឆ្នាំនេះ (This Year)', value: 'this_year' },
-    { label: 'ឆ្នាំមុន (Last Year)', value: 'last_year' },
-    { label: 'កំណត់ខ្លួនឯង (Custom)', value: 'custom' },
-];
 
 const availableColumns = [
     { key: 'index', label: '#' },
@@ -57,19 +42,23 @@ const ColumnToggler = ({ columns, visibleColumns, onToggle }: { columns: typeof 
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, []);
     return (
-        <div className="relative inline-block text-left" ref={ref}>
-            <button onClick={() => setIsOpen(!isOpen)} className="btn btn-secondary !py-2 !px-4 text-sm flex items-center bg-gray-800 border border-gray-700 hover:bg-gray-700 transition-all rounded-lg shadow-sm">
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2 text-blue-400" viewBox="0 0 20 20" fill="currentColor"><path d="M5 4a1 1 0 00-2 0v12a1 1 0 002 0V4zM9 4a1 1 0 00-2 0v12a1 1 0 002 0V4zM13 4a1 1 0 00-2 0v12a1 1 0 002 0V4zM17 4a1 1 0 00-2 0v12a1 1 0 002 0V4z" /></svg>
-                Column
-                <svg xmlns="http://www.w3.org/2000/svg" className={`h-4 w-4 ml-2 transition-transform ${isOpen ? 'rotate-180' : ''}`} viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" /></svg>
+        <div className="relative inline-block text-left h-full" ref={ref}>
+            <button 
+                onClick={() => setIsOpen(!isOpen)} 
+                className="flex h-full items-center justify-center gap-3 px-8 py-5 bg-gray-900 border border-gray-800 text-gray-400 hover:text-white hover:border-blue-500/30 rounded-2xl text-[12px] font-black uppercase tracking-widest transition-all active:scale-95"
+            >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-blue-400" viewBox="0 0 20 20" fill="currentColor"><path d="M5 4a1 1 0 00-2 0v12a1 1 0 002 0V4zM9 4a1 1 0 00-2 0v12a1 1 0 002 0V4zM13 4a1 1 0 00-2 0v12a1 1 0 002 0V4zM17 4a1 1 0 00-2 0v12a1 1 0 002 0V4z" /></svg>
+                Columns
+                <svg className={`h-3.5 w-3.5 ml-1 transition-transform duration-500 ${isOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M19 9l-7 7-7-7" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/></svg>
             </button>
             {isOpen && (
-                <div className="absolute right-0 mt-2 w-56 bg-gray-800 border border-gray-700 rounded-xl shadow-[0_10px_40px_rgba(0,0,0,0.5)] z-[100] origin-top-right overflow-hidden border border-white/5 backdrop-blur-xl">
-                    <div className="p-2 space-y-1">
+                <div className="absolute right-0 mt-3 w-64 bg-[#1a2235]/95 border border-white/10 rounded-[1.8rem] shadow-[0_30px_70px_rgba(0,0,0,0.7)] z-[100] origin-top-right overflow-hidden backdrop-blur-3xl p-3 animate-fade-in-scale">
+                    <div className="space-y-1">
+                        <p className="text-[9px] font-black text-gray-500 uppercase tracking-[0.2em] px-3 py-2 mb-1">កំណត់ការបង្ហាញ</p>
                         {columns.map(col => (
-                            <label key={col.key} className="flex items-center px-3 py-2 text-sm text-gray-200 hover:bg-gray-700 rounded-lg cursor-pointer transition-colors">
-                                <input type="checkbox" className="h-4 w-4 rounded border-gray-600 bg-gray-900 text-blue-500" checked={visibleColumns.has(col.key)} onChange={() => onToggle(col.key)} />
-                                <span className="ml-3 font-medium">{col.label}</span>
+                            <label key={col.key} className="flex items-center px-3 py-2 text-xs text-gray-300 hover:bg-white/5 rounded-xl cursor-pointer transition-colors group">
+                                <input type="checkbox" className="h-4 w-4 rounded-md border-gray-600 bg-gray-900 text-blue-500 focus:ring-blue-500/20" checked={visibleColumns.has(col.key)} onChange={() => onToggle(col.key)} />
+                                <span className="ml-3 font-bold group-hover:text-white transition-colors">{col.label}</span>
                             </label>
                         ))}
                     </div>
@@ -82,15 +71,15 @@ const ColumnToggler = ({ columns, visibleColumns, onToggle }: { columns: typeof 
 const FilterPanel = ({ isOpen, onClose, children }: { isOpen: boolean, onClose: () => void, children?: React.ReactNode }) => {
     return (
         <>
-            <div className={`filter-panel-overlay ${isOpen ? 'open' : ''}`} onClick={onClose}></div>
-            <div className={`filter-panel ${isOpen ? 'open' : ''}`}>
-                <div className="p-4 border-b border-gray-700 flex justify-between items-center bg-[#1a1f2e]">
-                    <h2 className="text-xl font-bold text-white">Filter Orders</h2>
-                    <button onClick={onClose} className="text-2xl text-gray-400 hover:text-white">&times;</button>
+            <div className={`filter-panel-overlay fixed inset-0 bg-black/60 backdrop-blur-sm z-[70] transition-opacity duration-500 ${isOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'}`} onClick={onClose}></div>
+            <div className={`filter-panel fixed right-0 top-0 h-full w-[85%] max-w-md bg-[#0f172a] z-[80] shadow-2xl border-l border-white/5 transition-transform duration-500 flex flex-col ${isOpen ? 'translate-x-0' : 'translate-x-full'}`}>
+                <div className="p-6 border-b border-white/5 flex justify-between items-center bg-black/20">
+                    <h2 className="text-xl font-black text-white uppercase tracking-tighter italic">Filter Engine</h2>
+                    <button onClick={onClose} className="p-2 bg-white/5 rounded-xl text-gray-400 hover:text-white transition-all">&times;</button>
                 </div>
-                <div className="p-6 overflow-y-auto flex-grow bg-[#1a1f2e]">{children}</div>
-                <div className="p-6 border-t border-gray-700 bg-[#1a1f2e]">
-                    <button onClick={onClose} className="btn btn-primary w-full py-4 text-lg font-bold shadow-lg shadow-blue-600/20">Apply Filters</button>
+                <div className="p-6 overflow-y-auto flex-grow custom-scrollbar space-y-8">{children}</div>
+                <div className="p-6 border-t border-white/5 bg-black/20">
+                    <button onClick={onClose} className="btn btn-primary w-full py-4 text-sm font-black uppercase tracking-[0.2em] shadow-xl shadow-blue-900/20 rounded-2xl active:scale-95 transition-transform">Apply Configuration</button>
                 </div>
             </div>
         </>
@@ -105,7 +94,7 @@ const OrdersDashboard: React.FC<OrdersDashboardProps> = ({ onBack }) => {
     const [urlDate, setUrlDate] = useUrlState<string>('dateFilter', 'this_month');
 
     const [visibleColumns, setVisibleColumns] = useState<Set<string>>(new Set(
-        availableColumns.filter(c => c.key !== 'productInfo').map(c => c.key)
+        availableColumns.filter(c => c.key !== 'productInfo' && c.key !== 'print' && c.key !== 'check').map(c => c.key)
     ));
 
     const [allOrders, setAllOrders] = useState<ParsedOrder[]>([]);
@@ -114,22 +103,24 @@ const OrdersDashboard: React.FC<OrdersDashboardProps> = ({ onBack }) => {
     const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
     const [isPdfModalOpen, setIsPdfModalOpen] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
-
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
-    const [filters, setFilters] = useState(() => {
+    const [filters, setFilters] = useState<FilterState>(() => {
         const searchParams = new URLSearchParams(window.location.search);
         return {
-            datePreset: (searchParams.get('dateFilter') as DateRangePreset) || 'this_month',
+            datePreset: (searchParams.get('dateFilter') as any) || 'this_month',
             startDate: '',
             endDate: '',
             team: searchParams.get('teamFilter') || '',
             user: '',
             paymentStatus: '',
             shippingService: '',
-            driver: '',
             product: '',
             bank: '',
+            fulfillmentStore: '',
+            page: '',
+            location: '',
+            internalCost: '',
         };
     });
 
@@ -138,7 +129,7 @@ const OrdersDashboard: React.FC<OrdersDashboardProps> = ({ onBack }) => {
             setFilters(prev => ({
                 ...prev,
                 team: urlTeam || prev.team,
-                datePreset: (urlDate as DateRangePreset) || prev.datePreset
+                datePreset: (urlDate as any) || prev.datePreset
             }));
         }
     }, [urlTeam, urlDate]);
@@ -161,11 +152,11 @@ const OrdersDashboard: React.FC<OrdersDashboardProps> = ({ onBack }) => {
             case 'this_month': start = new Date(now.getFullYear(), now.getMonth(), 1); break;
             case 'last_month': start = new Date(now.getFullYear(), now.getMonth() - 1, 1); end = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59); break;
             case 'this_year': start = new Date(now.getFullYear(), 0, 1); break;
-            case 'all': return 'All time data';
+            case 'all': return 'All time data stream';
             case 'custom': return `${filters.startDate || '...'} to ${filters.endDate || '...'}`;
         }
         const formatDate = (d: Date) => d.toISOString().split('T')[0];
-        return start ? `${formatDate(start)} to ${formatDate(end)}` : 'All time data';
+        return start ? `${formatDate(start)} to ${formatDate(end)}` : 'All time data stream';
     }, [filters.datePreset, filters.startDate, filters.endDate]);
 
     const toggleColumn = (key: string) => {
@@ -191,9 +182,7 @@ const OrdersDashboard: React.FC<OrdersDashboardProps> = ({ onBack }) => {
                     .map((o: any) => {
                         let products = [];
                         try { if (o['Products (JSON)']) products = JSON.parse(o['Products (JSON)']); } catch (e) {}
-                        const rawVerified: any = o.IsVerified;
-                        const isVerified = rawVerified === true || String(rawVerified).toUpperCase() === 'TRUE' || rawVerified === 1 || rawVerified === "1";
-                        return { ...o, Products: products, IsVerified: isVerified };
+                        return { ...o, Products: products, IsVerified: String(o.IsVerified).toUpperCase() === 'TRUE' };
                     });
                 setAllOrders(parsed.sort((a: any, b: any) => new Date(b.Timestamp).getTime() - new Date(a.Timestamp).getTime()));
             }
@@ -208,9 +197,8 @@ const OrdersDashboard: React.FC<OrdersDashboardProps> = ({ onBack }) => {
             let team = (order.Team || '').trim();
             if (!team) {
                 const u = usersList.find(u => u.UserName === order.User);
-                if (u?.Team) {
-                    team = u.Team.split(',')[0].trim();
-                } else {
+                if (u?.Team) team = u.Team.split(',')[0].trim();
+                else {
                     const p = appData.pages?.find(pg => pg.PageName === order.Page);
                     if (p?.Team) team = p.Team;
                 }
@@ -247,15 +235,18 @@ const OrdersDashboard: React.FC<OrdersDashboardProps> = ({ onBack }) => {
             if (filters.user && (order.User || '').trim().toLowerCase() !== filters.user.trim().toLowerCase()) return false;
             if (filters.paymentStatus && order['Payment Status'] !== filters.paymentStatus) return false;
             if (filters.shippingService && order['Internal Shipping Method'] !== filters.shippingService) return false;
-            if (filters.driver && order['Internal Shipping Details'] !== filters.driver) return false;
             if (filters.bank && order['Payment Info'] !== filters.bank) return false;
             if (filters.product && !order.Products.some(p => p.name === filters.product)) return false;
+            if (filters.fulfillmentStore && order['Fulfillment Store'] !== filters.fulfillmentStore) return false;
+            if (filters.page && order.Page !== filters.page) return false;
+            if (filters.location && order.Location !== filters.location) return false;
+            if (filters.internalCost && String(order['Internal Cost']) !== filters.internalCost) return false;
+
             if (searchQuery.trim()) {
                 const q = searchQuery.toLowerCase();
-                const match = order['Order ID'].toLowerCase().includes(q) ||
-                              (order['Customer Name'] || '').toLowerCase().includes(q) ||
-                              (order['Customer Phone'] || '').includes(q);
-                if (!match) return false;
+                return order['Order ID'].toLowerCase().includes(q) ||
+                       (order['Customer Name'] || '').toLowerCase().includes(q) ||
+                       (order['Customer Phone'] || '').includes(q);
             }
             return true;
         });
@@ -272,144 +263,94 @@ const OrdersDashboard: React.FC<OrdersDashboardProps> = ({ onBack }) => {
 
     const toggleSelectAll = (ids: string[]) => {
         const allSelected = ids.length > 0 && ids.every(id => selectedIds.has(id));
-        if (allSelected) {
-            setSelectedIds(prev => {
-                const next = new Set(prev);
-                ids.forEach(id => next.delete(id));
-                return next;
-            });
-        } else {
-            setSelectedIds(prev => new Set([...prev, ...ids]));
-        }
+        if (allSelected) setSelectedIds(prev => { const next = new Set(prev); ids.forEach(id => next.delete(id)); return next; });
+        else setSelectedIds(prev => new Set([...prev, ...ids]));
     };
 
-    const FiltersComponent = () => (
-        <div className="space-y-6">
-            <div>
-                <label className="text-sm font-medium text-gray-400 mb-2 block uppercase tracking-wide">Date Range</label>
-                <select value={filters.datePreset} onChange={e => setFilters({...filters, datePreset: e.target.value as any})} className="form-select !bg-[#2b3548] border-none !py-3">
-                    {datePresets.map(p => <option key={p.value} value={p.value}>{p.label}</option>)}
-                </select>
-                <div className="mt-2 bg-[#121620] p-3 rounded-lg text-center text-sm font-mono text-gray-500 border border-gray-800/50">
-                    {calculatedRange}
-                </div>
-            </div>
-            {filters.datePreset === 'custom' && (
-                <div className="grid grid-cols-2 gap-4 animate-fade-in">
-                    <div><label className="text-xs text-gray-500 mb-1 block">From</label><input type="date" value={filters.startDate} onChange={e => setFilters({...filters, startDate: e.target.value})} className="form-input !bg-[#2b3548] border-none" /></div>
-                    <div><label className="text-xs text-gray-500 mb-1 block">To</label><input type="date" value={filters.endDate} onChange={e => setFilters({...filters, endDate: e.target.value})} className="form-input !bg-[#2b3548] border-none" /></div>
-                </div>
-            )}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-5">
-                <div>
-                    <label className="text-sm font-medium text-gray-400 mb-2 block uppercase tracking-wide">Team</label>
-                    <select value={filters.team} onChange={e => setFilters({...filters, team: e.target.value})} className="form-select !bg-[#2b3548] border-none !py-3">
-                        <option value="">All Teams</option>
-                        {Array.from(new Set(enrichedOrders.map(o => o.Team))).map(t => <option key={t} value={t}>{t}</option>)}
-                    </select>
-                </div>
-                <div>
-                    <label className="text-sm font-medium text-gray-400 mb-2 block uppercase tracking-wide">User (អ្នកលក់)</label>
-                    <select value={filters.user} onChange={e => setFilters({...filters, user: e.target.value})} className="form-select !bg-[#2b3548] border-none !py-3">
-                        <option value="">All Users</option>
-                        {usersList.map(u => <option key={u.UserName} value={u.UserName}>{u.FullName}</option>)}
-                    </select>
-                </div>
-                <div>
-                    <label className="text-sm font-medium text-gray-400 mb-2 block uppercase tracking-wide">Payment Status</label>
-                    <select value={filters.paymentStatus} onChange={e => setFilters({...filters, paymentStatus: e.target.value})} className="form-select !bg-[#2b3548] border-none !py-3">
-                        <option value="">All Statuses</option>
-                        <option value="Paid">Paid</option>
-                        <option value="Unpaid">Unpaid</option>
-                    </select>
-                </div>
-                <div>
-                    <label className="text-sm font-medium text-gray-400 mb-2 block uppercase tracking-wide">Product</label>
-                    <SearchableProductDropdown products={appData.products} selectedProductName={filters.product} onSelect={val => setFilters({...filters, product: val})} showTagEditor={false} />
-                </div>
-                <div>
-                    <label className="text-sm font-medium text-gray-400 mb-2 block uppercase tracking-wide">Shipping Service</label>
-                    <select value={filters.shippingService} onChange={e => setFilters({...filters, shippingService: e.target.value})} className="form-select !bg-[#2b3548] border-none !py-3">
-                        <option value="">All Services</option>
-                        {appData.shippingMethods?.map(s => <option key={s.MethodName} value={s.MethodName}>{s.MethodName}</option>)}
-                    </select>
-                </div>
-                <div>
-                    <label className="text-sm font-medium text-gray-400 mb-2 block uppercase tracking-wide">Driver</label>
-                    <select value={filters.driver} onChange={e => setFilters({...filters, driver: e.target.value})} className="form-select !bg-[#2b3548] border-none !py-3">
-                        <option value="">All Drivers</option>
-                        {appData.drivers?.map(d => <option key={d.DriverName} value={d.DriverName}>{d.DriverName}</option>)}
-                    </select>
-                </div>
-            </div>
-            <div>
-                <label className="text-sm font-medium text-gray-400 mb-2 block uppercase tracking-wide">Bank Account</label>
-                <select value={filters.bank} onChange={e => setFilters({...filters, bank: e.target.value})} className="form-select !bg-[#2b3548] border-none !py-3">
-                    <option value="">All Bank Accounts</option>
-                    {appData.bankAccounts?.map(b => <option key={b.BankName} value={b.BankName}>{b.BankName}</option>)}
-                </select>
-            </div>
+    if (loading) return (
+        <div className="flex flex-col h-96 items-center justify-center gap-5">
+            <Spinner size="lg" />
+            <p className="text-[10px] font-black text-blue-500 uppercase tracking-[0.4em] animate-pulse">Syncing Operational Logs...</p>
         </div>
     );
 
-    if (loading) return <div className="flex h-64 items-center justify-center"><Spinner size="lg" /></div>;
     if (editingOrderId) {
         const order = enrichedOrders.find(o => o['Order ID'] === editingOrderId);
         return order ? <EditOrderPage order={order} onSaveSuccess={() => { setEditingOrderId(''); fetchAllOrders(); refreshData(); }} onCancel={() => setEditingOrderId('')} /> : null;
     }
 
     return (
-        <div className="w-full mx-auto px-2 sm:px-6 lg:px-10 animate-fade-in relative pb-32">
-            <div className="md:hidden"><FilterPanel isOpen={isFilterModalOpen} onClose={() => setIsFilterModalOpen(false)}><FiltersComponent /></FilterPanel></div>
+        <div className="w-full max-w-full mx-auto px-3 sm:px-6 lg:px-8 animate-fade-in relative pb-40 overflow-x-hidden">
+            <div className="md:hidden">
+                <FilterPanel isOpen={isFilterModalOpen} onClose={() => setIsFilterModalOpen(false)}>
+                    <OrderFilters filters={filters} setFilters={setFilters} orders={enrichedOrders} usersList={usersList} appData={appData} calculatedRange={calculatedRange} />
+                </FilterPanel>
+            </div>
             <div className="hidden md:block">
                 <Modal isOpen={isFilterModalOpen} onClose={() => setIsFilterModalOpen(false)} maxWidth="max-w-4xl">
-                    <div className="p-6 border-b border-gray-700 flex justify-between items-center bg-[#1a1f2e]"><h2 className="text-2xl font-bold text-white tracking-tight">Filter Orders</h2><button onClick={() => setIsFilterModalOpen(false)} className="text-3xl text-gray-500 hover:text-white">&times;</button></div>
-                    <div className="p-8 bg-[#1a1f2e] max-h-[70vh] overflow-y-auto"><FiltersComponent /></div>
-                    <div className="p-8 border-t border-gray-700 bg-[#1a1f2e] flex justify-center"><button onClick={() => setIsFilterModalOpen(false)} className="btn btn-primary w-full py-4 text-lg font-bold shadow-xl shadow-blue-600/30 active:scale-[0.98] transition-transform">Apply Filters</button></div>
+                    <div className="p-8 bg-[#0f172a] rounded-[3rem] border border-white/10 shadow-3xl overflow-hidden relative">
+                        <div className="flex justify-between items-center mb-10 relative z-10">
+                            <div className="flex items-center gap-4">
+                                <div className="w-1.5 h-8 bg-blue-600 rounded-full"></div>
+                                <h2 className="text-2xl font-black text-white uppercase tracking-tighter italic leading-none">Filter Subsystem</h2>
+                            </div>
+                            <button onClick={() => setIsFilterModalOpen(false)} className="w-12 h-12 bg-white/5 rounded-2xl flex items-center justify-center text-gray-500 hover:text-white transition-all active:scale-90 border border-white/5">&times;</button>
+                        </div>
+                        <div className="max-h-[60vh] overflow-y-auto custom-scrollbar pr-2 relative z-10">
+                            <OrderFilters filters={filters} setFilters={setFilters} orders={enrichedOrders} usersList={usersList} appData={appData} calculatedRange={calculatedRange} />
+                        </div>
+                        <div className="mt-12 flex justify-center relative z-10"><button onClick={() => setIsFilterModalOpen(false)} className="btn btn-primary w-full py-5 text-[13px] font-black uppercase tracking-[0.25em] shadow-[0_20px_50px_rgba(37,99,235,0.3)] rounded-2xl active:scale-[0.98] transition-all">Apply Filter Configuration</button></div>
+                        <div className="absolute -bottom-20 -right-20 w-80 h-80 bg-blue-600/10 rounded-full blur-[100px] pointer-events-none"></div>
+                    </div>
                 </Modal>
             </div>
 
-            <div className="flex justify-between items-center mb-6">
-                <h1 className="text-2xl text-white">គ្រប់គ្រងប្រតិបត្តិការណ៍</h1>
-                <button onClick={onBack} className="group flex items-center gap-2 px-6 py-2 bg-gray-800 border border-gray-700 hover:border-blue-500 text-gray-400 hover:text-blue-400 font-black uppercase tracking-widest rounded-xl transition-all shadow-lg active:scale-95">
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 transform group-hover:-translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M10 19l-7-7m0 0l7-7m-7 7h18" /></svg>
-                    Back
-                </button>
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end mb-10 gap-6 px-1">
+                <div>
+                    <h1 className="text-3xl lg:text-5xl font-black text-white italic tracking-tighter leading-none mb-3">គ្រប់គ្រងប្រតិបត្តិការណ៍</h1>
+                    <div className="flex items-center gap-3">
+                        <div className="flex items-center gap-2 px-4 py-1.5 bg-blue-600/10 rounded-full border border-blue-500/20">
+                            <div className="w-2 h-2 rounded-full bg-blue-500 animate-pulse"></div>
+                            <span className="text-[11px] font-black text-blue-400 uppercase tracking-widest">{filteredOrders.length} Entries Logged</span>
+                        </div>
+                    </div>
+                </div>
+                <div className="flex gap-3">
+                    <button onClick={onBack} className="group flex items-center gap-3 px-8 py-4 bg-gray-800/40 backdrop-blur-xl border border-white/5 hover:border-blue-500/30 text-gray-500 hover:text-blue-400 font-black uppercase tracking-widest text-[12px] rounded-2xl transition-all shadow-xl active:scale-95">
+                        <svg className="w-5 h-5 transform group-hover:-translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={3}><path d="M10 19l-7-7m0 0l7-7m-7 7h18" /></svg>
+                        Back to Core
+                    </button>
+                </div>
             </div>
 
-            <div className="page-card !p-3 mb-6 bg-gray-800/40 border-gray-700/50 relative z-20">
-                <div className="flex flex-col md:flex-row justify-between items-center gap-4">
-                    <div className="relative w-full md:max-w-md">
-                        <input type="text" placeholder="ស្វែងរក ID, ឈ្មោះ, ទូរស័ព្ទ..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="form-input !pl-10 !py-2 bg-gray-900/50" />
-                        <svg className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+            <div className="bg-gray-800/20 backdrop-blur-3xl border border-white/5 rounded-[2.5rem] p-5 sm:p-6 mb-8 shadow-2xl relative z-20 group transition-all hover:bg-gray-800/30">
+                <div className="flex flex-col lg:flex-row justify-between items-center gap-4">
+                    <div className="relative w-full lg:max-w-2xl group">
+                        <input type="text" placeholder="ស្វែងរក ID, ឈ្មោះ, ឬលេខទូរស័ព្ទ..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="form-input !pl-16 !py-5 bg-black/40 border-gray-800 rounded-[1.8rem] text-[15px] font-bold text-white placeholder:text-gray-700 focus:border-blue-500/50 focus:bg-black/60 transition-all shadow-inner" />
+                        <div className="absolute left-6 top-1/2 -translate-y-1/2 flex items-center gap-4 text-gray-700 group-focus-within:text-blue-500 transition-colors">
+                            <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={3}><path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+                            <div className="h-6 w-px bg-gray-800"></div>
+                        </div>
                     </div>
-                    <div className="flex gap-2 w-full md:w-auto">
-                        <button onClick={() => setIsFilterModalOpen(true)} className="btn btn-secondary flex-1 md:flex-none !py-2 bg-gray-700 hover:bg-gray-600"><svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" /></svg>Filters</button>
-                        <button onClick={() => setIsPdfModalOpen(true)} className="btn !bg-red-600/80 text-white flex-1 md:flex-none !py-2">Export PDF</button>
-                        <div className="hidden md:block"><ColumnToggler columns={availableColumns} visibleColumns={visibleColumns} onToggle={toggleColumn} /></div>
+                    <div className="flex items-stretch gap-3 w-full lg:w-auto h-16 sm:h-[68px]">
+                        <button onClick={() => setIsFilterModalOpen(true)} className="flex-1 lg:flex-none flex items-center justify-center gap-3 px-8 py-5 bg-gray-900 border border-gray-800 text-gray-400 hover:text-white hover:border-blue-500/30 rounded-2xl text-[12px] font-black uppercase tracking-widest transition-all active:scale-95">
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5}><path d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" /></svg>
+                            Filters
+                        </button>
+                        <button onClick={() => setIsPdfModalOpen(true)} className="flex-1 lg:flex-none flex items-center justify-center gap-3 px-8 py-5 bg-red-600/10 border border-red-500/20 text-red-500 hover:bg-red-600 hover:text-white rounded-2xl text-[12px] font-black uppercase tracking-widest transition-all active:scale-95 shadow-lg shadow-red-950/20">
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={3}><path d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" /></svg>
+                            Export
+                        </button>
+                        <div className="hidden lg:block h-full"><ColumnToggler columns={availableColumns} visibleColumns={visibleColumns} onToggle={toggleColumn} /></div>
                     </div>
                 </div>
             </div>
 
             <div className="relative z-10">
-                <OrdersList 
-                    orders={filteredOrders} 
-                    onEdit={o => setEditingOrderId(o['Order ID'])} 
-                    showActions={true} 
-                    visibleColumns={visibleColumns} 
-                    selectedIds={selectedIds}
-                    onToggleSelect={toggleSelection}
-                    onToggleSelectAll={toggleSelectAll}
-                />
+                <OrdersList orders={filteredOrders} onEdit={o => setEditingOrderId(o['Order ID'])} showActions={true} visibleColumns={visibleColumns} selectedIds={selectedIds} onToggleSelect={toggleSelection} onToggleSelectAll={toggleSelectAll} />
             </div>
 
-            {/* Component គ្រប់គ្រង Bulk Actions */}
-            <BulkActionManager 
-                selectedIds={selectedIds} 
-                onComplete={() => { setSelectedIds(new Set()); fetchAllOrders(); }}
-                onClearSelection={() => setSelectedIds(new Set())}
-            />
-
+            <BulkActionManager selectedIds={selectedIds} onComplete={() => { setSelectedIds(new Set()); fetchAllOrders(); }} onClearSelection={() => setSelectedIds(new Set())} />
             {isPdfModalOpen && <PdfExportModal isOpen={isPdfModalOpen} onClose={() => setIsPdfModalOpen(false)} orders={filteredOrders} />}
         </div>
     );

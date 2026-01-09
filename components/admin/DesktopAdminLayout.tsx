@@ -51,7 +51,7 @@ const DesktopAdminLayout: React.FC<DesktopAdminLayoutProps> = ({
                     <div className="absolute top-[-10%] right-[-10%] w-[500px] h-[500px] bg-blue-600/5 rounded-full blur-[120px]"></div>
                 </div>
                 
-                <div className="p-6 lg:p-8 max-w-[1600px] mx-auto min-h-screen relative z-10">
+                <div className="p-6 lg:p-8 max-w-[1920px] mx-auto min-h-screen relative z-10">
                     {children}
                 </div>
             </main>
