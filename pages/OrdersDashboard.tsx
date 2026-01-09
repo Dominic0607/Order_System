@@ -249,10 +249,10 @@ const OrdersDashboard: React.FC<OrdersDashboardProps> = ({ onBack }) => {
             if (filters.shippingService && order['Internal Shipping Method'] !== filters.shippingService) return false;
             if (filters.driver && order['Internal Shipping Details'] !== filters.driver) return false;
             if (filters.bank && order['Payment Info'] !== filters.bank) return false;
-            if (filters.product && !order.Products.some(p => p.name === filters.product)) return false;
+            if (filters.product && (!Array.isArray(order.Products) || !order.Products.some(p => p.name === filters.product))) return false;
             if (searchQuery.trim()) {
                 const q = searchQuery.toLowerCase();
-                const match = order['Order ID'].toLowerCase().includes(q) ||
+                const match = (order['Order ID'] || '').toLowerCase().includes(q) ||
                               (order['Customer Name'] || '').toLowerCase().includes(q) ||
                               (order['Customer Phone'] || '').includes(q);
                 if (!match) return false;
