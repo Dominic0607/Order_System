@@ -137,7 +137,7 @@ const OrdersList: React.FC<OrdersListProps> = ({
                                 {isVisible('date') && <th className="px-5 py-4 text-xs font-black uppercase tracking-wider text-left text-gray-400 w-32">កាលបរិច្ឆេទ</th>}
                                 {isVisible('print') && <th className="px-4 py-4 text-xs font-black uppercase tracking-wider text-center text-gray-400 w-16">ព្រីន</th>}
                                 {isVisible('actions') && <th className="px-4 py-4 text-xs font-black uppercase tracking-wider text-center text-gray-400 w-24">សកម្មភាព</th>}
-                                {isVisible('check') && <th className="px-4 py-4 text-xs font-black uppercase tracking-wider text-center text-emerald-500 w-28">VERIFIED</th>}
+                                {isVisible('check') && <th className="px-4 py-4 text-[10px] font-medium uppercase tracking-wider text-center text-emerald-500 w-20">VERIFIED</th>}
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-700/50">
@@ -385,7 +385,7 @@ const OrdersList: React.FC<OrdersListProps> = ({
                                                     type="checkbox" 
                                                     checked={isVerified} 
                                                     onChange={() => toggleOrderVerified(order['Order ID'], isVerified)} 
-                                                    className={`h-9 w-9 rounded-xl border-gray-600 bg-gray-900 text-emerald-500 focus:ring-emerald-500/20 transition-all ${isUpdating ? 'opacity-20' : 'active:scale-125'}`} 
+                                                    className={`h-9 w-9 rounded-xl border-gray-600 bg-gray-900 text-emerald-500 focus:ring-emerald-500/20 taransition-all ${isUpdating ? 'opacity-20' : 'active:scale-125'}`} 
                                                 />
                                                 {isUpdating && <div className="absolute inset-0 flex items-center justify-center"><Spinner size="sm" /></div>}
                                             </div>

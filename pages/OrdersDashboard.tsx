@@ -359,7 +359,7 @@ const OrdersDashboard: React.FC<OrdersDashboardProps> = ({ onBack }) => {
     }
 
     return (
-        <div className="w-full px-2 sm:px-6 lg:px-10 animate-fade-in relative pb-32">
+        <div className="w-full max-w-[1600px] mx-auto px-2 sm:px-6 lg:px-10 animate-fade-in relative pb-32">
             <div className="md:hidden"><FilterPanel isOpen={isFilterModalOpen} onClose={() => setIsFilterModalOpen(false)}><FiltersComponent /></FilterPanel></div>
             <div className="hidden md:block">
                 <Modal isOpen={isFilterModalOpen} onClose={() => setIsFilterModalOpen(false)} maxWidth="max-w-4xl">
@@ -370,7 +370,7 @@ const OrdersDashboard: React.FC<OrdersDashboardProps> = ({ onBack }) => {
             </div>
 
             <div className="flex justify-between items-center mb-6">
-                <h1 className="text-2xl font-bold text-white">គ្រប់គ្រងប្រតិបត្តិការណ៍</h1>
+                <h1 className="text-2xl font-semibold text-white">គ្រប់គ្រងប្រតិបត្តិការណ៍</h1>
                 <button onClick={onBack} className="group flex items-center gap-2 px-6 py-2 bg-gray-800 border border-gray-700 hover:border-blue-500 text-gray-400 hover:text-blue-400 font-black uppercase tracking-widest rounded-xl transition-all shadow-lg active:scale-95">
                     <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 transform group-hover:-translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M10 19l-7-7m0 0l7-7m-7 7h18" /></svg>
                     Back
