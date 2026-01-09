@@ -126,7 +126,7 @@ const EditOrderPage: React.FC<EditOrderPageProps> = ({ order, onSaveSuccess, onC
         };
     };
 
-    const handleProductChange = (index: number, field: keyof Product, value: any) => {
+    const handleProductChange = (index: number, field: keyof Product, value: any, extraTags?: string) => {
         setFormData(prev => {
             const newProducts = [...prev.Products];
             const productToUpdate = { ...newProducts[index] };
@@ -139,6 +139,7 @@ const EditOrderPage: React.FC<EditOrderPageProps> = ({ order, onSaveSuccess, onC
                     productToUpdate.finalPrice = masterProduct.Price;
                     productToUpdate.cost = masterProduct.Cost;
                     productToUpdate.image = masterProduct.ImageURL;
+                    productToUpdate.tags = extraTags !== undefined ? extraTags : masterProduct.Tags;
                 }
             } else if (field === 'finalPrice' || field === 'quantity') {
                 // @ts-ignore
@@ -160,14 +161,14 @@ const EditOrderPage: React.FC<EditOrderPageProps> = ({ order, onSaveSuccess, onC
             ...prev, 
             Products: [ 
                 ...prev.Products, 
-                { id: Date.now(), name: '', quantity: 1, originalPrice: 0, finalPrice: 0, total: 0, discountPercent: 0, colorInfo: '', image: '', cost: 0 } 
+                { id: Date.now(), name: '', quantity: 1, originalPrice: 0, finalPrice: 0, total: 0, discountPercent: 0, colorInfo: '', image: '', cost: 0, tags: '' } 
             ] 
         }));
     };
 
     const handleRemoveProduct = (index: number) => {
         if (formData.Products.length <= 1) { 
-            alert("ប្រតិបត្តិការណ៍ត្រូវតែមានផលិតផលយ៉ាងតិចមួយ។"); 
+            alert("ប្រតិបត្តិការណ៍ត្រូវតែមានផលិតផលយ៉ាងទីចមួយ។"); 
             return; 
         }
         setFormData(prev => {
@@ -346,7 +347,7 @@ const EditOrderPage: React.FC<EditOrderPageProps> = ({ order, onSaveSuccess, onC
                                             </div>
                                             <div className="md:col-span-4 space-y-2">
                                                 <label className="text-[9px] font-black text-gray-600 uppercase tracking-[0.2em] ml-1">ឈ្មោះផលិតផល*</label>
-                                                <SearchableProductDropdown products={appData.products} selectedProductName={p.name} onSelect={(name) => handleProductChange(index, 'name', name)} />
+                                                <SearchableProductDropdown products={appData.products} selectedProductName={p.name} onSelect={(name, tags) => handleProductChange(index, 'name', name, tags)} />
                                             </div>
                                             <div className="md:col-span-3">
                                                 <SetQuantity value={p.quantity} onChange={(val) => handleProductChange(index, 'quantity', val)} />
@@ -360,9 +361,15 @@ const EditOrderPage: React.FC<EditOrderPageProps> = ({ order, onSaveSuccess, onC
                                             </div>
                                             
                                             <div className="md:col-span-12 pt-4 border-t border-white/5 flex flex-col sm:flex-row justify-between items-center gap-4">
-                                                <div className="flex items-center gap-3 w-full sm:w-auto">
-                                                    <span className="text-[10px] font-black text-gray-600 uppercase">សម្គាល់៖</span>
-                                                    <input type="text" value={p.colorInfo} onChange={(e) => handleProductChange(index, 'colorInfo', e.target.value)} className="flex-grow bg-transparent border-b border-gray-800 text-xs font-black text-gray-300 focus:border-blue-500 outline-none px-2" placeholder="..." />
+                                                <div className="flex flex-col gap-3 w-full sm:flex-row sm:items-center">
+                                                    <div className="flex items-center gap-3 w-full sm:w-auto">
+                                                        <span className="text-[10px] font-black text-gray-600 uppercase">សម្គាល់៖</span>
+                                                        <input type="text" value={p.colorInfo} onChange={(e) => handleProductChange(index, 'colorInfo', e.target.value)} className="flex-grow bg-transparent border-b border-gray-800 text-xs font-black text-gray-300 focus:border-blue-500 outline-none px-2" placeholder="..." />
+                                                    </div>
+                                                    <div className="flex items-center gap-3 w-full sm:w-auto">
+                                                        <span className="text-[10px] font-black text-blue-500 uppercase">Tags:</span>
+                                                        <input type="text" value={p.tags || ''} onChange={(e) => handleProductChange(index, 'tags', e.target.value)} className="flex-grow bg-transparent border-b border-gray-800 text-xs font-black text-blue-300 focus:border-blue-400 outline-none px-2" placeholder="Tags..." />
+                                                    </div>
                                                 </div>
                                                 <div className="flex items-center gap-6">
                                                     <div className="text-right">

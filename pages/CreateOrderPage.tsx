@@ -217,7 +217,7 @@ const CreateOrderPage: React.FC<CreateOrderPageProps> = ({ team, onSaveSuccess, 
                 updatedProducts[existingProductIndex] = recalculated;
             } else {
                 const emptyProductIndex = prevOrder.products.findIndex((p: ProductType) => !p.name);
-                const newProduct: ProductUIState = { ...initialProductState, id: Date.now(), name: foundProduct.ProductName, quantity: 1, originalPrice: foundProduct.Price, cost: foundProduct.Cost, image: foundProduct.ImageURL };
+                const newProduct: ProductUIState = { ...initialProductState, id: Date.now(), name: foundProduct.ProductName, quantity: 1, originalPrice: foundProduct.Price, cost: foundProduct.Cost, image: foundProduct.ImageURL, tags: foundProduct.Tags };
                 const recalculated = calculateProductFields(newProduct, appData.products);
                 if (emptyProductIndex > -1) { updatedProducts = [...prevOrder.products]; updatedProducts[emptyProductIndex] = recalculated; }
                 else { updatedProducts = [...prevOrder.products, recalculated]; }
@@ -252,7 +252,7 @@ const CreateOrderPage: React.FC<CreateOrderPageProps> = ({ team, onSaveSuccess, 
         });
     };
     
-    const handleProductUpdate = (index: number, field: keyof ProductUIState, value: any) => {
+    const handleProductUpdate = (index: number, field: keyof ProductUIState, value: any, extraTags?: string) => {
          setOrder((prev: any) => {
             const updatedProducts = [...prev.products];
             let productToUpdate = { ...updatedProducts[index] };
@@ -277,9 +277,11 @@ const CreateOrderPage: React.FC<CreateOrderPageProps> = ({ team, onSaveSuccess, 
                     productToUpdate.discountType = 'percent';
                     productToUpdate.finalPrice = masterProduct.Price;
                     productToUpdate.finalPriceInput = String(masterProduct.Price);
+                    // Update tags from dropdown selection
+                    productToUpdate.tags = extraTags !== undefined ? extraTags : masterProduct.Tags;
                 } else {
                     productToUpdate.originalPrice = 0; productToUpdate.image = ''; productToUpdate.cost = 0;
-                    productToUpdate.discountType = 'custom'; productToUpdate.finalPrice = 0;
+                    productToUpdate.discountType = 'custom'; productToUpdate.finalPrice = 0; productToUpdate.tags = '';
                 }
             }
             if (field === 'discountType') { productToUpdate.discountPercentInput = ''; productToUpdate.discountAmountInput = ''; productToUpdate.finalPrice = productToUpdate.originalPrice; productToUpdate.finalPriceInput = String(productToUpdate.originalPrice); }
@@ -378,7 +380,8 @@ const CreateOrderPage: React.FC<CreateOrderPageProps> = ({ team, onSaveSuccess, 
                 finalPrice: Number(p.finalPrice) || 0, 
                 total: Number(p.total) || 0, 
                 colorInfo: p.colorInfo, 
-                cost: Number(p.cost) || 0 
+                cost: Number(p.cost) || 0,
+                tags: p.tags
             })), 
             shipping: { 
                 ...order.shipping, 
@@ -561,7 +564,7 @@ const CreateOrderPage: React.FC<CreateOrderPageProps> = ({ team, onSaveSuccess, 
                                                 <div className="w-20 h-20 sm:w-28 sm:h-28 bg-gray-900 rounded-xl sm:rounded-2xl overflow-hidden border-2 border-gray-700 shadow-inner group-hover:border-blue-500/50 transition-colors"><img src={convertGoogleDriveUrl(p.image)} className="w-full h-full object-cover" alt="" /></div>
                                             </div>
                                             <div className="md:col-span-10 grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-                                                <div className="space-y-1.5"><label className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-1">ឈ្មោះផលិតផល*</label><SearchableProductDropdown products={appData.products || []} selectedProductName={p.name} onSelect={(val) => handleProductUpdate(index, 'name', val)} /></div>
+                                                <div className="space-y-1.5"><label className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-1">ឈ្មោះផលិតផល*</label><SearchableProductDropdown products={appData.products || []} selectedProductName={p.name} onSelect={(val, tags) => handleProductUpdate(index, 'name', val, tags)} /></div>
                                                 <div className="grid grid-cols-2 gap-3 sm:gap-4">
                                                     <SetQuantity 
                                                         value={p.quantity} 

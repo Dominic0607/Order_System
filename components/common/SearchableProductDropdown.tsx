@@ -2,7 +2,7 @@
 import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import { MasterProduct } from '../../types';
 import { convertGoogleDriveUrl } from '../../utils/fileUtils';
-import Modal from './Modal';
+import ProductSelectionConfirm from '../orders/ProductSelectionConfirm';
 
 const highlightMatch = (text: string, query: string) => {
     if (!query || !text) return <span>{text}</span>;
@@ -39,41 +39,22 @@ const getRelevanceScore = (product: MasterProduct, query: string): number => {
 interface SearchableProductDropdownProps {
     products: MasterProduct[];
     selectedProductName: string;
-    onSelect: (productName: string) => void;
+    onSelect: (productName: string, tags?: string) => void;
     showTagEditor?: boolean;
 }
 
-const SearchableProductDropdown: React.FC<SearchableProductDropdownProps> = ({ products, selectedProductName, onSelect }) => {
+const SearchableProductDropdown: React.FC<SearchableProductDropdownProps> = ({ products, selectedProductName, onSelect, showTagEditor = true }) => {
     const [isOpen, setIsOpen] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
     const [activeIndex, setActiveIndex] = useState(0);
     const [previewProduct, setPreviewProduct] = useState<MasterProduct | null>(null);
-    const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
     
     const dropdownRef = useRef<HTMLDivElement>(null);
     const inputRef = useRef<HTMLInputElement>(null);
-    const modalContentRef = useRef<HTMLDivElement>(null);
-
-    useEffect(() => {
-        const handleResize = () => setIsMobile(window.innerWidth < 768);
-        window.addEventListener('resize', handleResize);
-        return () => window.removeEventListener('resize', handleResize);
-    }, []);
 
     useEffect(() => {
         setSearchTerm(selectedProductName);
     }, [selectedProductName]);
-
-    useEffect(() => {
-        if (previewProduct) {
-            const timer = setTimeout(() => {
-                if (modalContentRef.current) {
-                    modalContentRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                }
-            }, 100);
-            return () => clearTimeout(timer);
-        }
-    }, [previewProduct]);
 
     useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
@@ -110,8 +91,8 @@ const SearchableProductDropdown: React.FC<SearchableProductDropdownProps> = ({ p
         return items;
     }, [filteredProducts, canAddNewProduct, searchTerm]);
 
-    const confirmSelect = useCallback((productName: string) => {
-        onSelect(productName);
+    const confirmSelect = useCallback((productName: string, tags?: string) => {
+        onSelect(productName, tags);
         setSearchTerm(productName);
         setIsOpen(false);
         setPreviewProduct(null);
@@ -128,7 +109,7 @@ const SearchableProductDropdown: React.FC<SearchableProductDropdownProps> = ({ p
     };
 
     const handleClear = useCallback(() => {
-        onSelect('');
+        onSelect('', '');
         setSearchTerm('');
         setIsOpen(true);
         setActiveIndex(0);
@@ -198,60 +179,13 @@ const SearchableProductDropdown: React.FC<SearchableProductDropdownProps> = ({ p
                 </div>
             )}
 
-            {previewProduct && (
-                <Modal isOpen={true} onClose={() => setPreviewProduct(null)} maxWidth={isMobile ? "max-w-[95vw]" : "max-w-2xl"}>
-                    <div ref={modalContentRef} className="bg-[#0f172a] rounded-[2rem] sm:rounded-[3rem] overflow-hidden shadow-[0_30px_100px_rgba(0,0,0,0.8)] border border-white/5 relative">
-                        <div className="relative h-48 sm:h-72 w-full">
-                            <div className="absolute inset-0 z-0">
-                                <img src={convertGoogleDriveUrl(previewProduct.ImageURL)} className="w-full h-full object-cover blur-3xl opacity-30" alt="" />
-                            </div>
-                            <div className="absolute inset-0 flex items-center justify-center z-10 p-6">
-                                <img 
-                                    src={convertGoogleDriveUrl(previewProduct.ImageURL)} 
-                                    className="h-full w-auto object-contain rounded-2xl sm:rounded-3xl shadow-[0_20px_50px_rgba(0,0,0,0.5)] border border-white/10 transform transition-transform hover:scale-105 duration-500" 
-                                    alt={previewProduct.ProductName} 
-                                />
-                            </div>
-                            <div className="absolute top-4 right-4 z-20">
-                                <div className="bg-emerald-500 text-white font-black px-4 py-2 rounded-2xl shadow-xl border-2 border-white/20 text-lg">
-                                    ${previewProduct.Price.toFixed(2)}
-                                </div>
-                            </div>
-                        </div>
-                        <div className="p-6 sm:p-10 text-center space-y-6 sm:space-y-8 bg-gradient-to-b from-transparent to-black/40">
-                            <div>
-                                <p className="text-blue-500 text-[10px] sm:text-xs font-black uppercase tracking-[0.4em] mb-3">បញ្ជាក់ការជ្រើសរើស</p>
-                                <h3 className="text-2xl sm:text-4xl font-black text-white leading-tight break-words">
-                                    {previewProduct.ProductName}
-                                </h3>
-                                {previewProduct.Barcode && (
-                                    <div className="mt-4 inline-flex items-center gap-2 bg-white/5 px-4 py-1.5 rounded-full border border-white/5">
-                                        <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                                        <span className="text-gray-400 font-mono text-xs tracking-widest">{previewProduct.Barcode}</span>
-                                    </div>
-                                )}
-                            </div>
-                            <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 w-full">
-                                <button 
-                                    onClick={() => setPreviewProduct(null)} 
-                                    className="order-2 sm:order-1 flex-1 py-4 sm:py-5 bg-gray-800/50 hover:bg-gray-800 text-gray-400 font-black rounded-2xl uppercase text-[11px] tracking-widest transition-all active:scale-95 border border-white/5"
-                                >
-                                    បោះបង់
-                                </button>
-                                <button 
-                                    onClick={() => confirmSelect(previewProduct.ProductName)} 
-                                    className="order-1 sm:order-2 flex-[2] py-4 sm:py-5 bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-black rounded-2xl uppercase text-xs tracking-[0.2em] shadow-[0_10px_30px_rgba(37,99,235,0.4)] hover:from-blue-500 hover:to-indigo-500 transition-all active:scale-95 flex items-center justify-center gap-3"
-                                >
-                                    ជ្រើសរើសយក
-                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M5 13l4 4L19 7" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                                </button>
-                            </div>
-                        </div>
-                        <div className="absolute -bottom-20 -left-20 w-64 h-64 bg-blue-600/10 rounded-full blur-[80px] pointer-events-none"></div>
-                        <div className="absolute -top-20 -right-20 w-64 h-64 bg-indigo-600/10 rounded-full blur-[80px] pointer-events-none"></div>
-                    </div>
-                </Modal>
-            )}
+            <ProductSelectionConfirm 
+                product={previewProduct}
+                isOpen={!!previewProduct}
+                onClose={() => setPreviewProduct(null)}
+                onConfirm={confirmSelect}
+                showTagEditor={showTagEditor}
+            />
         </div>
     );
 };
