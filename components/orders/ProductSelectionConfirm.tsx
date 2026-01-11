@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, useRef, useContext } from 'react';
+import React, { useState, useEffect, useRef, useContext, useMemo } from 'react';
 import { MasterProduct } from '../../types';
 import { convertGoogleDriveUrl, fileToBase64 } from '../../utils/fileUtils';
 import { compressImage } from '../../utils/imageCompressor';
@@ -27,8 +27,9 @@ const ProductSelectionConfirm: React.FC<ProductSelectionConfirmProps> = ({
     const [localTags, setLocalTags] = useState('');
     const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
     const [isUploading, setIsUploading] = useState(false);
+    const [uploadSuccess, setUploadSuccess] = useState(false);
+    const [isSavingTags, setIsSavingTags] = useState(false);
     const [previewUrl, setPreviewUrl] = useState<string | null>(null);
-    const modalContentRef = useRef<HTMLDivElement>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     useEffect(() => {
@@ -41,45 +42,74 @@ const ProductSelectionConfirm: React.FC<ProductSelectionConfirmProps> = ({
         if (product && isOpen) {
             setLocalTags(product.Tags || '');
             setPreviewUrl(product.ImageURL);
-            const timer = setTimeout(() => {
-                if (modalContentRef.current) {
-                    modalContentRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                }
-            }, 100);
-            return () => clearTimeout(timer);
+            setUploadSuccess(false);
         }
     }, [product, isOpen]);
+
+    const hasRealImage = useMemo(() => {
+        if (!product) return false;
+        const currentImg = previewUrl || product.ImageURL;
+        return currentImg && !currentImg.includes('placehold.co') && !currentImg.includes('text=N/A');
+    }, [product, previewUrl]);
+
+    const handleTagKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            const val = localTags.trim();
+            if (val && !val.endsWith(',')) {
+                setLocalTags(val + ', ');
+            }
+        }
+    };
+
+    const handleFinalConfirm = async () => {
+        if (!product) return;
+        setIsSavingTags(true);
+        try {
+            const cleanedTags = localTags.split(',').map(t => t.trim()).filter(t => t !== '').join(', ');
+            if (cleanedTags !== (product.Tags || '')) {
+                const response = await fetch(`${WEB_APP_URL}/api/admin/update-sheet`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        sheetName: 'Products',
+                        primaryKey: { 'ProductName': product.ProductName },
+                        newData: { 'Tags': cleanedTags }
+                    })
+                });
+                if (!response.ok) throw new Error('Failed to update product tags');
+                await refreshData();
+                onConfirm(product.ProductName, cleanedTags);
+            } else {
+                onConfirm(product.ProductName, cleanedTags);
+            }
+        } catch (err: any) {
+            console.error(err);
+            alert(`Save failed: ${err.message}`);
+            onConfirm(product.ProductName, localTags);
+        } finally {
+            setIsSavingTags(false);
+        }
+    };
 
     const handleImageUpdate = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (!file || !product) return;
-
         setIsUploading(true);
+        setUploadSuccess(false);
         try {
-            // 1. Compress Image before upload to ensure success
             const compressedBlob = await compressImage(file, 0.7, 1024);
             const base64Data = await fileToBase64(compressedBlob);
-            
-            // 2. Upload to Server
             const uploadRes = await fetch(`${WEB_APP_URL}/api/upload-image`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ 
-                    fileData: base64Data, 
-                    fileName: file.name, 
-                    mimeType: compressedBlob.type 
-                })
+                body: JSON.stringify({ fileData: base64Data, fileName: file.name, mimeType: compressedBlob.type })
             });
-            const uploadResult = await uploadRes.json();
+            const result = await uploadRes.json();
+            if (!uploadRes.ok || result.status !== 'success') throw new Error(result.message);
+            const newImageUrl = result.url;
             
-            if (!uploadRes.ok || uploadResult.status !== 'success') {
-                throw new Error(uploadResult.message || 'Upload failed');
-            }
-
-            const newImageUrl = uploadResult.url;
-
-            // 3. Update Product Database (Google Sheet)
-            const updateRes = await fetch(`${WEB_APP_URL}/api/admin/update-sheet`, {
+            await fetch(`${WEB_APP_URL}/api/admin/update-sheet`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -88,14 +118,13 @@ const ProductSelectionConfirm: React.FC<ProductSelectionConfirmProps> = ({
                     newData: { 'ImageURL': newImageUrl }
                 })
             });
-
-            if (!updateRes.ok) throw new Error('Failed to update product database');
-
+            
             setPreviewUrl(newImageUrl);
-            await refreshData(); // Sync global app data to reflect changes everywhere
+            setUploadSuccess(true);
+            setTimeout(() => setUploadSuccess(false), 2500);
+            await refreshData();
         } catch (err: any) {
-            console.error("Image Update Error:", err);
-            alert(`ការ Update រូបភាពបរាជ័យ: ${err.message}`);
+            alert(`Update Error: ${err.message}`);
         } finally {
             setIsUploading(false);
             if (fileInputRef.current) fileInputRef.current.value = '';
@@ -105,104 +134,145 @@ const ProductSelectionConfirm: React.FC<ProductSelectionConfirmProps> = ({
     if (!product) return null;
 
     return (
-        <Modal isOpen={isOpen} onClose={onClose} maxWidth={isMobile ? "max-w-[95vw]" : "max-w-2xl"}>
-            <div ref={modalContentRef} className="bg-[#0f172a] rounded-[2rem] sm:rounded-[3rem] overflow-hidden shadow-[0_30px_100px_rgba(0,0,0,0.8)] border border-white/5 relative">
-                {/* Product Image Section */}
-                <div className="relative h-48 sm:h-72 w-full group">
-                    <div className="absolute inset-0 z-0">
-                        <img src={convertGoogleDriveUrl(previewUrl || product.ImageURL)} className="w-full h-full object-cover blur-3xl opacity-30" alt="" />
-                    </div>
-                    <div className="absolute inset-0 flex items-center justify-center z-10 p-6">
-                        <div className="relative h-full aspect-square group/img">
-                            <img 
-                                src={convertGoogleDriveUrl(previewUrl || product.ImageURL)} 
-                                className={`h-full w-auto object-contain rounded-2xl sm:rounded-3xl shadow-[0_20px_50px_rgba(0,0,0,0.5)] border border-white/10 transform transition-all duration-500 ${isUploading ? 'opacity-40 blur-sm scale-95' : 'group-hover/img:scale-105'}`} 
-                                alt={product.ProductName} 
-                            />
-                            
-                            {/* Update Button Overlay */}
-                            <button 
-                                onClick={() => fileInputRef.current?.click()}
-                                disabled={isUploading}
-                                className="absolute inset-0 flex flex-col items-center justify-center bg-black/40 opacity-0 group-hover/img:opacity-100 transition-opacity rounded-2xl sm:rounded-3xl cursor-pointer disabled:cursor-not-allowed"
-                            >
-                                <div className="bg-white/20 backdrop-blur-md p-3 rounded-full border border-white/20 mb-2">
-                                    <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h14a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2-2v12a2 2 0 002 2z" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+        <Modal isOpen={isOpen} onClose={onClose} maxWidth={isMobile ? "max-w-[95vw]" : "max-w-4xl"}>
+            {/* 
+                LAYOUT STRATEGY:
+                Desktop: Horizontal Split (Left Image, Right Details). Fixed Height (500px).
+                Mobile: Vertical Stack (Top Image, Bottom Details). Viewport Height (85vh).
+            */}
+            <div className={`
+                bg-[#09090b] border border-white/10 overflow-hidden relative flex flex-col
+                ${isMobile ? 'h-[85vh] rounded-[2rem]' : 'h-[500px] rounded-[2rem] md:flex-row'}
+                shadow-2xl transition-all duration-300
+            `}>
+                
+                {/* === LEFT SIDE (Image) === */}
+                <div className={`
+                    relative group flex items-center justify-center bg-black/20
+                    ${isMobile ? 'h-[40%] w-full border-b border-white/5' : 'w-[40%] h-full border-r border-white/5'}
+                `}>
+                    <div 
+                        className="relative w-full h-full flex items-center justify-center cursor-pointer p-6"
+                        onClick={() => !isUploading && fileInputRef.current?.click()}
+                    >
+                        {hasRealImage ? (
+                            <>
+                                <img 
+                                    src={convertGoogleDriveUrl(previewUrl || product.ImageURL)} 
+                                    className={`
+                                        w-full h-full object-contain relative z-10 transition-all duration-500 rounded-xl
+                                        ${isUploading ? 'opacity-30 grayscale blur-sm' : 'group-hover:scale-105'}
+                                    `} 
+                                    alt={product.ProductName} 
+                                />
+                                {/* Edit Overlay Hint */}
+                                {!isUploading && !uploadSuccess && (
+                                    <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/40 backdrop-blur-[2px] z-20">
+                                        <div className="bg-white/10 px-3 py-1.5 rounded-full border border-white/20 backdrop-blur-md flex items-center gap-2">
+                                            <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
+                                            <span className="text-[10px] font-bold text-white uppercase tracking-wider">Change</span>
+                                        </div>
+                                    </div>
+                                )}
+                            </>
+                        ) : (
+                            <div className="flex flex-col items-center justify-center gap-3 text-gray-600 group-hover:text-blue-400 transition-colors">
+                                <div className="p-4 rounded-full border-2 border-dashed border-gray-700 group-hover:border-blue-500/50 transition-all">
+                                    <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h14a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
                                 </div>
-                                <span className="text-[10px] font-black text-white uppercase tracking-widest">ប្តូររូបភាព</span>
-                            </button>
+                                <span className="text-[10px] font-bold uppercase tracking-widest">Upload Image</span>
+                            </div>
+                        )}
 
-                            {isUploading && (
-                                <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/20 rounded-2xl">
-                                    <Spinner size="lg" />
-                                    <span className="text-[10px] font-black text-blue-400 uppercase mt-2 animate-pulse">Uploading...</span>
+                        {/* Loading State */}
+                        {isUploading && (
+                            <div className="absolute inset-0 z-30 flex flex-col items-center justify-center">
+                                <Spinner size="md" />
+                                <span className="text-[9px] font-bold text-gray-400 mt-2 uppercase tracking-wider">Uploading...</span>
+                            </div>
+                        )}
+
+                        {/* Success State */}
+                        {uploadSuccess && (
+                            <div className="absolute inset-0 z-30 flex flex-col items-center justify-center bg-black/50 backdrop-blur-sm animate-fade-in">
+                                <div className="w-12 h-12 bg-emerald-500 rounded-full flex items-center justify-center shadow-lg mb-2 animate-scale-in">
+                                    <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7"/></svg>
                                 </div>
-                            )}
-                        </div>
-                    </div>
-                    
-                    <input 
-                        type="file" 
-                        ref={fileInputRef} 
-                        className="hidden" 
-                        accept="image/*" 
-                        onChange={handleImageUpdate} 
-                    />
-
-                    <div className="absolute top-4 right-4 z-20">
-                        <div className="bg-emerald-500 text-white font-black px-4 py-2 rounded-2xl shadow-xl border-2 border-white/20 text-lg">
-                            ${product.Price.toFixed(2)}
-                        </div>
+                                <span className="text-[9px] font-bold text-emerald-400 uppercase tracking-widest">Success</span>
+                            </div>
+                        )}
                     </div>
                 </div>
 
-                {/* Content Section */}
-                <div className="p-6 sm:p-10 text-center space-y-6 sm:space-y-8 bg-gradient-to-b from-transparent to-black/40">
-                    <div>
-                        <p className="text-blue-500 text-[10px] sm:text-xs font-black uppercase tracking-[0.4em] mb-3">បញ្ជាក់ការជ្រើសរើស</p>
-                        <h3 className="text-2xl sm:text-4xl font-black text-white leading-tight break-words">
-                            {product.ProductName}
-                        </h3>
-                        
-                        {showTagEditor && (
-                            <div className="mt-6 text-left space-y-2">
-                                <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-1">Tags ផលិតផល (ឧ. Promotion, New...)</label>
-                                <input 
-                                    type="text" 
-                                    value={localTags} 
-                                    onChange={e => setLocalTags(e.target.value)}
-                                    className="form-input !py-3.5 bg-black/40 border-gray-700 focus:border-blue-500/50 rounded-2xl font-bold text-gray-200"
-                                    placeholder="បញ្ចូល tags..."
-                                />
-                            </div>
-                        )}
+                {/* === RIGHT SIDE (Content) === */}
+                <div className={`
+                    flex flex-col p-6 md:p-10 relative
+                    ${isMobile ? 'h-[60%] justify-between' : 'w-[60%] h-full justify-center gap-8'}
+                `}>
+                    <div className="space-y-4">
+                        {/* Meta Badge */}
+                        <div className="flex items-center gap-3">
+                            <span className="px-2 py-1 bg-white/5 rounded text-[10px] font-mono text-gray-400 border border-white/5">
+                                #{product.Barcode || 'NO-CODE'}
+                            </span>
+                            <span className="px-2 py-1 bg-emerald-500/10 text-emerald-400 rounded text-[10px] font-bold border border-emerald-500/20">
+                                ${product.Price.toFixed(2)}
+                            </span>
+                        </div>
 
-                        {product.Barcode && (
-                            <div className="mt-4 inline-flex items-center gap-2 bg-white/5 px-4 py-1.5 rounded-full border border-white/5">
-                                <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                                <span className="text-gray-400 font-mono text-xs tracking-widest">{product.Barcode}</span>
+                        {/* Title */}
+                        <h2 className={`font-black text-white leading-tight ${isMobile ? 'text-2xl line-clamp-2' : 'text-4xl line-clamp-3'}`}>
+                            {product.ProductName}
+                        </h2>
+
+                        {/* Tag Input */}
+                        {showTagEditor && (
+                            <div className="space-y-2 pt-2">
+                                <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Operational Tags</label>
+                                <div className="relative group">
+                                    <input 
+                                        type="text" 
+                                        value={localTags} 
+                                        onChange={e => setLocalTags(e.target.value)}
+                                        onKeyDown={handleTagKeyDown}
+                                        className="w-full bg-transparent border-b border-gray-700 py-2 text-sm font-medium text-gray-200 focus:border-blue-500 outline-none transition-colors placeholder:text-gray-700"
+                                        placeholder="Add tags..."
+                                    />
+                                    <div className="absolute right-0 top-1/2 -translate-y-1/2 text-[9px] font-bold text-gray-600 opacity-0 group-focus-within:opacity-100 transition-opacity">ENTER</div>
+                                </div>
                             </div>
                         )}
                     </div>
 
-                    <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 w-full">
+                    {/* Action Buttons */}
+                    <div className="flex gap-3 mt-4">
                         <button 
                             onClick={onClose} 
-                            className="order-2 sm:order-1 flex-1 py-4 sm:py-5 bg-gray-800/50 hover:bg-gray-800 text-gray-400 font-black rounded-2xl uppercase text-[11px] tracking-widest transition-all active:scale-95 border border-white/5"
+                            className="px-6 py-4 rounded-xl border border-white/10 text-gray-400 font-bold text-xs uppercase tracking-wider hover:bg-white/5 hover:text-white transition-all active:scale-95"
                         >
-                            បោះបង់
+                            Cancel
                         </button>
                         <button 
-                            onClick={() => onConfirm(product.ProductName, localTags)} 
-                            className="order-1 sm:order-2 flex-[2] py-4 sm:py-5 bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-black rounded-2xl uppercase text-xs tracking-[0.2em] shadow-[0_10px_30px_rgba(37,99,235,0.4)] hover:from-blue-500 hover:to-indigo-500 transition-all active:scale-95 flex items-center justify-center gap-3"
+                            onClick={handleFinalConfirm} 
+                            disabled={isSavingTags}
+                            className="flex-1 px-6 py-4 rounded-xl bg-blue-600 text-white font-bold text-xs uppercase tracking-wider hover:bg-blue-500 transition-all active:scale-95 shadow-lg shadow-blue-900/20 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                         >
-                            ជ្រើសរើសយក
-                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M5 13l4 4L19 7" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                            {isSavingTags ? <Spinner size="sm" /> : 'Confirm Selection'}
+                            {!isSavingTags && <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={3}><path d="M5 12h14M12 5l7 7-7 7" strokeLinecap="round" strokeLinejoin="round"/></svg>}
                         </button>
                     </div>
                 </div>
-                <div className="absolute -bottom-20 -left-20 w-64 h-64 bg-blue-600/10 rounded-full blur-[80px] pointer-events-none"></div>
-                <div className="absolute -top-20 -right-20 w-64 h-64 bg-indigo-600/10 rounded-full blur-[80px] pointer-events-none"></div>
+                
+                <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleImageUpdate} />
+
+                <style>{`
+                    @keyframes scale-in {
+                        0% { transform: scale(0); opacity: 0; }
+                        60% { transform: scale(1.1); opacity: 1; }
+                        100% { transform: scale(1); }
+                    }
+                    .animate-scale-in { animation: scale-in 0.3s ease-out forwards; }
+                `}</style>
             </div>
         </Modal>
     );

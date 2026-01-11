@@ -17,18 +17,21 @@ interface EditOrderPageProps {
 }
 
 const EditOrderPage: React.FC<EditOrderPageProps> = ({ order, onSaveSuccess, onCancel }) => {
-    const { appData, currentUser, previewImage } = useContext(AppContext);
+    const { appData, currentUser, previewImage, refreshData } = useContext(AppContext);
     
-    // ចាប់ផ្ដើម formData ជាមួយ order ដើមទាំងអស់
+    // formData នឹងផ្ទុកទិន្នន័យដែលមានស្រាប់ទាំងអស់ពី order prop
     const [formData, setFormData] = useState<ParsedOrder>(order);
     const [loading, setLoading] = useState(false);
     const [isDeleting, setIsDeleting] = useState(false);
     const [error, setError] = useState('');
     const [bankLogo, setBankLogo] = useState<string>('');
 
-    // បន្ថែម State សម្រាប់ជំនួយការជ្រើសរើស ស្រុក និង ឃុំ
     const [selectedDistrict, setSelectedDistrict] = useState('');
     const [selectedSangkat, setSelectedSangkat] = useState('');
+
+    useEffect(() => {
+        setFormData(order);
+    }, [order]);
 
     useEffect(() => {
         if (formData['Payment Status'] === 'Paid' && formData['Payment Info']) {
@@ -37,7 +40,6 @@ const EditOrderPage: React.FC<EditOrderPageProps> = ({ order, onSaveSuccess, onC
         }
     }, [formData['Payment Status'], formData['Payment Info'], appData.bankAccounts]);
 
-    // Logic សម្រាប់ទាញយកបញ្ជី ខេត្ត ស្រុក ឃុំ ដូចក្នុង CreateOrderPage
     const provinces = useMemo(() => {
         if (!appData.locations) return [];
         return [...new Set(appData.locations.map((loc: any) => loc.Province))];
@@ -72,13 +74,18 @@ const EditOrderPage: React.FC<EditOrderPageProps> = ({ order, onSaveSuccess, onC
             if (name === 'Customer Phone') {
                 processedValue = formatPhoneNumber(value);
             } else if (name === 'Shipping Fee (Customer)' || name === 'Internal Cost') {
-                processedValue = value === '' ? 0 : Math.max(0, parseFloat(value) || 0);
+                if (value === '' || value.endsWith('.')) {
+                    processedValue = value;
+                } else {
+                    processedValue = Math.max(0, parseFloat(value) || 0);
+                }
             }
 
             const updatedState = { ...prev, [name]: processedValue };
 
             if (name === 'Shipping Fee (Customer)') {
-                const newTotals = recalculateTotals(updatedState.Products, Number(processedValue) || 0);
+                const numericFee = parseFloat(String(processedValue)) || 0;
+                const newTotals = recalculateTotals(updatedState.Products, numericFee);
                 return { ...updatedState, ...newTotals };
             }
             
@@ -114,7 +121,7 @@ const EditOrderPage: React.FC<EditOrderPageProps> = ({ order, onSaveSuccess, onC
 
     const recalculateTotals = (products: Product[], shippingFee: number): Partial<ParsedOrder> => {
         const subtotal = products.reduce((sum, p) => sum + (p.total || 0), 0);
-        const grandTotal = subtotal + (Number(shippingFee) || 0);
+        const grandTotal = subtotal + shippingFee;
         const totalProductCost = products.reduce((sum, p) => sum + ((p.cost || 0) * (p.quantity || 0)), 0);
         const totalDiscount = products.reduce((sum, p) => sum + ((p.originalPrice - p.finalPrice) * p.quantity), 0);
         
@@ -142,16 +149,25 @@ const EditOrderPage: React.FC<EditOrderPageProps> = ({ order, onSaveSuccess, onC
                     productToUpdate.tags = extraTags !== undefined ? extraTags : masterProduct.Tags;
                 }
             } else if (field === 'finalPrice' || field === 'quantity') {
-                // @ts-ignore
-                productToUpdate[field] = value === '' ? 0 : Math.max(field === 'quantity' ? 1 : 0, Number(value) || 0);
+                if (value === '' || String(value).endsWith('.')) {
+                    // @ts-ignore
+                    productToUpdate[field] = value;
+                } else {
+                    // @ts-ignore
+                    productToUpdate[field] = Math.max(field === 'quantity' ? 1 : 0, parseFloat(value) || 0);
+                }
             } else {
                 // @ts-ignore
                 productToUpdate[field] = value;
             }
             
-            productToUpdate.total = (Number(productToUpdate.quantity) || 0) * (Number(productToUpdate.finalPrice) || 0);
+            const q = parseFloat(String(productToUpdate.quantity)) || 0;
+            const p = parseFloat(String(productToUpdate.finalPrice)) || 0;
+            productToUpdate.total = q * p;
+            
             newProducts[index] = productToUpdate;
-            const newTotals = recalculateTotals(newProducts, Number(prev['Shipping Fee (Customer)']) || 0);
+            const currentShippingFee = parseFloat(String(prev['Shipping Fee (Customer)'])) || 0;
+            const newTotals = recalculateTotals(newProducts, currentShippingFee);
             return { ...prev, Products: newProducts, ...newTotals };
         });
     };
@@ -173,7 +189,8 @@ const EditOrderPage: React.FC<EditOrderPageProps> = ({ order, onSaveSuccess, onC
         }
         setFormData(prev => {
             const newProducts = prev.Products.filter((_, i) => i !== index);
-            const newTotals = recalculateTotals(newProducts, Number(prev['Shipping Fee (Customer)']) || 0);
+            const currentShippingFee = parseFloat(String(prev['Shipping Fee (Customer)'])) || 0;
+            const newTotals = recalculateTotals(newProducts, currentShippingFee);
             return { ...prev, Products: newProducts, ...newTotals };
         });
     };
@@ -182,6 +199,7 @@ const EditOrderPage: React.FC<EditOrderPageProps> = ({ order, onSaveSuccess, onC
         if (!window.confirm(`តើអ្នកពិតជាចង់លុបប្រតិបត្តិការណ៍ ID: ${formData['Order ID']} មែនទេ?`)) return;
         if (!currentUser) return;
         setIsDeleting(true);
+        setError('');
         try {
             const response = await fetch(`${WEB_APP_URL}/api/admin/delete-order`, {
                 method: 'POST',
@@ -192,7 +210,10 @@ const EditOrderPage: React.FC<EditOrderPageProps> = ({ order, onSaveSuccess, onC
                     userName: currentUser.UserName 
                 })
             });
-            if (!response.ok) throw new Error('Delete failed');
+            const result = await response.json();
+            if (!response.ok || result.status !== 'success') throw new Error(result.message || 'Delete failed');
+            
+            await refreshData();
             onSaveSuccess();
         } catch (err: any) { 
             setError(`លុបមិនបានសម្រេច: ${err.message}`); 
@@ -203,24 +224,56 @@ const EditOrderPage: React.FC<EditOrderPageProps> = ({ order, onSaveSuccess, onC
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        setLoading(true); setError('');
+        setLoading(true); 
+        setError('');
         
-        if (!formData.Products.every(p => p.name && p.quantity > 0)) {
+        if (!formData.Products.every(p => p.name && parseFloat(String(p.quantity)) > 0)) {
             setError("សូមពិនិត្យព័ត៌មានផលិតផល (ឈ្មោះ និងចំនួន)។");
             setLoading(false);
             return;
         }
 
         try {
-            const finalTotals = recalculateTotals(formData.Products, Number(formData['Shipping Fee (Customer)']) || 0);
-            const payloadData: any = { 
-                ...order, 
-                ...formData, 
-                ...finalTotals 
+            const finalShippingFee = parseFloat(String(formData['Shipping Fee (Customer)'])) || 0;
+            const finalTotals = recalculateTotals(formData.Products, finalShippingFee);
+            
+            // បង្កើត Object ថ្មីដែលស្អាត និងមាន Key ត្រឹមត្រូវតាម Column ក្នុង Sheet
+            // ធានាថា Page, TelegramValue, Team មិនបាត់បង់សម្រាប់ Bot Telegram
+            const cleanNewData: any = {
+                "Timestamp": formData.Timestamp,
+                "Order ID": formData['Order ID'],
+                "User": formData.User,
+                "Page": formData.Page,
+                "TelegramValue": formData.TelegramValue,
+                "Customer Name": formData['Customer Name'],
+                "Customer Phone": formData['Customer Phone'],
+                "Location": formData.Location,
+                "Address Details": formData['Address Details'],
+                "Note": formData.Note || "",
+                "Shipping Fee (Customer)": finalShippingFee,
+                "Subtotal": finalTotals.Subtotal,
+                "Grand Total": finalTotals['Grand Total'],
+                "Internal Shipping Method": formData['Internal Shipping Method'],
+                "Internal Shipping Details": formData['Internal Shipping Details'],
+                "Internal Cost": parseFloat(String(formData['Internal Cost'])) || 0,
+                "Payment Status": formData['Payment Status'],
+                "Payment Info": formData['Payment Info'] || "",
+                "Discount ($)": finalTotals['Discount ($)'],
+                "Total Product Cost ($)": finalTotals['Total Product Cost ($)'],
+                "Fulfillment Store": formData['Fulfillment Store'],
+                "Team": formData.Team,
+                "Scheduled Time": formData['Scheduled Time'] || "",
+                "IsVerified": formData.IsVerified
             };
             
-            payloadData['Products (JSON)'] = JSON.stringify(payloadData.Products);
-            delete payloadData.Products;
+            // បម្លែង Products Array ទៅជា JSON String សម្រាប់រក្សាទុកក្នុង Column តែមួយ
+            const productsWithSubtotals = formData.Products.map(p => ({
+                ...p,
+                quantity: parseFloat(String(p.quantity)) || 0,
+                finalPrice: parseFloat(String(p.finalPrice)) || 0,
+                total: (parseFloat(String(p.quantity)) || 0) * (parseFloat(String(p.finalPrice)) || 0)
+            }));
+            cleanNewData['Products (JSON)'] = JSON.stringify(productsWithSubtotals);
 
             const response = await fetch(`${WEB_APP_URL}/api/admin/update-order`, { 
                 method: 'POST', 
@@ -229,13 +282,17 @@ const EditOrderPage: React.FC<EditOrderPageProps> = ({ order, onSaveSuccess, onC
                     orderId: formData['Order ID'], 
                     team: formData.Team, 
                     userName: currentUser?.UserName, 
-                    newData: payloadData 
+                    newData: cleanNewData 
                 }) 
             });
             
-            if (!response.ok) throw new Error('Update failed');
+            const result = await response.json();
+            if (!response.ok || result.status !== 'success') throw new Error(result.message || 'Update failed');
+            
+            await refreshData();
             onSaveSuccess();
         } catch (err: any) { 
+            console.error("Save Error:", err);
             setError(`រក្សាទុកមិនបានសម្រេច: ${err.message}`); 
         } finally { 
             setLoading(false); 
@@ -262,6 +319,13 @@ const EditOrderPage: React.FC<EditOrderPageProps> = ({ order, onSaveSuccess, onC
                 </div>
             </div>
 
+            {error && (
+                <div className="mb-6 p-4 bg-red-500/10 border border-red-500/20 rounded-2xl text-red-400 flex items-center gap-3 animate-shake">
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" strokeWidth="2"/></svg>
+                    <span className="font-bold text-sm">{error}</span>
+                </div>
+            )}
+
             <form onSubmit={handleSubmit} className="space-y-8">
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
                     <div className="lg:col-span-8 space-y-8">
@@ -281,7 +345,6 @@ const EditOrderPage: React.FC<EditOrderPageProps> = ({ order, onSaveSuccess, onC
                                     <input type="tel" name="Customer Phone" value={formData['Customer Phone'] || ''} onChange={handleInputChange} className="form-input !py-4 bg-black/40 border-gray-700 focus:border-blue-500/50 rounded-2xl font-mono font-black" required />
                                 </div>
                                 
-                                {/* ផ្នែកជ្រើសរើសទីតាំងថ្មី (ដូចក្នុង CreateOrderPage) */}
                                 <div className="md:col-span-2 grid grid-cols-1 sm:grid-cols-3 gap-4">
                                     <div className="space-y-2">
                                         <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-1">ខេត្ត/រាជធានី*</label>
@@ -350,12 +413,18 @@ const EditOrderPage: React.FC<EditOrderPageProps> = ({ order, onSaveSuccess, onC
                                                 <SearchableProductDropdown products={appData.products} selectedProductName={p.name} onSelect={(name, tags) => handleProductChange(index, 'name', name, tags)} />
                                             </div>
                                             <div className="md:col-span-3">
-                                                <SetQuantity value={p.quantity} onChange={(val) => handleProductChange(index, 'quantity', val)} />
+                                                <SetQuantity value={Number(p.quantity) || 1} onChange={(val) => handleProductChange(index, 'quantity', val)} />
                                             </div>
                                             <div className="md:col-span-3 space-y-2">
                                                 <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-1">តម្លៃលក់ ($)</label>
                                                 <div className="relative">
-                                                    <input type="number" step="0.01" value={p.finalPrice} onChange={(e) => handleProductChange(index, 'finalPrice', e.target.value)} className="form-input !py-3 !pr-8 bg-black/40 border-gray-700 rounded-xl font-black text-blue-400 text-lg" />
+                                                    <input 
+                                                        type="text" 
+                                                        inputMode="decimal"
+                                                        value={p.finalPrice} 
+                                                        onChange={(e) => handleProductChange(index, 'finalPrice', e.target.value)} 
+                                                        className="form-input !py-3 !pr-8 bg-black/40 border-gray-700 rounded-xl font-black text-blue-400 text-lg" 
+                                                    />
                                                     <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-600 font-black">$</span>
                                                 </div>
                                             </div>
@@ -374,7 +443,7 @@ const EditOrderPage: React.FC<EditOrderPageProps> = ({ order, onSaveSuccess, onC
                                                 <div className="flex items-center gap-6">
                                                     <div className="text-right">
                                                         <p className="text-[8px] font-black text-gray-600 uppercase tracking-widest">Item Subtotal</p>
-                                                        <p className="text-lg font-black text-white">${p.total.toFixed(2)}</p>
+                                                        <p className="text-lg font-black text-white">${(Number(p.total) || 0).toFixed(2)}</p>
                                                     </div>
                                                 </div>
                                             </div>
@@ -397,7 +466,14 @@ const EditOrderPage: React.FC<EditOrderPageProps> = ({ order, onSaveSuccess, onC
                                     <div className="flex flex-col gap-2">
                                         <label className="text-[10px] font-black uppercase tracking-widest opacity-80">ថ្លៃសេវាដឹក (ពីអតិថិជន)</label>
                                         <div className="relative">
-                                            <input type="number" step="0.1" name="Shipping Fee (Customer)" value={formData['Shipping Fee (Customer)']} onChange={handleInputChange} className="w-full bg-white/10 border border-white/20 rounded-2xl py-3 px-4 outline-none font-black text-xl placeholder:text-white/30" />
+                                            <input 
+                                                type="text" 
+                                                inputMode="decimal"
+                                                name="Shipping Fee (Customer)" 
+                                                value={formData['Shipping Fee (Customer)']} 
+                                                onChange={handleInputChange} 
+                                                className="w-full bg-white/10 border border-white/20 rounded-2xl py-3 px-4 outline-none font-black text-xl placeholder:text-white/30" 
+                                            />
                                             <span className="absolute right-4 top-1/2 -translate-y-1/2 font-black">$</span>
                                         </div>
                                     </div>
@@ -427,7 +503,14 @@ const EditOrderPage: React.FC<EditOrderPageProps> = ({ order, onSaveSuccess, onC
                                 <div className="space-y-2">
                                     <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest flex items-center gap-2"><span className="w-1.5 h-1.5 rounded-full bg-orange-500"></span>ថ្លៃបង់ឱ្យអ្នកដឹក (Cost)*</label>
                                     <div className="relative">
-                                        <input type="number" step="0.01" name="Internal Cost" value={formData['Internal Cost']} onChange={handleInputChange} className="form-input !py-4 !pr-10 bg-black/40 border-gray-700 rounded-2xl font-black text-orange-400 text-lg" />
+                                        <input 
+                                            type="text" 
+                                            inputMode="decimal"
+                                            name="Internal Cost" 
+                                            value={formData['Internal Cost']} 
+                                            onChange={handleInputChange} 
+                                            className="form-input !py-4 !pr-10 bg-black/40 border-gray-700 rounded-2xl font-black text-orange-400 text-lg" 
+                                        />
                                         <span className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-600 font-black">$</span>
                                     </div>
                                 </div>

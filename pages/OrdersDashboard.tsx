@@ -100,6 +100,7 @@ const OrdersDashboard: React.FC<OrdersDashboardProps> = ({ onBack }) => {
     const [allOrders, setAllOrders] = useState<ParsedOrder[]>([]);
     const [usersList, setUsersList] = useState<User[]>([]); 
     const [loading, setLoading] = useState(true);
+    const [fetchError, setFetchError] = useState<string | null>(null);
     const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
     const [isPdfModalOpen, setIsPdfModalOpen] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
@@ -169,13 +170,18 @@ const OrdersDashboard: React.FC<OrdersDashboardProps> = ({ onBack }) => {
 
     const fetchAllOrders = async () => {
         setLoading(true);
+        setFetchError(null);
         try {
             const [ordersRes, usersRes] = await Promise.all([
                 fetch(`${WEB_APP_URL}/api/admin/all-orders`),
                 fetch(`${WEB_APP_URL}/api/users`)
             ]);
+            
+            if (!ordersRes.ok || !usersRes.ok) throw new Error("Network Response Error");
+            
             const ordersData = await ordersRes.json();
             const usersData = await usersRes.json();
+            
             if (ordersData.status === 'success') {
                 const parsed = (ordersData.data || [])
                     .filter((o: any) => o !== null && o['Order ID'] !== 'Opening Balance')
@@ -185,9 +191,16 @@ const OrdersDashboard: React.FC<OrdersDashboardProps> = ({ onBack }) => {
                         return { ...o, Products: products, IsVerified: String(o.IsVerified).toUpperCase() === 'TRUE' };
                     });
                 setAllOrders(parsed.sort((a: any, b: any) => new Date(b.Timestamp).getTime() - new Date(a.Timestamp).getTime()));
+            } else {
+                setFetchError(ordersData.message || "Failed to load orders");
             }
             if (usersData.status === 'success') setUsersList(usersData.data || []);
-        } catch (e) { console.error(e); } finally { setLoading(false); }
+        } catch (e: any) { 
+            console.error("Fetch Error:", e);
+            setFetchError("មិនអាចទាញយកទិន្នន័យបានទេ។ សូមពិនិត្យ Internet របស់អ្នក។");
+        } finally { 
+            setLoading(false); 
+        }
     };
 
     useEffect(() => { fetchAllOrders(); }, [refreshTimestamp]);
@@ -274,9 +287,30 @@ const OrdersDashboard: React.FC<OrdersDashboardProps> = ({ onBack }) => {
         </div>
     );
 
+    if (fetchError) return (
+        <div className="flex flex-col h-96 items-center justify-center gap-6 p-6 text-center bg-gray-900/50 rounded-[3rem] border border-red-500/20 m-6 animate-fade-in">
+            <div className="w-16 h-16 bg-red-500/20 text-red-500 rounded-2xl flex items-center justify-center border border-red-500/30 shadow-xl">
+                <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" strokeWidth="2.5"/></svg>
+            </div>
+            <div className="space-y-2">
+                <h3 className="text-xl font-black text-white uppercase tracking-tight">កំហុសទាញយកទិន្នន័យ</h3>
+                <p className="text-gray-500 font-bold max-w-md">{fetchError}</p>
+            </div>
+            <button onClick={fetchAllOrders} className="btn btn-primary px-10 py-4 shadow-lg shadow-blue-600/20">ព្យាយាមម្ដងទៀត</button>
+        </div>
+    );
+
     if (editingOrderId) {
         const order = enrichedOrders.find(o => o['Order ID'] === editingOrderId);
-        return order ? <EditOrderPage order={order} onSaveSuccess={() => { setEditingOrderId(''); fetchAllOrders(); refreshData(); }} onCancel={() => setEditingOrderId('')} /> : null;
+        return order ? (
+            <EditOrderPage 
+                order={order} 
+                onSaveSuccess={() => { setEditingOrderId(''); fetchAllOrders(); refreshData(); }} 
+                onCancel={() => setEditingOrderId('')} 
+            />
+        ) : (
+            <div className="p-20 text-center text-gray-500 font-black uppercase italic tracking-widest">រកមិនឃើញ Order ID នេះទេ</div>
+        );
     }
 
     return (
@@ -350,7 +384,7 @@ const OrdersDashboard: React.FC<OrdersDashboardProps> = ({ onBack }) => {
                 <OrdersList orders={filteredOrders} onEdit={o => setEditingOrderId(o['Order ID'])} showActions={true} visibleColumns={visibleColumns} selectedIds={selectedIds} onToggleSelect={toggleSelection} onToggleSelectAll={toggleSelectAll} />
             </div>
 
-            <BulkActionManager selectedIds={selectedIds} onComplete={() => { setSelectedIds(new Set()); fetchAllOrders(); }} onClearSelection={() => setSelectedIds(new Set())} />
+            <BulkActionManager orders={enrichedOrders} selectedIds={selectedIds} onComplete={() => { setSelectedIds(new Set()); fetchAllOrders(); }} onClearSelection={() => setSelectedIds(new Set())} />
             {isPdfModalOpen && <PdfExportModal isOpen={isPdfModalOpen} onClose={() => setIsPdfModalOpen(false)} orders={filteredOrders} />}
         </div>
     );
