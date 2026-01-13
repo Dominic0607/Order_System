@@ -1,7 +1,7 @@
 
 /**
  * Advanced Computer Vision Algorithm for Web-based Barcode/QR Tracking
- * Simulates "Native AI" behavior using Texture Energy Analysis.
+ * Simulates "Native AI" behavior using Texture Energy Analysis with Center Weighting.
  */
 
 interface RegionOfInterest {
@@ -18,9 +18,9 @@ let analysisCtx: CanvasRenderingContext2D | null = null;
 export const detectBarcodeRegion = (video: HTMLVideoElement): RegionOfInterest | null => {
     if (!video || video.videoWidth === 0) return null;
 
-    // 1. Downsample for Performance (100x100 is enough for "blob" detection)
-    const w = 100;
-    const h = 100;
+    // 1. Downsample for Performance (120x120 offers better granularity than 100x100)
+    const w = 120;
+    const h = 120;
 
     if (!analysisCanvas) {
         analysisCanvas = document.createElement('canvas');
@@ -41,29 +41,39 @@ export const detectBarcodeRegion = (video: HTMLVideoElement): RegionOfInterest |
     let totalEnergy = 0;
     let minX = w, maxX = 0, minY = h, maxY = 0;
 
-    // 2. Texture Energy Scan (Simplified Sobel Operator)
-    // We look for high contrast changes (Edges) which represent barcodes/QR codes
-    for (let y = 1; y < h - 1; y += 2) { // Skip rows for speed
-        for (let x = 1; x < w - 1; x += 2) { // Skip cols for speed
+    // Center coordinates for weighting
+    const cx = w / 2;
+    const cy = h / 2;
+
+    // 2. Texture Energy Scan (Simplified Sobel Operator) with Center Bias
+    for (let y = 1; y < h - 1; y += 2) { 
+        for (let x = 1; x < w - 1; x += 2) { 
             const i = (y * w + x) * 4;
 
-            // Simple Grayscale: (R+G+B)/3
+            // Simple Grayscale
             const pixel = (data[i] + data[i+1] + data[i+2]) / 3;
             
-            // Compare with neighbor to finding edges (Horizontal & Vertical)
+            // Compare neighbors (Horizontal & Vertical Edges)
             const rightI = i + 4;
             const downI = i + (w * 4);
             
             const rightPixel = (data[rightI] + data[rightI+1] + data[rightI+2]) / 3;
             const downPixel = (data[downI] + data[downI+1] + data[downI+2]) / 3;
 
-            // Calculate Energy (Contrast difference)
             const edgeH = Math.abs(pixel - rightPixel);
             const edgeV = Math.abs(pixel - downPixel);
-            const energy = edgeH + edgeV;
+            let energy = edgeH + edgeV;
 
-            // Threshold: Only consider areas with high texture (Barcodes are high texture)
-            if (energy > 40) {
+            // --- IMPROVEMENT: Center Weighting ---
+            // Calculate distance from center (normalized 0 to 1)
+            const dist = Math.sqrt((x - cx) ** 2 + (y - cy) ** 2) / (Math.sqrt(cx**2 + cy**2));
+            // Boost energy if closer to center (1.0 at center, 0.5 at corners)
+            const centerWeight = 1.0 - (dist * 0.5); 
+            
+            energy = energy * centerWeight;
+
+            // Threshold: Only consider strong textures
+            if (energy > 45) {
                 totalX += x * energy;
                 totalY += y * energy;
                 totalEnergy += energy;
@@ -77,27 +87,25 @@ export const detectBarcodeRegion = (video: HTMLVideoElement): RegionOfInterest |
     }
 
     // 3. Filter Noise
-    // If total energy is too low, it's just a plain wall or blurry image
-    if (totalEnergy < 15000) return null;
+    if (totalEnergy < 18000) return null;
 
     // 4. Calculate Center of Mass
     const centerX = totalX / totalEnergy;
     const centerY = totalY / totalEnergy;
 
-    // 5. Dynamic Bounding Box
-    // We constrain the box size to avoid it jumping to the whole screen
+    // 5. Dynamic Bounding Box with Padding
     let boxW = (maxX - minX);
     let boxH = (maxY - minY);
     
-    // Clamp box size to be realistic for a barcode (usually 10-80% of screen)
-    boxW = Math.max(15, Math.min(boxW, 80));
-    boxH = Math.max(15, Math.min(boxH, 80));
+    // Clamp box size (10% to 85%)
+    boxW = Math.max(10, Math.min(boxW, 85));
+    boxH = Math.max(10, Math.min(boxH, 85));
 
     return {
         x: (centerX / w) * 100,
         y: (centerY / h) * 100,
         width: (boxW / w) * 100,
         height: (boxH / h) * 100,
-        score: Math.min(1, totalEnergy / 100000)
+        score: Math.min(1, totalEnergy / 150000)
     };
 };

@@ -74,8 +74,10 @@ export const useBarcodeScanner = (
     const setSmoothZoom = useCallback(async (targetZoom: number) => {
         const track = getActiveTrack();
         if (!track) return;
+        
         let z = targetZoom;
         if (zoomCapabilities) {
+            // Ensure we don't go out of bounds, but allow values < 1 if capabilities allow (Ultrawide)
             z = Math.max(zoomCapabilities.min, Math.min(targetZoom, zoomCapabilities.max));
         }
         setZoom(z);
@@ -83,14 +85,19 @@ export const useBarcodeScanner = (
     }, [zoomCapabilities, applyConstraints]);
 
     // --- NEW: Integrate Custom Smart Zoom Hook ---
-    // This hook runs the algorithm on the video element
-    const { trackingBox, isAutoZooming } = useSmartZoom(
+    const { trackingBox, isAutoZooming, notifyManualZoom } = useSmartZoom(
         videoRef.current,
         trackRef.current,
         zoom,
-        setZoom, // Updates State
-        (z) => applyConstraints({ zoom: z }) // Updates Camera Hardware
+        setZoom, 
+        (z) => applyConstraints({ zoom: z }) 
     );
+
+    // Wrapper to notify auto-zoom to pause when manual zoom is used
+    const handleManualZoom = useCallback((z: number) => {
+        notifyManualZoom();
+        setSmoothZoom(z);
+    }, [notifyManualZoom, setSmoothZoom]);
 
     // --- Torch Logic ---
     const toggleTorch = useCallback(async () => {
@@ -149,7 +156,9 @@ export const useBarcodeScanner = (
                     facingMode: facingMode,
                     width: { ideal: 1080 }, 
                     height: { ideal: 1080 },
-                    aspectRatio: 1.0 
+                    aspectRatio: 1.0,
+                    // Try to request zoom starting at 1 (or lower if device supports it automatically)
+                    zoom: 1 
                   }
                 : {
                     facingMode: facingMode,
@@ -164,7 +173,7 @@ export const useBarcodeScanner = (
                 qrbox: { width: 250, height: 250 }, 
                 aspectRatio: 1.0,
                 experimentalFeatures: {
-                    useBarCodeDetectorIfSupported: false // Disable Native API to use our Custom Vision Algorithm
+                    useBarCodeDetectorIfSupported: false 
                 },
                 videoConstraints: videoConstraints
             };
@@ -204,7 +213,12 @@ export const useBarcodeScanner = (
                     }
 
                     if (isIosDevice) {
-                        setZoomCapabilities({ min: 1, max: 5, step: 0.1 });
+                        // iOS Zoom Fix: We try to detect valid range, or fallback to wide range
+                        // If iPhone 11+ Pro, min zoom can be 0.5
+                        // @ts-ignore
+                        const minZ = settings.zoom ? Math.min(settings.zoom, 1) : 1; 
+                        setZoomCapabilities({ min: minZ >= 1 ? 1 : 0.5, max: 5, step: 0.1 });
+                        
                         // @ts-ignore
                         setZoom(settings.zoom || 1);
                     } 
@@ -248,12 +262,12 @@ export const useBarcodeScanner = (
         error,
         zoom,
         zoomCapabilities,
-        handleZoomChange: setSmoothZoom,
+        handleZoomChange: handleManualZoom, // Use wrapped function
         isTorchOn,
         isTorchSupported,
         toggleTorch,
-        trackingBox, // Updated from Custom Vision
-        isAutoZooming, // Updated from Custom Vision
+        trackingBox, 
+        isAutoZooming, 
         triggerFocus,
         switchCamera,
         facingMode

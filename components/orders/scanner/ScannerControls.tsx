@@ -18,14 +18,55 @@ const ScannerControls: React.FC<ScannerControlsProps> = ({
     setScanMode,
     onOpenHistory
 }) => {
+    // Determine which lens buttons to show based on capabilities
+    const showUltrawide = zoomCapabilities && zoomCapabilities.min < 1;
+    const show2x = zoomCapabilities && zoomCapabilities.max >= 2;
+    const show5x = zoomCapabilities && zoomCapabilities.max >= 5;
+
     return (
-        <div className="absolute bottom-0 left-0 right-0 p-6 z-40 bg-gradient-to-t from-black via-black/90 to-transparent flex flex-col gap-6 pointer-events-none"
+        <div className="absolute bottom-0 left-0 right-0 p-6 z-40 bg-gradient-to-t from-black via-black/90 to-transparent flex flex-col gap-5 pointer-events-none"
              style={{ paddingBottom: 'max(1.5rem, env(safe-area-inset-bottom))' }}>
             
-            {/* Zoom Slider */}
+            {/* iOS Style Lens Switcher */}
+            {zoomCapabilities && (
+                <div className="flex justify-center items-center gap-4 pointer-events-auto mb-1 animate-fade-in-up">
+                    {showUltrawide && (
+                        <button 
+                            onClick={() => handleZoomChange(0.5)}
+                            className={`w-9 h-9 rounded-full flex items-center justify-center text-[10px] font-black transition-all border ${Math.abs(zoom - 0.5) < 0.2 ? 'bg-yellow-500 text-black border-yellow-400 scale-110' : 'bg-black/50 text-white border-white/20 hover:bg-black/70'}`}
+                        >
+                            .5
+                        </button>
+                    )}
+                    <button 
+                        onClick={() => handleZoomChange(1)}
+                        className={`w-9 h-9 rounded-full flex items-center justify-center text-[10px] font-black transition-all border ${Math.abs(zoom - 1) < 0.2 ? 'bg-yellow-500 text-black border-yellow-400 scale-110' : 'bg-black/50 text-white border-white/20 hover:bg-black/70'}`}
+                    >
+                        1x
+                    </button>
+                    {show2x && (
+                        <button 
+                            onClick={() => handleZoomChange(2)}
+                            className={`w-9 h-9 rounded-full flex items-center justify-center text-[10px] font-black transition-all border ${Math.abs(zoom - 2) < 0.2 ? 'bg-yellow-500 text-black border-yellow-400 scale-110' : 'bg-black/50 text-white border-white/20 hover:bg-black/70'}`}
+                        >
+                            2
+                        </button>
+                    )}
+                    {show5x && (
+                        <button 
+                            onClick={() => handleZoomChange(5)}
+                            className={`w-9 h-9 rounded-full flex items-center justify-center text-[10px] font-black transition-all border ${Math.abs(zoom - 5) < 0.2 ? 'bg-yellow-500 text-black border-yellow-400 scale-110' : 'bg-black/50 text-white border-white/20 hover:bg-black/70'}`}
+                        >
+                            5
+                        </button>
+                    )}
+                </div>
+            )}
+
+            {/* Fine Tune Zoom Slider */}
             {zoomCapabilities && (
                 <div className="flex items-center gap-3 px-2 pointer-events-auto">
-                    <span className="text-[9px] font-black text-gray-500 w-6 text-center">1x</span>
+                    <span className="text-[9px] font-black text-gray-500 w-6 text-center">{zoomCapabilities.min}x</span>
                     <input 
                         type="range" 
                         min={zoomCapabilities.min} 
@@ -33,7 +74,7 @@ const ScannerControls: React.FC<ScannerControlsProps> = ({
                         step={zoomCapabilities.step} 
                         value={zoom} 
                         onChange={(e) => handleZoomChange(parseFloat(e.target.value))} 
-                        className="flex-1 h-1.5 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-blue-500"
+                        className="flex-1 h-1.5 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-yellow-500"
                     />
                     <span className="text-[9px] font-black text-gray-500 w-6 text-center">{zoomCapabilities.max}x</span>
                 </div>
