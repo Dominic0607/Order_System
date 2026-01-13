@@ -9,6 +9,11 @@ interface TrackingBox {
     height: number;
 }
 
+// Helper: Linear Interpolation for smooth movement
+const lerp = (start: number, end: number, factor: number) => {
+    return start + (end - start) * factor;
+};
+
 export const useSmartZoom = (
     videoElement: HTMLVideoElement | null, 
     track: MediaStreamTrack | null,
@@ -22,6 +27,10 @@ export const useSmartZoom = (
     const requestRef = useRef<number>(0);
     const lastZoomTime = useRef<number>(0);
     const stableFramesRef = useRef<number>(0);
+    const lostFramesRef = useRef<number>(0); // To handle momentary loss of tracking
+
+    // Keep track of target values for smooth animation
+    const targetBoxRef = useRef<TrackingBox | null>(null);
 
     const runLoop = useCallback(() => {
         if (!videoElement || videoElement.paused || videoElement.ended) {
@@ -29,25 +38,37 @@ export const useSmartZoom = (
             return;
         }
 
-        // Run detection
+        // Run the "AI" Detection
         const result = detectBarcodeRegion(videoElement);
 
         if (result) {
-            // Smoothly interpolate UI Box position (Low-pass filter)
+            lostFramesRef.current = 0; // Reset lost counter
+            
+            // Set the new target
+            targetBoxRef.current = {
+                x: result.x,
+                y: result.y,
+                width: result.width,
+                height: result.height
+            };
+
+            // Smoothly move current box towards target (Lerp factor 0.15 = moderately fast but smooth)
             setTrackingBox(prev => {
-                if (!prev) return { x: result.x, y: result.y, width: result.width, height: result.height };
+                if (!prev) return targetBoxRef.current;
+                if (!targetBoxRef.current) return prev;
+
                 return {
-                    x: prev.x + (result.x - prev.x) * 0.2, // Smooth ease
-                    y: prev.y + (result.y - prev.y) * 0.2,
-                    width: prev.width + (result.width - prev.width) * 0.2,
-                    height: prev.height + (result.height - prev.height) * 0.2,
+                    x: lerp(prev.x, targetBoxRef.current.x, 0.2),
+                    y: lerp(prev.y, targetBoxRef.current.y, 0.2),
+                    width: lerp(prev.width, targetBoxRef.current.width, 0.1), // Width/Height change slower
+                    height: lerp(prev.height, targetBoxRef.current.height, 0.1)
                 };
             });
 
             // --- AUTO ZOOM LOGIC ---
-            // If the object is centered BUT small (far away), Zoom in.
-            const isCentered = result.x > 35 && result.x < 65 && result.y > 35 && result.y < 65;
-            const isSmall = result.width < 40; // Less than 40% of screen
+            // If the code is centered (30-70%) AND small (<35%), zoom in
+            const isCentered = result.x > 30 && result.x < 70 && result.y > 30 && result.y < 70;
+            const isSmall = result.width < 35; 
             
             if (isCentered && isSmall) {
                 stableFramesRef.current++;
@@ -55,16 +76,15 @@ export const useSmartZoom = (
                 stableFramesRef.current = 0;
             }
 
-            // Only zoom if stable for 10 frames (approx 0.3s) to prevent jitter
-            if (stableFramesRef.current > 10) {
+            // If stable for ~0.5s (15 frames), trigger zoom
+            if (stableFramesRef.current > 15) {
                 const now = Date.now();
-                // Limit zoom updates to every 50ms
-                if (now - lastZoomTime.current > 50) {
+                if (now - lastZoomTime.current > 100) {
                     setIsAutoZooming(true);
-                    // Zoom Step: Small increment
-                    const newZoom = Math.min(currentZoom + 0.05, 3.0); // Max zoom 3x
+                    // Zoom in slowly
+                    const newZoom = Math.min(currentZoom + 0.1, 3.0); 
                     
-                    if (Math.abs(newZoom - currentZoom) > 0.01) {
+                    if (Math.abs(newZoom - currentZoom) > 0.05) {
                         setZoom(newZoom);
                         applyZoom(newZoom);
                     }
@@ -75,13 +95,13 @@ export const useSmartZoom = (
             }
 
         } else {
-            // No barcode found -> Reset tracking
-            setTrackingBox(null);
-            setIsAutoZooming(false);
-            stableFramesRef.current = 0;
-            
-            // Optional: Slowly zoom out if nothing found for a long time?
-            // For now, we keep the zoom level to allow manual control.
+            // If lost detection, don't remove box immediately. Wait 5 frames (hysteresis).
+            lostFramesRef.current++;
+            if (lostFramesRef.current > 10) {
+                setTrackingBox(null);
+                setIsAutoZooming(false);
+                stableFramesRef.current = 0;
+            }
         }
 
         requestRef.current = requestAnimationFrame(runLoop);
