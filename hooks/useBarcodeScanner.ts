@@ -64,9 +64,7 @@ export const useBarcodeScanner = (
             if (constraints.zoom && isIosDevice) {
                 try {
                     await track.applyConstraints({ advanced: [{ zoom: constraints.zoom }] } as any);
-                } catch (e2) {
-                    // console.warn("Zoom failed on iOS:", e2);
-                }
+                } catch (e2) {}
             }
         }
     }, []);
@@ -120,13 +118,7 @@ export const useBarcodeScanner = (
     const triggerFocus = useCallback(async () => {
         const track = getActiveTrack();
         if (!track) return;
-        
-        // Try standard focus first
-        try {
-            await applyConstraints({ focusMode: 'continuous' });
-        } catch (e) {}
-
-        // Some devices support manual trigger via constraints
+        try { await applyConstraints({ focusMode: 'continuous' }); } catch (e) {}
         try {
             // @ts-ignore
             const capabilities = track.getCapabilities ? track.getCapabilities() : {};
@@ -140,12 +132,7 @@ export const useBarcodeScanner = (
     // --- File Scan Logic ---
     const scanFromImage = useCallback(async (file: File): Promise<string> => {
         if (!scannerRef.current) throw new Error("Scanner not initialized");
-        try {
-            const decodedText = await scannerRef.current.scanFile(file, true);
-            return decodedText;
-        } catch (err) {
-            throw err;
-        }
+        return await scannerRef.current.scanFile(file, true);
     }, []);
 
     useEffect(() => {
@@ -167,34 +154,29 @@ export const useBarcodeScanner = (
             const isIosDevice = isIOS();
 
             // *** CRITICAL IOS CONFIGURATION ***
-            // iOS Safari treats aspect ratio strongly, often cropping the sensor and losing quality.
-            // We REMOVE aspectRatio for iOS to get the full sensor width.
-            // We also request High Resolution (1080p ideal) to ensure small barcodes are crisp.
             const videoConstraints = isIosDevice 
                 ? {
                     facingMode: "environment",
-                    // Request 1080p for max clarity
                     width: { min: 1280, ideal: 1920 }, 
                     height: { min: 720, ideal: 1080 },
-                    // NO aspect ratio constraint
                   }
                 : {
                     facingMode: facingMode,
                     width: { min: 640, ideal: 1280, max: 1920 },
                     height: { min: 480, ideal: 720, max: 1080 },
-                    frameRate: { ideal: 60, min: 30 }, // Request high FPS for Android
-                    aspectRatio: 1.777777778, // 16:9 for Android full screen feel
+                    frameRate: { ideal: 60, min: 30 }, // High FPS for Android
+                    aspectRatio: 1.777777778, // 16:9 for Android
                     focusMode: "continuous"
                   };
 
             const config: ScannerConfig = { 
-                fps: 30, // High FPS for smoother tracking
-                qrbox: { width: 280, height: 280 }, // Larger scanning area
-                // Only set aspect ratio for non-iOS to fill screen properly
+                fps: 30,
+                qrbox: { width: 280, height: 280 },
                 ...(isIosDevice ? {} : { aspectRatio: 1.777777778 }),
                 disableFlip: false,
                 experimentalFeatures: {
-                    useBarCodeDetectorIfSupported: !isIosDevice // Enable native API only on Android/Desktop
+                    // Force Native BarcodeDetector on non-iOS
+                    useBarCodeDetectorIfSupported: !isIosDevice 
                 },
                 videoConstraints: videoConstraints
             };
@@ -218,7 +200,6 @@ export const useBarcodeScanner = (
                 const videoEl = document.querySelector(`#${elementId} video`) as HTMLVideoElement;
                 if (videoEl) {
                     videoRef.current = videoEl;
-                    // Ensure iOS plays inline and fills the container
                     videoEl.setAttribute('playsinline', 'true'); 
                     videoEl.style.objectFit = 'cover'; 
                 }
@@ -237,7 +218,6 @@ export const useBarcodeScanner = (
                     }
 
                     if (isIosDevice) {
-                        // iOS Zoom Fix: Detect capability or set safe defaults
                         // @ts-ignore
                         const minZ = settings.zoom ? Math.min(settings.zoom, 1) : 1; 
                         setZoomCapabilities({ min: minZ >= 1 ? 1 : 0.5, max: 5, step: 0.1 });
