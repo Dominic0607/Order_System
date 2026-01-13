@@ -5,7 +5,7 @@ import Spinner from '../components/common/Spinner';
 import { ParsedOrder, Product, MasterProduct, ShippingMethod } from '../types';
 import { WEB_APP_URL } from '../constants';
 import SearchableProductDropdown from '../components/common/SearchableProductDropdown';
-import SearchableShippingMethodDropdown from '../components/common/SearchableShippingMethodDropdown';
+import ShippingMethodDropdown from '../components/common/ShippingMethodDropdown';
 import SearchableProvinceDropdown from '../components/orders/SearchableProvinceDropdown';
 import SetQuantity from '../components/orders/SetQuantity';
 import { convertGoogleDriveUrl } from '../utils/fileUtils';
@@ -239,31 +239,32 @@ const EditOrderPage: React.FC<EditOrderPageProps> = ({ order, onSaveSuccess, onC
             
             // បង្កើត Object ថ្មីដែលស្អាត និងមាន Key ត្រឹមត្រូវតាម Column ក្នុង Sheet
             // ធានាថា Page, TelegramValue, Team មិនបាត់បង់សម្រាប់ Bot Telegram
+            // IMPORTANT: Using '|| ""' ensures we send empty strings instead of undefined, preventing keys from being dropped
             const cleanNewData: any = {
-                "Timestamp": formData.Timestamp,
+                "Timestamp": formData.Timestamp || new Date().toISOString(),
                 "Order ID": formData['Order ID'],
-                "User": formData.User,
-                "Page": formData.Page,
-                "TelegramValue": formData.TelegramValue,
-                "Customer Name": formData['Customer Name'],
-                "Customer Phone": formData['Customer Phone'],
-                "Location": formData.Location,
-                "Address Details": formData['Address Details'],
+                "User": formData.User || "",
+                "Page": formData.Page || "",
+                "TelegramValue": formData.TelegramValue || "",
+                "Customer Name": formData['Customer Name'] || "",
+                "Customer Phone": formData['Customer Phone'] || "",
+                "Location": formData.Location || "",
+                "Address Details": formData['Address Details'] || "",
                 "Note": formData.Note || "",
                 "Shipping Fee (Customer)": finalShippingFee,
                 "Subtotal": finalTotals.Subtotal,
                 "Grand Total": finalTotals['Grand Total'],
-                "Internal Shipping Method": formData['Internal Shipping Method'],
-                "Internal Shipping Details": formData['Internal Shipping Details'],
+                "Internal Shipping Method": formData['Internal Shipping Method'] || "",
+                "Internal Shipping Details": formData['Internal Shipping Details'] || "",
                 "Internal Cost": parseFloat(String(formData['Internal Cost'])) || 0,
-                "Payment Status": formData['Payment Status'],
+                "Payment Status": formData['Payment Status'] || "Unpaid",
                 "Payment Info": formData['Payment Info'] || "",
                 "Discount ($)": finalTotals['Discount ($)'],
                 "Total Product Cost ($)": finalTotals['Total Product Cost ($)'],
-                "Fulfillment Store": formData['Fulfillment Store'],
-                "Team": formData.Team,
+                "Fulfillment Store": formData['Fulfillment Store'] || "",
+                "Team": formData.Team || "",
                 "Scheduled Time": formData['Scheduled Time'] || "",
-                "IsVerified": formData.IsVerified
+                "IsVerified": !!formData.IsVerified
             };
             
             // បម្លែង Products Array ទៅជា JSON String សម្រាប់រក្សាទុកក្នុង Column តែមួយ
@@ -350,7 +351,7 @@ const EditOrderPage: React.FC<EditOrderPageProps> = ({ order, onSaveSuccess, onC
                                         <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-1">ខេត្ត/រាជធានី*</label>
                                         <SearchableProvinceDropdown 
                                             provinces={provinces}
-                                            selectedProvince={formData.Location}
+                                            selectedProvince={formData.Location || ''}
                                             onSelect={handleProvinceSelect}
                                         />
                                     </div>
@@ -491,11 +492,11 @@ const EditOrderPage: React.FC<EditOrderPageProps> = ({ order, onSaveSuccess, onC
                             <div className="space-y-6">
                                 <div className="space-y-2">
                                     <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest flex items-center gap-2"><span className="w-1.5 h-1.5 rounded-full bg-orange-500"></span>ក្រុមហ៊ុនដឹកជញ្ជូន</label>
-                                    <SearchableShippingMethodDropdown methods={appData.shippingMethods || []} selectedMethodName={formData['Internal Shipping Method']} onSelect={handleShippingMethodSelect} />
+                                    <ShippingMethodDropdown methods={appData.shippingMethods || []} selectedMethodName={formData['Internal Shipping Method'] || ''} onSelect={handleShippingMethodSelect} />
                                 </div>
                                 <div className="space-y-2">
                                     <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest flex items-center gap-2"><span className="w-1.5 h-1.5 rounded-full bg-orange-500"></span>អ្នកដឹក / លម្អិត</label>
-                                    <select name="Internal Shipping Details" value={formData['Internal Shipping Details']} onChange={handleInputChange} className="form-select bg-black/40 border-gray-700 rounded-2xl !py-4 font-bold">
+                                    <select name="Internal Shipping Details" value={formData['Internal Shipping Details'] || ''} onChange={handleInputChange} className="form-select bg-black/40 border-gray-700 rounded-2xl !py-4 font-bold">
                                         <option value="">-- ជ្រើសរើសអ្នកដឹក --</option>
                                         {appData.drivers?.map((d: any) => <option key={d.DriverName} value={d.DriverName}>{d.DriverName}</option>)}
                                     </select>
@@ -543,7 +544,7 @@ const EditOrderPage: React.FC<EditOrderPageProps> = ({ order, onSaveSuccess, onC
                         <div className="bg-gray-800/20 backdrop-blur-xl border border-white/5 rounded-[2.5rem] p-6 sm:p-8 shadow-2xl">
                              <div className="space-y-4">
                                 <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-1">ចំណាំបន្ថែម</label>
-                                <textarea name="Note" value={formData.Note} onChange={handleInputChange} rows={3} className="form-textarea bg-black/40 border-gray-700 rounded-[1.5rem] text-sm font-bold" placeholder="ចំណាំ..." />
+                                <textarea name="Note" value={formData.Note || ''} onChange={handleInputChange} rows={3} className="form-textarea bg-black/40 border-gray-700 rounded-[1.5rem] text-sm font-bold" placeholder="ចំណាំ..." />
                             </div>
                             <button type="button" onClick={handleDelete} className="w-full mt-6 py-4 bg-red-600/10 hover:bg-red-600 text-red-500 hover:text-white rounded-2xl font-black uppercase text-[10px] tracking-widest border border-red-500/20 transition-all active:scale-95 flex items-center justify-center gap-2" disabled={loading || isDeleting}>
                                 {isDeleting ? <Spinner size="sm" /> : <><svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" strokeWidth="2.5"/></svg> លុបប្រតិបត្តិការណ៍</>}

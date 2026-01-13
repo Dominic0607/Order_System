@@ -9,7 +9,7 @@ import { convertGoogleDriveUrl } from '../utils/fileUtils';
 import SearchableProductDropdown from '../components/common/SearchableProductDropdown';
 import PageDropdown from '../components/common/PageDropdown';
 import SearchablePageDropdown from '../components/common/SearchablePageDropdown';
-import SearchableShippingMethodDropdown from '../components/common/SearchableShippingMethodDropdown';
+import ShippingMethodDropdown from '../components/common/ShippingMethodDropdown';
 import MapModal from '../components/orders/MapModal';
 import BarcodeScannerModal from '../components/orders/BarcodeScannerModal';
 import SearchableProvinceDropdown from '../components/orders/SearchableProvinceDropdown';
@@ -457,7 +457,7 @@ const CreateOrderPage: React.FC<CreateOrderPageProps> = ({ team, onSaveSuccess, 
                                             onClick={() => setOrder({ ...order, pageSelectMode: 'cards' })}
                                             className={`px-3 py-1.5 text-[10px] font-black uppercase rounded-lg transition-all flex items-center gap-2 ${order.pageSelectMode === 'cards' ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/20' : 'text-gray-500 hover:text-gray-300'}`}
                                         >
-                                            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2z" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                                            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2z" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
                                             Card View
                                         </button>
                                         <button 
@@ -624,7 +624,7 @@ const CreateOrderPage: React.FC<CreateOrderPageProps> = ({ team, onSaveSuccess, 
             case 3:
                 return (
                     <fieldset className="border border-gray-600 p-3 sm:p-4 rounded-lg animate-fade-in space-y-4 sm:space-y-6"><legend className="px-2 text-base sm:text-lg font-semibold text-blue-300">ដឹកជញ្ជូន</legend><div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
-                            <div className="space-y-1.5"><label className="input-label font-black text-[10px] uppercase text-gray-500 tracking-widest mb-2 block">វិធីសាស្រ្តដឹកជញ្ជូន*</label><SearchableShippingMethodDropdown methods={appData.shippingMethods || []} selectedMethodName={order.shipping.method} onSelect={handleShippingMethodSelect} /></div>
+                            <div className="space-y-1.5"><label className="input-label font-black text-[10px] uppercase text-gray-500 tracking-widest mb-2 block">វិធីសាស្រ្តដឹកជញ្ជូន*</label><ShippingMethodDropdown methods={appData.shippingMethods || []} selectedMethodName={order.shipping.method} onSelect={handleShippingMethodSelect} /></div>
                             <div className="space-y-1.5">
                                 <label className="input-label font-black text-[10px] uppercase text-gray-500 tracking-widest mb-2 block">ថ្លៃសេវាឲ្យអ្នកដឹក (Cost)*</label>
                                 <div className="space-y-3">
@@ -650,12 +650,73 @@ const CreateOrderPage: React.FC<CreateOrderPageProps> = ({ team, onSaveSuccess, 
                                 </div>
                             </div>
                             {selectedShippingMethod?.RequireDriverSelection && (
-                                <div className="md:col-span-2 space-y-3 sm:space-y-4"><div className="flex items-center gap-2 px-1"><div className="h-4 w-1 bg-blue-500 rounded-full"></div><label className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">ជ្រើសរើសអ្នកដឹក (DriverSelection)*</label></div><div className="grid grid-cols-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2 sm:gap-4">
+                                <div className="md:col-span-2 space-y-3 sm:space-y-4">
+                                    <div className="flex items-center gap-2 px-1">
+                                        <div className="h-4 w-1 bg-blue-500 rounded-full"></div>
+                                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">ជ្រើសរើសអ្នកដឹក (DriverSelection)*</label>
+                                    </div>
+                                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 sm:gap-4">
                                         {appData.drivers?.map((d: Driver) => {
                                             const isSelected = order.shipping.details === d.DriverName;
-                                            return (<button key={d.DriverName} type="button" onClick={() => handleDriverChange(d.DriverName)} className={`group relative flex flex-col items-center p-2 sm:p-3 rounded-2xl sm:rounded-[2rem] border-2 transition-all duration-300 active:scale-95 ${isSelected ? 'bg-blue-600/20 border-blue-500 shadow-lg shadow-blue-900/20 scale-105' : 'bg-gray-800/40 border-transparent hover:bg-gray-800 hover:border-gray-700'}`}><div className={`w-12 h-12 sm:w-20 sm:h-20 rounded-full overflow-hidden mb-2 sm:mb-3 border-2 sm:border-4 transition-all duration-500 ${isSelected ? 'border-blue-500 shadow-xl' : 'border-gray-700 group-hover:border-gray-600'}`}><img src={convertGoogleDriveUrl(d.ImageURL)} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" alt={d.DriverName} /></div><span className={`text-[9px] sm:text-[11px] font-black uppercase tracking-widest text-center truncate w-full ${isSelected ? 'text-white' : 'text-gray-400 group-hover:text-gray-200'}`}>{d.DriverName}</span>{isSelected && (<div className="absolute top-0.5 right-0.5 bg-blue-500 text-white rounded-full p-0.5 sm:p-1 shadow-lg animate-fade-in-scale"><svg className="w-2.5 h-2.5 sm:w-3 sm:h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={4}><path d="M5 13l4 4L19 7"/></svg></div>)}</button>);
+                                            return (
+                                                <button
+                                                    key={d.DriverName}
+                                                    type="button"
+                                                    onClick={() => handleDriverChange(d.DriverName)}
+                                                    className={`
+                                                        relative group rounded-2xl transition-all duration-300 flex flex-col items-center
+                                                        ${isSelected 
+                                                            ? 'card-flux card-flux-active scale-105 z-10' 
+                                                            : 'bg-gray-900 border border-gray-800 hover:bg-gray-800 hover:border-gray-700'}
+                                                    `}
+                                                >
+                                                    <div className={`
+                                                        w-full h-full rounded-2xl flex flex-col items-center justify-center p-3 relative overflow-hidden
+                                                        ${isSelected ? 'bg-[#0f172a]' : 'bg-transparent'}
+                                                    `}>
+                                                        {/* Background Ambient Glow */}
+                                                        {isSelected && (
+                                                            <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-b from-blue-500/10 via-purple-500/5 to-transparent pointer-events-none"></div>
+                                                        )}
+
+                                                        {/* Status Badge */}
+                                                        <div className="absolute top-2 right-2 flex gap-1">
+                                                            {isSelected && (
+                                                                <span className="relative flex h-2 w-2">
+                                                                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
+                                                                  <span className="relative inline-flex rounded-full h-2 w-2 bg-blue-500"></span>
+                                                                </span>
+                                                            )}
+                                                        </div>
+
+                                                        {/* Avatar with Floating Animation */}
+                                                        <div className={`
+                                                            relative z-10 w-14 h-14 sm:w-16 sm:h-16 mb-2 rounded-full p-0.5 transition-all duration-300
+                                                            ${isSelected ? 'animate-float-y bg-gradient-to-tr from-blue-500 to-purple-500 shadow-[0_0_15px_rgba(59,130,246,0.5)]' : 'bg-gray-800 opacity-80 group-hover:opacity-100'}
+                                                        `}>
+                                                            <img 
+                                                                src={convertGoogleDriveUrl(d.ImageURL)} 
+                                                                className="w-full h-full object-cover rounded-full border-2 border-[#0f172a]" 
+                                                                alt={d.DriverName} 
+                                                            />
+                                                        </div>
+
+                                                        {/* Text Info */}
+                                                        <div className="relative z-10 text-center w-full">
+                                                            <p className={`
+                                                                text-[10px] font-black uppercase tracking-widest transition-all truncate
+                                                                ${isSelected ? 'text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-pink-400 animate-pulse-soft' : 'text-gray-400 group-hover:text-gray-200'}
+                                                            `}>
+                                                                {d.DriverName}
+                                                            </p>
+                                                        </div>
+                                                    </div>
+                                                </button>
+                                            );
                                         })}
-                                    </div>{!order.shipping.details && (<p className="text-center text-[9px] text-gray-500 italic mt-1">សូមជ្រើសរើសអ្នកដឹកម្នាក់</p>)}</div>
+                                    </div>
+                                    {!order.shipping.details && (<p className="text-center text-[9px] text-gray-500 italic mt-1">សូមជ្រើសរើសអ្នកដឹកម្នាក់</p>)}
+                                </div>
                             )}
                          </div></fieldset>
                 );
@@ -700,6 +761,43 @@ const CreateOrderPage: React.FC<CreateOrderPageProps> = ({ team, onSaveSuccess, 
                     50% { box-shadow: 0 0 30px rgba(37,99,235,0.6); }
                 }
                 .btn-pulse { animation: pulse-glow 2s infinite ease-in-out; }
+                @keyframes spin-border {
+                    from { --angle: 0deg; }
+                    to { --angle: 360deg; }
+                }
+                @property --angle {
+                    syntax: '<angle>';
+                    initial-value: 0deg;
+                    inherits: false;
+                }
+                .card-flux {
+                    position: relative;
+                    background: #0f172a;
+                    z-index: 1;
+                }
+                .card-flux-active::after, .card-flux-active::before {
+                    content: '';
+                    position: absolute;
+                    inset: -2px;
+                    z-index: -1;
+                    background: conic-gradient(from var(--angle), transparent 70%, #3b82f6, #8b5cf6, #ec4899, #3b82f6);
+                    border-radius: inherit;
+                    animation: spin-border 3s linear infinite;
+                }
+                .card-flux-active::before {
+                    filter: blur(10px);
+                    opacity: 0.7;
+                }
+                @keyframes float-y {
+                    0%, 100% { transform: translateY(0); }
+                    50% { transform: translateY(-5px); }
+                }
+                .animate-float-y { animation: float-y 3s ease-in-out infinite; }
+                @keyframes pulse-soft {
+                    0%, 100% { opacity: 1; }
+                    50% { opacity: 0.6; }
+                }
+                .animate-pulse-soft { animation: pulse-soft 2s ease-in-out infinite; }
              `}</style>
              {submissionStatus && (<div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-[100] animate-fade-in p-4"><div className="page-card text-center flex flex-col items-center animate-fade-in-scale">{submissionStatus.type === 'success' ? (<div className="w-16 h-16 sm:w-20 sm:h-20 bg-green-500/20 text-green-400 rounded-full flex items-center justify-center mb-4 border border-green-500/30 shadow-[0_0_30px_rgba(34,197,94,0.2)]"><svg className="h-8 w-8 sm:h-10 sm:w-10" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7"/></svg></div>) : (<div className="w-16 h-16 sm:w-20 sm:h-20 bg-red-500/20 text-red-400 rounded-full flex items-center justify-center mb-4 border border-red-500/30"><svg className="h-8 w-8 sm:h-10 sm:w-10" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12"/></svg></div>)}<p className="text-base sm:text-lg font-black text-white">{submissionStatus.message}</p></div></div>)}
             <MapModal isOpen={isMapModalOpen} onClose={() => setIsMapModalOpen(false)} url={mapSearchUrl} />
