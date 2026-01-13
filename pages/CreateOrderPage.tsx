@@ -363,16 +363,43 @@ const CreateOrderPage: React.FC<CreateOrderPageProps> = ({ team, onSaveSuccess, 
         setLoading(true);
         let phoneToSend = '0' + order.customer.phone.replace(/[^0-9]/g, '').replace(/^0+/, '');
         
+        // Construct Address Details manually to ensure it appears in the Sheet/Telegram even if scheduled
+        const addressParts = [
+            order.customer.additionalLocation,
+            order.customer.sangkat,
+            order.customer.district
+        ].filter(Boolean);
+        const fullAddress = addressParts.join(', ');
+
+        // Format scheduled time to be cleaner (replace T with space)
+        let scheduledTimeStr = order.telegram.schedule ? order.telegram.time : '';
+        if (scheduledTimeStr) scheduledTimeStr = scheduledTimeStr.replace('T', ' ');
+
         const payload = { 
             currentUser, 
             selectedTeam: team, 
             page: order.page, 
             telegramValue: order.telegramValue, 
+            
+            // Nested object (standard)
             customer: { 
                 ...order.customer, 
                 phone: phoneToSend, 
                 shippingFee: Number(order.customer.shippingFee) || 0 
             }, 
+            
+            // *** CRITICAL FIX: Flattened keys for Backend/Sheet/Scheduled Tasks ***
+            "Customer Name": order.customer.name,
+            "Customer Phone": phoneToSend,
+            "Location": order.customer.province,
+            "Address Details": fullAddress,
+            "Internal Shipping Method": order.shipping.method,
+            "Internal Shipping Details": order.shipping.details,
+            "Internal Cost": Number(order.shipping.cost) || 0,
+            "Payment Status": order.payment.status,
+            "Payment Info": order.payment.info,
+            "Fulfillment Store": order.fulfillmentStore,
+            
             products: order.products.map((p: any) => ({ 
                 name: p.name, 
                 quantity: Number(p.quantity) || 1, 
@@ -392,7 +419,7 @@ const CreateOrderPage: React.FC<CreateOrderPageProps> = ({ team, onSaveSuccess, 
             grandTotal: Number(order.grandTotal) || 0, 
             note: order.note,
             fulfillmentStore: order.fulfillmentStore,
-            scheduledTime: order.telegram.schedule ? order.telegram.time : ''
+            scheduledTime: scheduledTimeStr
         };
         
         try {
@@ -430,7 +457,7 @@ const CreateOrderPage: React.FC<CreateOrderPageProps> = ({ team, onSaveSuccess, 
                                             onClick={() => setOrder({ ...order, pageSelectMode: 'cards' })}
                                             className={`px-3 py-1.5 text-[10px] font-black uppercase rounded-lg transition-all flex items-center gap-2 ${order.pageSelectMode === 'cards' ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/20' : 'text-gray-500 hover:text-gray-300'}`}
                                         >
-                                            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2z" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                                            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2z" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
                                             Card View
                                         </button>
                                         <button 

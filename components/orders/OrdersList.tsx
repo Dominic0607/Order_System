@@ -134,7 +134,7 @@ const OrdersList: React.FC<OrdersListProps> = ({
                                 {isVisible('shippingService') && <th className="px-6 py-6 text-[10px] font-black uppercase tracking-[0.2em] text-left text-gray-500 w-48">Logistics</th>}
                                 {isVisible('shippingCost') && <th className="px-6 py-6 text-[10px] font-black uppercase tracking-[0.2em] text-left text-gray-500 w-28">Exp. Cost</th>}
                                 {isVisible('status') && <th className="px-6 py-6 text-[10px] font-black uppercase tracking-[0.2em] text-left text-gray-500 w-32">Status</th>}
-                                {isVisible('date') && <th className="px-4 py-6 text-[10px] font-black uppercase tracking-[0.2em] text-left text-gray-500 w-20">Time</th>}
+                                {isVisible('date') && <th className="px-4 py-6 text-[10px] font-black uppercase tracking-[0.2em] text-left text-gray-500 w-24">Time</th>}
                                 {isVisible('print') && <th className="px-4 py-6 text-[10px] font-black uppercase tracking-[0.2em] text-center text-gray-500 w-16">P</th>}
                                 {isVisible('actions') && <th className="px-4 py-6 text-[10px] font-black uppercase tracking-[0.2em] text-center text-gray-500 w-24">Command</th>}
                                 {isVisible('check') && <th className="px-2 py-6 text-[9px] font-normal uppercase tracking-[0.15em] text-center text-emerald-500/80 w-14">VERIFIED</th>}
@@ -256,7 +256,16 @@ const OrdersList: React.FC<OrdersListProps> = ({
                                         {isVisible('shippingService') && <td className="px-6 py-5"><div className="flex items-center gap-2.5">{shippingLogo && <img src={shippingLogo} className="w-5 h-5 rounded-lg object-contain bg-gray-950 p-0.5 border border-white/5" alt="shipping" />}<span className="text-[10px] text-orange-400/80 font-black uppercase truncate tracking-tight">{order['Internal Shipping Method'] || '-'}</span></div></td>}
                                         {isVisible('shippingCost') && <td className="px-6 py-5 text-[11px] text-gray-500 font-mono font-black tracking-tighter">${(Number(order['Internal Cost']) || 0).toFixed(2)}</td>}
                                         {isVisible('status') && <td className="px-6 py-5"><span className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest border ${order['Payment Status'] === 'Paid' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 'bg-red-500/10 text-red-400 border border-red-500/20'}`}>{order['Payment Status']}</span></td>}
-                                        {isVisible('date') && <td className="px-4 py-5 text-[10px] text-gray-500 font-bold italic opacity-60">{new Date(order.Timestamp).toLocaleDateString('km-KH')}</td>}
+                                        
+                                        {isVisible('date') && (
+                                            <td className="px-4 py-5">
+                                                <div className="flex flex-col items-start">
+                                                    <span className="text-[11px] font-bold text-gray-400">{new Date(order.Timestamp).toLocaleDateString('km-KH')}</span>
+                                                    <span className="text-[10px] font-mono text-blue-500/80 font-black">{new Date(order.Timestamp).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })}</span>
+                                                </div>
+                                            </td>
+                                        )}
+                                        
                                         {isVisible('print') && <td className="px-4 py-5 text-center"><button onClick={() => handlePrint(order)} className="text-emerald-400/60 hover:text-white bg-emerald-400/5 hover:bg-emerald-600 p-2.5 rounded-xl transition-all border border-emerald-400/10 active:scale-90"><svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" /></svg></button></td>}
                                         {isVisible('actions') && <td className="px-4 py-5 text-center"><button onClick={() => onEdit && onEdit(order)} className="text-blue-400/80 hover:text-white bg-blue-400/5 hover:bg-blue-600 px-5 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all border border-blue-400/10 active:scale-95 shadow-md">Edit</button></td>}
                                         {isVisible('check') && <td className="px-2 py-5 text-center"><div className="relative flex items-center justify-center"><input type="checkbox" checked={isVerified} onChange={() => toggleOrderVerified(orderId, isVerified)} className={`h-6 w-6 rounded-lg border-gray-700 bg-gray-950 text-emerald-500 focus:ring-emerald-500/10 transition-all ${isUpdating ? 'opacity-20' : 'hover:scale-110 active:scale-150 cursor-pointer'}`} />{isUpdating && <div className="absolute inset-0 flex items-center justify-center pointer-events-none"><Spinner size="sm" /></div>}</div></td>}
@@ -384,13 +393,16 @@ const OrdersList: React.FC<OrdersListProps> = ({
                                                 onClick={() => handlePrint(order)} 
                                                 className="p-3.5 bg-emerald-600/10 text-emerald-400 rounded-2xl border border-emerald-500/20 active:scale-90 transition-all shadow-lg"
                                             >
-                                                <svg className="w-4.5 h-4.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={3}><path d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v42 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" /></svg>
+                                                <svg className="w-4.5 h-4.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={3}><path d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" /></svg>
                                             </button>
                                         )}
                                     </div>
                                     
                                     <div className="flex items-center gap-5 relative z-10">
-                                        <span className="text-[10px] text-gray-700 font-bold italic uppercase tracking-widest">{new Date(order.Timestamp).toLocaleDateString('km-KH')}</span>
+                                        <div className="flex flex-col items-end">
+                                            <span className="text-[10px] text-gray-500 font-bold">{new Date(order.Timestamp).toLocaleDateString('km-KH')}</span>
+                                            <span className="text-[9px] text-blue-500/60 font-black font-mono">{new Date(order.Timestamp).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })}</span>
+                                        </div>
                                         {isVisible('check') && (
                                             <div className="relative">
                                                 <input 
