@@ -207,7 +207,11 @@ const EditOrderPage: React.FC<EditOrderPageProps> = ({ order, onSaveSuccess, onC
                 body: JSON.stringify({ 
                     orderId: formData['Order ID'], 
                     team: formData.Team, 
-                    userName: currentUser.UserName 
+                    userName: currentUser.UserName,
+                    // Send Telegram IDs to allow backend to delete messages
+                    telegramMessageId1: formData['Telegram Message ID 1'],
+                    telegramMessageId2: formData['Telegram Message ID 2'],
+                    telegramChatId: formData.TelegramValue
                 })
             });
             const result = await response.json();
