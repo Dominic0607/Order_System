@@ -73,14 +73,21 @@ export const useBarcodeScanner = (
         const track = getActiveTrack();
         if (!track) return;
         
+        const isIosDevice = isIOS();
+
         try {
+            // Standard approach
             await track.applyConstraints(constraints);
         } catch (e) {
-            // IOS often fails on advanced constraints, ignore silently or try 'advanced' block
-            try {
-                await track.applyConstraints({ advanced: [constraints] });
-            } catch (e2) {
-                // Ignore
+            // iOS ZOOM FIX:
+            // iOS often fails on standard applyConstraints for Zoom. 
+            // It requires the 'advanced' constraint syntax.
+            if (constraints.zoom && isIosDevice) {
+                try {
+                    await track.applyConstraints({ advanced: [{ zoom: constraints.zoom }] } as any);
+                } catch (e2) {
+                    console.warn("Zoom failed on iOS:", e2);
+                }
             }
         }
     };
@@ -90,7 +97,8 @@ export const useBarcodeScanner = (
         const track = getActiveTrack();
         if (!track) return;
 
-        // iOS doesn't support manual focus via JS usually, but Android does
+        // iOS usually handles focus automatically and doesn't support manual trigger via JS
+        // But we try anyway for Android
         const capabilities = track.getCapabilities() as any;
         if (!capabilities.focusMode) return;
 
@@ -102,7 +110,7 @@ export const useBarcodeScanner = (
                 }, 1000);
             } 
         } catch (err) {
-            console.warn("Focus trigger failed", err);
+            // Ignore focus errors
         }
     }, []);
 
@@ -111,7 +119,8 @@ export const useBarcodeScanner = (
         const track = getActiveTrack();
         if (!track) return;
 
-        // IOS WebKit does NOT support torch yet via JS. This will mostly work on Android.
+        // IOS WebKit does NOT support torch via JS yet (as of iOS 17). 
+        // This button will likely only work on Android.
         if (isIOS()) return; 
 
         const newStatus = !isTorchOn;
@@ -131,9 +140,14 @@ export const useBarcodeScanner = (
     // --- Smooth Zoom Logic ---
     const setSmoothZoom = useCallback(async (targetZoom: number) => {
         const track = getActiveTrack();
-        if (!track || !zoomCapabilities) return;
+        // Allow zoom even if capabilities are null on iOS (forced mode)
+        if (!track) return;
 
-        let z = Math.max(zoomCapabilities.min, Math.min(targetZoom, zoomCapabilities.max));
+        let z = targetZoom;
+        if (zoomCapabilities) {
+            z = Math.max(zoomCapabilities.min, Math.min(targetZoom, zoomCapabilities.max));
+        }
+        
         setZoom(z);
         await applyConstraints({ zoom: z });
     }, [zoomCapabilities]);
@@ -141,6 +155,7 @@ export const useBarcodeScanner = (
     // --- AI Tracking & Auto-Zoom Loop ---
     const startSmartTracking = () => {
         // Feature detection: Check if BarcodeDetector is supported (iOS 17+, Chrome 88+)
+        // NOTE: iOS Safari DOES NOT support this yet. This code will just gracefully exit on iOS.
         // @ts-ignore
         if (!window.BarcodeDetector) return; 
 
@@ -161,7 +176,6 @@ export const useBarcodeScanner = (
                     const vWidth = videoRef.current.videoWidth;
                     const vHeight = videoRef.current.videoHeight;
 
-                    // Update UI Tracking Box
                     setTrackingBox({
                         x: (x / vWidth) * 100,
                         y: (y / vHeight) * 100,
@@ -169,34 +183,26 @@ export const useBarcodeScanner = (
                         height: (height / vHeight) * 100
                     });
 
-                    // --- Auto Zoom Logic ---
-                    // Calculate how much width the barcode takes up (0 to 1)
+                    // Auto Zoom Logic
                     const widthRatio = width / vWidth;
                     const track = getActiveTrack();
                     
-                    // If barcode is small (< 30% of screen width) and we have a track
                     if (track && widthRatio < 0.30) {
                         const caps = track.getCapabilities();
                         const settings = track.getSettings();
                         // @ts-ignore
                         const currentZoom = settings.zoom || 1;
                         // @ts-ignore
-                        // Cap auto-zoom at 2.5x to prevent becoming too shaky/blurry
                         const maxZoom = Math.min(caps.zoom?.max || 3, 2.5); 
 
                         if (currentZoom < maxZoom) {
                             setIsAutoZooming(true);
-                            // Smooth increment: Zoom in by small steps
-                            // Dynamic step: The smaller the code, the faster we zoom
                             const zoomStep = widthRatio < 0.15 ? 0.05 : 0.02; 
                             const newZoom = Math.min(currentZoom + zoomStep, maxZoom);
                             
                             applyConstraints({ zoom: newZoom });
                             setZoom(newZoom);
                         }
-                    } else if (widthRatio > 0.6) {
-                        // If too big, maybe zoom out slightly? (Optional, kept simple for now)
-                        setIsAutoZooming(false);
                     } else {
                         setIsAutoZooming(false);
                     }
@@ -206,9 +212,8 @@ export const useBarcodeScanner = (
                     setIsAutoZooming(false);
                 }
             } catch (err) {
-                // Squelch detection errors (common if frame is blurry)
+                // Squelch detection errors
             }
-            // Loop
             animationFrameRef.current = requestAnimationFrame(detectLoop);
         };
 
@@ -234,13 +239,12 @@ export const useBarcodeScanner = (
             const isIosDevice = isIOS();
 
             // OPTIMIZATION FOR IOS: 
-            // 1. Lower resolution to prevent freezing/lag
-            // 2. Strict aspect ratio (square) often works best
-            // 3. Do not set focusMode initially on iOS
+            // - Square aspect ratio (1.0) works best to prevent camera freezing
+            // - High resolution (1080p) to utilize the better lens on Pro models
             const videoConstraints = isIosDevice 
                 ? {
                     facingMode: facingMode,
-                    width: { ideal: 1080 }, // Ask for high quality, system scales down if needed
+                    width: { ideal: 1080 }, 
                     height: { ideal: 1080 },
                     aspectRatio: 1.0 
                   }
@@ -253,11 +257,11 @@ export const useBarcodeScanner = (
                   };
 
             const config: ScannerConfig = { 
-                fps: isIosDevice ? 15 : 30, // 15 FPS is sufficient for scanning and saves resources
+                fps: isIosDevice ? 20 : 30, // Slightly higher FPS for responsiveness
                 qrbox: { width: 250, height: 250 }, 
                 aspectRatio: 1.0,
                 experimentalFeatures: {
-                    useBarCodeDetectorIfSupported: true // Important: Uses native iOS API if available
+                    useBarCodeDetectorIfSupported: true // Still keep this for Android performance
                 },
                 videoConstraints: videoConstraints
             };
@@ -280,14 +284,11 @@ export const useBarcodeScanner = (
             try {
                 await html5QrCode.start(cameraConfig, config, onScanSuccess, undefined);
                 
-                // Get the video element created by the library
                 const videoEl = document.querySelector(`#${elementId} video`) as HTMLVideoElement;
                 if (videoEl) {
                     videoRef.current = videoEl;
-                    // IMPORTANT: Ensure playsInline for iOS
                     videoEl.setAttribute('playsinline', 'true'); 
                     
-                    // Start Smart Tracking (AI Zoom) once metadata is loaded
                     videoEl.addEventListener('loadedmetadata', () => {
                         startSmartTracking();
                     });
@@ -299,16 +300,24 @@ export const useBarcodeScanner = (
                     const capabilities = track.getCapabilities() as any;
                     const settings = track.getSettings();
 
-                    // Check Torch - Disable on iOS immediately (WebKit JS constraint)
+                    // Check Torch
                     if (!isIosDevice && 'torch' in capabilities) {
                         setIsTorchSupported(true);
                     } else {
                         setIsTorchSupported(false);
                     }
 
-                    // Check Zoom Capability
+                    // ZOOM FIX FOR IOS:
+                    // iOS often hides zoom capabilities in the API but supports the constraint.
+                    // We force a default zoom range [1, 5] for iOS devices to ensure the slider appears.
+                    if (isIosDevice) {
+                        setZoomCapabilities({ min: 1, max: 5, step: 0.1 });
+                        // @ts-ignore
+                        setZoom(settings.zoom || 1);
+                    } 
+                    // Standard logic for Android
                     // @ts-ignore
-                    if (capabilities.zoom) {
+                    else if (capabilities.zoom) {
                         setZoomCapabilities({
                             // @ts-ignore
                             min: capabilities.zoom.min, 
