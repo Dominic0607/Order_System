@@ -4,9 +4,10 @@ import { isIOS } from '../utils/platform';
 
 interface ScannerConfig {
     fps: number;
-    qrbox: number;
+    qrbox: number | { width: number, height: number };
     aspectRatio: number;
     videoConstraints?: any;
+    experimentalFeatures?: any;
 }
 
 interface TrackingBox {
@@ -139,6 +140,7 @@ export const useBarcodeScanner = (
 
     // --- AI Tracking & Auto-Zoom Loop ---
     const startSmartTracking = () => {
+        // Feature detection: Check if BarcodeDetector is supported (iOS 17+, Chrome 88+)
         // @ts-ignore
         if (!window.BarcodeDetector) return; 
 
@@ -159,6 +161,7 @@ export const useBarcodeScanner = (
                     const vWidth = videoRef.current.videoWidth;
                     const vHeight = videoRef.current.videoHeight;
 
+                    // Update UI Tracking Box
                     setTrackingBox({
                         x: (x / vWidth) * 100,
                         y: (y / vHeight) * 100,
@@ -166,23 +169,34 @@ export const useBarcodeScanner = (
                         height: (height / vHeight) * 100
                     });
 
-                    // Auto Zoom Logic (Conservative for iOS)
+                    // --- Auto Zoom Logic ---
+                    // Calculate how much width the barcode takes up (0 to 1)
                     const widthRatio = width / vWidth;
                     const track = getActiveTrack();
                     
+                    // If barcode is small (< 30% of screen width) and we have a track
                     if (track && widthRatio < 0.30) {
                         const caps = track.getCapabilities();
+                        const settings = track.getSettings();
                         // @ts-ignore
-                        const currentZoom = track.getSettings().zoom || 1;
+                        const currentZoom = settings.zoom || 1;
                         // @ts-ignore
-                        const maxZoom = Math.min(caps.zoom?.max || 2, 2); // Lower max zoom for stability
+                        // Cap auto-zoom at 2.5x to prevent becoming too shaky/blurry
+                        const maxZoom = Math.min(caps.zoom?.max || 3, 2.5); 
 
                         if (currentZoom < maxZoom) {
                             setIsAutoZooming(true);
-                            const newZoom = Math.min(currentZoom + 0.01, maxZoom); 
+                            // Smooth increment: Zoom in by small steps
+                            // Dynamic step: The smaller the code, the faster we zoom
+                            const zoomStep = widthRatio < 0.15 ? 0.05 : 0.02; 
+                            const newZoom = Math.min(currentZoom + zoomStep, maxZoom);
+                            
                             applyConstraints({ zoom: newZoom });
                             setZoom(newZoom);
                         }
+                    } else if (widthRatio > 0.6) {
+                        // If too big, maybe zoom out slightly? (Optional, kept simple for now)
+                        setIsAutoZooming(false);
                     } else {
                         setIsAutoZooming(false);
                     }
@@ -192,8 +206,9 @@ export const useBarcodeScanner = (
                     setIsAutoZooming(false);
                 }
             } catch (err) {
-                // Squelch detection errors
+                // Squelch detection errors (common if frame is blurry)
             }
+            // Loop
             animationFrameRef.current = requestAnimationFrame(detectLoop);
         };
 
@@ -219,20 +234,31 @@ export const useBarcodeScanner = (
             const isIosDevice = isIOS();
 
             // OPTIMIZATION FOR IOS: 
-            // 1. Lower resolution to prevent freezing
-            // 2. Strict aspect ratio
-            const videoConstraints = {
-                facingMode: facingMode,
-                width: isIosDevice ? { min: 640, ideal: 720 } : { min: 640, ideal: 1280, max: 1920 },
-                height: isIosDevice ? { min: 480, ideal: 720 } : { min: 480, ideal: 720, max: 1080 },
-                aspectRatio: isIosDevice ? 1.0 : 1.777777778, // Square for iOS often works better in modals
-                focusMode: "continuous"
-            };
+            // 1. Lower resolution to prevent freezing/lag
+            // 2. Strict aspect ratio (square) often works best
+            // 3. Do not set focusMode initially on iOS
+            const videoConstraints = isIosDevice 
+                ? {
+                    facingMode: facingMode,
+                    width: { ideal: 1080 }, // Ask for high quality, system scales down if needed
+                    height: { ideal: 1080 },
+                    aspectRatio: 1.0 
+                  }
+                : {
+                    facingMode: facingMode,
+                    width: { min: 640, ideal: 1280, max: 1920 },
+                    height: { min: 480, ideal: 720, max: 1080 },
+                    aspectRatio: 1.777777778,
+                    focusMode: "continuous"
+                  };
 
             const config: ScannerConfig = { 
-                fps: isIosDevice ? 15 : 30, // Lower FPS on iOS to save battery/heat
-                qrbox: 260, 
+                fps: isIosDevice ? 15 : 30, // 15 FPS is sufficient for scanning and saves resources
+                qrbox: { width: 250, height: 250 }, 
                 aspectRatio: 1.0,
+                experimentalFeatures: {
+                    useBarCodeDetectorIfSupported: true // Important: Uses native iOS API if available
+                },
                 videoConstraints: videoConstraints
             };
 
@@ -254,12 +280,14 @@ export const useBarcodeScanner = (
             try {
                 await html5QrCode.start(cameraConfig, config, onScanSuccess, undefined);
                 
+                // Get the video element created by the library
                 const videoEl = document.querySelector(`#${elementId} video`) as HTMLVideoElement;
                 if (videoEl) {
                     videoRef.current = videoEl;
                     // IMPORTANT: Ensure playsInline for iOS
                     videoEl.setAttribute('playsinline', 'true'); 
                     
+                    // Start Smart Tracking (AI Zoom) once metadata is loaded
                     videoEl.addEventListener('loadedmetadata', () => {
                         startSmartTracking();
                     });
@@ -271,14 +299,14 @@ export const useBarcodeScanner = (
                     const capabilities = track.getCapabilities() as any;
                     const settings = track.getSettings();
 
-                    // Check Torch - Disable on iOS immediately
+                    // Check Torch - Disable on iOS immediately (WebKit JS constraint)
                     if (!isIosDevice && 'torch' in capabilities) {
                         setIsTorchSupported(true);
                     } else {
                         setIsTorchSupported(false);
                     }
 
-                    // Check Zoom
+                    // Check Zoom Capability
                     // @ts-ignore
                     if (capabilities.zoom) {
                         setZoomCapabilities({
