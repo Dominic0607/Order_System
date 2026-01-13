@@ -1,5 +1,6 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { isIOS } from '../utils/platform';
 
 interface ScannerConfig {
     fps: number;
@@ -72,14 +73,13 @@ export const useBarcodeScanner = (
         if (!track) return;
         
         try {
-            // Try standard constraints application first (widely supported)
             await track.applyConstraints(constraints);
         } catch (e) {
-            // Fallback to 'advanced' constraints if standard fails (older Android/Chrome)
+            // IOS often fails on advanced constraints, ignore silently or try 'advanced' block
             try {
                 await track.applyConstraints({ advanced: [constraints] });
             } catch (e2) {
-                console.warn("Constraint application failed:", e2);
+                // Ignore
             }
         }
     };
@@ -89,30 +89,17 @@ export const useBarcodeScanner = (
         const track = getActiveTrack();
         if (!track) return;
 
+        // iOS doesn't support manual focus via JS usually, but Android does
         const capabilities = track.getCapabilities() as any;
         if (!capabilities.focusMode) return;
 
-        console.log("Triggering focus. Capabilities:", capabilities.focusMode);
-
         try {
-            // Strategy: Toggle to 'single-shot' (macro/lock) then back to 'continuous' to force a hunt
             if (capabilities.focusMode.includes('single-shot') && capabilities.focusMode.includes('continuous')) {
-                // Switch to single-shot to lock/refocus at current point
                 await applyConstraints({ focusMode: 'single-shot' });
-                
-                // Revert to continuous after a delay to ensure it stays focused but resumes tracking
                 setTimeout(async () => {
                     await applyConstraints({ focusMode: 'continuous' });
-                }, 1500);
+                }, 1000);
             } 
-            else if (capabilities.focusMode.includes('continuous')) {
-                // If only continuous is supported, just re-apply it
-                await applyConstraints({ focusMode: 'continuous' });
-            } 
-            else if (capabilities.focusMode.includes('single-shot')) {
-                // Force a single focus attempt
-                await applyConstraints({ focusMode: 'single-shot' });
-            }
         } catch (err) {
             console.warn("Focus trigger failed", err);
         }
@@ -123,21 +110,19 @@ export const useBarcodeScanner = (
         const track = getActiveTrack();
         if (!track) return;
 
+        // IOS WebKit does NOT support torch yet via JS. This will mostly work on Android.
+        if (isIOS()) return; 
+
         const newStatus = !isTorchOn;
         try {
-            // Torch is often treated as an advanced constraint
             await track.applyConstraints({ advanced: [{ torch: newStatus } as any] });
             setIsTorchOn(newStatus);
         } catch (err) {
-            console.error("Torch toggle failed", err);
-            // Retry with standard constraint
             try {
                 await track.applyConstraints({ torch: newStatus } as any);
                 setIsTorchOn(newStatus);
             } catch(e2) {
-                // If it fails, assume not supported
-                const capabilities = track.getCapabilities() as any;
-                if (!capabilities.torch) setIsTorchSupported(false);
+                // Fail silently
             }
         }
     }, [isTorchOn]);
@@ -147,20 +132,15 @@ export const useBarcodeScanner = (
         const track = getActiveTrack();
         if (!track || !zoomCapabilities) return;
 
-        // Clamp target
         let z = Math.max(zoomCapabilities.min, Math.min(targetZoom, zoomCapabilities.max));
-        
-        // Update UI state immediately
         setZoom(z);
-
-        // Apply to camera
         await applyConstraints({ zoom: z });
     }, [zoomCapabilities]);
 
     // --- AI Tracking & Auto-Zoom Loop ---
     const startSmartTracking = () => {
         // @ts-ignore
-        if (!window.BarcodeDetector) return; // Feature detection
+        if (!window.BarcodeDetector) return; 
 
         const detectLoop = async () => {
             if (!videoRef.current || videoRef.current.paused || videoRef.current.ended) {
@@ -179,7 +159,6 @@ export const useBarcodeScanner = (
                     const vWidth = videoRef.current.videoWidth;
                     const vHeight = videoRef.current.videoHeight;
 
-                    // Update UI Overlay (Percentages)
                     setTrackingBox({
                         x: (x / vWidth) * 100,
                         y: (y / vHeight) * 100,
@@ -187,24 +166,20 @@ export const useBarcodeScanner = (
                         height: (height / vHeight) * 100
                     });
 
-                    // --- Auto Zoom Logic ---
-                    // If barcode width is less than 35% of screen width, zoom in
+                    // Auto Zoom Logic (Conservative for iOS)
                     const widthRatio = width / vWidth;
                     const track = getActiveTrack();
                     
-                    if (track && widthRatio < 0.35) {
+                    if (track && widthRatio < 0.30) {
                         const caps = track.getCapabilities();
                         // @ts-ignore
                         const currentZoom = track.getSettings().zoom || 1;
                         // @ts-ignore
-                        const maxZoom = Math.min(caps.zoom?.max || 3, 3); // Limit auto-zoom to 3x
+                        const maxZoom = Math.min(caps.zoom?.max || 2, 2); // Lower max zoom for stability
 
                         if (currentZoom < maxZoom) {
                             setIsAutoZooming(true);
-                            // Calculate gradual step
-                            const newZoom = Math.min(currentZoom + 0.02, maxZoom); // Slower zoom step for smoothness
-                            
-                            // Use the robust applyConstraints helper
+                            const newZoom = Math.min(currentZoom + 0.01, maxZoom); 
                             applyConstraints({ zoom: newZoom });
                             setZoom(newZoom);
                         }
@@ -234,32 +209,34 @@ export const useBarcodeScanner = (
 
         const initScanner = async () => {
             setIsInitializing(true);
-            setIsTorchOn(false); // Reset torch state on camera switch
-            setZoom(1); // Reset zoom
+            setIsTorchOn(false);
+            setZoom(1);
             
             // @ts-ignore
             const html5QrCode = new window.Html5Qrcode(elementId);
             scannerRef.current = html5QrCode;
 
-            // Improved Camera Config: Ensure rear camera is used with facingMode inside videoConstraints
+            const isIosDevice = isIOS();
+
+            // OPTIMIZATION FOR IOS: 
+            // 1. Lower resolution to prevent freezing
+            // 2. Strict aspect ratio
             const videoConstraints = {
-                facingMode: facingMode, // DYNAMIC FACING MODE
-                width: { min: 640, ideal: 1280, max: 1920 },
-                height: { min: 480, ideal: 720, max: 1080 },
+                facingMode: facingMode,
+                width: isIosDevice ? { min: 640, ideal: 720 } : { min: 640, ideal: 1280, max: 1920 },
+                height: isIosDevice ? { min: 480, ideal: 720 } : { min: 480, ideal: 720, max: 1080 },
+                aspectRatio: isIosDevice ? 1.0 : 1.777777778, // Square for iOS often works better in modals
                 focusMode: "continuous"
             };
 
             const config: ScannerConfig = { 
-                fps: 30, 
-                qrbox: 280, // Slightly larger box
+                fps: isIosDevice ? 15 : 30, // Lower FPS on iOS to save battery/heat
+                qrbox: 260, 
                 aspectRatio: 1.0,
                 videoConstraints: videoConstraints
             };
 
-            // This is the first argument for start(), keep it minimal to avoid "exact key" errors
-            const cameraConfig = { 
-                facingMode: facingMode
-            };
+            const cameraConfig = { facingMode: facingMode };
 
             let lastScanTime = 0;
             const onScanSuccess = (decodedText: string) => {
@@ -277,34 +254,28 @@ export const useBarcodeScanner = (
             try {
                 await html5QrCode.start(cameraConfig, config, onScanSuccess, undefined);
                 
-                // --- Post-Start Configuration ---
-                
-                // 1. Grab Video Element for Tracking
                 const videoEl = document.querySelector(`#${elementId} video`) as HTMLVideoElement;
                 if (videoEl) {
                     videoRef.current = videoEl;
-                    // Wait for metadata to load to ensure dimensions are correct
+                    // IMPORTANT: Ensure playsInline for iOS
+                    videoEl.setAttribute('playsinline', 'true'); 
+                    
                     videoEl.addEventListener('loadedmetadata', () => {
                         startSmartTracking();
                     });
                 }
 
-                // 2. Initialize Capabilities (Zoom/Torch/Focus)
                 const track = getActiveTrack();
                 if (track) {
                     trackRef.current = track;
                     const capabilities = track.getCapabilities() as any;
                     const settings = track.getSettings();
 
-                    // Check Torch - Assuming support if capabilities exist, or let user try.
-                    // We default to true in UI, but check here for state accuracy.
-                    if ('torch' in capabilities) {
+                    // Check Torch - Disable on iOS immediately
+                    if (!isIosDevice && 'torch' in capabilities) {
                         setIsTorchSupported(true);
-                        // @ts-ignore
-                        setIsTorchOn(settings.torch || false);
                     } else {
-                        // Fallback: Assume supported on mobile rear camera only
-                        setIsTorchSupported(facingMode === 'environment'); 
+                        setIsTorchSupported(false);
                     }
 
                     // Check Zoom
@@ -322,11 +293,6 @@ export const useBarcodeScanner = (
                         setZoom(settings.zoom || capabilities.zoom.min);
                     } else {
                         setZoomCapabilities(null);
-                    }
-
-                    // Auto-enable continuous focus if available (Double check)
-                    if (capabilities.focusMode && capabilities.focusMode.includes('continuous')) {
-                        applyConstraints({ focusMode: 'continuous' });
                     }
                 }
 
@@ -347,7 +313,7 @@ export const useBarcodeScanner = (
                 scannerRef.current.stop().then(() => scannerRef.current.clear()).catch(console.error);
             }
         };
-    }, [facingMode]); // Re-run when facingMode changes
+    }, [facingMode]);
 
     return {
         isInitializing,

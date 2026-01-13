@@ -1,11 +1,13 @@
 
-import React, { useState, useRef, useCallback } from 'react';
+import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { MasterProduct, Product } from '../../types';
 import { convertGoogleDriveUrl } from '../../utils/fileUtils';
 import { useBarcodeScanner } from '../../hooks/useBarcodeScanner';
 import Spinner from '../common/Spinner';
 import ScannerOverlay from './scanner/ScannerOverlay';
 import HistoryDrawer, { ScannedHistoryItem } from './scanner/HistoryDrawer';
+import ScannerHeader from './scanner/ScannerHeader';
+import ScannerControls from './scanner/ScannerControls';
 
 interface ProductUIState extends Product {
     discountType: 'percent' | 'amount' | 'custom';
@@ -47,6 +49,18 @@ const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({
     const touchStartTime = useRef<number>(0);
     const startZoom = useRef<number>(1);
     const lastTapTime = useRef<number>(0);
+
+    // Disable Body Scroll when modal is open (Fix for iOS elastic scrolling)
+    useEffect(() => {
+        document.body.style.overflow = 'hidden';
+        document.body.style.position = 'fixed';
+        document.body.style.width = '100%';
+        return () => {
+            document.body.style.overflow = '';
+            document.body.style.position = '';
+            document.body.style.width = '';
+        };
+    }, []);
 
     const handleScan = useCallback((decodedText: string) => {
         // Trigger Animations
@@ -108,7 +122,6 @@ const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({
             
             const now = Date.now();
             if (now - lastTapTime.current < 300) {
-                // Double Tap logic: reset zoom
                 if (zoomCapabilities) handleZoomChange(zoomCapabilities.min || 1); 
             }
             lastTapTime.current = now;
@@ -142,13 +155,9 @@ const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({
             const deltaY = Math.abs(touchEndY - touchStartY.current);
             const duration = Date.now() - touchStartTime.current;
 
-            // Detect Tap (Short duration, minimal movement)
             if (duration < 300 && deltaX < 15 && deltaY < 15) {
-                // Trigger Focus Visual & Logic
                 setFocusPoint({ x: touchEndX, y: touchEndY });
                 triggerFocus();
-                
-                // Clear visual after animation
                 setTimeout(() => setFocusPoint(null), 1000);
             }
         }
@@ -160,7 +169,8 @@ const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({
 
     return (
         <div 
-            className="fixed inset-0 bg-black z-[100] flex flex-col animate-fade-in touch-none overflow-hidden"
+            className="fixed inset-0 bg-black z-[100] flex flex-col animate-fade-in touch-none overflow-hidden h-screen"
+            style={{ height: '100dvh' }} // Use dynamic viewport height for iOS
             onTouchStart={handleTouchStart}
             onTouchMove={handleTouchMove}
             onTouchEnd={handleTouchEnd}
@@ -172,38 +182,14 @@ const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({
               .animate-pop-in { animation: pop-in 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; }
             `}</style>
 
-            {/* Header */}
-            <div className="absolute top-0 left-0 right-0 z-50 p-4 pt-safe-top flex justify-between items-center bg-gradient-to-b from-black/80 to-transparent pointer-events-none">
-                <div className="pointer-events-auto bg-black/40 backdrop-blur-md px-3 py-1.5 rounded-full border border-blue-500/30 flex items-center gap-2">
-                    <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse"></div>
-                    <span className="text-white font-black text-xs uppercase tracking-widest">LIVE SCAN</span>
-                    {isAutoZooming && <span className="text-[9px] text-blue-400 font-bold ml-1 animate-pulse">AUTO-ZOOM</span>}
-                </div>
-                
-                <div className="flex gap-3 pointer-events-auto">
-                    {/* Switch Camera Button */}
-                    <button 
-                        onClick={switchCamera} 
-                        className="w-10 h-10 bg-gray-800/60 backdrop-blur-md rounded-full text-white border border-white/10 flex items-center justify-center active:scale-90 transition-all hover:bg-gray-700/60"
-                    >
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
-                    </button>
-
-                    {/* Torch Button */}
-                    <button 
-                        onClick={toggleTorch} 
-                        className={`w-10 h-10 rounded-full flex items-center justify-center transition-all backdrop-blur-md border ${isTorchOn ? 'bg-yellow-500 text-black border-yellow-400 shadow-[0_0_15px_rgba(234,179,8,0.5)]' : 'bg-gray-800/60 text-gray-300 border-white/10'}`}
-                        style={{ opacity: isTorchSupported ? 1 : 0.5 }}
-                        disabled={!isTorchSupported}
-                    >
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
-                    </button>
-                    
-                    <button onClick={onClose} className="w-10 h-10 bg-gray-800/60 backdrop-blur-md rounded-full text-white border border-white/10 flex items-center justify-center active:scale-90 transition-all hover:bg-red-500/80 hover:border-red-500/50">
-                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" /></svg>
-                    </button>
-                </div>
-            </div>
+            <ScannerHeader 
+                onClose={onClose}
+                onSwitchCamera={switchCamera}
+                onToggleTorch={toggleTorch}
+                isTorchOn={isTorchOn}
+                isTorchSupported={isTorchSupported}
+                isAutoZooming={isAutoZooming}
+            />
 
             {/* Main Scanner */}
             <div className="relative flex-grow w-full overflow-hidden bg-black">
@@ -214,7 +200,7 @@ const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({
                     error={error} 
                     scanSuccessFlash={scanSuccessFlash} 
                     zoom={zoom} 
-                    useSimulatedZoom={false} // Native zoom used
+                    useSimulatedZoom={false}
                     trackingBox={trackingBox}
                     focusPoint={focusPoint}
                 />
@@ -260,59 +246,17 @@ const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({
                 )}
             </div>
 
-            {/* Bottom Controls */}
             {!isHistoryOpen && (
-                <div className="absolute bottom-0 left-0 right-0 p-6 pb-safe-bottom z-40 bg-gradient-to-t from-black via-black/90 to-transparent flex flex-col gap-6 pointer-events-none">
-                    
-                    {/* Zoom Slider */}
-                    {zoomCapabilities && (
-                        <div className="flex items-center gap-3 px-2 pointer-events-auto">
-                            <span className="text-[9px] font-black text-gray-500 w-6 text-center">1x</span>
-                            <input 
-                                type="range" 
-                                min={zoomCapabilities.min} 
-                                max={zoomCapabilities.max} 
-                                step={zoomCapabilities.step} 
-                                value={zoom} 
-                                onChange={(e) => handleZoomChange(parseFloat(e.target.value))} 
-                                className="flex-1 h-1.5 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-blue-500"
-                            />
-                            <span className="text-[9px] font-black text-gray-500 w-6 text-center">{zoomCapabilities.max}x</span>
-                        </div>
-                    )}
-
-                    <div className="flex justify-between items-center gap-3 pointer-events-auto">
-                        {/* Segmented Control for Scan Mode */}
-                        <div className="flex bg-gray-800 p-1.5 rounded-2xl border border-white/10 shadow-lg flex-grow max-w-[200px] mx-auto">
-                            <button 
-                                onClick={() => setScanMode('single')} 
-                                className={`flex-1 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all duration-300 ${scanMode === 'single' ? 'bg-blue-600 text-white shadow-md' : 'text-gray-400 hover:text-gray-200'}`}
-                            >
-                                Single
-                            </button>
-                            <button 
-                                onClick={() => setScanMode('increment')} 
-                                className={`flex-1 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all duration-300 ${scanMode === 'increment' ? 'bg-emerald-600 text-white shadow-md' : 'text-gray-400 hover:text-gray-200'}`}
-                            >
-                                Multi
-                            </button>
-                        </div>
-                    </div>
-
-                    {/* Swipe Up Indicator */}
-                    <div 
-                        className="w-full flex justify-center pb-2 cursor-pointer opacity-70 hover:opacity-100 transition-opacity pointer-events-auto"
-                        onClick={() => setIsHistoryOpen(true)}
-                    >
-                        <div className="flex flex-col items-center gap-1">
-                            <div className="w-10 h-1 bg-gray-600 rounded-full"></div>
-                            <span className="text-[8px] font-black text-gray-500 uppercase tracking-widest">Swipe for History</span>
-                        </div>
-                    </div>
-                </div>
+                <ScannerControls 
+                    zoom={zoom}
+                    zoomCapabilities={zoomCapabilities}
+                    handleZoomChange={handleZoomChange}
+                    scanMode={scanMode}
+                    setScanMode={setScanMode}
+                    onOpenHistory={() => setIsHistoryOpen(true)}
+                />
             )}
 
-            {/* History Drawer */}
             <HistoryDrawer 
                 history={scanHistory} 
                 isOpen={isHistoryOpen} 
