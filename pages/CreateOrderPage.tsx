@@ -1,5 +1,5 @@
 
-import React, { useState, useContext, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useContext, useEffect, useMemo, useCallback, useRef } from 'react';
 import { AppContext } from '../context/AppContext';
 import { Product as ProductType, MasterProduct, Driver, Store, TeamPage, ShippingMethod } from '../types';
 import Spinner from '../components/common/Spinner';
@@ -15,6 +15,7 @@ import BarcodeScannerModal from '../components/orders/BarcodeScannerModal';
 import SearchableProvinceDropdown from '../components/orders/SearchableProvinceDropdown';
 import TelegramScheduler from '../components/orders/TelegramScheduler';
 import SetQuantity from '../components/orders/SetQuantity';
+import DriverSelector from '../components/orders/DriverSelector';
 
 interface CreateOrderPageProps {
     team: string;
@@ -60,6 +61,13 @@ const CreateOrderPage: React.FC<CreateOrderPageProps> = ({ team, onSaveSuccess, 
     const [currentStep, setCurrentStep] = useState(1);
     const [isCancelModalOpen, setIsCancelModalOpen] = useState(false);
     
+    // SFX for Driver Selection
+    const sfxDriverSelect = useRef(new Audio('https://assets.mixkit.co/active_storage/sfx/2568/2568-preview.mp3'));
+
+    useEffect(() => {
+        sfxDriverSelect.current.volume = 0.4;
+    }, []);
+
     const initialOrderState = useMemo(() => ({
         page: '',
         telegramValue: '',
@@ -655,66 +663,11 @@ const CreateOrderPage: React.FC<CreateOrderPageProps> = ({ team, onSaveSuccess, 
                                         <div className="h-4 w-1 bg-blue-500 rounded-full"></div>
                                         <label className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">ជ្រើសរើសអ្នកដឹក (DriverSelection)*</label>
                                     </div>
-                                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 sm:gap-4">
-                                        {appData.drivers?.map((d: Driver) => {
-                                            const isSelected = order.shipping.details === d.DriverName;
-                                            return (
-                                                <button
-                                                    key={d.DriverName}
-                                                    type="button"
-                                                    onClick={() => handleDriverChange(d.DriverName)}
-                                                    className={`
-                                                        relative group rounded-2xl transition-all duration-300 flex flex-col items-center
-                                                        ${isSelected 
-                                                            ? 'card-flux card-flux-active scale-105 z-10' 
-                                                            : 'bg-gray-900 border border-gray-800 hover:bg-gray-800 hover:border-gray-700'}
-                                                    `}
-                                                >
-                                                    <div className={`
-                                                        w-full h-full rounded-2xl flex flex-col items-center justify-center p-3 relative overflow-hidden
-                                                        ${isSelected ? 'bg-[#0f172a]' : 'bg-transparent'}
-                                                    `}>
-                                                        {/* Background Ambient Glow */}
-                                                        {isSelected && (
-                                                            <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-b from-blue-500/10 via-purple-500/5 to-transparent pointer-events-none"></div>
-                                                        )}
-
-                                                        {/* Status Badge */}
-                                                        <div className="absolute top-2 right-2 flex gap-1">
-                                                            {isSelected && (
-                                                                <span className="relative flex h-2 w-2">
-                                                                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
-                                                                  <span className="relative inline-flex rounded-full h-2 w-2 bg-blue-500"></span>
-                                                                </span>
-                                                            )}
-                                                        </div>
-
-                                                        {/* Avatar with Floating Animation */}
-                                                        <div className={`
-                                                            relative z-10 w-14 h-14 sm:w-16 sm:h-16 mb-2 rounded-full p-0.5 transition-all duration-300
-                                                            ${isSelected ? 'animate-float-y bg-gradient-to-tr from-blue-500 to-purple-500 shadow-[0_0_15px_rgba(59,130,246,0.5)]' : 'bg-gray-800 opacity-80 group-hover:opacity-100'}
-                                                        `}>
-                                                            <img 
-                                                                src={convertGoogleDriveUrl(d.ImageURL)} 
-                                                                className="w-full h-full object-cover rounded-full border-2 border-[#0f172a]" 
-                                                                alt={d.DriverName} 
-                                                            />
-                                                        </div>
-
-                                                        {/* Text Info */}
-                                                        <div className="relative z-10 text-center w-full">
-                                                            <p className={`
-                                                                text-[10px] font-black uppercase tracking-widest transition-all truncate
-                                                                ${isSelected ? 'text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-pink-400 animate-pulse-soft' : 'text-gray-400 group-hover:text-gray-200'}
-                                                            `}>
-                                                                {d.DriverName}
-                                                            </p>
-                                                        </div>
-                                                    </div>
-                                                </button>
-                                            );
-                                        })}
-                                    </div>
+                                    <DriverSelector 
+                                        drivers={appData.drivers || []} 
+                                        selectedDriverName={order.shipping.details} 
+                                        onSelect={handleDriverChange} 
+                                    />
                                     {!order.shipping.details && (<p className="text-center text-[9px] text-gray-500 italic mt-1">សូមជ្រើសរើសអ្នកដឹកម្នាក់</p>)}
                                 </div>
                             )}

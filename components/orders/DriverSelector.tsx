@@ -1,0 +1,198 @@
+
+import React, { useRef, useEffect } from 'react';
+import { Driver } from '../../types';
+import { convertGoogleDriveUrl } from '../../utils/fileUtils';
+
+interface DriverSelectorProps {
+    drivers: Driver[];
+    selectedDriverName: string;
+    onSelect: (driverName: string) => void;
+}
+
+const DriverSelector: React.FC<DriverSelectorProps> = ({ drivers, selectedDriverName, onSelect }) => {
+    // --- Audio System ---
+    const sfxHover = useRef<HTMLAudioElement | null>(null);
+    const sfxSelect = useRef<HTMLAudioElement | null>(null);
+
+    useEffect(() => {
+        // Updated Sci-fi UI sounds
+        // Hover: Crisp digital blip
+        sfxHover.current = new Audio('https://assets.mixkit.co/active_storage/sfx/2572/2572-preview.mp3'); 
+        // Select: Mechanical Energy Lock-in
+        sfxSelect.current = new Audio('https://assets.mixkit.co/active_storage/sfx/2570/2570-preview.mp3'); 
+        
+        if (sfxHover.current) sfxHover.current.volume = 0.2;
+        if (sfxSelect.current) sfxSelect.current.volume = 0.4;
+    }, []);
+
+    const playHover = () => {
+        if (sfxHover.current) {
+            sfxHover.current.currentTime = 0;
+            sfxHover.current.play().catch(() => {});
+        }
+    };
+
+    const handleSelect = (name: string) => {
+        if (selectedDriverName !== name) {
+            if (sfxSelect.current) {
+                sfxSelect.current.currentTime = 0;
+                sfxSelect.current.play().catch(() => {});
+            }
+            onSelect(name);
+        }
+    };
+
+    return (
+        <div className="w-full py-4">
+            <style>{`
+                /* CSS Variable for Rotation */
+                @property --angle {
+                    syntax: '<angle>';
+                    initial-value: 0deg;
+                    inherits: false;
+                }
+
+                /* Flux Animation Keyframes */
+                @keyframes spin-flux {
+                    from { --angle: 0deg; }
+                    to { --angle: 360deg; }
+                }
+
+                /* Base Card Style */
+                .flux-card {
+                    position: relative;
+                    background: #0f172a; /* Slate 900 */
+                    border-radius: 1rem;
+                    z-index: 1;
+                }
+
+                /* Electric Flux Effect (Active State) */
+                .flux-card.selected::after, .flux-card.selected::before {
+                    content: '';
+                    position: absolute;
+                    inset: -2px;
+                    z-index: -1;
+                    /* Electric Gradient Colors: Cyan -> Blue -> Purple -> Cyan */
+                    background: conic-gradient(from var(--angle), transparent 70%, #22d3ee, #3b82f6, #a855f7, #22d3ee);
+                    border-radius: inherit;
+                    animation: spin-flux 2.5s linear infinite;
+                }
+
+                /* Outer Glow (Blur) */
+                .flux-card.selected::before {
+                    filter: blur(12px);
+                    opacity: 0.6;
+                }
+
+                /* Floating Text Animation */
+                @keyframes float-text {
+                    0%, 100% { transform: translateY(0); }
+                    50% { transform: translateY(-3px); }
+                }
+                .animate-float-text {
+                    animation: float-text 3s ease-in-out infinite;
+                }
+            `}</style>
+
+            {drivers.length === 0 ? (
+                <div className="flex flex-col items-center justify-center p-8 border-2 border-dashed border-gray-800 rounded-2xl bg-gray-900/30">
+                    <div className="w-10 h-10 border-2 border-gray-700 border-t-cyan-500 rounded-full animate-spin mb-3"></div>
+                    <p className="text-gray-500 font-black uppercase tracking-[0.2em] text-[10px]">NO DRIVERS DETECTED</p>
+                </div>
+            ) : (
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-5 p-1">
+                    {drivers.map((d) => (
+                        <DriverCard 
+                            key={d.DriverName}
+                            driver={d}
+                            isSelected={selectedDriverName === d.DriverName}
+                            onSelect={() => handleSelect(d.DriverName)}
+                            onHover={playHover}
+                        />
+                    ))}
+                </div>
+            )}
+        </div>
+    );
+};
+
+const DriverCard = ({ driver, isSelected, onSelect, onHover }: { 
+    driver: Driver, 
+    isSelected: boolean, 
+    onSelect: () => void,
+    onHover: () => void 
+}) => {
+    return (
+        <div
+            onClick={onSelect}
+            onMouseEnter={onHover}
+            className={`
+                flux-card relative h-48 cursor-pointer transition-all duration-300 group overflow-visible
+                flex flex-col items-center justify-end pb-3
+                ${isSelected 
+                    ? 'selected scale-[1.03]' 
+                    : 'border border-white/5 hover:border-blue-500/30 grayscale opacity-70 hover:opacity-100 hover:grayscale-0'
+                }
+            `}
+        >
+            {/* Tech Grid Background (Inside Card) */}
+            <div className="absolute inset-0 rounded-2xl overflow-hidden bg-gray-900">
+                <div className="absolute inset-0 opacity-20" style={{ 
+                    backgroundImage: 'radial-gradient(#3b82f6 1px, transparent 1px)', 
+                    backgroundSize: '10px 10px' 
+                }}></div>
+                
+                {/* Active Floor Light */}
+                {isSelected && (
+                    <div className="absolute bottom-0 left-0 right-0 h-1/2 bg-gradient-to-t from-blue-900/40 to-transparent"></div>
+                )}
+            </div>
+
+            {/* Driver Image */}
+            <div className={`
+                absolute inset-x-0 transition-all duration-500 z-10 flex justify-center
+                ${isSelected ? 'top-2 bottom-12' : 'top-3 bottom-10'}
+            `}>
+                <div className={`
+                    relative w-full h-full max-w-[85%] rounded-xl overflow-hidden transition-all duration-500
+                    ${isSelected ? 'shadow-[0_0_20px_rgba(59,130,246,0.4)] ring-1 ring-blue-400/30' : 'shadow-none'}
+                `}>
+                    <img 
+                        src={convertGoogleDriveUrl(driver.ImageURL)} 
+                        className="w-full h-full object-cover object-top"
+                        alt={driver.DriverName} 
+                    />
+                </div>
+            </div>
+
+            {/* Info Section */}
+            <div className="relative z-20 w-full px-2 text-center">
+                {/* Name Tag */}
+                <div className={`
+                    transition-all duration-300 transform
+                    ${isSelected ? 'translate-y-0 animate-float-text' : 'translate-y-1'}
+                `}>
+                    <h3 className={`
+                        text-[11px] font-black uppercase tracking-widest leading-tight
+                        ${isSelected ? 'text-white drop-shadow-[0_0_5px_rgba(34,211,238,0.8)]' : 'text-gray-400'}
+                    `}>
+                        {driver.DriverName}
+                    </h3>
+                </div>
+
+                {/* Active Indicator */}
+                <div className={`
+                    mt-2 flex items-center justify-center gap-1.5 transition-all duration-300
+                    ${isSelected ? 'opacity-100' : 'opacity-0 scale-0'}
+                `}>
+                    <div className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse shadow-[0_0_5px_#22d3ee]"></div>
+                    <span className="text-[7px] font-bold text-cyan-300 uppercase tracking-[0.2em] border border-cyan-500/30 px-1.5 py-0.5 rounded bg-cyan-950/50">
+                        ONLINE
+                    </span>
+                </div>
+            </div>
+        </div>
+    );
+};
+
+export default DriverSelector;

@@ -65,7 +65,8 @@ const ShippingMethodDropdown: React.FC<ShippingMethodDropdownProps> = ({
                 }
             `}</style>
             
-            <div className="grid grid-cols-2 gap-4 max-h-80 overflow-y-auto custom-scrollbar pr-2 pb-2 pt-2">
+            {/* Added px-2 to ensure even padding on both left and right sides */}
+            <div className="grid grid-cols-2 gap-4 max-h-80 overflow-y-auto custom-scrollbar px-2 pb-2 pt-2">
                 {methods.map((method) => {
                     const isSelected = selectedMethodName === method.MethodName;
                     
