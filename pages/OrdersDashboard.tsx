@@ -27,7 +27,7 @@ const availableColumns = [
     { key: 'shippingService', label: 'សេវាដឹក' },
     { key: 'shippingCost', label: '(Cost) សេវាដឹក' },
     { key: 'status', label: 'ស្ថានភាព' },
-    { key: 'date', label: 'កាលបរិច្ឆេទ' },
+    { key: 'date', label: 'កាលបរិច្ឆេទ & ម៉ោង' },
     { key: 'print', label: 'ព្រីន' },
     { key: 'actions', label: 'សកម្មភាព' },
     { key: 'check', label: 'Check' },
