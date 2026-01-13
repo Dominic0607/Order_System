@@ -42,12 +42,14 @@ const ScannerOverlay: React.FC<ScannerOverlayProps> = ({
               
               .tracking-box {
                   position: absolute;
-                  border: 3px solid #10b981;
-                  box-shadow: 0 0 15px rgba(16, 185, 129, 0.6), inset 0 0 10px rgba(16, 185, 129, 0.3);
-                  border-radius: 12px;
-                  transition: all 0.1s linear;
+                  border: 2px solid #10b981;
+                  background-color: rgba(16, 185, 129, 0.1);
+                  box-shadow: 0 0 15px rgba(16, 185, 129, 0.6);
+                  border-radius: 8px;
+                  transition: all 0.1s linear; /* Smooth movement */
                   pointer-events: none;
                   z-index: 10;
+                  transform: translate(-50%, -50%); /* Center based on x, y */
               }
 
               /* Focus Reticle Animation */
@@ -67,15 +69,6 @@ const ScannerOverlay: React.FC<ScannerOverlayProps> = ({
                   z-index: 20;
                   box-shadow: 0 0 10px rgba(255,255,255,0.5);
               }
-              .focus-reticle::after {
-                  content: '';
-                  position: absolute;
-                  top: 50%; left: 50%;
-                  width: 4px; height: 4px;
-                  background: white;
-                  border-radius: 50%;
-                  transform: translate(-50%, -50%);
-              }
             `}</style>
             
             <div className="absolute inset-0 pointer-events-none overflow-hidden">
@@ -93,7 +86,7 @@ const ScannerOverlay: React.FC<ScannerOverlayProps> = ({
                     />
                 )}
 
-                {/* AI Tracking Box (Dynamic Percentage) */}
+                {/* AI Tracking Box (Calculated from Vision Algorithm) */}
                 {trackingBox && (
                     <div 
                         className="tracking-box"
@@ -104,8 +97,8 @@ const ScannerOverlay: React.FC<ScannerOverlayProps> = ({
                             height: `${trackingBox.height}%`
                         }}
                     >
-                        <div className="absolute -top-6 left-1/2 -translate-x-1/2 bg-emerald-500 text-white text-[10px] font-black px-2 py-0.5 rounded uppercase tracking-wider shadow-lg whitespace-nowrap">
-                            AI DETECTED
+                        <div className="absolute -top-6 left-1/2 -translate-x-1/2 bg-emerald-500 text-white text-[9px] font-black px-2 py-0.5 rounded uppercase tracking-wider shadow-lg whitespace-nowrap animate-pulse">
+                            AI TRACKING
                         </div>
                     </div>
                 )}
@@ -135,7 +128,7 @@ const ScannerOverlay: React.FC<ScannerOverlayProps> = ({
                     </div>
                     {trackingBox && (
                         <div className="text-[9px] font-mono text-emerald-400 bg-black/60 px-2 py-1 rounded border border-emerald-500/20 flex items-center gap-2 backdrop-blur-md animate-pulse">
-                            <span>SMART-TRACK</span>
+                            <span>SMART-ZOOM</span>
                         </div>
                     )}
                 </div>
