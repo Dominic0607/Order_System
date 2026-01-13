@@ -30,6 +30,9 @@ export const useBarcodeScanner = (
     const [isTorchOn, setIsTorchOn] = useState(false);
     const [isTorchSupported, setIsTorchSupported] = useState(false);
     
+    // Camera Facing Mode State
+    const [facingMode, setFacingMode] = useState<'environment' | 'user'>('environment');
+
     // Smart Tracking & Auto-Zoom State
     const [trackingBox, setTrackingBox] = useState<TrackingBox | null>(null);
     const [isAutoZooming, setIsAutoZooming] = useState(false);
@@ -40,6 +43,10 @@ export const useBarcodeScanner = (
     const beepSound = useRef(new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3'));
 
     // --- Core Camera Functions ---
+
+    const switchCamera = useCallback(() => {
+        setFacingMode(prev => prev === 'environment' ? 'user' : 'environment');
+    }, []);
 
     const getActiveTrack = (): MediaStreamTrack | null => {
         if (trackRef.current && trackRef.current.readyState === 'live') return trackRef.current;
@@ -227,13 +234,16 @@ export const useBarcodeScanner = (
 
         const initScanner = async () => {
             setIsInitializing(true);
+            setIsTorchOn(false); // Reset torch state on camera switch
+            setZoom(1); // Reset zoom
             
             // @ts-ignore
             const html5QrCode = new window.Html5Qrcode(elementId);
             scannerRef.current = html5QrCode;
 
-            // Improved Camera Config: Request High Resolution via videoConstraints
+            // Improved Camera Config: Ensure rear camera is used with facingMode inside videoConstraints
             const videoConstraints = {
+                facingMode: facingMode, // DYNAMIC FACING MODE
                 width: { min: 640, ideal: 1280, max: 1920 },
                 height: { min: 480, ideal: 720, max: 1080 },
                 focusMode: "continuous"
@@ -246,8 +256,9 @@ export const useBarcodeScanner = (
                 videoConstraints: videoConstraints
             };
 
+            // This is the first argument for start(), keep it minimal to avoid "exact key" errors
             const cameraConfig = { 
-                facingMode: "environment"
+                facingMode: facingMode
             };
 
             let lastScanTime = 0;
@@ -292,8 +303,8 @@ export const useBarcodeScanner = (
                         // @ts-ignore
                         setIsTorchOn(settings.torch || false);
                     } else {
-                        // Fallback: Assume supported on mobile if we can't detect it, until proven otherwise by error
-                        setIsTorchSupported(true); 
+                        // Fallback: Assume supported on mobile rear camera only
+                        setIsTorchSupported(facingMode === 'environment'); 
                     }
 
                     // Check Zoom
@@ -309,6 +320,8 @@ export const useBarcodeScanner = (
                         });
                         // @ts-ignore
                         setZoom(settings.zoom || capabilities.zoom.min);
+                    } else {
+                        setZoomCapabilities(null);
                     }
 
                     // Auto-enable continuous focus if available (Double check)
@@ -334,7 +347,7 @@ export const useBarcodeScanner = (
                 scannerRef.current.stop().then(() => scannerRef.current.clear()).catch(console.error);
             }
         };
-    }, []);
+    }, [facingMode]); // Re-run when facingMode changes
 
     return {
         isInitializing,
@@ -347,6 +360,8 @@ export const useBarcodeScanner = (
         toggleTorch,
         trackingBox,
         isAutoZooming,
-        triggerFocus
+        triggerFocus,
+        switchCamera,
+        facingMode
     };
 };
