@@ -39,17 +39,23 @@ const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({
     const [isTorchSupported, setIsTorchSupported] = useState(false);
     const [scannedItemsCount, setScannedItemsCount] = useState(0);
 
+    // Pinch Zoom Refs
+    const touchStartDist = useRef<number | null>(null);
+    const startZoom = useRef<number>(1);
+
     // Beep sound effect
     const beepSound = useRef(new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3'));
 
-    const handleZoomChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-        const newZoom = parseFloat(e.target.value);
+    const handleZoomChange = useCallback((value: number) => {
+        if (!zoomCapabilities) return;
+        // Clamp value
+        const newZoom = Math.min(Math.max(value, zoomCapabilities.min), zoomCapabilities.max);
         setZoom(newZoom);
         if (scannerRef.current?.isScanning) {
             scannerRef.current.applyVideoConstraints({ advanced: [{ zoom: newZoom }] })
                 .catch((err: any) => console.error("Failed to apply zoom", err));
         }
-    }, []);
+    }, [zoomCapabilities]);
     
     const toggleTorch = useCallback(async () => {
         if (scannerRef.current?.isScanning && isTorchSupported) {
@@ -64,6 +70,36 @@ const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({
             }
         }
     }, [isTorchOn, isTorchSupported]);
+
+    // Touch handlers for Pinch-to-Zoom
+    const handleTouchStart = (e: React.TouchEvent) => {
+        if (e.touches.length === 2) {
+            const dist = Math.hypot(
+                e.touches[0].pageX - e.touches[1].pageX,
+                e.touches[0].pageY - e.touches[1].pageY
+            );
+            touchStartDist.current = dist;
+            startZoom.current = zoom;
+        }
+    };
+
+    const handleTouchMove = (e: React.TouchEvent) => {
+        if (e.touches.length === 2 && touchStartDist.current !== null && zoomCapabilities) {
+            const dist = Math.hypot(
+                e.touches[0].pageX - e.touches[1].pageX,
+                e.touches[0].pageY - e.touches[1].pageY
+            );
+            const scale = dist / touchStartDist.current;
+            const range = zoomCapabilities.max - zoomCapabilities.min;
+            // Sensible scaling factor
+            const delta = (scale - 1) * range * 0.5; 
+            handleZoomChange(startZoom.current + delta);
+        }
+    };
+
+    const handleTouchEnd = () => {
+        touchStartDist.current = null;
+    };
 
     useEffect(() => {
         // @ts-ignore
@@ -121,12 +157,24 @@ const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({
         };
 
         const config = { 
-            fps: 15, // Higher FPS for smoother scanning
+            fps: 30, // Increased FPS for faster tracking
             qrbox: { width: 280, height: 280 }, 
-            aspectRatio: 1.0
+            aspectRatio: 1.0,
+            // Smart: Use native barcode detector if available (Android/iOS) for better performance and multi-format support
+            experimentalFeatures: {
+                useBarCodeDetectorIfSupported: true
+            }
         };
         
-        scanner.start({ facingMode: "environment" }, config, onScanSuccess, () => {})
+        // Smart: Requesting high resolution for better digital zoom and focus
+        const constraints = { 
+            facingMode: "environment",
+            width: { min: 640, ideal: 1920, max: 3840 },
+            height: { min: 480, ideal: 1080, max: 2160 },
+            focusMode: "continuous" // Attempt to force continuous focus
+        };
+
+        scanner.start(constraints, config, onScanSuccess, () => {})
             .then(() => {
                 const capabilities = scanner.getRunningTrackCapabilities();
                 if (capabilities) {
@@ -152,7 +200,12 @@ const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({
     }, [onCodeScanned, productsInOrder, masterProducts, scanMode]);
 
     return (
-        <div className="fixed inset-0 bg-black z-[100] flex flex-col animate-fade-in">
+        <div 
+            className="fixed inset-0 bg-black z-[100] flex flex-col animate-fade-in touch-none"
+            onTouchStart={handleTouchStart}
+            onTouchMove={handleTouchMove}
+            onTouchEnd={handleTouchEnd}
+        >
             <style>{`
               #barcode-reader-container { width: 100%; height: 100%; overflow: hidden; background: black; }
               #barcode-reader-container video { width: 100% !important; height: 100% !important; object-fit: cover; }
@@ -170,8 +223,14 @@ const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({
                 height: 2px;
                 background: #3b82f6;
                 box-shadow: 0 0 10px #3b82f6, 0 0 20px #3b82f6;
-                animation: scanner-line 2s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+                animation: scanner-line 1.5s cubic-bezier(0.4, 0, 0.2, 1) infinite;
                 z-index: 20;
+              }
+              .pinch-hint {
+                 animation: fade-out-hint 3s forwards 2s;
+              }
+              @keyframes fade-out-hint {
+                 to { opacity: 0; }
               }
             `}</style>
 
@@ -180,7 +239,7 @@ const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({
                 <div className="flex justify-between items-center">
                     <div className="bg-black/40 backdrop-blur-md px-3 py-1.5 rounded-full border border-white/10 flex items-center gap-2">
                         <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse"></div>
-                        <span className="text-white font-bold text-xs uppercase tracking-wider">Live Scan</span>
+                        <span className="text-white font-bold text-xs uppercase tracking-wider">Smart Scan</span>
                     </div>
                     <button onClick={onClose} className="p-3 bg-gray-800/50 backdrop-blur-md rounded-full text-white border border-white/10 active:scale-90 transition-all">
                         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" /></svg>
@@ -198,10 +257,10 @@ const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({
                         {/* Frame */}
                         <div className="relative w-[280px] h-[280px]">
                             {/* Corner Markers */}
-                            <div className="absolute top-0 left-0 w-10 h-10 border-t-4 border-l-4 border-blue-500 rounded-tl-3xl"></div>
-                            <div className="absolute top-0 right-0 w-10 h-10 border-t-4 border-r-4 border-blue-500 rounded-tr-3xl"></div>
-                            <div className="absolute bottom-0 left-0 w-10 h-10 border-b-4 border-l-4 border-blue-500 rounded-bl-3xl"></div>
-                            <div className="absolute bottom-0 right-0 w-10 h-10 border-b-4 border-r-4 border-blue-500 rounded-br-3xl"></div>
+                            <div className="absolute top-0 left-0 w-12 h-12 border-t-4 border-l-4 border-blue-500 rounded-tl-3xl shadow-[0_0_10px_rgba(59,130,246,0.5)]"></div>
+                            <div className="absolute top-0 right-0 w-12 h-12 border-t-4 border-r-4 border-blue-500 rounded-tr-3xl shadow-[0_0_10px_rgba(59,130,246,0.5)]"></div>
+                            <div className="absolute bottom-0 left-0 w-12 h-12 border-b-4 border-l-4 border-blue-500 rounded-bl-3xl shadow-[0_0_10px_rgba(59,130,246,0.5)]"></div>
+                            <div className="absolute bottom-0 right-0 w-12 h-12 border-b-4 border-r-4 border-blue-500 rounded-br-3xl shadow-[0_0_10px_rgba(59,130,246,0.5)]"></div>
                             
                             {/* Laser Animation */}
                             <div className="scanner-laser"></div>
@@ -211,6 +270,16 @@ const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({
                         </div>
                      </div>
                  )}
+
+                {/* Pinch Hint */}
+                {zoomCapabilities && !isScannerInitializing && (
+                    <div className="absolute top-[20%] left-0 right-0 flex justify-center pointer-events-none pinch-hint">
+                        <div className="bg-black/40 backdrop-blur-sm px-4 py-2 rounded-full border border-white/5 text-white/70 text-[10px] font-black uppercase tracking-widest flex items-center gap-2">
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7" /></svg>
+                            Pinch to Zoom
+                        </div>
+                    </div>
+                )}
 
                 {/* Loading State */}
                 {isScannerInitializing && (
@@ -233,7 +302,7 @@ const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({
 
                 {/* Scanned Result Popup Card */}
                 {lastScannedInfo && (
-                     <div className="absolute top-[20%] left-1/2 -translate-x-1/2 w-[90%] max-w-sm z-40 animate-fade-in-scale">
+                     <div className="absolute top-[15%] left-1/2 -translate-x-1/2 w-[90%] max-w-sm z-40 animate-fade-in-scale">
                         <div className={`
                             bg-[#0f172a]/95 backdrop-blur-xl border-l-4 p-4 rounded-r-2xl shadow-[0_20px_50px_rgba(0,0,0,0.5)] flex items-center gap-4
                             ${lastScannedInfo.status === 'success' ? 'border-emerald-500' : lastScannedInfo.status === 'warning' ? 'border-yellow-500' : 'border-red-500'}
@@ -276,7 +345,7 @@ const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({
                                 max={zoomCapabilities.max} 
                                 step={zoomCapabilities.step} 
                                 value={zoom} 
-                                onChange={handleZoomChange} 
+                                onChange={(e) => handleZoomChange(parseFloat(e.target.value))} 
                                 className="w-full h-1.5 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-blue-500"
                             />
                             <span className="text-[10px] font-black text-gray-500 uppercase">{zoomCapabilities.max}x</span>
