@@ -31,20 +31,21 @@ export const useSmartZoom = (
     const targetBoxRef = useRef<TrackingBox | null>(null);
     const cooldownRef = useRef<number>(0); 
     
-    // Native Barcode Detector Reference (For Android/Chrome)
+    // Native Barcode Detector Reference (For Android/Chrome - Hardware Accelerated)
     const nativeDetectorRef = useRef<any>(null);
 
     // Initialize Native Detector if available
     useEffect(() => {
-        // @ts-ignore
+        // @ts-ignore - BarcodeDetector is not yet in standard TS lib
         if ('BarcodeDetector' in window) {
             try {
                 // @ts-ignore
                 nativeDetectorRef.current = new window.BarcodeDetector({
                     formats: ['qr_code', 'ean_13', 'code_128', 'ean_8', 'code_39', 'upc_a']
                 });
+                console.log("Native Barcode Detector initialized (Android/Chrome optimized)");
             } catch (e) {
-                // Fallback to custom vision
+                console.warn("Native Barcode Detector failed, falling back to custom vision.");
             }
         }
     }, []);
@@ -63,13 +64,13 @@ export const useSmartZoom = (
 
         let result = null;
 
-        // 1. Try Native AI Detection (Android/Chrome)
-        // Native is always preferred if available as it reads the actual QR data location
+        // --- PRIORITY 1: Native AI Detection (Android/Chrome) ---
+        // This is much faster and uses hardware acceleration where available.
         if (nativeDetectorRef.current) {
             try {
                 const features = await nativeDetectorRef.current.detect(videoElement);
                 if (features.length > 0) {
-                    // Pick the largest code
+                    // Pick the largest code in the frame
                     const f = features.sort((a: any, b: any) => (b.boundingBox.width * b.boundingBox.height) - (a.boundingBox.width * a.boundingBox.height))[0];
                     const bb = f.boundingBox;
                     const vw = videoElement.videoWidth;
@@ -84,11 +85,13 @@ export const useSmartZoom = (
                         };
                     }
                 }
-            } catch (e) { }
+            } catch (e) { 
+                // Silently fail to fallback
+            }
         }
 
-        // 2. Fallback to Custom Vision Algorithm (iOS/Safari/Telegram)
-        // Only run if native didn't find anything
+        // --- PRIORITY 2: Fallback Custom Vision (iOS/Safari) ---
+        // If Native AI didn't return a result (or isn't supported), use our Histogram Algorithm.
         if (!result) {
             result = detectBarcodeRegion(videoElement);
         }
@@ -115,7 +118,6 @@ export const useSmartZoom = (
                 if (!prev) return targetBoxRef.current;
                 
                 // Very smooth movement for UI (slower lerp factor 0.15)
-                // This makes the box feel "heavy" and stable on iOS
                 return {
                     x: lerp(prev.x, targetBoxRef.current!.x, 0.15),
                     y: lerp(prev.y, targetBoxRef.current!.y, 0.15),
@@ -126,7 +128,7 @@ export const useSmartZoom = (
 
             // --- AUTO ZOOM LOGIC ---
             if (Date.now() > cooldownRef.current) {
-                // Stricter center check (40-60% of screen) to avoid zooming on edge noise
+                // Stricter center check (35-65% of screen) to avoid zooming on edge noise
                 const isCentered = result.x > 35 && result.x < 65 && result.y > 35 && result.y < 65;
                 
                 // We want the barcode to fill about 45% of the frame width
@@ -146,11 +148,18 @@ export const useSmartZoom = (
                     // Update zoom every 100ms for responsiveness
                     if (now - lastZoomTime.current > 100) {
                         
-                        // Get Hardware Capabilities
-                        // @ts-ignore
-                        const capabilities = track?.getCapabilities?.();
-                        // Allow up to 5x zoom if hardware supports it, default to 5 if unknown
-                        const hardwareMax = (capabilities as any)?.zoom?.max || 5.0;
+                        // Get Hardware Capabilities safely
+                        let hardwareMax = 5.0;
+                        try {
+                            // @ts-ignore
+                            const capabilities = track?.getCapabilities ? track.getCapabilities() : {};
+                            // @ts-ignore
+                            if (capabilities.zoom && capabilities.zoom.max) {
+                                // @ts-ignore
+                                hardwareMax = capabilities.zoom.max;
+                            }
+                        } catch(e) {}
+
                         const effectiveMax = Math.min(hardwareMax, 5.0);
 
                         if (currentZoom < effectiveMax) {
@@ -158,21 +167,18 @@ export const useSmartZoom = (
                             
                             // Proportional Zoom Logic:
                             // The smaller the barcode (larger error), the faster we zoom.
-                            // Error = Goal Size - Current Size
                             const error = targetWidthPercent - result.width;
-                            
-                            // Gain factor (K) - adjust for speed vs stability
                             const kP = 0.008; 
                             
                             // Calculate step based on error, scaled by current zoom level
                             let step = error * kP * currentZoom;
                             
-                            // Clamp step to reasonable limits (min 0.02 for slow crawl, max 0.5 for fast jump)
+                            // Clamp step to reasonable limits
                             step = Math.max(0.02, Math.min(step, 0.5));
 
                             const newZoom = Math.min(currentZoom + step, effectiveMax);
                             
-                            // Only apply if the change is significant enough to matter
+                            // Only apply if the change is significant enough
                             if (Math.abs(newZoom - currentZoom) > 0.01) {
                                 setZoom(newZoom);
                                 applyZoom(newZoom);
