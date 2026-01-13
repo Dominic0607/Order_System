@@ -1,6 +1,7 @@
 
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { detectBarcodeRegion } from '../utils/visionAlgorithm';
+import { isIOS } from '../utils/platform';
 
 interface TrackingBox {
     x: number;
@@ -39,7 +40,7 @@ export const useSmartZoom = (
     // Initialize Native Detector if available
     useEffect(() => {
         // @ts-ignore
-        if ('BarcodeDetector' in window) {
+        if ('BarcodeDetector' in window && !isIOS()) {
             try {
                 // @ts-ignore
                 nativeDetectorRef.current = new window.BarcodeDetector({
@@ -57,6 +58,12 @@ export const useSmartZoom = (
     };
 
     const runLoop = useCallback(async () => {
+        // *** CRITICAL IOS CHECK ***
+        // Disable all AI tracking and zooming logic for iOS to maximize performance and clarity
+        if (isIOS()) {
+            return;
+        }
+
         if (!videoElement || videoElement.paused || videoElement.ended) {
             requestRef.current = requestAnimationFrame(runLoop);
             return;
@@ -64,7 +71,7 @@ export const useSmartZoom = (
 
         let result = null;
 
-        // 1. Native AI Detection
+        // 1. Native AI Detection (Android/Desktop Chrome)
         if (nativeDetectorRef.current) {
             try {
                 const features = await nativeDetectorRef.current.detect(videoElement);
@@ -86,8 +93,8 @@ export const useSmartZoom = (
             } catch (e) { }
         }
 
-        // 2. Fallback Custom Vision
-        if (!result) {
+        // 2. Fallback Custom Vision (Only if not iOS and Native failed)
+        if (!result && !isIOS()) {
             result = detectBarcodeRegion(videoElement);
         }
 
@@ -203,7 +210,9 @@ export const useSmartZoom = (
     }, [videoElement, currentZoom, setZoom, applyZoom, track]);
 
     useEffect(() => {
-        requestRef.current = requestAnimationFrame(runLoop);
+        if (!isIOS()) {
+            requestRef.current = requestAnimationFrame(runLoop);
+        }
         return () => {
             if (requestRef.current) cancelAnimationFrame(requestRef.current);
         };

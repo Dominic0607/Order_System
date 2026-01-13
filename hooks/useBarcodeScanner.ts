@@ -84,7 +84,7 @@ export const useBarcodeScanner = (
         await applyConstraints({ zoom: z });
     }, [zoomCapabilities, applyConstraints]);
 
-    // --- Custom Smart Zoom Hook ---
+    // --- Custom Smart Zoom Hook (Will auto-disable on iOS internally) ---
     const { trackingBox, isAutoZooming, notifyManualZoom } = useSmartZoom(
         videoRef.current,
         trackRef.current,
@@ -166,22 +166,23 @@ export const useBarcodeScanner = (
 
             const isIosDevice = isIOS();
 
-            // *** CRITICAL IOS FIX ***
-            // 1. Remove aspectRatio constraint for iOS to prevent digital cropping/blur.
-            // 2. Request high resolution (720p or 1080p) to ensure barcode lines are sharp.
-            // 3. Use 'environment' facingMode explicitly.
+            // *** CRITICAL IOS CONFIGURATION ***
+            // iOS Safari treats aspect ratio strongly, often cropping the sensor and losing quality.
+            // We REMOVE aspectRatio for iOS to get the full sensor width.
+            // We also request High Resolution (1080p ideal) to ensure small barcodes are crisp.
             const videoConstraints = isIosDevice 
                 ? {
                     facingMode: "environment",
-                    width: { min: 720, ideal: 1280, max: 1920 },
-                    height: { min: 480, ideal: 720, max: 1080 },
-                    // Do NOT set aspectRatio on iOS
+                    // Request 1080p for max clarity
+                    width: { min: 1280, ideal: 1920 }, 
+                    height: { min: 720, ideal: 1080 },
+                    // NO aspect ratio constraint
                   }
                 : {
                     facingMode: facingMode,
                     width: { min: 640, ideal: 1280, max: 1920 },
                     height: { min: 480, ideal: 720, max: 1080 },
-                    aspectRatio: 1.777777778, // 16:9 for Android
+                    aspectRatio: 1.777777778, // 16:9 for Android full screen feel
                     focusMode: "continuous"
                   };
 
@@ -192,7 +193,7 @@ export const useBarcodeScanner = (
                 ...(isIosDevice ? {} : { aspectRatio: 1.777777778 }),
                 disableFlip: false,
                 experimentalFeatures: {
-                    useBarCodeDetectorIfSupported: false 
+                    useBarCodeDetectorIfSupported: !isIosDevice // Enable native API only on Android/Desktop
                 },
                 videoConstraints: videoConstraints
             };
