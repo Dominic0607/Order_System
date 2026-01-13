@@ -106,7 +106,7 @@ const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({
     const { 
         isInitializing, error, zoom, zoomCapabilities, handleZoomChange, 
         isTorchOn, isTorchSupported, toggleTorch, trackingBox, isAutoZooming,
-        triggerFocus, switchCamera
+        triggerFocus, switchCamera, scanFromImage
     } = useBarcodeScanner("barcode-reader-container", handleScan, scanMode);
 
     // Touch Event Handlers (Zoom & Swipe & Focus)
@@ -165,6 +165,16 @@ const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({
         touchStartDist.current = null; 
         touchStartY.current = null;
         touchStartX.current = null;
+    };
+
+    const handleFileUpload = async (file: File) => {
+        try {
+            const decodedText = await scanFromImage(file);
+            handleScan(decodedText);
+        } catch (e) {
+            setLastScannedInfo({ status: 'error', message: 'រកមិនឃើញ Barcode ក្នុងរូបភាព', product: undefined });
+            setTimeout(() => setLastScannedInfo(null), 2000);
+        }
     };
 
     return (
@@ -254,6 +264,7 @@ const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({
                     scanMode={scanMode}
                     setScanMode={setScanMode}
                     onOpenHistory={() => setIsHistoryOpen(true)}
+                    onUpload={handleFileUpload}
                 />
             )}
 
