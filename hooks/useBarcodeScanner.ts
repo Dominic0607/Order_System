@@ -182,6 +182,7 @@ export const useBarcodeScanner = (
                     facingMode: facingMode,
                     width: { min: 640, ideal: 1280, max: 1920 },
                     height: { min: 480, ideal: 720, max: 1080 },
+                    frameRate: { ideal: 60, min: 30 }, // Request high FPS for Android
                     aspectRatio: 1.777777778, // 16:9 for Android full screen feel
                     focusMode: "continuous"
                   };

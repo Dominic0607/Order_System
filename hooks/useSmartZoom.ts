@@ -31,7 +31,7 @@ export const useSmartZoom = (
     const targetBoxRef = useRef<TrackingBox | null>(null);
     const cooldownRef = useRef<number>(0); 
     
-    // Lock to prevent overlapping hardware zoom calls which causes stutter
+    // Lock to prevent overlapping hardware zoom calls
     const isApplyingZoomRef = useRef(false);
     
     // Native Barcode Detector Reference (For Android/Chrome - Hardware Accelerated)
@@ -71,11 +71,12 @@ export const useSmartZoom = (
 
         let result = null;
 
-        // 1. Native AI Detection (Android/Desktop Chrome)
+        // 1. Native AI Detection (Android/Desktop Chrome) - PRIORITIZED FOR SPEED
         if (nativeDetectorRef.current) {
             try {
                 const features = await nativeDetectorRef.current.detect(videoElement);
                 if (features.length > 0) {
+                    // Pick the largest barcode
                     const f = features.sort((a: any, b: any) => (b.boundingBox.width * b.boundingBox.height) - (a.boundingBox.width * a.boundingBox.height))[0];
                     const bb = f.boundingBox;
                     const vw = videoElement.videoWidth;
@@ -117,26 +118,30 @@ export const useSmartZoom = (
             setTrackingBox(prev => {
                 if (!prev) return targetBoxRef.current;
                 return {
-                    x: lerp(prev.x, targetBoxRef.current!.x, 0.15),
-                    y: lerp(prev.y, targetBoxRef.current!.y, 0.15),
-                    width: lerp(prev.width, targetBoxRef.current!.width, 0.1),
-                    height: lerp(prev.height, targetBoxRef.current!.height, 0.1)
+                    x: lerp(prev.x, targetBoxRef.current!.x, 0.2), // Faster visual update
+                    y: lerp(prev.y, targetBoxRef.current!.y, 0.2),
+                    width: lerp(prev.width, targetBoxRef.current!.width, 0.15),
+                    height: lerp(prev.height, targetBoxRef.current!.height, 0.15)
                 };
             });
 
-            // --- SMOOTH AUTO ZOOM LOGIC ---
+            // --- AGGRESSIVE AUTO ZOOM LOGIC (ANDROID) ---
             if (Date.now() > cooldownRef.current) {
-                const isCentered = result.x > 35 && result.x < 65 && result.y > 35 && result.y < 65;
-                const targetWidthPercent = 45; // Goal: Barcode takes up 45% of screen
+                // Check if centered with wider tolerance
+                const isCentered = result.x > 30 && result.x < 70 && result.y > 30 && result.y < 70;
+                
+                // Target width is 55% of screen (Zoom closer)
+                const targetWidthPercent = 55; 
                 const isSmall = result.width < targetWidthPercent;
                 
                 if (isCentered && isSmall) {
                     stableFramesRef.current++;
                 } else {
-                    stableFramesRef.current = Math.max(0, stableFramesRef.current - 2);
+                    stableFramesRef.current = Math.max(0, stableFramesRef.current - 1); // Decay slower
                 }
 
-                if (stableFramesRef.current > 10) { 
+                // Fast reaction: Zoom after 5 stable frames (approx 160ms @ 30fps)
+                if (stableFramesRef.current > 5) { 
                     // Get Hardware Constraints
                     let hardwareMax = 5.0;
                     try {
@@ -148,44 +153,40 @@ export const useSmartZoom = (
                             hardwareMax = capabilities.zoom.max;
                         }
                     } catch(e) {}
-                    const effectiveMax = Math.min(hardwareMax, 5.0);
+                    const effectiveMax = Math.min(hardwareMax, 8.0); // Allow up to 8x if hardware supports
 
                     // Error = Goal - Current
                     const error = targetWidthPercent - result.width;
 
-                    // DEAD BAND: If error is small (< 3%), don't zoom. This stops "breathing/jittering".
-                    if (Math.abs(error) > 3 && currentZoom < effectiveMax && !isApplyingZoomRef.current) {
+                    // Dead band: 2% (Zoom even on small differences)
+                    if (Math.abs(error) > 2 && currentZoom < effectiveMax && !isApplyingZoomRef.current) {
                         setIsAutoZooming(true);
                         
-                        // Lower gain for smoother transitions (0.004)
-                        const kP = 0.004; 
+                        // Higher Gain for Speed: 0.008 (Double previous)
+                        const kP = 0.008; 
                         
-                        // Calculate step. Scale by currentZoom so zooming gets faster as we zoom in (logarithmic feel)
+                        // Calculate step. Scale by currentZoom for logarithmic feel
                         let delta = error * kP * currentZoom;
                         
-                        // Clamp delta to avoid massive jumps, but allow small smooth ones
-                        delta = Math.max(-0.1, Math.min(delta, 0.1));
+                        // Allow larger jumps for speed
+                        delta = Math.max(-0.15, Math.min(delta, 0.15));
 
                         const newZoom = Math.min(Math.max(currentZoom + delta, 1.0), effectiveMax);
                         
-                        // Only apply if the change is significant enough for the hardware to register (usually > 0.05 steps)
-                        // This prevents flooding the driver with micro-adjustments
+                        // Apply if change is significant enough
                         if (Math.abs(newZoom - currentZoom) > 0.02) {
                             isApplyingZoomRef.current = true;
                             
-                            // Optimistically update state
                             setZoom(newZoom);
                             
-                            // Apply to hardware and release lock when done
                             applyZoom(newZoom)
                                 .catch(e => {
-                                    console.warn("Zoom failed", e);
+                                    // console.warn("Zoom failed", e);
                                 })
                                 .finally(() => {
                                     isApplyingZoomRef.current = false;
                                 });
                         } else {
-                            // If change is too small, just reset lock immediately
                             isApplyingZoomRef.current = false;
                         }
                     } 
@@ -198,7 +199,7 @@ export const useSmartZoom = (
 
         } else {
             lostFramesRef.current++;
-            if (lostFramesRef.current > 20) {
+            if (lostFramesRef.current > 15) { // Reset faster if lost
                 setTrackingBox(null);
                 targetBoxRef.current = null;
                 setIsAutoZooming(false);
