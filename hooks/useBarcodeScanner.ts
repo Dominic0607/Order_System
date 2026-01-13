@@ -1,275 +1,173 @@
 
-import { useState, useEffect, useRef, useCallback } from 'react';
-import { isIOS } from '../utils/platform';
-import { useSmartZoom } from './useSmartZoom';
+import { useState, useRef, useEffect, useCallback } from 'react';
+import { detectBarcodeRegion } from '../utils/visionAlgorithm';
 
-interface ScannerConfig {
-    fps: number;
-    qrbox: number | { width: number, height: number };
-    aspectRatio: number;
-    videoConstraints?: any;
-    experimentalFeatures?: any;
+interface TrackingBox {
+    x: number;
+    y: number;
+    width: number;
+    height: number;
 }
 
-export const useBarcodeScanner = (
-    elementId: string, 
-    onScan: (decodedText: string) => void,
-    scanMode: 'single' | 'increment'
+// Helper: Linear Interpolation for smooth movement
+const lerp = (start: number, end: number, factor: number) => {
+    return start + (end - start) * factor;
+};
+
+export const useSmartZoom = (
+    videoElement: HTMLVideoElement | null, 
+    track: MediaStreamTrack | null,
+    currentZoom: number,
+    setZoom: (z: number) => void,
+    applyZoom: (z: number) => Promise<void>
 ) => {
-    const scannerRef = useRef<any>(null);
-    const [isInitializing, setIsInitializing] = useState(true);
-    const [error, setError] = useState<string | null>(null);
+    const [trackingBox, setTrackingBox] = useState<TrackingBox | null>(null);
+    const [isAutoZooming, setIsAutoZooming] = useState(false);
     
-    // Zoom & Camera Controls
-    const [zoom, setZoom] = useState(1);
-    const [zoomCapabilities, setZoomCapabilities] = useState<{ min: number; max: number; step: number } | null>(null);
-    const [isTorchOn, setIsTorchOn] = useState(false);
-    const [isTorchSupported, setIsTorchSupported] = useState(false);
-    const [facingMode, setFacingMode] = useState<'environment' | 'user'>('environment');
+    const requestRef = useRef<number>(0);
+    const lastZoomTime = useRef<number>(0);
+    const stableFramesRef = useRef<number>(0);
+    const lostFramesRef = useRef<number>(0);
+    const targetBoxRef = useRef<TrackingBox | null>(null);
+    const cooldownRef = useRef<number>(0); 
     
-    const videoRef = useRef<HTMLVideoElement | null>(null);
-    const trackRef = useRef<MediaStreamTrack | null>(null);
-    const beepSound = useRef(new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3'));
+    // Native Barcode Detector Reference (For Android/Chrome)
+    const nativeDetectorRef = useRef<any>(null);
 
-    // --- Core Camera Functions ---
-
-    const switchCamera = useCallback(() => {
-        setFacingMode(prev => prev === 'environment' ? 'user' : 'environment');
-    }, []);
-
-    const getActiveTrack = (): MediaStreamTrack | null => {
-        if (trackRef.current && trackRef.current.readyState === 'live') return trackRef.current;
-        if (scannerRef.current?.html5QrCode) {
-            const track = scannerRef.current.html5QrCode.getRunningTrackCamera?.();
-            if (track) return track;
-        }
-        const videoElement = document.querySelector(`#${elementId} video`) as HTMLVideoElement;
-        if (videoElement && videoElement.srcObject) {
-            const stream = videoElement.srcObject as MediaStream;
-            const track = stream.getVideoTracks()[0];
-            if (track) return track;
-        }
-        return null;
-    };
-
-    const applyConstraints = useCallback(async (constraints: any) => {
-        const track = getActiveTrack();
-        if (!track) return;
-        const isIosDevice = isIOS();
-        try {
-            await track.applyConstraints(constraints);
-        } catch (e) {
-            // iOS Zoom Fix
-            if (constraints.zoom && isIosDevice) {
-                try {
-                    await track.applyConstraints({ advanced: [{ zoom: constraints.zoom }] } as any);
-                } catch (e2) {
-                    console.warn("Zoom failed on iOS:", e2);
-                }
+    // Initialize Native Detector if available
+    useEffect(() => {
+        // @ts-ignore
+        if ('BarcodeDetector' in window) {
+            try {
+                // @ts-ignore
+                nativeDetectorRef.current = new window.BarcodeDetector({
+                    formats: ['qr_code', 'ean_13', 'code_128', 'ean_8', 'code_39', 'upc_a']
+                });
+                console.log("Using Native AI BarcodeDetector");
+            } catch (e) {
+                console.warn("Native BarcodeDetector failed to init, using fallback.");
             }
         }
     }, []);
 
-    // --- Smooth Zoom Logic ---
-    const setSmoothZoom = useCallback(async (targetZoom: number) => {
-        const track = getActiveTrack();
-        if (!track) return;
-        
-        let z = targetZoom;
-        if (zoomCapabilities) {
-            // Ensure we don't go out of bounds, but allow values < 1 if capabilities allow (Ultrawide)
-            z = Math.max(zoomCapabilities.min, Math.min(targetZoom, zoomCapabilities.max));
-        }
-        setZoom(z);
-        await applyConstraints({ zoom: z });
-    }, [zoomCapabilities, applyConstraints]);
+    const notifyManualZoom = () => {
+        cooldownRef.current = Date.now() + 2000;
+        setIsAutoZooming(false);
+    };
 
-    // --- NEW: Integrate Custom Smart Zoom Hook ---
-    const { trackingBox, isAutoZooming, notifyManualZoom } = useSmartZoom(
-        videoRef.current,
-        trackRef.current,
-        zoom,
-        setZoom, 
-        (z) => applyConstraints({ zoom: z }) 
-    );
-
-    // Wrapper to notify auto-zoom to pause when manual zoom is used
-    const handleManualZoom = useCallback((z: number) => {
-        notifyManualZoom();
-        setSmoothZoom(z);
-    }, [notifyManualZoom, setSmoothZoom]);
-
-    // --- Torch Logic ---
-    const toggleTorch = useCallback(async () => {
-        const track = getActiveTrack();
-        if (!track) return;
-        if (isIOS()) return; 
-
-        const newStatus = !isTorchOn;
-        try {
-            await track.applyConstraints({ advanced: [{ torch: newStatus } as any] });
-            setIsTorchOn(newStatus);
-        } catch (err) {
-            try {
-                await track.applyConstraints({ torch: newStatus } as any);
-                setIsTorchOn(newStatus);
-            } catch(e2) { }
-        }
-    }, [isTorchOn]);
-
-    // --- Focus Logic ---
-    const triggerFocus = useCallback(async () => {
-        const track = getActiveTrack();
-        if (!track) return;
-        const capabilities = track.getCapabilities() as any;
-        if (!capabilities.focusMode) return;
-        try {
-            if (capabilities.focusMode.includes('single-shot') && capabilities.focusMode.includes('continuous')) {
-                await applyConstraints({ focusMode: 'single-shot' });
-                setTimeout(async () => {
-                    await applyConstraints({ focusMode: 'continuous' });
-                }, 1000);
-            } 
-        } catch (err) { }
-    }, [applyConstraints]);
-
-    useEffect(() => {
-        // @ts-ignore
-        if (!window.Html5Qrcode) {
-            setError("Scanner library missing.");
+    const runLoop = useCallback(async () => {
+        if (!videoElement || videoElement.paused || videoElement.ended) {
+            requestRef.current = requestAnimationFrame(runLoop);
             return;
         }
 
-        const initScanner = async () => {
-            setIsInitializing(true);
-            setIsTorchOn(false);
-            setZoom(1);
-            
-            // @ts-ignore
-            const html5QrCode = new window.Html5Qrcode(elementId);
-            scannerRef.current = html5QrCode;
+        let result = null;
 
-            const isIosDevice = isIOS();
-
-            const videoConstraints = isIosDevice 
-                ? {
-                    facingMode: facingMode,
-                    width: { ideal: 1080 }, 
-                    height: { ideal: 1080 },
-                    aspectRatio: 1.0,
-                    // Try to request zoom starting at 1 (or lower if device supports it automatically)
-                    zoom: 1 
-                  }
-                : {
-                    facingMode: facingMode,
-                    width: { min: 640, ideal: 1280, max: 1920 },
-                    height: { min: 480, ideal: 720, max: 1080 },
-                    aspectRatio: 1.777777778,
-                    focusMode: "continuous"
-                  };
-
-            const config: ScannerConfig = { 
-                fps: 30,
-                qrbox: { width: 250, height: 250 }, 
-                aspectRatio: 1.0,
-                experimentalFeatures: {
-                    useBarCodeDetectorIfSupported: false 
-                },
-                videoConstraints: videoConstraints
-            };
-
-            let lastScanTime = 0;
-            const onScanSuccess = (decodedText: string) => {
-                const now = Date.now();
-                if (now - lastScanTime < 1500) return;
-                lastScanTime = now;
-                
-                beepSound.current.currentTime = 0;
-                beepSound.current.play().catch(() => {});
-                if (navigator.vibrate) navigator.vibrate(50);
-                
-                onScan(decodedText);
-            };
-
+        // 1. Try Native AI Detection (Android/Chrome)
+        if (nativeDetectorRef.current) {
             try {
-                await html5QrCode.start({ facingMode: facingMode }, config, onScanSuccess, undefined);
+                const features = await nativeDetectorRef.current.detect(videoElement);
+                if (features.length > 0) {
+                    // Get the biggest code found
+                    const f = features.sort((a: any, b: any) => (b.boundingBox.width * b.boundingBox.height) - (a.boundingBox.width * a.boundingBox.height))[0];
+                    const bb = f.boundingBox;
+                    
+                    // Convert pixels to percentages
+                    const vw = videoElement.videoWidth;
+                    const vh = videoElement.videoHeight;
+                    
+                    if (vw > 0 && vh > 0) {
+                        result = {
+                            x: (bb.x + bb.width / 2) / vw * 100,
+                            y: (bb.y + bb.height / 2) / vh * 100,
+                            width: bb.width / vw * 100,
+                            height: bb.height / vh * 100
+                        };
+                    }
+                }
+            } catch (e) {
+                // Silently fail to fallback
+            }
+        }
+
+        // 2. Fallback to Custom Vision Algorithm (iOS/Safari) if Native returned nothing
+        if (!result) {
+            result = detectBarcodeRegion(videoElement);
+        }
+
+        if (result) {
+            lostFramesRef.current = 0; 
+            
+            targetBoxRef.current = {
+                x: result.x,
+                y: result.y,
+                width: result.width,
+                height: result.height
+            };
+
+            setTrackingBox(prev => {
+                if (!prev) return targetBoxRef.current;
+                if (!targetBoxRef.current) return prev;
+                return {
+                    x: lerp(prev.x, targetBoxRef.current.x, 0.2),
+                    y: lerp(prev.y, targetBoxRef.current.y, 0.2),
+                    width: lerp(prev.width, targetBoxRef.current.width, 0.1),
+                    height: lerp(prev.height, targetBoxRef.current.height, 0.1)
+                };
+            });
+
+            // --- AUTO ZOOM LOGIC ---
+            if (Date.now() > cooldownRef.current) {
+                // Center Check: 35-65%
+                const isCentered = result.x > 35 && result.x < 65 && result.y > 35 && result.y < 65;
+                // Small Check: < 30% width
+                const isSmall = result.width < 30; 
                 
-                const videoEl = document.querySelector(`#${elementId} video`) as HTMLVideoElement;
-                if (videoEl) {
-                    videoRef.current = videoEl;
-                    videoEl.setAttribute('playsinline', 'true'); 
+                if (isCentered && isSmall) {
+                    stableFramesRef.current++;
+                } else {
+                    stableFramesRef.current = 0;
                 }
 
-                const track = getActiveTrack();
-                if (track) {
-                    trackRef.current = track;
-                    const capabilities = track.getCapabilities() as any;
-                    const settings = track.getSettings();
-
-                    if (!isIosDevice && 'torch' in capabilities) {
-                        setIsTorchSupported(true);
-                    } else {
-                        setIsTorchSupported(false);
-                    }
-
-                    if (isIosDevice) {
-                        // iOS Zoom Fix: We try to detect valid range, or fallback to wide range
-                        // If iPhone 11+ Pro, min zoom can be 0.5
-                        // @ts-ignore
-                        const minZ = settings.zoom ? Math.min(settings.zoom, 1) : 1; 
-                        setZoomCapabilities({ min: minZ >= 1 ? 1 : 0.5, max: 5, step: 0.1 });
+                if (stableFramesRef.current > 15) {
+                    const now = Date.now();
+                    if (now - lastZoomTime.current > 100) {
+                        setIsAutoZooming(true);
+                        // Zoom faster if using Native AI (more confident)
+                        const step = result.width < 15 ? 0.3 : 0.1;
+                        const newZoom = Math.min(currentZoom + step, 3.0); 
                         
-                        // @ts-ignore
-                        setZoom(settings.zoom || 1);
-                    } 
-                    // @ts-ignore
-                    else if (capabilities.zoom) {
-                        setZoomCapabilities({
-                            // @ts-ignore
-                            min: capabilities.zoom.min, 
-                            // @ts-ignore
-                            max: capabilities.zoom.max, 
-                            // @ts-ignore
-                            step: capabilities.zoom.step
-                        });
-                        // @ts-ignore
-                        setZoom(settings.zoom || capabilities.zoom.min);
-                    } else {
-                        setZoomCapabilities(null);
+                        if (Math.abs(newZoom - currentZoom) > 0.01) {
+                            setZoom(newZoom);
+                            applyZoom(newZoom);
+                        }
+                        lastZoomTime.current = now;
                     }
+                } else {
+                    setIsAutoZooming(false);
                 }
-
-                setIsInitializing(false);
-
-            } catch (err: any) {
-                console.error("Camera Start Error:", err);
-                setError(err.name === 'NotAllowedError' ? "Camera permission denied." : "Camera error.");
-                setIsInitializing(false);
+            } else {
+                setIsAutoZooming(false);
             }
-        };
 
-        initScanner();
+        } else {
+            lostFramesRef.current++;
+            if (lostFramesRef.current > 10) {
+                setTrackingBox(null);
+                setIsAutoZooming(false);
+                stableFramesRef.current = 0;
+            }
+        }
 
+        requestRef.current = requestAnimationFrame(runLoop);
+    }, [videoElement, currentZoom, setZoom, applyZoom]);
+
+    useEffect(() => {
+        requestRef.current = requestAnimationFrame(runLoop);
         return () => {
-            if (scannerRef.current && scannerRef.current.isScanning) {
-                scannerRef.current.stop().then(() => scannerRef.current.clear()).catch(console.error);
-            }
+            if (requestRef.current) cancelAnimationFrame(requestRef.current);
         };
-    }, [facingMode]);
+    }, [runLoop]);
 
-    return {
-        isInitializing,
-        error,
-        zoom,
-        zoomCapabilities,
-        handleZoomChange: handleManualZoom, // Use wrapped function
-        isTorchOn,
-        isTorchSupported,
-        toggleTorch,
-        trackingBox, 
-        isAutoZooming, 
-        triggerFocus,
-        switchCamera,
-        facingMode
-    };
+    return { trackingBox, isAutoZooming, notifyManualZoom };
 };
