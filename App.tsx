@@ -127,6 +127,15 @@ const App: React.FC = () => {
         setRefreshTimestamp(Date.now());
     };
 
+    const updateCurrentUser = (updatedData: Partial<User>) => {
+        if (currentUser) {
+            const newUser = { ...currentUser, ...updatedData };
+            setCurrentUser(newUser);
+            // Persist to local storage to ensure updates survive page reload
+            localStorage.setItem('orderAppSession', JSON.stringify({ user: newUser, timestamp: Date.now() }));
+        }
+    };
+
     const shouldShowHeader = useMemo(() => appState !== 'admin_dashboard' || isMobile, [appState, isMobile]);
 
     const containerClass = useMemo(() => 
@@ -145,8 +154,7 @@ const App: React.FC = () => {
         <AppContext.Provider value={{
             currentUser, appData, login, logout, refreshData, refreshTimestamp,
             originalAdminUser, returnToAdmin: () => {}, previewImage: (u) => setPreviewImageUrl(u),
-            updateCurrentUser: (d) => currentUser && setCurrentUser({ ...currentUser, ...d }),
-            setUnreadCount, unreadCount, updateProductInData: () => {}, apiKey: '',
+            updateCurrentUser, setUnreadCount, unreadCount, updateProductInData: () => {}, apiKey: '',
             setAppState, setOriginalAdminUser, fetchData, setCurrentUser, setChatVisibility: setChatVisible,
             isSidebarCollapsed, setIsSidebarCollapsed, setIsChatOpen,
             isMobileMenuOpen, setIsMobileMenuOpen,

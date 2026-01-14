@@ -63,7 +63,7 @@ export const translations = {
     // User Journey
     my_orders: "ការកម្មង់របស់ខ្ញុំ",
     current_team: "ក្រុមបច្ចុប្បន្ន",
-    change_team: "ប្តូរក្រុម",
+    change_team: "ប្តូរតួនាទី",
     create_order: "បង្កើតការកម្មង់ថ្មី",
     select_team_to_continue: "សូមជ្រើសរើសក្រុមដើម្បីបន្ត",
     team_desc: "ជ្រើសរើសក្រុមដែលអ្នកកំពុងបំពេញការងារ",
@@ -213,7 +213,7 @@ export const translations = {
     // User Journey
     my_orders: "My Orders",
     current_team: "Current Team",
-    change_team: "Change Team",
+    change_team: "Change Role",
     create_order: "Create New Order",
     select_team_to_continue: "Please select a team to continue",
     team_desc: "Choose the team you are currently working for",
