@@ -148,26 +148,31 @@ const BulkActionManager: React.FC<BulkActionManagerProps> = ({ orders, selectedI
 
     return (
         <>
-            {/* Desktop View */}
-            <BulkActionBarDesktop 
-                selectedCount={selectedIds.size}
-                isSidebarCollapsed={isSidebarCollapsed}
-                isProcessing={isProcessing}
-                onVerify={() => handleBulkUpdate({ 'IsVerified': true }, `បញ្ជាក់លើការកម្មង់ទាំង ${selectedIds.size} នេះ?`)}
-                onUnverify={() => handleBulkUpdate({ 'IsVerified': false })}
-                onOpenModal={setActiveModal}
-                onClearSelection={onClearSelection}
-            />
+            {/* Hide Action Bars when any modal is active */}
+            {!activeModal && (
+                <>
+                    {/* Desktop View */}
+                    <BulkActionBarDesktop 
+                        selectedCount={selectedIds.size}
+                        isSidebarCollapsed={isSidebarCollapsed}
+                        isProcessing={isProcessing}
+                        onVerify={() => handleBulkUpdate({ 'IsVerified': true }, `បញ្ជាក់លើការកម្មង់ទាំង ${selectedIds.size} នេះ?`)}
+                        onUnverify={() => handleBulkUpdate({ 'IsVerified': false })}
+                        onOpenModal={setActiveModal}
+                        onClearSelection={onClearSelection}
+                    />
 
-            {/* Mobile View */}
-            <BulkActionBarMobile 
-                selectedCount={selectedIds.size}
-                isProcessing={isProcessing}
-                onVerify={() => handleBulkUpdate({ 'IsVerified': true }, `បញ្ជាក់លើការកម្មង់ទាំង ${selectedIds.size} នេះ?`)}
-                onUnverify={() => handleBulkUpdate({ 'IsVerified': false })}
-                onOpenModal={setActiveModal}
-                onClearSelection={onClearSelection}
-            />
+                    {/* Mobile View */}
+                    <BulkActionBarMobile 
+                        selectedCount={selectedIds.size}
+                        isProcessing={isProcessing}
+                        onVerify={() => handleBulkUpdate({ 'IsVerified': true }, `បញ្ជាក់លើការកម្មង់ទាំង ${selectedIds.size} នេះ?`)}
+                        onUnverify={() => handleBulkUpdate({ 'IsVerified': false })}
+                        onOpenModal={setActiveModal}
+                        onClearSelection={onClearSelection}
+                    />
+                </>
+            )}
 
             {/* Modals */}
             
@@ -186,52 +191,82 @@ const BulkActionManager: React.FC<BulkActionManagerProps> = ({ orders, selectedI
                 </div>
             </Modal>
 
-            {/* 2. PAYMENT MODAL */}
-            <Modal isOpen={activeModal === 'payment'} onClose={() => setActiveModal(null)} maxWidth="max-w-md">
-                <div className="p-6 sm:p-8 bg-[#0f172a] rounded-[2.5rem] border border-white/10 overflow-hidden">
-                    <h3 className="text-lg font-black text-white text-center mb-6 uppercase tracking-tight">កែប្រែស្ថានភាពទូទាត់</h3>
-                    
-                    <div className="flex bg-black/40 p-1.5 rounded-2xl border border-gray-700 mb-6">
-                        <button 
-                            onClick={() => { setPaymentStatus('Paid'); }}
-                            className={`flex-1 py-3 rounded-xl font-black text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-2 ${paymentStatus === 'Paid' ? 'bg-emerald-600 text-white shadow-lg' : 'text-gray-500 hover:text-gray-300'}`}
-                        >
-                            ✅ Paid (រួចរាល់)
-                        </button>
-                        <button 
-                            onClick={() => { setPaymentStatus('Unpaid'); setPaymentInfo(''); }}
-                            className={`flex-1 py-3 rounded-xl font-black text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-2 ${paymentStatus === 'Unpaid' ? 'bg-red-600 text-white shadow-lg' : 'text-gray-500 hover:text-gray-300'}`}
-                        >
-                            ⏳ Unpaid (COD)
-                        </button>
+            {/* 2. PAYMENT MODAL (IMPROVED) */}
+            <Modal isOpen={activeModal === 'payment'} onClose={() => setActiveModal(null)} maxWidth="max-w-lg">
+                <div className="p-6 sm:p-8 bg-[#0f172a] rounded-[2.5rem] border border-white/10 overflow-hidden flex flex-col max-h-[85vh]">
+                    <div className="flex-shrink-0">
+                        <div className="flex items-center justify-center gap-3 mb-6">
+                            <div className="w-10 h-10 bg-blue-600/20 rounded-xl flex items-center justify-center border border-blue-500/30">
+                                <span className="text-xl">💳</span>
+                            </div>
+                            <h3 className="text-xl font-black text-white uppercase tracking-tighter">កែប្រែស្ថានភាពទូទាត់</h3>
+                        </div>
+                        
+                        {/* Segmented Control for Status */}
+                        <div className="flex p-1.5 bg-black/40 rounded-2xl border border-gray-700 mb-6">
+                            <button 
+                                onClick={() => { setPaymentStatus('Paid'); }}
+                                className={`flex-1 flex flex-col items-center justify-center py-4 rounded-xl transition-all duration-300 ${paymentStatus === 'Paid' ? 'bg-emerald-600 shadow-lg text-white' : 'text-gray-500 hover:text-gray-300'}`}
+                            >
+                                <span className="text-base font-black tracking-wider uppercase">PAID</span>
+                                <span className="text-[9px] font-bold opacity-80">(ទូទាត់រួចរាល់)</span>
+                            </button>
+                            <button 
+                                onClick={() => { setPaymentStatus('Unpaid'); setPaymentInfo(''); }}
+                                className={`flex-1 flex flex-col items-center justify-center py-4 rounded-xl transition-all duration-300 ${paymentStatus === 'Unpaid' ? 'bg-red-600 shadow-lg text-white' : 'text-gray-500 hover:text-gray-300'}`}
+                            >
+                                <span className="text-base font-black tracking-wider uppercase">UNPAID</span>
+                                <span className="text-[9px] font-bold opacity-80">(មិនទាន់ទូទាត់ - COD)</span>
+                            </button>
+                        </div>
                     </div>
 
-                    {paymentStatus === 'Paid' && (
-                        <div className="space-y-3 mb-8 animate-fade-in-down">
-                            <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-1">ជ្រើសរើសធនាគារ</p>
-                            <div className="grid grid-cols-2 gap-3 max-h-48 overflow-y-auto custom-scrollbar pr-1">
-                                {appData.bankAccounts?.map((b: any) => (
-                                    <button 
-                                        key={b.BankName} 
-                                        onClick={() => setPaymentInfo(b.BankName)}
-                                        className={`flex items-center gap-3 p-3 rounded-2xl border transition-all ${paymentInfo === b.BankName ? 'bg-blue-600/20 border-blue-500 shadow-[0_0_15px_rgba(37,99,235,0.2)]' : 'bg-gray-800/50 border-white/5 hover:border-white/20'}`}
-                                    >
-                                        <img src={convertGoogleDriveUrl(b.LogoURL)} className="w-8 h-8 rounded-lg object-contain bg-white/10 p-0.5" alt="" />
-                                        <span className={`text-[10px] font-black truncate ${paymentInfo === b.BankName ? 'text-blue-400' : 'text-gray-400'}`}>{b.BankName}</span>
-                                    </button>
-                                ))}
+                    <div className="flex-grow overflow-y-auto custom-scrollbar px-1">
+                        {paymentStatus === 'Paid' ? (
+                            <div className="space-y-4 animate-fade-in-down pb-4">
+                                <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest flex items-center gap-2">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-blue-500"></span>
+                                    ជ្រើសរើសគណនីធនាគារ
+                                </p>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                    {appData.bankAccounts?.map((b: any) => {
+                                        const isSelected = paymentInfo === b.BankName;
+                                        return (
+                                            <button 
+                                                key={b.BankName} 
+                                                onClick={() => setPaymentInfo(b.BankName)}
+                                                className={`flex items-center gap-4 p-4 rounded-2xl border transition-all duration-200 group ${isSelected ? 'bg-blue-600/20 border-blue-500 shadow-[0_0_20px_rgba(37,99,235,0.2)]' : 'bg-gray-800/40 border-white/5 hover:bg-gray-800 hover:border-white/20'}`}
+                                            >
+                                                <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${isSelected ? 'bg-black/40' : 'bg-black/20'}`}>
+                                                    <img src={convertGoogleDriveUrl(b.LogoURL)} className="w-7 h-7 object-contain" alt="" />
+                                                </div>
+                                                <span className={`text-xs font-black truncate w-full text-left whitespace-normal leading-tight ${isSelected ? 'text-white' : 'text-gray-400 group-hover:text-gray-200'}`}>
+                                                    {b.BankName}
+                                                </span>
+                                                {isSelected && <div className="w-2 h-2 rounded-full bg-blue-500 shadow-[0_0_8px_#3b82f6]"></div>}
+                                            </button>
+                                        );
+                                    })}
+                                </div>
                             </div>
-                        </div>
-                    )}
+                        ) : (
+                            <div className="flex flex-col items-center justify-center h-48 text-center opacity-50 space-y-3">
+                                <div className="w-16 h-16 rounded-full bg-red-900/20 flex items-center justify-center border border-red-500/20">
+                                    <span className="text-3xl grayscale">📦</span>
+                                </div>
+                                <p className="text-xs font-black text-gray-500 uppercase tracking-widest">ការទូទាត់នឹងត្រូវធ្វើឡើងពេលដឹកដល់</p>
+                            </div>
+                        )}
+                    </div>
 
-                    <div className="grid grid-cols-2 gap-4 mt-4 pt-4 border-t border-white/5">
-                        <button onClick={() => setActiveModal(null)} className="py-4 text-gray-500 font-black uppercase text-xs tracking-widest hover:text-white">បោះបង់</button>
+                    <div className="flex-shrink-0 grid grid-cols-2 gap-4 mt-6 pt-6 border-t border-white/10">
+                        <button onClick={() => setActiveModal(null)} className="py-4 text-gray-500 font-black uppercase text-xs tracking-widest hover:text-white transition-colors bg-gray-800/50 rounded-2xl hover:bg-gray-800">បោះបង់</button>
                         <button 
                             onClick={() => handleBulkUpdate({ 'Payment Status': paymentStatus, 'Payment Info': paymentStatus === 'Paid' ? paymentInfo : '' })} 
-                            className="py-4 bg-blue-600 text-white rounded-2xl font-black uppercase text-xs tracking-widest shadow-xl active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed" 
+                            className="py-4 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-500 hover:to-blue-600 text-white rounded-2xl font-black uppercase text-xs tracking-widest shadow-xl active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed transition-all" 
                             disabled={isProcessing || (paymentStatus === 'Paid' && !paymentInfo)}
                         >
-                            រក្សាទុក
+                            {isProcessing ? 'កំពុងរក្សាទុក...' : 'រក្សាទុកការផ្លាស់ប្តូរ'}
                         </button>
                     </div>
                 </div>
