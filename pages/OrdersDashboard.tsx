@@ -314,7 +314,7 @@ const OrdersDashboard: React.FC<OrdersDashboardProps> = ({ onBack }) => {
     }
 
     return (
-        <div className="w-full max-w-full mx-auto px-3 sm:px-6 lg:px-8 animate-fade-in relative pb-40 overflow-x-hidden">
+        <div className="w-full max-w-full mx-auto px-3 sm:px-6 lg:px-8 animate-fade-in relative pb-40 pt-6 overflow-x-hidden">
             <div className="md:hidden">
                 <FilterPanel isOpen={isFilterModalOpen} onClose={() => setIsFilterModalOpen(false)}>
                     <OrderFilters filters={filters} setFilters={setFilters} orders={enrichedOrders} usersList={usersList} appData={appData} calculatedRange={calculatedRange} />
@@ -341,7 +341,7 @@ const OrdersDashboard: React.FC<OrdersDashboardProps> = ({ onBack }) => {
 
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end mb-10 gap-6 px-1">
                 <div>
-                    <h1 className="text-3xl lg:text-5xl font-black text-white italic tracking-tighter leading-none mb-3">គ្រប់គ្រងប្រតិបត្តិការណ៍</h1>
+                    <h1 className="text-3xl lg:text-5xl font-black text-white italic tracking-tighter leading-relaxed mb-3 py-1">គ្រប់គ្រងប្រតិបត្តិការណ៍</h1>
                     <div className="flex items-center gap-3">
                         <div className="flex items-center gap-2 px-4 py-1.5 bg-blue-600/10 rounded-full border border-blue-500/20">
                             <div className="w-2 h-2 rounded-full bg-blue-500 animate-pulse"></div>
