@@ -66,3 +66,44 @@ export const DesktopGrandTotalRow: React.FC<DesktopGrandTotalRowProps> = ({ tota
         </tr>
     );
 };
+
+interface MobileGrandTotalCardProps {
+    totals: { grandTotal: number; internalCost: number; count: number };
+}
+
+export const MobileGrandTotalCard: React.FC<MobileGrandTotalCardProps> = ({ totals }) => {
+    if (totals.count === 0) return null;
+
+    return (
+        <div className="bg-gradient-to-r from-blue-900/40 to-indigo-900/40 rounded-[2rem] p-5 border border-blue-500/20 shadow-lg mb-4 backdrop-blur-md relative overflow-hidden">
+            <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/10 rounded-full blur-2xl -mr-10 -mt-10 pointer-events-none"></div>
+            
+            <div className="flex justify-between items-center mb-4 relative z-10">
+                <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-full bg-blue-600 flex items-center justify-center text-white font-black text-sm shadow-lg shadow-blue-600/30">
+                        {totals.count}
+                    </div>
+                    <div>
+                        <h3 className="text-white font-black uppercase tracking-wider text-sm">Total Orders</h3>
+                        <p className="text-blue-300 text-[10px] font-bold">Summary View</p>
+                    </div>
+                </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4 relative z-10">
+                <div className="bg-black/20 rounded-2xl p-3 border border-white/5">
+                    <p className="text-[9px] text-gray-400 font-black uppercase tracking-widest mb-1">Grand Total</p>
+                    <p className="text-xl font-black text-white tracking-tighter shadow-black drop-shadow-md">
+                        ${totals.grandTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </p>
+                </div>
+                <div className="bg-black/20 rounded-2xl p-3 border border-white/5">
+                    <p className="text-[9px] text-gray-400 font-black uppercase tracking-widest mb-1">Exp. Cost</p>
+                    <p className="text-xl font-black text-orange-400 tracking-tighter font-mono">
+                        ${totals.internalCost.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </p>
+                </div>
+            </div>
+        </div>
+    );
+};
