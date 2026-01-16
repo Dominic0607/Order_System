@@ -1,3 +1,4 @@
+
 import React, { useState, useContext, useRef, useEffect, useCallback, useMemo } from 'react';
 import { AppContext } from '../../context/AppContext';
 import { ChatMessage, User, BackendChatMessage } from '../../types';
@@ -24,6 +25,11 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ isOpen, onClose }) => {
     const { currentUser, appData, previewImage, setUnreadCount } = useContext(AppContext);
     const CACHE_KEY = useMemo(() => currentUser ? `chatHistoryCache_${currentUser.UserName}` : null, [currentUser]);
 
+    // Audio Recorder Hook
+    const { isRecording, startRecording, stopRecording } = useAudioRecorder();
+    const [recordingTime, setRecordingTime] = useState(0);
+    const recordingIntervalRef = useRef<any>(null);
+
     const [messages, setMessages] = useState<ChatMessage[]>(() => {
         if (!CACHE_KEY) return [];
         try {
@@ -35,17 +41,63 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ isOpen, onClose }) => {
     const [allUsers, setAllUsers] = useState<User[]>(appData.users || []);
     const [newMessage, setNewMessage] = useState('');
     const [isUploading, setIsUploading] = useState(false);
+    const [isSendingAudio, setIsSendingAudio] = useState(false);
     const [isMuted, setIsMuted] = useState(() => localStorage.getItem('chatMuted') === 'true');
-    const [isHistoryLoading, setIsHistoryLoading] = useState(messages.length === 0);
-    const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>('connecting');
+    const [isHistoryLoading, setIsHistoryLoading] = useState(false); // Changed default to false, will set true on fetch
+    const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>('disconnected');
     const [activeTab, setActiveTab] = useState<ActiveTab>('chat');
-    const [reconnectAttempts, setReconnectAttempts] = useState(0);
-
+    
     const fileInputRef = useRef<HTMLInputElement>(null);
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const wsRef = useRef<WebSocket | null>(null);
     const isOpenRef = useRef(isOpen);
     isOpenRef.current = isOpen;
+
+    // --- Audio Recording Logic ---
+    const handleStartRecording = async () => {
+        await startRecording();
+        setRecordingTime(0);
+        recordingIntervalRef.current = setInterval(() => {
+            setRecordingTime(prev => prev + 1);
+        }, 1000);
+    };
+
+    const handleCancelRecording = async () => {
+        await stopRecording(); // Stop but don't use the blob
+        if (recordingIntervalRef.current) clearInterval(recordingIntervalRef.current);
+        setRecordingTime(0);
+    };
+
+    const handleStopAndSendAudio = async () => {
+        if (recordingIntervalRef.current) clearInterval(recordingIntervalRef.current);
+        setIsSendingAudio(true);
+        try {
+            const audioBlob = await stopRecording();
+            if (audioBlob) {
+                // Convert Blob to Base64
+                const reader = new FileReader();
+                reader.readAsDataURL(audioBlob);
+                reader.onloadend = async () => {
+                    const base64data = reader.result as string;
+                    // Remove data:audio/webm;base64, prefix if present
+                    const content = base64data.split(',')[1]; 
+                    await handleSendMessage(content, 'audio');
+                };
+            }
+        } catch (e) {
+            console.error("Failed to send audio", e);
+        } finally {
+            setIsSendingAudio(false);
+            setRecordingTime(0);
+        }
+    };
+
+    const formatTime = (seconds: number) => {
+        const mins = Math.floor(seconds / 60);
+        const secs = seconds % 60;
+        return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
+    };
+    // -----------------------------
 
     const fetchUsers = async () => {
         try {
@@ -56,8 +108,6 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ isOpen, onClose }) => {
             }
         } catch (e) { console.error("User fetch failed", e); }
     };
-
-    useEffect(() => { if (isOpen) fetchUsers(); }, [isOpen]);
 
     const setAndCacheMessages = useCallback((updater: React.SetStateAction<ChatMessage[]>) => {
         setMessages(prev => {
@@ -82,44 +132,80 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ isOpen, onClose }) => {
         };
     }, [allUsers]);
 
+    // Independent Fetch History Function (REST API)
     const fetchHistory = useCallback(async () => {
+        if (messages.length === 0) setIsHistoryLoading(true);
         try {
             const res = await fetch(`${WEB_APP_URL}/api/chat/messages`);
             const result = await res.json();
             if (result.status === 'success') {
                 const history = result.data.map(transformBackendMessage);
-                setAndCacheMessages(history.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()));
+                setAndCacheMessages(history.sort((a: ChatMessage, b: ChatMessage) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()));
             }
-        } catch (e) { console.error(e); } finally { setIsHistoryLoading(false); }
-    }, [transformBackendMessage, setAndCacheMessages]);
+        } catch (e) { 
+            console.error("Fetch history failed:", e); 
+        } finally { 
+            setIsHistoryLoading(false); 
+        }
+    }, [transformBackendMessage, setAndCacheMessages, messages.length]);
 
     const connectWebSocket = useCallback(() => {
-        if (wsRef.current?.readyState < 2) return;
+        if (wsRef.current?.readyState === WebSocket.OPEN) return;
+        
         setConnectionStatus('connecting');
-        const ws = new WebSocket(WEB_APP_URL.replace(/^http/, 'ws') + '/api/chat/ws');
+        const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
+        const host = WEB_APP_URL.replace(/^https?:\/\//, '');
+        const ws = new WebSocket(`${protocol}://${host}/api/chat/ws`);
+        
         wsRef.current = ws;
 
-        ws.onopen = () => { setConnectionStatus('connected'); setReconnectAttempts(0); fetchHistory(); };
-        ws.onclose = () => { setConnectionStatus('disconnected'); if (isOpenRef.current) setReconnectAttempts(prev => prev + 1); };
+        ws.onopen = () => { 
+            setConnectionStatus('connected'); 
+            // Optional: Fetch history on reconnect to ensure no gaps, 
+            // but the primary fetch is handled by useEffect now.
+        };
+        ws.onclose = () => { setConnectionStatus('disconnected'); };
         ws.onmessage = (e) => {
-            const data = JSON.parse(e.data);
-            if (data.action === 'new_message') {
-                const msg = transformBackendMessage(data.payload);
-                setAndCacheMessages(prev => [...prev, msg]);
-                if (msg.user !== currentUser?.UserName && !isOpenRef.current) setUnreadCount(p => p + 1);
-                if (msg.user !== currentUser?.UserName && !isMuted) notificationSound.play().catch(() => {});
+            try {
+                const data = JSON.parse(e.data);
+                if (data.action === 'new_message') {
+                    const msg = transformBackendMessage(data.payload);
+                    setAndCacheMessages(prev => {
+                        if (prev.some(m => m.id === msg.id)) return prev;
+                        return [...prev, msg];
+                    });
+                    if (msg.user !== currentUser?.UserName && !isOpenRef.current) setUnreadCount(p => p + 1);
+                    if (msg.user !== currentUser?.UserName && !isMuted) notificationSound.play().catch(() => {});
+                }
+            } catch (err) { console.error("WS Message Error", err); }
+        };
+    }, [transformBackendMessage, currentUser, isMuted, setUnreadCount, setAndCacheMessages]);
+
+    // Initial Load Effect
+    useEffect(() => { 
+        if (isOpen) {
+            fetchUsers();
+            fetchHistory(); // Fetch immediately via REST
+            connectWebSocket(); // Connect WS for real-time
+        }
+        return () => {
+            if (wsRef.current) {
+                wsRef.current.close();
+                wsRef.current = null;
             }
         };
-    }, [transformBackendMessage, fetchHistory, currentUser, isMuted, setUnreadCount, setAndCacheMessages]);
+    }, [isOpen, connectWebSocket, fetchHistory]);
 
-    useEffect(() => { 
-        if (isOpen) connectWebSocket(); 
-        return () => wsRef.current?.close();
-    }, [isOpen, connectWebSocket]);
+    // Auto-scroll to bottom
+    const scrollToBottom = () => {
+        if (messagesEndRef.current) {
+            messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
+        }
+    };
 
     useEffect(() => {
-        if (activeTab === 'chat') messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-    }, [messages, activeTab]);
+        if (activeTab === 'chat') scrollToBottom();
+    }, [messages, activeTab, isOpen, isHistoryLoading]);
 
     const handleSendMessage = async (content: string, type: 'text' | 'image' | 'audio') => {
         if (!content.trim()) return;
@@ -145,61 +231,154 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ isOpen, onClose }) => {
     return (
         <div className={`chat-widget-container ${!isOpen ? 'closed' : ''}`}>
             <div className="chat-header">
-                <div className="title-group">
-                    <div className={`connection-status ${connectionStatus === 'connected' ? 'connected' : 'connecting'}`}></div>
-                    <h3>ជជែកកំសាន្ត</h3>
+                <div className="title-group flex items-center gap-2">
+                    <div className={`connection-status w-3 h-3 rounded-full ${connectionStatus === 'connected' ? 'bg-green-500 shadow-[0_0_10px_#22c55e]' : 'bg-yellow-500 animate-pulse'}`}></div>
+                    <h3 className="font-black text-white uppercase tracking-wider text-sm">Team Chat</h3>
                 </div>
-                <div className="controls">
-                    <button onClick={() => setIsMuted(!isMuted)}>{isMuted ? '🔇' : '🔔'}</button>
-                    <button onClick={onClose}>✕</button>
+                <div className="controls flex items-center gap-2">
+                    <button onClick={() => {
+                        const newMuted = !isMuted;
+                        setIsMuted(newMuted);
+                        localStorage.setItem('chatMuted', String(newMuted));
+                    }} className="p-2 hover:bg-white/10 rounded-full transition-colors text-gray-400 hover:text-white">
+                        {isMuted ? '🔇' : '🔔'}
+                    </button>
+                    <button onClick={onClose} className="p-2 hover:bg-red-500/20 hover:text-red-400 rounded-full transition-colors text-gray-400">
+                        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                    </button>
                 </div>
             </div>
-            <div className="chat-tabs">
-                <button onClick={() => setActiveTab('chat')} className={activeTab === 'chat' ? 'active' : ''}>ជជែក</button>
-                <button onClick={() => setActiveTab('users')} className={activeTab === 'users' ? 'active' : ''}>អ្នកប្រើប្រាស់</button>
+            
+            <div className="chat-tabs bg-gray-900/50 p-1">
+                <button onClick={() => setActiveTab('chat')} className={`text-xs font-bold uppercase tracking-wider transition-all ${activeTab === 'chat' ? 'active bg-blue-600 text-white shadow-lg' : 'text-gray-500 hover:text-gray-300'}`}>Chat Stream</button>
+                <button onClick={() => setActiveTab('users')} className={`text-xs font-bold uppercase tracking-wider transition-all ${activeTab === 'users' ? 'active bg-blue-600 text-white shadow-lg' : 'text-gray-500 hover:text-gray-300'}`}>Members</button>
             </div>
-            <div className="chat-body custom-scrollbar">
+
+            <div className="chat-body custom-scrollbar bg-[#0f172a] relative">
                 {activeTab === 'chat' ? (
-                    <div className="chat-messages p-4 space-y-4">
-                        {isHistoryLoading ? <Spinner /> : messages.map(msg => {
-                            const isMe = msg.user === currentUser?.UserName;
-                            const user = allUsers.find(u => u.UserName === msg.user);
-                            return (
-                                <div key={msg.id} className={`flex ${isMe ? 'justify-end' : 'justify-start'}`}>
-                                    <div className={`flex max-w-[80%] gap-2 ${isMe ? 'flex-row-reverse' : ''}`}>
-                                        <UserAvatar avatarUrl={user?.ProfilePictureURL || msg.avatar} name={user?.FullName || msg.fullName} size="sm" />
-                                        <div className={`p-3 rounded-2xl text-sm ${isMe ? 'bg-blue-600 text-white rounded-tr-none' : 'bg-gray-800 text-gray-200 rounded-tl-none'}`}>
-                                            {!isMe && <p className="text-[10px] font-black text-blue-400 mb-1">{user?.FullName || msg.fullName}</p>}
-                                            {msg.type === 'text' && <p className="leading-relaxed">{msg.content}</p>}
-                                            {msg.type === 'image' && <img src={msg.content} className="rounded-lg max-w-full cursor-pointer" onClick={() => previewImage(msg.content)} />}
-                                            {msg.type === 'audio' && <MemoizedAudioPlayer src={msg.content} />}
-                                            <p className="text-[9px] mt-1 opacity-50 text-right">{new Date(msg.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</p>
+                    <div className="chat-messages p-4 space-y-6 min-h-full">
+                        {isHistoryLoading ? (
+                            <div className="flex flex-col items-center justify-center py-10 space-y-3">
+                                <Spinner size="md" />
+                                <span className="text-xs text-gray-500">Loading history...</span>
+                            </div>
+                        ) : messages.length === 0 ? (
+                            <div className="flex flex-col items-center justify-center h-64 text-center opacity-50">
+                                <svg className="w-16 h-16 text-gray-600 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" /></svg>
+                                <p className="text-xs font-black uppercase tracking-widest text-gray-500">No messages yet</p>
+                                <p className="text-[10px] text-gray-600 mt-1">Start the conversation!</p>
+                            </div>
+                        ) : (
+                            messages.map((msg, index) => {
+                                const isMe = msg.user === currentUser?.UserName;
+                                const user = allUsers.find(u => u.UserName === msg.user);
+                                const showAvatar = index === 0 || messages[index - 1].user !== msg.user;
+                                
+                                return (
+                                    <div key={msg.id + index} className={`flex flex-col ${isMe ? 'items-end' : 'items-start'} animate-fade-in-up`}>
+                                        <div className={`flex max-w-[85%] gap-3 ${isMe ? 'flex-row-reverse' : ''}`}>
+                                            <div className={`flex-shrink-0 w-8 flex flex-col justify-end`}>
+                                                {showAvatar ? (
+                                                    <UserAvatar avatarUrl={user?.ProfilePictureURL || msg.avatar} name={user?.FullName || msg.fullName} size="sm" className="ring-2 ring-white/10" />
+                                                ) : <div className="w-8"></div>}
+                                            </div>
+                                            
+                                            <div className={`relative px-4 py-3 shadow-lg ${
+                                                isMe 
+                                                ? 'bg-blue-600 text-white rounded-2xl rounded-tr-sm' 
+                                                : 'bg-gray-800 text-gray-200 rounded-2xl rounded-tl-sm border border-white/5'
+                                            }`}>
+                                                {!isMe && showAvatar && <p className="text-[10px] font-black text-blue-400 mb-1 uppercase tracking-wider">{user?.FullName || msg.fullName}</p>}
+                                                
+                                                {msg.type === 'text' && <p className="leading-relaxed text-sm whitespace-pre-wrap">{msg.content}</p>}
+                                                {msg.type === 'image' && <img src={msg.content} className="rounded-xl max-w-full cursor-pointer hover:opacity-90 transition-opacity border border-black/20" onClick={() => previewImage(msg.content)} alt="attachment" />}
+                                                {msg.type === 'audio' && <MemoizedAudioPlayer src={msg.content} isMe={isMe} />}
+                                                
+                                                <p className={`text-[9px] mt-1.5 text-right font-medium ${isMe ? 'text-blue-200' : 'text-gray-500'}`}>
+                                                    {new Date(msg.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                                                </p>
+                                            </div>
                                         </div>
                                     </div>
-                                </div>
-                            );
-                        })}
+                                );
+                            })
+                        )}
                         <div ref={messagesEndRef} />
                     </div>
                 ) : (
                     <div className="p-4 space-y-3">
                         {allUsers.map(u => (
-                            <div key={u.UserName} className="flex items-center gap-3 p-2 rounded-xl hover:bg-gray-800 transition-colors">
-                                <UserAvatar avatarUrl={u.ProfilePictureURL} name={u.FullName} size="md" />
-                                <div><p className="text-sm font-bold text-white">{u.FullName}</p><p className="text-xs text-gray-500">@{u.UserName}</p></div>
+                            <div key={u.UserName} className="flex items-center gap-4 p-3 rounded-2xl bg-gray-800/40 border border-white/5 hover:bg-gray-800 transition-colors cursor-default">
+                                <UserAvatar avatarUrl={u.ProfilePictureURL} name={u.FullName} size="md" className="ring-2 ring-blue-500/20" />
+                                <div>
+                                    <p className="text-sm font-black text-white">{u.FullName}</p>
+                                    <p className="text-[10px] text-gray-500 font-mono uppercase tracking-wider">@{u.UserName}</p>
+                                </div>
+                                <div className={`ml-auto w-2 h-2 rounded-full ${u.IsSystemAdmin ? 'bg-yellow-500' : 'bg-blue-500'}`}></div>
                             </div>
                         ))}
                     </div>
                 )}
             </div>
+
             {activeTab === 'chat' && (
-                <div className="p-4 bg-gray-900 border-t border-gray-800 flex items-center gap-2">
-                    <button onClick={() => fileInputRef.current?.click()} className="p-2 text-gray-400 hover:text-blue-400 transition-colors">📎</button>
-                    <input type="file" ref={fileInputRef} className="hidden" onChange={e => e.target.files && handleFileUpload(e.target.files[0])} />
-                    <input type="text" value={newMessage} onChange={e => setNewMessage(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleSendMessage(newMessage, 'text')} placeholder="វាយសារ..." className="form-input flex-grow !bg-gray-800" />
-                    <button onClick={() => handleSendMessage(newMessage, 'text')} className="p-2 bg-blue-600 text-white rounded-xl shadow-lg active:scale-95 transition-all">
-                        <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path d="M10.894 2.553a1 1 0 00-1.788 0l-7 14a1 1 0 001.169 1.409l5-1.429A1 1 0 009 15.571V11a1 1 0 112 0v4.571a1 1 0 00.725.962l5 1.428a1 1 0 001.17-1.408l-7-14z"/></svg>
-                    </button>
+                <div className="p-3 bg-gray-900 border-t border-gray-800">
+                    {isRecording ? (
+                        <div className="flex items-center gap-3 bg-red-900/20 p-2 rounded-2xl border border-red-500/30 animate-pulse">
+                            <div className="w-10 h-10 flex items-center justify-center bg-red-600 rounded-full shadow-lg shadow-red-600/40">
+                                <div className="w-4 h-4 bg-white rounded-sm animate-pulse"></div>
+                            </div>
+                            <div className="flex-grow text-center">
+                                <p className="text-red-400 font-black text-sm font-mono tracking-widest">{formatTime(recordingTime)}</p>
+                                <p className="text-[8px] text-red-500 font-bold uppercase tracking-wider">Recording...</p>
+                            </div>
+                            <button onClick={handleCancelRecording} className="p-2 text-gray-400 hover:text-white transition-colors">
+                                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                            </button>
+                            <button onClick={handleStopAndSendAudio} className="p-2 bg-blue-600 text-white rounded-xl shadow-lg hover:bg-blue-500 transition-all active:scale-95">
+                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
+                            </button>
+                        </div>
+                    ) : (
+                        <div className="flex items-end gap-2">
+                            <button onClick={() => fileInputRef.current?.click()} className="p-3 text-gray-400 hover:text-blue-400 hover:bg-gray-800 rounded-xl transition-all" title="Attach Image">
+                                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h14a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                            </button>
+                            <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={e => e.target.files && handleFileUpload(e.target.files[0])} />
+                            
+                            <div className="flex-grow relative">
+                                <textarea 
+                                    value={newMessage} 
+                                    onChange={e => setNewMessage(e.target.value)} 
+                                    onKeyDown={e => {
+                                        if (e.key === 'Enter' && !e.shiftKey) {
+                                            e.preventDefault();
+                                            handleSendMessage(newMessage, 'text');
+                                        }
+                                    }}
+                                    placeholder="Type a message..." 
+                                    className="w-full bg-gray-800 text-white rounded-2xl py-3 pl-4 pr-10 border-transparent focus:border-blue-500 focus:ring-0 resize-none text-sm max-h-24 custom-scrollbar"
+                                    rows={1}
+                                    style={{minHeight: '44px'}}
+                                />
+                            </div>
+
+                            {newMessage.trim() ? (
+                                <button onClick={() => handleSendMessage(newMessage, 'text')} className="p-3 bg-blue-600 text-white rounded-xl shadow-lg shadow-blue-600/20 active:scale-95 transition-all hover:bg-blue-500">
+                                    <svg className="w-5 h-5 transform rotate-90" fill="currentColor" viewBox="0 0 20 20"><path d="M10.894 2.553a1 1 0 00-1.788 0l-7 14a1 1 0 001.169 1.409l5-1.429A1 1 0 009 15.571V11a1 1 0 112 0v4.571a1 1 0 00.725.962l5 1.428a1 1 0 001.17-1.408l-7-14z"/></svg>
+                                </button>
+                            ) : (
+                                <button onClick={handleStartRecording} disabled={isSendingAudio} className="p-3 bg-gray-800 text-white rounded-xl border border-gray-700 hover:bg-red-500/20 hover:border-red-500/50 hover:text-red-500 transition-all active:scale-95 group">
+                                    <svg className="w-5 h-5 group-hover:scale-110 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" /></svg>
+                                </button>
+                            )}
+                        </div>
+                    )}
+                    {(isUploading || isSendingAudio) && (
+                        <div className="absolute inset-x-0 bottom-full bg-blue-600/90 text-white text-[10px] font-black uppercase tracking-widest text-center py-1">
+                            Processing Transfer...
+                        </div>
+                    )}
                 </div>
             )}
         </div>

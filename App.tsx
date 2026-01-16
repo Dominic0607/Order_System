@@ -96,6 +96,20 @@ const App: React.FC = () => {
         if (sessionString) {
             try {
                 const session = JSON.parse(sessionString);
+                
+                // --- 24 Hour Cache Clearing Logic ---
+                const ONE_DAY_MS = 24 * 60 * 60 * 1000;
+                const now = Date.now();
+                if (now - session.timestamp > ONE_DAY_MS) {
+                    console.log("Session expired (24h limit). Clearing cache.");
+                    localStorage.clear(); // Clear all local storage
+                    setCurrentUser(null);
+                    setAppState('login');
+                    setIsGlobalLoading(false);
+                    return;
+                }
+                // ------------------------------------
+
                 if (session.user) {
                     setCurrentUser(session.user);
                     fetchData();

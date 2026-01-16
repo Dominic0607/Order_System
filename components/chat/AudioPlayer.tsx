@@ -1,166 +1,129 @@
+
 import React, { useState, useRef, useEffect } from 'react';
 import Spinner from '../common/Spinner';
 
 interface AudioPlayerProps {
     src: string;
+    isMe?: boolean; // To style based on sender
 }
 
-const AudioPlayer: React.FC<AudioPlayerProps> = ({ src }) => {
-    const mediaRef = useRef<HTMLVideoElement>(null);
-    const progressBarRef = useRef<HTMLDivElement>(null);
-
+const AudioPlayer: React.FC<AudioPlayerProps> = ({ src, isMe = false }) => {
+    const audioRef = useRef<HTMLAudioElement>(null);
     const [isPlaying, setIsPlaying] = useState(false);
     const [duration, setDuration] = useState(0);
     const [currentTime, setCurrentTime] = useState(0);
     const [isReady, setIsReady] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
-    useEffect(() => {
-        const media = mediaRef.current;
-        if (!media) return;
+    // Simulated waveform bars
+    const [bars] = useState(() => Array.from({ length: 20 }, () => Math.random() * 0.5 + 0.3));
 
-        // --- Event Handlers ---
+    useEffect(() => {
+        const audio = audioRef.current;
+        if (!audio) return;
+
         const onReady = () => {
-            if (media.duration && isFinite(media.duration)) {
-                setDuration(media.duration);
+            if (audio.duration && isFinite(audio.duration)) {
+                setDuration(audio.duration);
                 setIsReady(true);
                 setError(null);
             }
         };
 
-        const onTimeUpdate = () => {
-            setCurrentTime(media.currentTime);
-        };
-        
-        const onEnded = () => {
-            setIsPlaying(false);
-            setCurrentTime(0);
-        };
-
+        const onTimeUpdate = () => setCurrentTime(audio.currentTime);
+        const onEnded = () => { setIsPlaying(false); setCurrentTime(0); };
         const onError = () => {
-            const err = media.error;
-            console.error(`Media Error: Code ${err?.code}, Message: ${err?.message}`);
-            let errorMessage = 'Could not play audio.';
-            if (err?.code === 4) { // MEDIA_ERR_SRC_NOT_SUPPORTED
-                 errorMessage = 'Audio format not supported or source unavailable.';
-            }
-            setError(errorMessage);
+            console.error("Audio Error", audio.error);
+            setError("Error playing audio");
             setIsReady(false);
         };
-        
-        const onStalled = () => {
-            console.warn("Media playback stalled due to insufficient data.");
-        };
 
-        // --- Attach Listeners ---
-        media.addEventListener('canplay', onReady);
-        media.addEventListener('timeupdate', onTimeUpdate);
-        media.addEventListener('ended', onEnded);
-        media.addEventListener('error', onError);
-        media.addEventListener('stalled', onStalled);
+        audio.addEventListener('loadedmetadata', onReady);
+        audio.addEventListener('canplay', onReady); // Fallback if metadata loads fast
+        audio.addEventListener('timeupdate', onTimeUpdate);
+        audio.addEventListener('ended', onEnded);
+        audio.addEventListener('error', onError);
 
-        // --- Source Loading Logic ---
-        // This consolidated check is the key fix. It prevents reloading the audio if the component 
-        // re-renders but the src prop is the same as what the media element already has.
-        if (media.src !== src) {
-            // Reset all state for the new source. This shows the loading spinner.
-            setIsPlaying(false);
-            setIsReady(false);
-            setError(null);
-            setDuration(0);
-            setCurrentTime(0);
+        // Reset state on src change
+        setIsPlaying(false);
+        setIsReady(false);
+        setCurrentTime(0);
+        audio.load();
 
-            if (src) {
-                media.src = src;
-                media.load();
-            } else {
-                // Handle src being explicitly removed
-                media.pause();
-                media.removeAttribute('src');
-                media.src = '';
-                media.load();
-            }
-        }
-
-        // --- Cleanup on unmount or when src changes ---
         return () => {
-            media.removeEventListener('canplay', onReady);
-            media.removeEventListener('timeupdate', onTimeUpdate);
-            media.removeEventListener('ended', onEnded);
-            media.removeEventListener('error', onError);
-            media.removeEventListener('stalled', onStalled);
+            audio.removeEventListener('loadedmetadata', onReady);
+            audio.removeEventListener('canplay', onReady);
+            audio.removeEventListener('timeupdate', onTimeUpdate);
+            audio.removeEventListener('ended', onEnded);
+            audio.removeEventListener('error', onError);
         };
     }, [src]);
 
     const togglePlayPause = () => {
-        if (!isReady || error) return;
-        const media = mediaRef.current;
-        if (!media) return;
-
+        if (!isReady || !audioRef.current) return;
         if (isPlaying) {
-            media.pause();
+            audioRef.current.pause();
             setIsPlaying(false);
         } else {
-            setIsPlaying(true); // Optimistic update
-            const playPromise = media.play();
-            if (playPromise !== undefined) {
-                playPromise.catch(err => {
-                    // Ignore AbortError, which is expected on component unmount
-                    if (err.name !== 'AbortError') {
-                        console.error('Playback failed:', err);
-                        setError("Playback failed.");
-                        setIsPlaying(false); // Revert state on actual error
-                    }
-                });
-            }
+            // Pause all other audios
+            document.querySelectorAll('audio').forEach(el => {
+                if (el !== audioRef.current) {
+                    el.pause();
+                    // We can't easily update other components' state from here without a context, 
+                    // but standard HTML audio behavior handles single source well.
+                }
+            });
+            audioRef.current.play().catch(e => console.error("Play failed", e));
+            setIsPlaying(true);
         }
     };
 
-    const handleProgressClick = (e: React.MouseEvent<HTMLDivElement>) => {
-        const media = mediaRef.current;
-        const progressBar = progressBarRef.current;
-        if (!isReady || !media || !progressBar) return;
-        
-        const rect = progressBar.getBoundingClientRect();
-        const clickX = e.clientX - rect.left;
-        const percentage = Math.min(Math.max(clickX / progressBar.offsetWidth, 0), 1);
-        media.currentTime = percentage * duration;
-        setCurrentTime(media.currentTime); // Update state immediately for better UX
+    const formatTime = (t: number) => {
+        if (!isFinite(t) || t < 0) return '0:00';
+        const m = Math.floor(t / 60);
+        const s = Math.floor(t % 60);
+        return `${m}:${s < 10 ? '0' : ''}${s}`;
     };
 
-    const formatTime = (timeInSeconds: number) => {
-        if (!isFinite(timeInSeconds) || timeInSeconds < 0) return '0:00';
-        const minutes = Math.floor(timeInSeconds / 60);
-        const seconds = Math.floor(timeInSeconds % 60);
-        return `${minutes}:${seconds < 10 ? '0' : ''}${seconds}`;
-    };
+    if (error) return <div className="text-[10px] text-red-300 bg-red-900/20 px-2 py-1 rounded">Audio Unavailable</div>;
 
-    const progressPercentage = duration > 0 ? (currentTime / duration) * 100 : 0;
-
-    if (error) {
-        return <div className="text-red-400 text-xs px-2 py-1 flex items-center">{error}</div>;
-    }
-    
     return (
-        <div className="audio-player">
-            <video ref={mediaRef} preload="metadata" style={{ display: 'none' }} playsInline />
-            <button onClick={togglePlayPause} className="play-pause-btn" aria-label={isPlaying ? 'Pause' : 'Play'} disabled={!isReady}>
-                {!isReady ? <Spinner size="sm"/> : 
-                isPlaying ? (
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8 7a1 1 0 00-1 1v4a1 1 0 102 0V8a1 1 0 00-1-1zm4 0a1 1 0 00-1 1v4a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />
-                    </svg>
+        <div className={`flex items-center gap-3 p-1 rounded-full min-w-[200px] transition-all ${isMe ? 'text-white' : 'text-gray-800 dark:text-white'}`}>
+            <audio ref={audioRef} src={src} preload="metadata" />
+            
+            <button 
+                onClick={togglePlayPause} 
+                disabled={!isReady}
+                className={`w-8 h-8 flex items-center justify-center rounded-full shadow-md transition-all active:scale-90 flex-shrink-0 ${isMe ? 'bg-white text-blue-600 hover:bg-gray-100' : 'bg-blue-600 text-white hover:bg-blue-500'}`}
+            >
+                {!isReady ? <Spinner size="sm" /> : isPlaying ? (
+                    <svg className="w-3 h-3 fill-current" viewBox="0 0 24 24"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
                 ) : (
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clipRule="evenodd" />
-                    </svg>
+                    <svg className="w-3 h-3 fill-current ml-0.5" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
                 )}
             </button>
-            <div className="progress-bar-container" ref={progressBarRef} onClick={handleProgressClick}>
-                <div className="progress-bar-fill" style={{ width: `${progressPercentage}%` }} />
-                <div className="progress-thumb" style={{ left: `${progressPercentage}%` }} />
+
+            <div className="flex flex-col flex-grow min-w-0 gap-1">
+                {/* Visual Waveform */}
+                <div className="flex items-center gap-[2px] h-4 w-full">
+                    {bars.map((height, i) => {
+                        const active = (i / bars.length) < (currentTime / (duration || 1));
+                        return (
+                            <div 
+                                key={i} 
+                                className={`w-1 rounded-full transition-all duration-100 ${active ? (isMe ? 'bg-blue-200' : 'bg-blue-500') : (isMe ? 'bg-blue-800' : 'bg-gray-600')}`}
+                                style={{ 
+                                    height: isPlaying ? `${Math.max(20, height * 100 * (Math.random() * 0.5 + 0.8))}%` : `${height * 100}%`,
+                                    opacity: active ? 1 : 0.5 
+                                }}
+                            />
+                        );
+                    })}
+                </div>
+                <div className={`text-[9px] font-mono font-bold text-right ${isMe ? 'text-blue-100' : 'text-gray-400'}`}>
+                    {isPlaying ? formatTime(currentTime) : formatTime(duration)}
+                </div>
             </div>
-            <span className="time-display">{isReady ? `${formatTime(currentTime)}/${formatTime(duration)}` : '-:--'}</span>
         </div>
     );
 };
