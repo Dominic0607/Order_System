@@ -2,9 +2,13 @@
 import React, { useState, useContext } from 'react';
 import { AppContext } from '../../context/AppContext';
 import Modal from '../common/Modal';
-import Spinner from '../common/Spinner';
 import { WEB_APP_URL } from '../../constants';
 import { ParsedOrder } from '../../types';
+import BulkActionBarDesktop from './BulkActionBarDesktop';
+import BulkActionBarMobile from './BulkActionBarMobile';
+import { convertGoogleDriveUrl } from '../../utils/fileUtils';
+import ShippingMethodDropdown from '../common/ShippingMethodDropdown';
+import DriverSelector from '../orders/DriverSelector';
 
 interface BulkActionManagerProps {
     orders: ParsedOrder[];
@@ -22,9 +26,16 @@ const BulkActionManager: React.FC<BulkActionManagerProps> = ({ orders, selectedI
 
     // Form states
     const [costValue, setCostValue] = useState('');
+    
+    // Payment States
     const [paymentStatus, setPaymentStatus] = useState('Paid');
     const [paymentInfo, setPaymentInfo] = useState('');
+
+    // Shipping States
     const [shippingMethod, setShippingMethod] = useState('');
+    const [shippingDriver, setShippingDriver] = useState('');
+    const [shippingCost, setShippingCost] = useState('');
+    
     const [deletePassword, setDeletePassword] = useState('');
 
     const handleBulkUpdate = async (partialUpdate: any, confirmMsg?: string) => {
@@ -35,16 +46,12 @@ const BulkActionManager: React.FC<BulkActionManagerProps> = ({ orders, selectedI
         try {
             const idArray = Array.from(selectedIds);
             
-            // Iterate through each selected order to perform a full context update
             for (const id of idArray) {
                 const originalOrder = orders.find(o => o['Order ID'] === id);
                 if (!originalOrder) continue;
 
-                // Merge the partial update with the original full order context
-                // This ensures the Telegram Bot receives all necessary info (Name, Phone, etc.)
                 const mergedData = { ...originalOrder, ...partialUpdate };
                 
-                // Construct the clean payload as expected by the update-order API
                 const cleanPayload: any = {
                     "Timestamp": mergedData.Timestamp,
                     "Order ID": mergedData['Order ID'],
@@ -72,10 +79,8 @@ const BulkActionManager: React.FC<BulkActionManagerProps> = ({ orders, selectedI
                     "IsVerified": mergedData.IsVerified
                 };
 
-                // Add Products (JSON) back from the original
                 cleanPayload['Products (JSON)'] = JSON.stringify(mergedData.Products);
 
-                // Use the update-order API which triggers Telegram message edits
                 await fetch(`${WEB_APP_URL}/api/admin/update-order`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -118,7 +123,6 @@ const BulkActionManager: React.FC<BulkActionManagerProps> = ({ orders, selectedI
                         orderId: id,
                         team: order?.Team,
                         userName: currentUser?.UserName,
-                        // Send Telegram IDs to allow backend to delete messages
                         telegramMessageId1: order?.['Telegram Message ID 1'],
                         telegramMessageId2: order?.['Telegram Message ID 2'],
                         telegramChatId: order?.TelegramValue
@@ -136,76 +140,38 @@ const BulkActionManager: React.FC<BulkActionManagerProps> = ({ orders, selectedI
         }
     };
 
-    if (selectedIds.size === 0) return null;
+    // Helper to check if selected shipping needs driver
+    const selectedMethodInfo = appData.shippingMethods?.find(m => m.MethodName === shippingMethod);
+    const requiresDriver = selectedMethodInfo?.RequireDriverSelection;
 
-    const containerPaddingLeft = isSidebarCollapsed ? '64px' : '208px';
+    if (selectedIds.size === 0) return null;
 
     return (
         <>
-            <div 
-                className="fixed bottom-10 left-0 w-full z-[100] flex justify-center pointer-events-none transition-all duration-500"
-                style={{ paddingLeft: containerPaddingLeft }}
-            >
-                <div className="relative bg-[#0f172a]/95 backdrop-blur-3xl border border-white/10 rounded-[3rem] shadow-[0_30px_70px_rgba(0,0,0,0.8)] p-2 sm:p-3 flex items-center gap-4 sm:gap-6 overflow-hidden ring-1 ring-white/10 pointer-events-auto animate-fade-in-up">
-                    <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-3/4 h-full bg-blue-500/5 blur-[80px] pointer-events-none"></div>
+            {/* Desktop View */}
+            <BulkActionBarDesktop 
+                selectedCount={selectedIds.size}
+                isSidebarCollapsed={isSidebarCollapsed}
+                isProcessing={isProcessing}
+                onVerify={() => handleBulkUpdate({ 'IsVerified': true }, `បញ្ជាក់លើការកម្មង់ទាំង ${selectedIds.size} នេះ?`)}
+                onUnverify={() => handleBulkUpdate({ 'IsVerified': false })}
+                onOpenModal={setActiveModal}
+                onClearSelection={onClearSelection}
+            />
 
-                    <div className="flex items-center gap-3.5 pl-3 sm:pl-5 relative z-10">
-                        <div className="w-12 h-12 bg-blue-600 text-white rounded-full flex items-center justify-center font-black text-lg shadow-[0_0_25px_rgba(37,99,235,0.4)] animate-pulse-subtle border-2 border-white/10">
-                            {selectedIds.size}
-                        </div>
-                        <div className="flex flex-col">
-                            <span className="text-[13px] font-black text-white leading-none tracking-tight">ជ្រើសរើស</span>
-                            <span className="text-[8px] text-blue-400 font-bold uppercase tracking-[0.25em] mt-1">ACTIVE NODE</span>
-                        </div>
-                    </div>
-
-                    <div className="h-10 w-px bg-white/10 relative z-10"></div>
-
-                    <div className="flex items-center bg-[#242f41] p-1.5 rounded-[1.8rem] border border-white/5 relative z-10">
-                        <button 
-                            onClick={() => handleBulkUpdate({ 'IsVerified': true }, `បញ្ជាក់លើការកម្មង់ទាំង ${selectedIds.size} នេះ?`)}
-                            className="px-6 py-2.5 bg-[#10b981] hover:bg-[#059669] text-white rounded-[1.4rem] text-[11px] font-black uppercase tracking-wider transition-all flex items-center gap-2 shadow-lg active:scale-95 disabled:opacity-50"
-                            disabled={isProcessing}
-                        >
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={4}><path d="M5 13l4 4L19 7" /></svg>
-                            VERIFY
-                        </button>
-                        <button 
-                            onClick={() => handleBulkUpdate({ 'IsVerified': false })}
-                            className="px-5 py-2.5 text-gray-400 hover:text-white text-[11px] font-black uppercase tracking-wider transition-all active:scale-95 disabled:opacity-50"
-                            disabled={isProcessing}
-                        >
-                            UNVERIFY
-                        </button>
-                    </div>
-
-                    <div className="flex items-center gap-1 bg-white/5 px-6 py-1.5 rounded-[1.8rem] border border-white/5 relative z-10">
-                        <button onClick={() => setActiveModal('cost')} className="px-3.5 py-3 hover:text-white text-[#f6ad55] text-[11px] font-black uppercase tracking-widest transition-all hover:scale-110">COST</button>
-                        <button onClick={() => setActiveModal('payment')} className="px-3.5 py-3 hover:text-white text-[#4299e1] text-[11px] font-black uppercase tracking-widest transition-all hover:scale-110">PAY</button>
-                        <button onClick={() => setActiveModal('shipping')} className="px-3.5 py-3 hover:text-white text-[#9f7aea] text-[11px] font-black uppercase tracking-widest transition-all hover:scale-110">SHIP</button>
-                    </div>
-
-                    <div className="h-10 w-px bg-white/10 relative z-10"></div>
-
-                    <div className="pr-3 sm:pr-5 relative z-10">
-                        <button 
-                            onClick={() => setActiveModal('delete')} 
-                            className="px-6 py-3.5 bg-red-600/10 hover:bg-red-600 text-red-500 hover:text-white border border-red-500/20 rounded-[1.6rem] text-[12px] font-black transition-all active:scale-95 shadow-lg hover:shadow-red-900/20"
-                        >
-                            លុបចោល
-                        </button>
-                    </div>
-
-                    <button 
-                        onClick={onClearSelection}
-                        className="absolute -top-12 left-1/2 -translate-x-1/2 px-4 py-1.5 bg-gray-800/80 backdrop-blur-md border border-white/10 rounded-full text-[9px] font-black text-gray-400 uppercase tracking-widest hover:text-white transition-all shadow-xl"
-                    >
-                        Clear Selection
-                    </button>
-                </div>
-            </div>
+            {/* Mobile View */}
+            <BulkActionBarMobile 
+                selectedCount={selectedIds.size}
+                isProcessing={isProcessing}
+                onVerify={() => handleBulkUpdate({ 'IsVerified': true }, `បញ្ជាក់លើការកម្មង់ទាំង ${selectedIds.size} នេះ?`)}
+                onUnverify={() => handleBulkUpdate({ 'IsVerified': false })}
+                onOpenModal={setActiveModal}
+                onClearSelection={onClearSelection}
+            />
 
             {/* Modals */}
+            
+            {/* 1. COST MODAL */}
             <Modal isOpen={activeModal === 'cost'} onClose={() => setActiveModal(null)} maxWidth="max-w-sm">
                 <div className="p-8 bg-[#0f172a] rounded-[3rem] border border-white/10">
                     <h3 className="text-xl font-black text-white text-center mb-8 uppercase tracking-tight">កែប្រែថ្លៃដឹកដើម (Cost)</h3>
@@ -220,44 +186,139 @@ const BulkActionManager: React.FC<BulkActionManagerProps> = ({ orders, selectedI
                 </div>
             </Modal>
 
+            {/* 2. PAYMENT MODAL */}
             <Modal isOpen={activeModal === 'payment'} onClose={() => setActiveModal(null)} maxWidth="max-w-md">
-                <div className="p-8 bg-[#0f172a] rounded-[3rem] border border-white/10">
-                    <h3 className="text-xl font-black text-white text-center mb-8 uppercase tracking-tight">កែប្រែស្ថានភាពទូទាត់</h3>
-                    <div className="space-y-4 mb-10">
-                        <select value={paymentStatus} onChange={e => setPaymentStatus(e.target.value)} className="form-select bg-black/40 border-gray-700 !py-4 font-black rounded-2xl focus:border-blue-500/50">
-                            <option value="Paid">Paid (រួចរាល់)</option>
-                            <option value="Unpaid">Unpaid (COD)</option>
-                        </select>
-                        {paymentStatus === 'Paid' && (
-                            <select value={paymentInfo} onChange={e => setPaymentInfo(e.target.value)} className="form-select bg-black/40 border-gray-700 !py-4 font-black rounded-2xl animate-fade-in-down">
-                                <option value="">-- ជ្រើសរើសធនាគារ --</option>
-                                {appData.bankAccounts?.map((b: any) => <option key={b.BankName} value={b.BankName}>{b.BankName}</option>)}
-                            </select>
+                <div className="p-6 sm:p-8 bg-[#0f172a] rounded-[2.5rem] border border-white/10 overflow-hidden">
+                    <h3 className="text-lg font-black text-white text-center mb-6 uppercase tracking-tight">កែប្រែស្ថានភាពទូទាត់</h3>
+                    
+                    <div className="flex bg-black/40 p-1.5 rounded-2xl border border-gray-700 mb-6">
+                        <button 
+                            onClick={() => { setPaymentStatus('Paid'); }}
+                            className={`flex-1 py-3 rounded-xl font-black text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-2 ${paymentStatus === 'Paid' ? 'bg-emerald-600 text-white shadow-lg' : 'text-gray-500 hover:text-gray-300'}`}
+                        >
+                            ✅ Paid (រួចរាល់)
+                        </button>
+                        <button 
+                            onClick={() => { setPaymentStatus('Unpaid'); setPaymentInfo(''); }}
+                            className={`flex-1 py-3 rounded-xl font-black text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-2 ${paymentStatus === 'Unpaid' ? 'bg-red-600 text-white shadow-lg' : 'text-gray-500 hover:text-gray-300'}`}
+                        >
+                            ⏳ Unpaid (COD)
+                        </button>
+                    </div>
+
+                    {paymentStatus === 'Paid' && (
+                        <div className="space-y-3 mb-8 animate-fade-in-down">
+                            <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-1">ជ្រើសរើសធនាគារ</p>
+                            <div className="grid grid-cols-2 gap-3 max-h-48 overflow-y-auto custom-scrollbar pr-1">
+                                {appData.bankAccounts?.map((b: any) => (
+                                    <button 
+                                        key={b.BankName} 
+                                        onClick={() => setPaymentInfo(b.BankName)}
+                                        className={`flex items-center gap-3 p-3 rounded-2xl border transition-all ${paymentInfo === b.BankName ? 'bg-blue-600/20 border-blue-500 shadow-[0_0_15px_rgba(37,99,235,0.2)]' : 'bg-gray-800/50 border-white/5 hover:border-white/20'}`}
+                                    >
+                                        <img src={convertGoogleDriveUrl(b.LogoURL)} className="w-8 h-8 rounded-lg object-contain bg-white/10 p-0.5" alt="" />
+                                        <span className={`text-[10px] font-black truncate ${paymentInfo === b.BankName ? 'text-blue-400' : 'text-gray-400'}`}>{b.BankName}</span>
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+
+                    <div className="grid grid-cols-2 gap-4 mt-4 pt-4 border-t border-white/5">
+                        <button onClick={() => setActiveModal(null)} className="py-4 text-gray-500 font-black uppercase text-xs tracking-widest hover:text-white">បោះបង់</button>
+                        <button 
+                            onClick={() => handleBulkUpdate({ 'Payment Status': paymentStatus, 'Payment Info': paymentStatus === 'Paid' ? paymentInfo : '' })} 
+                            className="py-4 bg-blue-600 text-white rounded-2xl font-black uppercase text-xs tracking-widest shadow-xl active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed" 
+                            disabled={isProcessing || (paymentStatus === 'Paid' && !paymentInfo)}
+                        >
+                            រក្សាទុក
+                        </button>
+                    </div>
+                </div>
+            </Modal>
+
+            {/* 3. SHIPPING MODAL - Reusable Components */}
+            <Modal isOpen={activeModal === 'shipping'} onClose={() => setActiveModal(null)} maxWidth="max-w-xl">
+                <div className="p-6 sm:p-8 bg-[#0f172a] rounded-[2.5rem] border border-white/10 max-h-[85vh] flex flex-col">
+                    <h3 className="text-lg font-black text-white text-center mb-6 uppercase tracking-tight flex-shrink-0">កែប្រែក្រុមហ៊ុនដឹកជញ្ជូន</h3>
+                    
+                    <div className="space-y-6 overflow-y-auto custom-scrollbar pr-2 flex-grow">
+                        {/* 1. Method Selection using Component */}
+                        <div className="space-y-3">
+                            <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-1">ជ្រើសរើសសេវាដឹក</p>
+                            <ShippingMethodDropdown 
+                                methods={appData.shippingMethods || []}
+                                selectedMethodName={shippingMethod}
+                                onSelect={(m) => { setShippingMethod(m.MethodName); setShippingDriver(''); }}
+                            />
+                        </div>
+
+                        {/* 2. Driver Selection using Component */}
+                        {requiresDriver && (
+                            <div className="space-y-3 animate-fade-in">
+                                <div className="flex items-center gap-2 px-1">
+                                    <div className="h-4 w-1 bg-blue-500 rounded-full"></div>
+                                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">ជ្រើសរើសអ្នកដឹក (DriverSelection)*</label>
+                                </div>
+                                <DriverSelector 
+                                    drivers={appData.drivers || []}
+                                    selectedDriverName={shippingDriver}
+                                    onSelect={setShippingDriver}
+                                />
+                                {!shippingDriver && <p className="text-center text-[9px] text-gray-500 italic">សូមជ្រើសរើសអ្នកដឹកម្នាក់</p>}
+                            </div>
                         )}
+
+                        {/* 3. Cost Input */}
+                        <div className="space-y-3">
+                            <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-1">កែប្រែថ្លៃដឹកដើម (Internal Cost)</p>
+                            <div className="relative">
+                                <input 
+                                    type="number" 
+                                    step="0.01"
+                                    value={shippingCost} 
+                                    onChange={e => setShippingCost(e.target.value)} 
+                                    className="form-input !bg-black/40 !border-gray-700 !py-4 pl-4 pr-10 rounded-2xl font-black text-white focus:border-blue-500" 
+                                    placeholder="បញ្ចូលថ្លៃដឹកថ្មី (បើមាន)" 
+                                />
+                                <span className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 font-bold">$</span>
+                            </div>
+                            <div className="flex gap-2">
+                                {[0, 1.25, 1.5, 2.0].map(val => (
+                                    <button 
+                                        key={val} 
+                                        onClick={() => setShippingCost(String(val))}
+                                        className="flex-1 py-2 bg-gray-800 border border-gray-700 rounded-xl text-[10px] font-bold text-gray-400 hover:text-white hover:bg-gray-700 transition-all"
+                                    >
+                                        ${val}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
                     </div>
-                    <div className="grid grid-cols-2 gap-4">
-                        <button onClick={() => setActiveModal(null)} className="py-4 text-gray-500 font-black uppercase text-xs tracking-widest">បោះបង់</button>
-                        <button onClick={() => handleBulkUpdate({ 'Payment Status': paymentStatus, 'Payment Info': paymentStatus === 'Paid' ? paymentInfo : '' })} className="py-4 bg-blue-600 text-white rounded-2xl font-black uppercase text-xs tracking-widest shadow-xl" disabled={isProcessing || (paymentStatus === 'Paid' && !paymentInfo)}>រក្សាទុក</button>
+
+                    <div className="grid grid-cols-2 gap-4 mt-6 pt-4 border-t border-white/5 flex-shrink-0">
+                        <button onClick={() => setActiveModal(null)} className="py-4 text-gray-500 font-black uppercase text-xs tracking-widest hover:text-white">បោះបង់</button>
+                        <button 
+                            onClick={() => {
+                                const payload: any = { 'Internal Shipping Method': shippingMethod };
+                                if (requiresDriver) payload['Internal Shipping Details'] = shippingDriver;
+                                else payload['Internal Shipping Details'] = shippingMethod; // Default detail to method name if no driver
+                                
+                                if (shippingCost) payload['Internal Cost'] = Number(shippingCost);
+                                
+                                handleBulkUpdate(payload);
+                            }} 
+                            className="py-4 bg-blue-600 text-white rounded-2xl font-black uppercase text-xs tracking-widest shadow-xl active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+                            disabled={isProcessing || !shippingMethod || (requiresDriver && !shippingDriver)}
+                        >
+                            រក្សាទុក
+                        </button>
                     </div>
                 </div>
             </Modal>
 
-            <Modal isOpen={activeModal === 'shipping'} onClose={() => setActiveModal(null)} maxWidth="max-w-md">
-                <div className="p-8 bg-[#0f172a] rounded-[3rem] border border-white/10">
-                    <h3 className="text-xl font-black text-white text-center mb-8 uppercase tracking-tight">កែប្រែក្រុមហ៊ុនដឹកជញ្ជូន</h3>
-                    <div className="space-y-4 mb-10">
-                        <select value={shippingMethod} onChange={e => setShippingMethod(e.target.value)} className="form-select bg-black/40 border-gray-700 !py-4 font-black rounded-2xl">
-                            <option value="">-- ជ្រើសរើសសេវាដឹក --</option>
-                            {appData.shippingMethods?.map((m: any) => <option key={m.MethodName} value={m.MethodName}>{m.MethodName}</option>)}
-                        </select>
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
-                        <button onClick={() => setActiveModal(null)} className="py-4 text-gray-500 font-black uppercase text-xs tracking-widest">បោះបង់</button>
-                        <button onClick={() => handleBulkUpdate({ 'Internal Shipping Method': shippingMethod })} className="py-4 bg-blue-600 text-white rounded-2xl font-black uppercase text-xs tracking-widest shadow-xl" disabled={isProcessing || !shippingMethod}>រក្សាទុក</button>
-                    </div>
-                </div>
-            </Modal>
-
+            {/* 4. DELETE MODAL */}
             <Modal isOpen={activeModal === 'delete'} onClose={() => setActiveModal(null)} maxWidth="max-w-md">
                 <div className="p-8 bg-[#0f172a] rounded-[3rem] border border-white/10">
                     <div className="w-16 h-16 bg-red-500/20 text-red-500 rounded-full flex items-center justify-center mx-auto mb-6">
