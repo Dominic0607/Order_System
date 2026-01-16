@@ -44,8 +44,8 @@ const DesktopAdminLayout: React.FC<DesktopAdminLayoutProps> = ({
                 setEditProfileModalOpen={setEditProfileModalOpen}
             />
             
-            {/* Dynamic Content Margin based on Sidebar State */}
-            <main className={`flex-1 transition-all duration-500 ease-in-out ${isSidebarCollapsed ? 'pl-16' : 'pl-52'}`}>
+            {/* Dynamic Content Margin based on Sidebar State - Matched widths (w-20 -> pl-20, w-64 -> pl-64) */}
+            <main className={`flex-1 transition-all duration-300 ease-in-out ${isSidebarCollapsed ? 'pl-20' : 'pl-64'}`}>
                 {/* Ambient Background Effect for Desktop */}
                 <div className="fixed inset-0 pointer-events-none opacity-50 overflow-hidden">
                     <div className="absolute top-[-10%] right-[-10%] w-[500px] h-[500px] bg-blue-600/5 rounded-full blur-[120px]"></div>
