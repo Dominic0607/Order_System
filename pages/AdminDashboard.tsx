@@ -4,6 +4,7 @@ import { AppContext } from '../context/AppContext';
 import Spinner from '../components/common/Spinner';
 import DesktopAdminLayout from '../components/admin/DesktopAdminLayout';
 import MobileAdminLayout from '../components/admin/MobileAdminLayout';
+import TabletAdminLayout from '../components/admin/TabletAdminLayout'; // Import New Layout
 import DashboardOverview from '../components/admin/DashboardOverview';
 import PerformanceTrackingPage from './PerformanceTrackingPage';
 import ReportDashboard from './ReportDashboard';
@@ -33,14 +34,23 @@ const AdminDashboard: React.FC = () => {
     const [isReportSubMenuOpen, setIsReportSubMenuOpen] = useState(false);
     const [isProfileSubMenuOpen, setIsProfileSubMenuOpen] = useState(false);
     const [editProfileModalOpen, setEditProfileModalOpen] = useState(false);
-    const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+    
+    // Responsive State
+    const [screenSize, setScreenSize] = useState<'mobile' | 'tablet' | 'desktop'>('desktop');
     
     const [parsedOrders, setParsedOrders] = useState<ParsedOrder[]>([]);
     const [revenueBreakdownPeriod, setRevenueBreakdownPeriod] = useState<'today' | 'this_month' | 'this_year'>('today');
     const [, setTeamFilter] = useUrlState<string>('teamFilter', '');
 
     useEffect(() => {
-        const handleResize = () => setIsMobile(window.innerWidth < 768);
+        const handleResize = () => {
+            const width = window.innerWidth;
+            if (width < 768) setScreenSize('mobile');
+            else if (width < 1280) setScreenSize('tablet'); // Tablet range: 768px - 1279px
+            else setScreenSize('desktop');
+        };
+        
+        handleResize(); // Init
         window.addEventListener('resize', handleResize);
         return () => window.removeEventListener('resize', handleResize);
     }, []);
@@ -168,8 +178,10 @@ const AdminDashboard: React.FC = () => {
 
     return (
         <>
-            {isMobile ? (
+            {screenSize === 'mobile' ? (
                 <MobileAdminLayout {...layoutProps} />
+            ) : screenSize === 'tablet' ? (
+                <TabletAdminLayout {...layoutProps} />
             ) : (
                 <DesktopAdminLayout {...layoutProps} isSidebarCollapsed={isSidebarCollapsed} />
             )}
