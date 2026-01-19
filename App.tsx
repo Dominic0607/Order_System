@@ -97,11 +97,13 @@ const App: React.FC = () => {
             try {
                 const session = JSON.parse(sessionString);
                 
-                // --- 24 Hour Cache Clearing Logic ---
-                const ONE_DAY_MS = 24 * 60 * 60 * 1000;
+                // --- 48 Hour Cache Clearing Logic ---
+                // ប្តូរពី 24 ម៉ោង ទៅ 48 ម៉ោង ដើម្បីកាត់បន្ថយការ Login ញឹកញាប់
+                const CACHE_DURATION = 48 * 60 * 60 * 1000; 
                 const now = Date.now();
-                if (now - session.timestamp > ONE_DAY_MS) {
-                    console.log("Session expired (24h limit). Clearing cache.");
+                
+                if (now - session.timestamp > CACHE_DURATION) {
+                    console.log("Session expired (48h limit). Clearing cache.");
                     localStorage.clear(); // Clear all local storage
                     setCurrentUser(null);
                     setAppState('login');
