@@ -8,7 +8,7 @@ import { DesktopGrandTotalRow } from './OrderGrandTotal';
 
 interface OrdersListDesktopProps {
     orders: ParsedOrder[];
-    totals: { grandTotal: number; internalCost: number; count: number };
+    totals: { grandTotal: number; internalCost: number; count: number; paidCount: number; unpaidCount: number };
     visibleColumns?: Set<string>;
     selectedIds: Set<string>;
     onToggleSelect?: (id: string) => void;
@@ -84,6 +84,7 @@ const OrdersListDesktop: React.FC<OrdersListDesktopProps> = ({
                         {isVisible('productInfo') && <th className="px-6 py-6 text-[10px] font-black uppercase tracking-[0.2em] text-left text-gray-500 w-44">Assets</th>}
                         {isVisible('location') && <th className="px-6 py-6 text-[10px] font-black uppercase tracking-[0.2em] text-left text-gray-500 w-52">Geography</th>}
                         {isVisible('pageInfo') && <th className="px-6 py-6 text-[10px] font-black uppercase tracking-[0.2em] text-left text-gray-500 w-44">Source Page</th>}
+                        {isVisible('fulfillment') && <th className="px-6 py-6 text-[10px] font-black uppercase tracking-[0.2em] text-left text-gray-500 w-32">Fulfillment</th>}
                         {isVisible('total') && <th className="px-6 py-6 text-[10px] font-black uppercase tracking-[0.2em] text-left text-gray-500 w-32">Valuation</th>}
                         {isVisible('shippingService') && <th className="px-6 py-6 text-[10px] font-black uppercase tracking-[0.2em] text-left text-gray-500 w-48">Logistics</th>}
                         {isVisible('shippingCost') && <th className="px-6 py-6 text-[10px] font-black uppercase tracking-[0.2em] text-left text-gray-500 w-28">Exp. Cost</th>}
@@ -212,6 +213,7 @@ const OrdersListDesktop: React.FC<OrdersListDesktopProps> = ({
                                 )}
 
                                 {isVisible('pageInfo') && <td className="px-6 py-5"><div className="flex items-center gap-3">{logoUrl ? <img src={logoUrl} className="w-8 h-8 rounded-full border border-white/10 shadow-sm object-cover" alt="logo" /> : <div className="w-8 h-8 rounded-full bg-gray-800 border border-white/5 flex items-center justify-center text-[7px] text-gray-600 font-bold uppercase">Null</div>}<div className="min-w-0"><span className="text-[12px] font-black text-gray-300 block truncate leading-none mb-1">{order.Page}</span><span className="text-[9px] text-gray-600 uppercase font-black tracking-widest">{order.Team}</span></div></div></td>}
+                                {isVisible('fulfillment') && <td className="px-6 py-5"><span className="text-[11px] font-bold text-gray-300 bg-gray-800 px-2 py-1 rounded border border-white/5">{order['Fulfillment Store']}</span></td>}
                                 {isVisible('total') && <td className="px-6 py-5 font-black text-blue-400 text-base tracking-tighter">${order['Grand Total'].toFixed(2)}</td>}
                                 {isVisible('shippingService') && <td className="px-6 py-5"><div className="flex items-center gap-2.5">{shippingLogo && <img src={shippingLogo} className="w-5 h-5 rounded-lg object-contain bg-gray-950 p-0.5 border border-white/5" alt="shipping" />}<span className="text-[10px] text-orange-400/80 font-black uppercase truncate tracking-tight">{order['Internal Shipping Method'] || '-'}</span></div></td>}
                                 {isVisible('shippingCost') && <td className="px-6 py-5 text-[11px] text-gray-500 font-mono font-black tracking-tighter">${(Number(order['Internal Cost']) || 0).toFixed(2)}</td>}

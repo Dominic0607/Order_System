@@ -1,5 +1,5 @@
 
-import React, { useState, useContext, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useContext, useEffect, useMemo } from 'react';
 import { AppContext } from '../context/AppContext';
 import Spinner from '../components/common/Spinner';
 import { ParsedOrder, User } from '../types';
@@ -11,80 +11,12 @@ import { useUrlState } from '../hooks/useUrlState';
 import PdfExportModal from '../components/admin/PdfExportModal';
 import BulkActionManager from '../components/admin/BulkActionManager';
 import OrderFilters, { FilterState } from '../components/orders/OrderFilters';
+import { ColumnToggler, availableColumns } from '../components/orders/ColumnToggler';
+import { FilterPanel } from '../components/orders/FilterPanel';
 
 interface OrdersDashboardProps {
     onBack: () => void;
 }
-
-const availableColumns = [
-    { key: 'index', label: '#' },
-    { key: 'orderId', label: 'ID' },
-    { key: 'customerName', label: 'ឈ្មោះអតិថិជន' },
-    { key: 'productInfo', label: 'ព័ត៌មាន Product' }, 
-    { key: 'location', label: 'ទីតាំង' },
-    { key: 'pageInfo', label: 'Page' }, 
-    { key: 'total', label: 'សរុប' },
-    { key: 'shippingService', label: 'សេវាដឹក' },
-    { key: 'shippingCost', label: '(Cost) សេវាដឹក' },
-    { key: 'status', label: 'ស្ថានភាព' },
-    { key: 'date', label: 'កាលបរិច្ឆេទ & ម៉ោង' },
-    { key: 'print', label: 'ព្រីន' },
-    { key: 'actions', label: 'សកម្មភាព' },
-    { key: 'check', label: 'Check' },
-];
-
-const ColumnToggler = ({ columns, visibleColumns, onToggle }: { columns: typeof availableColumns, visibleColumns: Set<string>, onToggle: (key: string) => void }) => {
-    const [isOpen, setIsOpen] = useState(false);
-    const ref = useRef<HTMLDivElement>(null);
-    useEffect(() => {
-        const handleClickOutside = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) setIsOpen(false); };
-        document.addEventListener('mousedown', handleClickOutside);
-        return () => document.removeEventListener('mousedown', handleClickOutside);
-    }, []);
-    return (
-        <div className="relative inline-block text-left h-full" ref={ref}>
-            <button 
-                onClick={() => setIsOpen(!isOpen)} 
-                className="flex h-full items-center justify-center gap-3 px-8 py-5 bg-gray-900 border border-gray-800 text-gray-400 hover:text-white hover:border-blue-500/30 rounded-2xl text-[12px] font-black uppercase tracking-widest transition-all active:scale-95"
-            >
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-blue-400" viewBox="0 0 20 20" fill="currentColor"><path d="M5 4a1 1 0 00-2 0v12a1 1 0 002 0V4zM9 4a1 1 0 00-2 0v12a1 1 0 002 0V4zM13 4a1 1 0 00-2 0v12a1 1 0 002 0V4zM17 4a1 1 0 00-2 0v12a1 1 0 002 0V4z" /></svg>
-                Columns
-                <svg className={`h-3.5 w-3.5 ml-1 transition-transform duration-500 ${isOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M19 9l-7 7-7-7" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/></svg>
-            </button>
-            {isOpen && (
-                <div className="absolute right-0 mt-3 w-64 bg-[#1a2235]/95 border border-white/10 rounded-[1.8rem] shadow-[0_30px_70px_rgba(0,0,0,0.7)] z-[100] origin-top-right overflow-hidden backdrop-blur-3xl p-3 animate-fade-in-scale">
-                    <div className="space-y-1">
-                        <p className="text-[9px] font-black text-gray-500 uppercase tracking-[0.2em] px-3 py-2 mb-1">កំណត់ការបង្ហាញ</p>
-                        {columns.map(col => (
-                            <label key={col.key} className="flex items-center px-3 py-2 text-xs text-gray-300 hover:bg-white/5 rounded-xl cursor-pointer transition-colors group">
-                                <input type="checkbox" className="h-4 w-4 rounded-md border-gray-600 bg-gray-900 text-blue-500 focus:ring-blue-500/20" checked={visibleColumns.has(col.key)} onChange={() => onToggle(col.key)} />
-                                <span className="ml-3 font-bold group-hover:text-white transition-colors">{col.label}</span>
-                            </label>
-                        ))}
-                    </div>
-                </div>
-            )}
-        </div>
-    );
-};
-
-const FilterPanel = ({ isOpen, onClose, children }: { isOpen: boolean, onClose: () => void, children?: React.ReactNode }) => {
-    return (
-        <>
-            <div className={`filter-panel-overlay fixed inset-0 bg-black/60 backdrop-blur-sm z-[70] transition-opacity duration-500 ${isOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'}`} onClick={onClose}></div>
-            <div className={`filter-panel fixed right-0 top-0 h-full w-[85%] max-w-md bg-[#0f172a] z-[80] shadow-2xl border-l border-white/5 transition-transform duration-500 flex flex-col ${isOpen ? 'translate-x-0' : 'translate-x-full'}`}>
-                <div className="p-6 border-b border-white/5 flex justify-between items-center bg-black/20">
-                    <h2 className="text-xl font-black text-white uppercase tracking-tighter italic">Filter Engine</h2>
-                    <button onClick={onClose} className="p-2 bg-white/5 rounded-xl text-gray-400 hover:text-white transition-all">&times;</button>
-                </div>
-                <div className="p-6 overflow-y-auto flex-grow custom-scrollbar space-y-8">{children}</div>
-                <div className="p-6 border-t border-white/5 bg-black/20">
-                    <button onClick={onClose} className="btn btn-primary w-full py-4 text-sm font-black uppercase tracking-[0.2em] shadow-xl shadow-blue-900/20 rounded-2xl active:scale-95 transition-transform">Apply Configuration</button>
-                </div>
-            </div>
-        </>
-    );
-};
 
 const OrdersDashboard: React.FC<OrdersDashboardProps> = ({ onBack }) => {
     const { appData, refreshData, refreshTimestamp, currentUser } = useContext(AppContext);
@@ -93,8 +25,14 @@ const OrdersDashboard: React.FC<OrdersDashboardProps> = ({ onBack }) => {
     const [urlTeam, setUrlTeam] = useUrlState<string>('teamFilter', '');
     const [urlDate, setUrlDate] = useUrlState<string>('dateFilter', 'this_month');
 
+    // EXCLUDE 'fulfillment' by default here
     const [visibleColumns, setVisibleColumns] = useState<Set<string>>(new Set(
-        availableColumns.filter(c => c.key !== 'productInfo' && c.key !== 'print' && c.key !== 'check').map(c => c.key)
+        availableColumns.filter(c => 
+            c.key !== 'productInfo' && 
+            c.key !== 'print' && 
+            c.key !== 'check' && 
+            c.key !== 'fulfillment'
+        ).map(c => c.key)
     ));
 
     const [allOrders, setAllOrders] = useState<ParsedOrder[]>([]);

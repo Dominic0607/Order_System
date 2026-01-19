@@ -116,8 +116,32 @@ const OrderFilters: React.FC<OrderFiltersProps> = ({
                 </div>
             )}
 
-            {/* Filter Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-6 px-1">
+            {/* Filter Grid - Smart Responsive Layout */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-x-6 gap-y-6 px-1">
+                
+                {/* 0. Payment Status (New) */}
+                <div>
+                    <label className="text-[10px] font-black text-gray-500 mb-2 block uppercase tracking-widest ml-2">Payment Status</label>
+                    <div className="relative">
+                        <select 
+                            value={filters.paymentStatus} 
+                            onChange={e => setFilters({...filters, paymentStatus: e.target.value})} 
+                            className={`form-select !bg-gray-900 border-gray-800 !py-3.5 rounded-2xl font-bold appearance-none ${
+                                filters.paymentStatus === 'Paid' ? 'text-emerald-400 border-emerald-500/30 shadow-[0_0_15px_rgba(16,185,129,0.1)]' : 
+                                filters.paymentStatus === 'Unpaid' ? 'text-red-400 border-red-500/30 shadow-[0_0_15px_rgba(239,68,68,0.1)]' : 'text-gray-200'
+                            }`}
+                        >
+                            <option value="">All Statuses</option>
+                            <option value="Paid">Paid (រួចរាល់)</option>
+                            <option value="Unpaid">Unpaid (COD)</option>
+                        </select>
+                        <div className="absolute right-10 top-1/2 -translate-y-1/2 pointer-events-none">
+                            {filters.paymentStatus === 'Paid' && <div className="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_8px_#10b981] animate-pulse"></div>}
+                            {filters.paymentStatus === 'Unpaid' && <div className="w-2 h-2 rounded-full bg-red-500 shadow-[0_0_8px_#ef4444] animate-pulse"></div>}
+                        </div>
+                    </div>
+                </div>
+
                 {/* 1. Team Allocation */}
                 <div>
                     <label className="text-[10px] font-black text-gray-500 mb-2 block uppercase tracking-widest ml-2">Team Allocation</label>
@@ -190,8 +214,8 @@ const OrderFilters: React.FC<OrderFiltersProps> = ({
                     </select>
                 </div>
 
-                {/* 9. Product Asset */}
-                <div className="md:col-span-2">
+                {/* 9. Product Asset - Full Width on Mobile/Tablet, Span 3 on Desktop */}
+                <div className="sm:col-span-2 xl:col-span-3">
                     <label className="text-[10px] font-black text-gray-500 mb-2 block uppercase tracking-widest ml-2">Asset Selection (Product)</label>
                     <SearchableProductDropdown 
                         products={appData.products} 
@@ -206,7 +230,7 @@ const OrderFilters: React.FC<OrderFiltersProps> = ({
             <div className="pt-4">
                 <button 
                     onClick={handleReset}
-                    className="w-full py-4 text-[11px] font-black text-gray-500 uppercase tracking-widest hover:text-white border border-dashed border-gray-800 rounded-2xl transition-all active:scale-95"
+                    className="w-full py-4 text-[11px] font-black text-gray-500 uppercase tracking-widest hover:text-white border border-dashed border-gray-800 rounded-2xl transition-all active:scale-95 hover:border-red-500/30 hover:bg-red-500/10"
                 >
                     Reset All Configurations
                 </button>

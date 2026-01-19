@@ -6,6 +6,7 @@ import { LABEL_PRINTER_URL_BASE, WEB_APP_URL } from '../../constants';
 import { useOrderTotals } from './OrderGrandTotal';
 import OrdersListDesktop from './OrdersListDesktop';
 import OrdersListMobile from './OrdersListMobile';
+import OrdersListTablet from './OrdersListTablet'; // Import Tablet Component
 
 interface OrdersListProps {
     orders: ParsedOrder[];
@@ -91,41 +92,42 @@ const OrdersList: React.FC<OrdersListProps> = ({
         window.open(`${LABEL_PRINTER_URL_BASE}?${queryParams.toString()}`, '_blank');
     };
 
+    const sharedProps = {
+        orders: localOrders,
+        totals,
+        visibleColumns,
+        selectedIds,
+        onToggleSelect,
+        onEdit,
+        handlePrint,
+        handleCopy,
+        copiedId,
+        toggleOrderVerified,
+        updatingIds
+    };
+
     return (
         <div className="w-full flex flex-col">
             <div className="flex-grow space-y-4">
-                {/* Desktop View */}
-                <div className="hidden md:block">
+                {/* Desktop View (Large Screens >= 1280px) */}
+                <div className="hidden xl:block">
                     <OrdersListDesktop 
-                        orders={localOrders}
-                        totals={totals}
-                        visibleColumns={visibleColumns}
-                        selectedIds={selectedIds}
-                        onToggleSelect={onToggleSelect}
+                        {...sharedProps}
                         onToggleSelectAll={onToggleSelectAll}
-                        onEdit={onEdit}
-                        handlePrint={handlePrint}
-                        handleCopy={handleCopy}
-                        copiedId={copiedId}
-                        toggleOrderVerified={toggleOrderVerified}
-                        updatingIds={updatingIds}
                     />
                 </div>
 
-                {/* Mobile View */}
+                {/* Tablet View (Medium Screens >= 768px and < 1280px) */}
+                <div className="hidden md:block xl:hidden">
+                    <OrdersListTablet 
+                        {...sharedProps}
+                    />
+                </div>
+
+                {/* Mobile View (Small Screens < 768px) */}
                 <div className="md:hidden">
                     <OrdersListMobile 
-                        orders={localOrders}
-                        totals={totals}
-                        visibleColumns={visibleColumns}
-                        selectedIds={selectedIds}
-                        onToggleSelect={onToggleSelect}
-                        onEdit={onEdit}
-                        handlePrint={handlePrint}
-                        handleCopy={handleCopy}
-                        copiedId={copiedId}
-                        toggleOrderVerified={toggleOrderVerified}
-                        updatingIds={updatingIds}
+                        {...sharedProps}
                     />
                 </div>
             </div>

@@ -8,7 +8,7 @@ import { MobileGrandTotalCard } from './OrderGrandTotal';
 
 interface OrdersListMobileProps {
     orders: ParsedOrder[];
-    totals: { grandTotal: number; internalCost: number; count: number };
+    totals: { grandTotal: number; internalCost: number; count: number; paidCount: number; unpaidCount: number };
     visibleColumns?: Set<string>;
     selectedIds: Set<string>;
     onToggleSelect?: (id: string) => void;
