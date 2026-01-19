@@ -1,14 +1,15 @@
 
-import React, { useState, useContext, useEffect, useMemo } from 'react';
+import React, { useState, useContext, useEffect } from 'react';
 import { AppContext } from '../context/AppContext';
-import Spinner from '../components/common/Spinner';
 import { ParsedOrder, Product, MasterProduct, ShippingMethod } from '../types';
 import { WEB_APP_URL } from '../constants';
-import SearchableProductDropdown from '../components/common/SearchableProductDropdown';
-import ShippingMethodDropdown from '../components/common/ShippingMethodDropdown';
-import SearchableProvinceDropdown from '../components/orders/SearchableProvinceDropdown';
-import SetQuantity from '../components/orders/SetQuantity';
 import { convertGoogleDriveUrl } from '../utils/fileUtils';
+
+// Import New Sub-Components
+import EditCustomerPanel from '../components/orders/edit/EditCustomerPanel';
+import EditProductPanel from '../components/orders/edit/EditProductPanel';
+import EditOrderSummary from '../components/orders/edit/EditOrderSummary';
+import BarcodeScannerModal from '../components/orders/BarcodeScannerModal';
 
 interface EditOrderPageProps {
     order: ParsedOrder;
@@ -19,18 +20,22 @@ interface EditOrderPageProps {
 const EditOrderPage: React.FC<EditOrderPageProps> = ({ order, onSaveSuccess, onCancel }) => {
     const { appData, currentUser, previewImage, refreshData } = useContext(AppContext);
     
-    // formData នឹងផ្ទុកទិន្នន័យដែលមានស្រាប់ទាំងអស់ពី order prop
     const [formData, setFormData] = useState<ParsedOrder>(order);
     const [loading, setLoading] = useState(false);
-    const [isDeleting, setIsDeleting] = useState(false);
     const [error, setError] = useState('');
     const [bankLogo, setBankLogo] = useState<string>('');
 
+    // Scanner State
+    const [isScannerVisible, setIsScannerVisible] = useState(false);
+    const [scanMode, setScanMode] = useState<'single' | 'increment'>('increment');
+
+    // Local state for dependent dropdowns
     const [selectedDistrict, setSelectedDistrict] = useState('');
     const [selectedSangkat, setSelectedSangkat] = useState('');
 
     useEffect(() => {
         setFormData(order);
+        // Reset district/sangkat selectors when order changes (though rare in edit mode)
     }, [order]);
 
     useEffect(() => {
@@ -40,84 +45,7 @@ const EditOrderPage: React.FC<EditOrderPageProps> = ({ order, onSaveSuccess, onC
         }
     }, [formData['Payment Status'], formData['Payment Info'], appData.bankAccounts]);
 
-    const provinces = useMemo(() => {
-        if (!appData.locations) return [];
-        return [...new Set(appData.locations.map((loc: any) => loc.Province))];
-    }, [appData.locations]);
-
-    const districts = useMemo(() => {
-        if (!appData.locations || !formData.Location) return [];
-        return [...new Set(appData.locations
-            .filter((loc: any) => loc.Province === formData.Location)
-            .map((loc: any) => loc.District))].sort((a, b) => String(a).localeCompare(String(b), 'km'));
-    }, [appData.locations, formData.Location]);
-
-    const sangkats = useMemo(() => {
-        if (!appData.locations || !formData.Location || !selectedDistrict) return [];
-        return [...new Set(appData.locations
-            .filter((loc: any) => loc.Province === formData.Location && loc.District === selectedDistrict)
-            .map((loc: any) => loc.Sangkat).filter(Boolean))].sort((a, b) => String(a).localeCompare(String(b), 'km'));
-    }, [appData.locations, formData.Location, selectedDistrict]);
-
-    const formatPhoneNumber = (val: string) => {
-        let phone = val.replace(/[^0-9]/g, '');
-        if (phone.length > 0 && !phone.startsWith('0')) phone = '0' + phone;
-        return phone;
-    };
-
-    const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
-        const { name, value } = e.target;
-        
-        setFormData(prev => {
-            let processedValue: any = value;
-            
-            if (name === 'Customer Phone') {
-                processedValue = formatPhoneNumber(value);
-            } else if (name === 'Shipping Fee (Customer)' || name === 'Internal Cost') {
-                if (value === '' || value.endsWith('.')) {
-                    processedValue = value;
-                } else {
-                    processedValue = Math.max(0, parseFloat(value) || 0);
-                }
-            }
-
-            const updatedState = { ...prev, [name]: processedValue };
-
-            if (name === 'Shipping Fee (Customer)') {
-                const numericFee = parseFloat(String(processedValue)) || 0;
-                const newTotals = recalculateTotals(updatedState.Products, numericFee);
-                return { ...updatedState, ...newTotals };
-            }
-            
-            if (name === 'Payment Status' && processedValue === 'Unpaid') { 
-                updatedState['Payment Info'] = ''; 
-                setBankLogo(''); 
-            }
-            
-            return updatedState;
-        });
-    };
-
-    const handleProvinceSelect = (val: string) => {
-        setFormData(prev => ({ ...prev, Location: val }));
-        setSelectedDistrict('');
-        setSelectedSangkat('');
-    };
-
-    const handleShippingMethodSelect = (method: ShippingMethod) => {
-        setFormData(prev => ({ 
-            ...prev, 
-            'Internal Shipping Method': method.MethodName,
-            'Internal Shipping Details': method.RequireDriverSelection ? '' : method.MethodName
-        }));
-    };
-
-    const handleBankChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-        const bankName = e.target.value;
-        const bankInfo = appData.bankAccounts?.find((b: any) => b.BankName === bankName);
-        setBankLogo(bankInfo ? convertGoogleDriveUrl(bankInfo.LogoURL) : '');
-        setFormData(prev => ({ ...prev, 'Payment Info': bankName }));
-    };
+    // --- Logic Handlers ---
 
     const recalculateTotals = (products: Product[], shippingFee: number): Partial<ParsedOrder> => {
         const subtotal = products.reduce((sum, p) => sum + (p.total || 0), 0);
@@ -131,6 +59,77 @@ const EditOrderPage: React.FC<EditOrderPageProps> = ({ order, onSaveSuccess, onC
             'Total Product Cost ($)': totalProductCost,
             'Discount ($)': totalDiscount
         };
+    };
+
+    const handleCodeScanned = (scannedCode: string) => {
+        const masterProduct = appData.products.find((p: MasterProduct) => p.Barcode && p.Barcode.trim() === scannedCode.trim());
+        
+        if (masterProduct) {
+            setFormData(prev => {
+                const newProducts = [...prev.Products];
+                const existingIndex = newProducts.findIndex(p => p.name === masterProduct.ProductName);
+                
+                if (existingIndex > -1) {
+                    // Update existing
+                    if (scanMode === 'increment') {
+                        const productToUpdate = { ...newProducts[existingIndex] };
+                        productToUpdate.quantity = (Number(productToUpdate.quantity) || 0) + 1;
+                        productToUpdate.total = (productToUpdate.quantity) * (Number(productToUpdate.finalPrice) || 0);
+                        newProducts[existingIndex] = productToUpdate;
+                    }
+                    // If single mode, do nothing (Modal shows warning)
+                } else {
+                    // Add new
+                    const newProduct: Product = {
+                        id: Date.now(),
+                        name: masterProduct.ProductName,
+                        quantity: 1,
+                        originalPrice: masterProduct.Price,
+                        finalPrice: masterProduct.Price,
+                        total: masterProduct.Price,
+                        discountPercent: 0,
+                        colorInfo: '',
+                        image: masterProduct.ImageURL,
+                        cost: masterProduct.Cost,
+                        tags: masterProduct.Tags
+                    };
+                    newProducts.push(newProduct);
+                }
+                
+                const currentShippingFee = parseFloat(String(prev['Shipping Fee (Customer)'])) || 0;
+                const newTotals = recalculateTotals(newProducts, currentShippingFee);
+                return { ...prev, Products: newProducts, ...newTotals };
+            });
+            
+            if (scanMode === 'single') setIsScannerVisible(false);
+        }
+    };
+
+    const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+        const { name, value } = e.target;
+        setFormData(prev => {
+            let processedValue: any = value;
+            if (name === 'Customer Phone') {
+                processedValue = value.replace(/[^0-9]/g, '');
+                if (processedValue.length > 0 && !processedValue.startsWith('0')) processedValue = '0' + processedValue;
+            } else if (name === 'Shipping Fee (Customer)' || name === 'Internal Cost') {
+                if (value === '' || value.endsWith('.')) processedValue = value;
+                else processedValue = Math.max(0, parseFloat(value) || 0);
+            }
+
+            const updatedState = { ...prev, [name]: processedValue };
+
+            if (name === 'Shipping Fee (Customer)') {
+                const numericFee = parseFloat(String(processedValue)) || 0;
+                const newTotals = recalculateTotals(updatedState.Products, numericFee);
+                return { ...updatedState, ...newTotals };
+            }
+            if (name === 'Payment Status' && processedValue === 'Unpaid') { 
+                updatedState['Payment Info'] = ''; 
+                setBankLogo(''); 
+            }
+            return updatedState;
+        });
     };
 
     const handleProductChange = (index: number, field: keyof Product, value: any, extraTags?: string) => {
@@ -171,35 +170,10 @@ const EditOrderPage: React.FC<EditOrderPageProps> = ({ order, onSaveSuccess, onC
             return { ...prev, Products: newProducts, ...newTotals };
         });
     };
-    
-    const handleAddProduct = () => {
-        setFormData(prev => ({ 
-            ...prev, 
-            Products: [ 
-                ...prev.Products, 
-                { id: Date.now(), name: '', quantity: 1, originalPrice: 0, finalPrice: 0, total: 0, discountPercent: 0, colorInfo: '', image: '', cost: 0, tags: '' } 
-            ] 
-        }));
-    };
 
-    const handleRemoveProduct = (index: number) => {
-        if (formData.Products.length <= 1) { 
-            alert("ប្រតិបត្តិការណ៍ត្រូវតែមានផលិតផលយ៉ាងទីចមួយ។"); 
-            return; 
-        }
-        setFormData(prev => {
-            const newProducts = prev.Products.filter((_, i) => i !== index);
-            const currentShippingFee = parseFloat(String(prev['Shipping Fee (Customer)'])) || 0;
-            const newTotals = recalculateTotals(newProducts, currentShippingFee);
-            return { ...prev, Products: newProducts, ...newTotals };
-        });
-    };
-    
     const handleDelete = async () => {
         if (!window.confirm(`តើអ្នកពិតជាចង់លុបប្រតិបត្តិការណ៍ ID: ${formData['Order ID']} មែនទេ?`)) return;
         if (!currentUser) return;
-        setIsDeleting(true);
-        setError('');
         try {
             const response = await fetch(`${WEB_APP_URL}/api/admin/delete-order`, {
                 method: 'POST',
@@ -208,7 +182,6 @@ const EditOrderPage: React.FC<EditOrderPageProps> = ({ order, onSaveSuccess, onC
                     orderId: formData['Order ID'], 
                     team: formData.Team, 
                     userName: currentUser.UserName,
-                    // Send Telegram IDs to allow backend to delete messages
                     telegramMessageId1: formData['Telegram Message ID 1'],
                     telegramMessageId2: formData['Telegram Message ID 2'],
                     telegramChatId: formData.TelegramValue
@@ -216,20 +189,14 @@ const EditOrderPage: React.FC<EditOrderPageProps> = ({ order, onSaveSuccess, onC
             });
             const result = await response.json();
             if (!response.ok || result.status !== 'success') throw new Error(result.message || 'Delete failed');
-            
             await refreshData();
             onSaveSuccess();
-        } catch (err: any) { 
-            setError(`លុបមិនបានសម្រេច: ${err.message}`); 
-        } finally { 
-            setIsDeleting(false); 
-        }
+        } catch (err: any) { setError(`លុបមិនបានសម្រេច: ${err.message}`); }
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        setLoading(true); 
-        setError('');
+        setLoading(true); setError('');
         
         if (!formData.Products.every(p => p.name && parseFloat(String(p.quantity)) > 0)) {
             setError("សូមពិនិត្យព័ត៌មានផលិតផល (ឈ្មោះ និងចំនួន)។");
@@ -237,41 +204,30 @@ const EditOrderPage: React.FC<EditOrderPageProps> = ({ order, onSaveSuccess, onC
             return;
         }
 
+        // Validate Driver Selection
+        const currentMethod = appData.shippingMethods?.find(m => m.MethodName === formData['Internal Shipping Method']);
+        if (currentMethod?.RequireDriverSelection && !formData['Internal Shipping Details']) {
+             setError("សូមជ្រើសរើសអ្នកដឹក (Driver) សម្រាប់សេវាកម្មនេះ។");
+             setLoading(false);
+             return;
+        }
+
         try {
             const finalShippingFee = parseFloat(String(formData['Shipping Fee (Customer)'])) || 0;
             const finalTotals = recalculateTotals(formData.Products, finalShippingFee);
             
-            // បង្កើត Object ថ្មីដែលស្អាត និងមាន Key ត្រឹមត្រូវតាម Column ក្នុង Sheet
-            // ធានាថា Page, TelegramValue, Team មិនបាត់បង់សម្រាប់ Bot Telegram
-            // IMPORTANT: Using '|| ""' ensures we send empty strings instead of undefined, preventing keys from being dropped
             const cleanNewData: any = {
-                "Timestamp": formData.Timestamp || new Date().toISOString(),
-                "Order ID": formData['Order ID'],
-                "User": formData.User || "",
-                "Page": formData.Page || "",
-                "TelegramValue": formData.TelegramValue || "",
-                "Customer Name": formData['Customer Name'] || "",
-                "Customer Phone": formData['Customer Phone'] || "",
-                "Location": formData.Location || "",
-                "Address Details": formData['Address Details'] || "",
-                "Note": formData.Note || "",
+                ...formData,
                 "Shipping Fee (Customer)": finalShippingFee,
                 "Subtotal": finalTotals.Subtotal,
                 "Grand Total": finalTotals['Grand Total'],
-                "Internal Shipping Method": formData['Internal Shipping Method'] || "",
-                "Internal Shipping Details": formData['Internal Shipping Details'] || "",
                 "Internal Cost": parseFloat(String(formData['Internal Cost'])) || 0,
-                "Payment Status": formData['Payment Status'] || "Unpaid",
-                "Payment Info": formData['Payment Info'] || "",
                 "Discount ($)": finalTotals['Discount ($)'],
                 "Total Product Cost ($)": finalTotals['Total Product Cost ($)'],
-                "Fulfillment Store": formData['Fulfillment Store'] || "",
-                "Team": formData.Team || "",
-                "Scheduled Time": formData['Scheduled Time'] || "",
                 "IsVerified": !!formData.IsVerified
             };
             
-            // បម្លែង Products Array ទៅជា JSON String សម្រាប់រក្សាទុកក្នុង Column តែមួយ
+            // Clean products array
             const productsWithSubtotals = formData.Products.map(p => ({
                 ...p,
                 quantity: parseFloat(String(p.quantity)) || 0,
@@ -279,284 +235,125 @@ const EditOrderPage: React.FC<EditOrderPageProps> = ({ order, onSaveSuccess, onC
                 total: (parseFloat(String(p.quantity)) || 0) * (parseFloat(String(p.finalPrice)) || 0)
             }));
             cleanNewData['Products (JSON)'] = JSON.stringify(productsWithSubtotals);
+            // Remove Products array from root object to avoid duplication in some backends, 
+            // though keeping it doesn't hurt if backend ignores it. 
+            // Better to keep cleanNewData consistent with Flat structure.
 
             const response = await fetch(`${WEB_APP_URL}/api/admin/update-order`, { 
-                method: 'POST', 
-                headers: { 'Content-Type': 'application/json' }, 
-                body: JSON.stringify({ 
-                    orderId: formData['Order ID'], 
-                    team: formData.Team, 
-                    userName: currentUser?.UserName, 
-                    newData: cleanNewData 
-                }) 
+                method: 'POST', headers: { 'Content-Type': 'application/json' }, 
+                body: JSON.stringify({ orderId: formData['Order ID'], team: formData.Team, userName: currentUser?.UserName, newData: cleanNewData }) 
             });
             
             const result = await response.json();
             if (!response.ok || result.status !== 'success') throw new Error(result.message || 'Update failed');
-            
             await refreshData();
             onSaveSuccess();
-        } catch (err: any) { 
-            console.error("Save Error:", err);
-            setError(`រក្សាទុកមិនបានសម្រេច: ${err.message}`); 
-        } finally { 
-            setLoading(false); 
-        }
+        } catch (err: any) { setError(`រក្សាទុកមិនបានសម្រេច: ${err.message}`); } finally { setLoading(false); }
     };
-    
+
     return (
-        <div className="w-full max-w-6xl mx-auto animate-fade-in pb-20">
-            {/* Page Header */}
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 gap-4 px-2 sm:px-0">
+        // Main Container - Fixed Layout
+        <div className="w-full h-full lg:h-[calc(100vh-40px)] flex flex-col animate-fade-in lg:overflow-hidden">
+            {/* Scanner Modal */}
+            {isScannerVisible && (
+                <BarcodeScannerModal 
+                    onClose={() => setIsScannerVisible(false)}
+                    onCodeScanned={handleCodeScanned}
+                    scanMode={scanMode}
+                    setScanMode={setScanMode}
+                    productsInOrder={formData.Products as any} // Cast safely as BarcodeScannerModal just checks name/barcode
+                    masterProducts={appData.products}
+                />
+            )}
+
+            {/* Top Bar */}
+            <div className="flex-shrink-0 flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-4 px-1 lg:px-4 pt-2">
                 <div>
-                    <h1 className="text-3xl font-black text-white uppercase tracking-tighter italic flex items-center gap-3">
-                        <span className="w-1.5 h-8 bg-blue-600 rounded-full"></span>
+                    <h1 className="text-2xl font-black text-white uppercase tracking-tighter italic flex items-center gap-3">
+                        <span className="w-1.5 h-6 bg-blue-600 rounded-full"></span>
                         Edit Order
                     </h1>
-                    <div className="flex items-center gap-3 mt-2">
-                        <span className="px-3 py-1 bg-blue-600/10 text-blue-400 rounded-lg border border-blue-500/20 text-[10px] font-black uppercase tracking-widest">ID: {formData['Order ID']}</span>
-                        <span className="px-3 py-1 bg-gray-800 text-gray-500 rounded-lg text-[10px] font-bold uppercase">{formData.Team}</span>
+                    <div className="flex items-center gap-2 mt-1">
+                        <span className="text-[10px] font-mono font-bold text-gray-500 bg-gray-900 px-2 py-0.5 rounded border border-gray-800">#{formData['Order ID']}</span>
+                        <span className="text-[10px] text-gray-500 font-bold uppercase">{formData.Team}</span>
                     </div>
                 </div>
-                <div className="flex gap-2 w-full sm:w-auto">
-                    <button onClick={onCancel} className="flex-1 sm:flex-none px-8 py-3 bg-gray-800 border border-gray-700 hover:bg-gray-700 text-gray-400 font-black rounded-xl uppercase text-xs tracking-widest transition-all">បោះបង់</button>
-                    <button onClick={handleSubmit} className="flex-1 sm:flex-none px-8 py-3 bg-blue-600 hover:bg-blue-500 text-white font-black rounded-xl uppercase text-xs tracking-widest shadow-xl shadow-blue-900/20 transition-all" disabled={loading}>{loading ? <Spinner size="sm"/> : 'រក្សាទុក'}</button>
-                </div>
+                <button onClick={onCancel} className="px-6 py-2.5 bg-gray-800 border border-gray-700 hover:bg-gray-700 text-gray-400 font-black rounded-xl uppercase text-[10px] tracking-widest transition-all">បោះបង់</button>
             </div>
 
             {error && (
-                <div className="mb-6 p-4 bg-red-500/10 border border-red-500/20 rounded-2xl text-red-400 flex items-center gap-3 animate-shake">
+                <div className="flex-shrink-0 mb-4 mx-4 p-3 bg-red-500/10 border border-red-500/20 rounded-xl text-red-400 flex items-center gap-3 animate-shake">
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" strokeWidth="2"/></svg>
-                    <span className="font-bold text-sm">{error}</span>
+                    <span className="font-bold text-xs">{error}</span>
                 </div>
             )}
 
-            <form onSubmit={handleSubmit} className="space-y-8">
-                <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-                    <div className="lg:col-span-8 space-y-8">
-                        {/* Customer Information Card */}
-                        <div className="bg-gray-800/20 backdrop-blur-xl border border-white/5 rounded-[2.5rem] p-6 sm:p-8 shadow-2xl overflow-hidden relative group">
-                            <div className="flex items-center gap-3 mb-8">
-                                <div className="w-1 h-5 bg-blue-500 rounded-full"></div>
-                                <h3 className="text-sm font-black text-white uppercase tracking-widest">ព័ត៌មានអតិថិជន</h3>
-                            </div>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                <div className="space-y-2">
-                                    <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-1">ឈ្មោះអតិថិជន*</label>
-                                    <input type="text" name="Customer Name" value={formData['Customer Name'] || ''} onChange={handleInputChange} className="form-input !py-4 bg-black/40 border-gray-700 focus:border-blue-500/50 rounded-2xl font-bold" required />
-                                </div>
-                                <div className="space-y-2">
-                                    <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-1">លេខទូរស័ព្ទ*</label>
-                                    <input type="tel" name="Customer Phone" value={formData['Customer Phone'] || ''} onChange={handleInputChange} className="form-input !py-4 bg-black/40 border-gray-700 focus:border-blue-500/50 rounded-2xl font-mono font-black" required />
-                                </div>
-                                
-                                <div className="md:col-span-2 grid grid-cols-1 sm:grid-cols-3 gap-4">
-                                    <div className="space-y-2">
-                                        <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-1">ខេត្ត/រាជធានី*</label>
-                                        <SearchableProvinceDropdown 
-                                            provinces={provinces}
-                                            selectedProvince={formData.Location || ''}
-                                            onSelect={handleProvinceSelect}
-                                        />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-1">ស្រុក/ខណ្ឌ</label>
-                                        <select 
-                                            value={selectedDistrict} 
-                                            onChange={(e) => { setSelectedDistrict(e.target.value); setSelectedSangkat(''); }} 
-                                            className="form-select bg-black/40 border-gray-700 rounded-2xl !py-4 font-bold"
-                                            disabled={!formData.Location}
-                                        >
-                                            <option value="">-- ស្រុក/ខណ្ឌ --</option>
-                                            {districts.map((d: string) => <option key={d} value={d}>{d}</option>)}
-                                        </select>
-                                    </div>
-                                    <div className="space-y-2">
-                                        <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-1">ឃុំ/សង្កាត់</label>
-                                        <select 
-                                            value={selectedSangkat} 
-                                            onChange={(e) => setSelectedSangkat(e.target.value)} 
-                                            className="form-select bg-black/40 border-gray-700 rounded-2xl !py-4 font-bold"
-                                            disabled={!selectedDistrict}
-                                        >
-                                            <option value="">-- ឃុំ/សង្កាត់ --</option>
-                                            {sangkats.map((s: string) => <option key={s} value={s}>{s}</option>)}
-                                        </select>
-                                    </div>
-                                </div>
-
-                                <div className="md:col-span-2 space-y-2">
-                                    <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-1">អាសយដ្ឋានលម្អិត</label>
-                                    <input type="text" name="Address Details" value={formData['Address Details'] || ''} onChange={handleInputChange} className="form-input !py-4 bg-black/40 border-gray-700 focus:border-blue-500/50 rounded-2xl font-bold" placeholder="ផ្ទះលេខ, ផ្លូវ, ឬចំណុចសម្គាល់..." />
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Products List Card */}
-                        <div className="bg-gray-800/20 backdrop-blur-xl border border-white/5 rounded-[2.5rem] p-6 sm:p-8 shadow-2xl">
-                            <div className="flex justify-between items-center mb-8">
-                                <div className="flex items-center gap-3">
-                                    <div className="w-1 h-5 bg-emerald-500 rounded-full"></div>
-                                    <h3 className="text-sm font-black text-white uppercase tracking-widest">បញ្ជីផលិតផល</h3>
-                                </div>
-                                <button type="button" onClick={handleAddProduct} className="px-4 py-2 bg-blue-600/10 border border-blue-500/20 text-blue-400 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-blue-600 hover:text-white transition-all">+ បន្ថែម</button>
-                            </div>
-                            
-                            <div className="space-y-4">
-                                {formData.Products.map((p, index) => (
-                                    <div key={p.id || index} className="group relative bg-black/30 rounded-[2rem] p-5 border border-white/5 hover:border-blue-500/20 transition-all shadow-inner">
-                                        <button type="button" onClick={() => handleRemoveProduct(index)} className="absolute -top-2 -right-2 bg-red-600/20 text-red-500 w-8 h-8 rounded-full border border-red-500/30 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all hover:bg-red-600 hover:text-white shadow-xl z-10">&times;</button>
-                                        
-                                        <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-center">
-                                            <div className="md:col-span-2 flex justify-center">
-                                                <div className="w-20 h-20 bg-gray-900 rounded-2xl border-2 border-gray-800 overflow-hidden shadow-2xl cursor-pointer" onClick={() => p.image && previewImage(convertGoogleDriveUrl(p.image))}>
-                                                    <img src={convertGoogleDriveUrl(p.image)} className="w-full h-full object-cover" alt="" />
-                                                </div>
-                                            </div>
-                                            <div className="md:col-span-4 space-y-2">
-                                                <label className="text-[9px] font-black text-gray-600 uppercase tracking-[0.2em] ml-1">ឈ្មោះផលិតផល*</label>
-                                                <SearchableProductDropdown products={appData.products} selectedProductName={p.name} onSelect={(name, tags) => handleProductChange(index, 'name', name, tags)} />
-                                            </div>
-                                            <div className="md:col-span-3">
-                                                <SetQuantity value={Number(p.quantity) || 1} onChange={(val) => handleProductChange(index, 'quantity', val)} />
-                                            </div>
-                                            <div className="md:col-span-3 space-y-2">
-                                                <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-1">តម្លៃលក់ ($)</label>
-                                                <div className="relative">
-                                                    <input 
-                                                        type="text" 
-                                                        inputMode="decimal"
-                                                        value={p.finalPrice} 
-                                                        onChange={(e) => handleProductChange(index, 'finalPrice', e.target.value)} 
-                                                        className="form-input !py-3 !pr-8 bg-black/40 border-gray-700 rounded-xl font-black text-blue-400 text-lg" 
-                                                    />
-                                                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-600 font-black">$</span>
-                                                </div>
-                                            </div>
-                                            
-                                            <div className="md:col-span-12 pt-4 border-t border-white/5 flex flex-col sm:flex-row justify-between items-center gap-4">
-                                                <div className="flex flex-col gap-3 w-full sm:flex-row sm:items-center">
-                                                    <div className="flex items-center gap-3 w-full sm:w-auto">
-                                                        <span className="text-[10px] font-black text-gray-600 uppercase">សម្គាល់៖</span>
-                                                        <input type="text" value={p.colorInfo} onChange={(e) => handleProductChange(index, 'colorInfo', e.target.value)} className="flex-grow bg-transparent border-b border-gray-800 text-xs font-black text-gray-300 focus:border-blue-500 outline-none px-2" placeholder="..." />
-                                                    </div>
-                                                    <div className="flex items-center gap-3 w-full sm:w-auto">
-                                                        <span className="text-[10px] font-black text-blue-500 uppercase">Tags:</span>
-                                                        <input type="text" value={p.tags || ''} onChange={(e) => handleProductChange(index, 'tags', e.target.value)} className="flex-grow bg-transparent border-b border-gray-800 text-xs font-black text-blue-300 focus:border-blue-400 outline-none px-2" placeholder="Tags..." />
-                                                    </div>
-                                                </div>
-                                                <div className="flex items-center gap-6">
-                                                    <div className="text-right">
-                                                        <p className="text-[8px] font-black text-gray-600 uppercase tracking-widest">Item Subtotal</p>
-                                                        <p className="text-lg font-black text-white">${(Number(p.total) || 0).toFixed(2)}</p>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-                    </div>
-
-                    <div className="lg:col-span-4 space-y-8">
-                        {/* Summary Card */}
-                        <div className="bg-blue-600 rounded-[2.5rem] p-8 shadow-[0_20px_50px_rgba(37,99,235,0.3)] text-white relative overflow-hidden group">
-                            <div className="relative z-10 space-y-6">
-                                <div className="flex justify-between items-center border-b border-white/20 pb-4">
-                                    <span className="text-xs font-black uppercase tracking-widest opacity-80">Subtotal</span>
-                                    <span className="text-2xl font-black">${(Number(formData.Subtotal) || 0).toFixed(2)}</span>
-                                </div>
-                                <div className="space-y-4">
-                                    <div className="flex flex-col gap-2">
-                                        <label className="text-[10px] font-black uppercase tracking-widest opacity-80">ថ្លៃសេវាដឹក (ពីអតិថិជន)</label>
-                                        <div className="relative">
-                                            <input 
-                                                type="text" 
-                                                inputMode="decimal"
-                                                name="Shipping Fee (Customer)" 
-                                                value={formData['Shipping Fee (Customer)']} 
-                                                onChange={handleInputChange} 
-                                                className="w-full bg-white/10 border border-white/20 rounded-2xl py-3 px-4 outline-none font-black text-xl placeholder:text-white/30" 
-                                            />
-                                            <span className="absolute right-4 top-1/2 -translate-y-1/2 font-black">$</span>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div className="pt-6 border-t border-white/20">
-                                    <p className="text-[10px] font-black uppercase tracking-[0.3em] mb-1 opacity-80">Total Due</p>
-                                    <p className="text-5xl font-black tracking-tighter">${(Number(formData['Grand Total']) || 0).toFixed(2)}</p>
-                                </div>
-                            </div>
-                            <div className="absolute -right-10 -bottom-10 w-40 h-40 bg-white/10 rounded-full blur-3xl group-hover:scale-150 transition-transform duration-700"></div>
-                        </div>
-
-                        {/* Shipping & Payment Detail */}
-                        <div className="bg-gray-800/20 backdrop-blur-xl border border-white/5 rounded-[2.5rem] p-6 sm:p-8 shadow-2xl space-y-8">
-                            <div className="space-y-6">
-                                <div className="space-y-2">
-                                    <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest flex items-center gap-2"><span className="w-1.5 h-1.5 rounded-full bg-orange-500"></span>ក្រុមហ៊ុនដឹកជញ្ជូន</label>
-                                    <ShippingMethodDropdown methods={appData.shippingMethods || []} selectedMethodName={formData['Internal Shipping Method'] || ''} onSelect={handleShippingMethodSelect} />
-                                </div>
-                                <div className="space-y-2">
-                                    <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest flex items-center gap-2"><span className="w-1.5 h-1.5 rounded-full bg-orange-500"></span>អ្នកដឹក / លម្អិត</label>
-                                    <select name="Internal Shipping Details" value={formData['Internal Shipping Details'] || ''} onChange={handleInputChange} className="form-select bg-black/40 border-gray-700 rounded-2xl !py-4 font-bold">
-                                        <option value="">-- ជ្រើសរើសអ្នកដឹក --</option>
-                                        {appData.drivers?.map((d: any) => <option key={d.DriverName} value={d.DriverName}>{d.DriverName}</option>)}
-                                    </select>
-                                </div>
-                                <div className="space-y-2">
-                                    <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest flex items-center gap-2"><span className="w-1.5 h-1.5 rounded-full bg-orange-500"></span>ថ្លៃបង់ឱ្យអ្នកដឹក (Cost)*</label>
-                                    <div className="relative">
-                                        <input 
-                                            type="text" 
-                                            inputMode="decimal"
-                                            name="Internal Cost" 
-                                            value={formData['Internal Cost']} 
-                                            onChange={handleInputChange} 
-                                            className="form-input !py-4 !pr-10 bg-black/40 border-gray-700 rounded-2xl font-black text-orange-400 text-lg" 
-                                        />
-                                        <span className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-600 font-black">$</span>
-                                    </div>
-                                </div>
-                                <div className="h-px bg-white/5"></div>
-                                <div className="space-y-2">
-                                    <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest flex items-center gap-2"><span className="w-1.5 h-1.5 rounded-full bg-purple-500"></span>ស្ថានភាពទូទាត់</label>
-                                    <select name="Payment Status" value={formData['Payment Status']} onChange={handleInputChange} className={`form-select !py-4 rounded-2xl font-black uppercase tracking-widest border-none ${formData['Payment Status'] === 'Paid' ? 'bg-emerald-600 text-white' : 'bg-red-600/20 text-red-400 border border-red-500/20'}`}>
-                                        <option value="Unpaid">Unpaid (COD)</option>
-                                        <option value="Paid">Paid (រួចរាល់)</option>
-                                    </select>
-                                </div>
-                                {formData['Payment Status'] === 'Paid' && (
-                                    <div className="space-y-4 animate-fade-in-down">
-                                        <div className="space-y-2">
-                                            <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest">គណនីធនាគារ</label>
-                                            <div className="flex items-center gap-3">
-                                                <select value={formData['Payment Info']} onChange={handleBankChange} className="form-select bg-black/40 border-gray-700 rounded-2xl !py-4 font-bold flex-grow">
-                                                    <option value="">ជ្រើសរើសធនាគារ</option>
-                                                    {appData.bankAccounts?.map((b: any) => <option key={b.BankName} value={b.BankName}>{b.BankName}</option>)}
-                                                </select>
-                                                {bankLogo && <img src={bankLogo} className="w-14 h-14 object-contain bg-white/5 p-1 rounded-xl border border-white/10" alt="" />}
-                                            </div>
-                                        </div>
-                                    </div>
-                                )}
-                            </div>
-                        </div>
-
-                        {/* Note & Delete */}
-                        <div className="bg-gray-800/20 backdrop-blur-xl border border-white/5 rounded-[2.5rem] p-6 sm:p-8 shadow-2xl">
-                             <div className="space-y-4">
-                                <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-1">ចំណាំបន្ថែម</label>
-                                <textarea name="Note" value={formData.Note || ''} onChange={handleInputChange} rows={3} className="form-textarea bg-black/40 border-gray-700 rounded-[1.5rem] text-sm font-bold" placeholder="ចំណាំ..." />
-                            </div>
-                            <button type="button" onClick={handleDelete} className="w-full mt-6 py-4 bg-red-600/10 hover:bg-red-600 text-red-500 hover:text-white rounded-2xl font-black uppercase text-[10px] tracking-widest border border-red-500/20 transition-all active:scale-95 flex items-center justify-center gap-2" disabled={loading || isDeleting}>
-                                {isDeleting ? <Spinner size="sm" /> : <><svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" strokeWidth="2.5"/></svg> លុបប្រតិបត្តិការណ៍</>}
-                            </button>
-                        </div>
-                    </div>
+            {/* Split Content Area */}
+            <div className="flex-1 flex flex-col lg:flex-row gap-6 overflow-hidden px-1 lg:px-4 pb-4">
+                
+                {/* Left: Customer & Logistics */}
+                <div className="w-full lg:w-[380px] xl:w-[420px] flex-shrink-0 h-full overflow-hidden">
+                    <EditCustomerPanel 
+                        formData={formData}
+                        appData={appData}
+                        onChange={handleInputChange}
+                        onProvinceSelect={(val) => {
+                            setFormData(prev => ({ ...prev, Location: val }));
+                            setSelectedDistrict(''); setSelectedSangkat('');
+                        }}
+                        onDistrictChange={(val) => { setSelectedDistrict(val); setSelectedSangkat(''); }}
+                        onSangkatChange={setSelectedSangkat}
+                        onShippingMethodSelect={(method: ShippingMethod) => setFormData(prev => ({ 
+                            ...prev, 
+                            'Internal Shipping Method': method.MethodName,
+                            'Internal Shipping Details': method.RequireDriverSelection ? '' : method.MethodName
+                        }))}
+                        onDriverSelect={(val) => setFormData(prev => ({ ...prev, 'Internal Shipping Details': val }))}
+                        onBankChange={(e) => {
+                            const val = e.target.value;
+                            setFormData(prev => ({ ...prev, 'Payment Info': val }));
+                            const b = appData.bankAccounts?.find((bank: any) => bank.BankName === val);
+                            setBankLogo(b ? convertGoogleDriveUrl(b.LogoURL) : '');
+                        }}
+                        onDelete={handleDelete}
+                        selectedDistrict={selectedDistrict}
+                        selectedSangkat={selectedSangkat}
+                        bankLogo={bankLogo}
+                    />
                 </div>
-            </form>
+
+                {/* Right: Products & Summary */}
+                <div className="flex-1 flex flex-col gap-4 overflow-hidden h-full">
+                    <EditProductPanel 
+                        products={formData.Products}
+                        masterProducts={appData.products}
+                        onProductChange={handleProductChange}
+                        onAddProduct={() => setFormData(prev => ({ 
+                            ...prev, 
+                            Products: [...prev.Products, { id: Date.now(), name: '', quantity: 1, originalPrice: 0, finalPrice: 0, total: 0, discountPercent: 0, colorInfo: '', image: '', cost: 0, tags: '' }] 
+                        }))}
+                        onRemoveProduct={(idx) => {
+                            if (formData.Products.length <= 1) { alert("Cannot remove last item"); return; }
+                            setFormData(prev => {
+                                const newP = prev.Products.filter((_, i) => i !== idx);
+                                const newT = recalculateTotals(newP, Number(prev['Shipping Fee (Customer)']) || 0);
+                                return { ...prev, Products: newP, ...newT };
+                            });
+                        }}
+                        onPreviewImage={previewImage}
+                        onScanBarcode={() => setIsScannerVisible(true)}
+                    />
+                    
+                    <EditOrderSummary 
+                        subtotal={Number(formData.Subtotal) || 0}
+                        grandTotal={Number(formData['Grand Total']) || 0}
+                        shippingFee={formData['Shipping Fee (Customer)']}
+                        onShippingFeeChange={handleInputChange}
+                        onSave={handleSubmit}
+                        loading={loading}
+                    />
+                </div>
+            </div>
         </div>
     );
 };
