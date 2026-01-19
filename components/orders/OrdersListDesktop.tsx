@@ -79,7 +79,10 @@ const OrdersListDesktop: React.FC<OrdersListDesktopProps> = ({
                             </th>
                         )}
                         {isVisible('index') && <th className="px-4 py-6 text-[10px] font-black uppercase tracking-[0.2em] text-center text-gray-500 w-12">#</th>}
-                        {isVisible('orderId') && <th className="px-2 py-6 text-[10px] font-black uppercase tracking-[0.2em] text-center text-gray-500 w-16">Node ID</th>}
+                        
+                        {/* MOVED: Command (Actions) to 2nd position */}
+                        {isVisible('actions') && <th className="px-4 py-6 text-[10px] font-black uppercase tracking-[0.2em] text-center text-gray-500 w-24">Command</th>}
+                        
                         {isVisible('customerName') && <th className="px-6 py-6 text-[10px] font-black uppercase tracking-[0.2em] text-left text-gray-500 w-56">Merchant/Client</th>}
                         {isVisible('productInfo') && <th className="px-6 py-6 text-[10px] font-black uppercase tracking-[0.2em] text-left text-gray-500 w-44">Assets</th>}
                         {isVisible('location') && <th className="px-6 py-6 text-[10px] font-black uppercase tracking-[0.2em] text-left text-gray-500 w-52">Geography</th>}
@@ -91,8 +94,10 @@ const OrdersListDesktop: React.FC<OrdersListDesktopProps> = ({
                         {isVisible('status') && <th className="px-6 py-6 text-[10px] font-black uppercase tracking-[0.2em] text-left text-gray-500 w-32">Status</th>}
                         {isVisible('date') && <th className="px-4 py-6 text-[10px] font-black uppercase tracking-[0.2em] text-left text-gray-500 w-24">Time</th>}
                         {isVisible('print') && <th className="px-4 py-6 text-[10px] font-black uppercase tracking-[0.2em] text-center text-gray-500 w-16">P</th>}
-                        {isVisible('actions') && <th className="px-4 py-6 text-[10px] font-black uppercase tracking-[0.2em] text-center text-gray-500 w-24">Command</th>}
                         {isVisible('check') && <th className="px-2 py-6 text-[9px] font-normal uppercase tracking-[0.15em] text-center text-emerald-500/80 w-14">VERIFIED</th>}
+                        
+                        {/* MOVED: Node ID (Order ID) to Last Position */}
+                        {isVisible('orderId') && <th className="px-2 py-6 text-[10px] font-black uppercase tracking-[0.2em] text-center text-gray-500 w-16">Node ID</th>}
                     </tr>
                 </thead>
                 <tbody className="divide-y divide-white/5">
@@ -132,7 +137,9 @@ const OrdersListDesktop: React.FC<OrdersListDesktopProps> = ({
                                     </td>
                                 )}
                                 {isVisible('index') && <td className="px-4 py-5 text-center text-[11px] font-bold text-gray-600">{idx + 1}</td>}
-                                {isVisible('orderId') && <td className="px-2 py-5 text-center"><button onClick={() => handleCopy(order['Order ID'])} className={`p-2 rounded-xl transition-all border ${isThisCopied ? 'bg-green-500/20 border-green-500/40 text-green-400' : 'bg-gray-800 border-white/5 text-gray-500 hover:text-blue-400 active:scale-90'}`}><span className="text-[9px] font-black uppercase tracking-widest">{isThisCopied ? '✓' : 'ID'}</span></button></td>}
+                                
+                                {/* MOVED: Actions (Command) */}
+                                {isVisible('actions') && <td className="px-4 py-5 text-center"><button onClick={() => onEdit && onEdit(order)} className="text-blue-400/80 hover:text-white bg-blue-400/5 hover:bg-blue-600 px-5 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all border border-blue-400/10 active:scale-95 shadow-md">Edit</button></td>}
                                 
                                 {isVisible('customerName') && (
                                     <td className="px-6 py-5">
@@ -216,7 +223,7 @@ const OrdersListDesktop: React.FC<OrdersListDesktopProps> = ({
                                 {isVisible('fulfillment') && <td className="px-6 py-5"><span className="text-[11px] font-bold text-gray-300 bg-gray-800 px-2 py-1 rounded border border-white/5">{order['Fulfillment Store']}</span></td>}
                                 {isVisible('total') && <td className="px-6 py-5 font-black text-blue-400 text-base tracking-tighter">${order['Grand Total'].toFixed(2)}</td>}
                                 {isVisible('shippingService') && <td className="px-6 py-5"><div className="flex items-center gap-2.5">{shippingLogo && <img src={shippingLogo} className="w-5 h-5 rounded-lg object-contain bg-gray-950 p-0.5 border border-white/5" alt="shipping" />}<span className="text-[10px] text-orange-400/80 font-black uppercase truncate tracking-tight">{order['Internal Shipping Method'] || '-'}</span></div></td>}
-                                {isVisible('shippingCost') && <td className="px-6 py-5 text-[11px] text-gray-500 font-mono font-black tracking-tighter">${(Number(order['Internal Cost']) || 0).toFixed(2)}</td>}
+                                {isVisible('shippingCost') && <td className="px-6 py-5 text-sm text-gray-400 font-mono font-black tracking-tighter">${(Number(order['Internal Cost']) || 0).toFixed(2)}</td>}
                                 {isVisible('status') && <td className="px-6 py-5"><span className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest border ${order['Payment Status'] === 'Paid' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 'bg-red-500/10 text-red-400 border border-red-500/20'}`}>{order['Payment Status']}</span></td>}
                                 
                                 {isVisible('date') && (
@@ -229,8 +236,11 @@ const OrdersListDesktop: React.FC<OrdersListDesktopProps> = ({
                                 )}
                                 
                                 {isVisible('print') && <td className="px-4 py-5 text-center"><button onClick={() => handlePrint(order)} className="text-emerald-400/60 hover:text-white bg-emerald-400/5 hover:bg-emerald-600 p-2.5 rounded-xl transition-all border border-emerald-400/10 active:scale-90"><svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" /></svg></button></td>}
-                                {isVisible('actions') && <td className="px-4 py-5 text-center"><button onClick={() => onEdit && onEdit(order)} className="text-blue-400/80 hover:text-white bg-blue-400/5 hover:bg-blue-600 px-5 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all border border-blue-400/10 active:scale-95 shadow-md">Edit</button></td>}
+                                
                                 {isVisible('check') && <td className="px-2 py-5 text-center"><div className="relative flex items-center justify-center"><input type="checkbox" checked={isVerified} onChange={() => toggleOrderVerified(orderId, isVerified)} className={`h-6 w-6 rounded-lg border-gray-700 bg-gray-950 text-emerald-500 focus:ring-emerald-500/10 transition-all ${isUpdating ? 'opacity-20' : 'hover:scale-110 active:scale-150 cursor-pointer'}`} />{isUpdating && <div className="absolute inset-0 flex items-center justify-center pointer-events-none"><Spinner size="sm" /></div>}</div></td>}
+                                
+                                {/* MOVED: Node ID (Order ID) to Last Position */}
+                                {isVisible('orderId') && <td className="px-2 py-5 text-center"><button onClick={() => handleCopy(order['Order ID'])} className={`p-2 rounded-xl transition-all border ${isThisCopied ? 'bg-green-500/20 border-green-500/40 text-green-400' : 'bg-gray-800 border-white/5 text-gray-500 hover:text-blue-400 active:scale-90'}`}><span className="text-[9px] font-black uppercase tracking-widest">{isThisCopied ? '✓' : 'ID'}</span></button></td>}
                             </tr>
                         );
                     })}

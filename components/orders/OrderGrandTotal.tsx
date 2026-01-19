@@ -35,7 +35,8 @@ export const DesktopGrandTotalRow: React.FC<DesktopGrandTotalRowProps> = ({ tota
                 </td>
             )}
             
-            {isVisible('orderId') && <td className="px-2 py-4"></td>}
+            {/* Moved Actions Here (2nd Position) */}
+            {isVisible('actions') && <td className="px-4 py-4"></td>}
             
             {isVisible('customerName') && (
                 <td className="px-6 py-4">
@@ -87,8 +88,10 @@ export const DesktopGrandTotalRow: React.FC<DesktopGrandTotalRowProps> = ({ tota
 
             {isVisible('date') && <td className="px-4 py-4"></td>}
             {isVisible('print') && <td className="px-4 py-4"></td>}
-            {isVisible('actions') && <td className="px-4 py-4"></td>}
             {isVisible('check') && <td className="px-2 py-4"></td>}
+            
+            {/* Moved Order ID (Node ID) to Last Position */}
+            {isVisible('orderId') && <td className="px-2 py-4"></td>}
         </tr>
     );
 };
