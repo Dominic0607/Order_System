@@ -623,6 +623,27 @@ const CreateOrderPage: React.FC<CreateOrderPageProps> = ({ team, onSaveSuccess, 
                                  );
                              })}
                         </div>
+
+                        {/* NEW: Subtotal Display for Step 2 */}
+                        <div className="bg-gray-900/80 p-4 rounded-2xl border border-blue-500/20 shadow-lg flex flex-col sm:flex-row justify-between items-center gap-4 mt-4">
+                            <div className="flex items-center gap-2">
+                                <div className="p-2 bg-blue-500/10 rounded-lg text-blue-400">
+                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" /></svg>
+                                </div>
+                                <div className="flex flex-col">
+                                    <span className="text-[10px] font-black text-gray-500 uppercase tracking-widest">Total Quantity</span>
+                                    <span className="text-lg font-black text-white">{order.products.reduce((acc: number, p: any) => acc + (Number(p.quantity) || 0), 0)} items</span>
+                                </div>
+                            </div>
+                            <div className="h-px w-full sm:w-px sm:h-10 bg-gray-700"></div>
+                            <div className="flex flex-col items-center sm:items-end">
+                                <span className="text-[10px] font-black text-blue-400 uppercase tracking-widest">Estimated Subtotal</span>
+                                <span className="text-3xl font-black text-white tracking-tighter drop-shadow-md">
+                                    ${(order.subtotal || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+                                </span>
+                            </div>
+                        </div>
+
                         <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 mt-6">
                             <button type="button" onClick={() => setOrder({ ...order, products: [...order.products, {...initialProductState, id: Date.now()}] })} className="flex-1 py-4 px-6 bg-gray-800 border border-gray-700 rounded-2xl text-gray-300 font-black uppercase text-[11px] tracking-widest hover:bg-gray-700 hover:border-blue-500 transition-all flex items-center justify-center gap-2 active:scale-95"><svg className="w-5 h-5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M12 4v16m8-8H4"/></svg>បន្ថែមផលិតផល</button>
                             <button type="button" onClick={()=>setIsScannerVisible(true)} className="flex-1 py-4 px-6 bg-blue-600/10 border border-blue-500/30 rounded-2xl text-blue-400 font-black uppercase text-[11px] tracking-widest hover:bg-blue-600 hover:text-white transition-all flex items-center justify-center gap-2 shadow-lg shadow-blue-900/10 active:scale-95"><svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2M7 12h10" strokeWidth="3"/></svg>Scan Barcode</button>
