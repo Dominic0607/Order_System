@@ -1,5 +1,5 @@
 
-import React, { useState, useContext, useEffect, useMemo } from 'react';
+import React, { useState, useContext, useEffect, useMemo, useRef } from 'react';
 import { AppContext } from '../context/AppContext';
 import { ParsedOrder, FullOrder } from '../types';
 import { WEB_APP_URL } from '../constants';
@@ -7,69 +7,56 @@ import Spinner from '../components/common/Spinner';
 import OrdersList from '../components/orders/OrdersList';
 import CreateOrderPage from './CreateOrderPage';
 import { useUrlState } from '../hooks/useUrlState';
-import UserSalesPageReport from './UserSalesPageReport'; // Use the dedicated user report
+import UserSalesPageReport from './UserSalesPageReport'; 
 
 type DateRangePreset = 'today' | 'yesterday' | 'this_week' | 'this_month' | 'custom';
 
 const UserOrdersView: React.FC<{ team: string; onAdd: () => void }> = ({ team, onAdd }) => {
+    // Stores parsed orders for the CURRENTLY SELECTED date range only
     const [orders, setOrders] = useState<ParsedOrder[]>([]);
-    const [globalOrders, setGlobalOrders] = useState<ParsedOrder[]>([]);
-    const [loading, setLoading] = useState(true);
-    const [searchQuery, setSearchQuery] = useState('');
-    const [showReport, setShowReport] = useState(false); // State to toggle report view
+    const [globalOrders, setGlobalOrders] = useState<ParsedOrder[]>([]); // For Top Teams stats
     
-    // CHANGED: Default to 'today' to reduce initial memory load
+    const [loading, setLoading] = useState(true);
+    const [processing, setProcessing] = useState(false); // New state for local filtering calculation
+    const [searchQuery, setSearchQuery] = useState('');
+    const [showReport, setShowReport] = useState(false);
+    
     const [dateRange, setDateRange] = useState<DateRangePreset>('today');
     const [customStart, setCustomStart] = useState(new Date().toISOString().split('T')[0]);
     const [customEnd, setCustomEnd] = useState(new Date().toISOString().split('T')[0]);
+
+    // REF to hold ALL raw data. This doesn't trigger re-renders and is memory efficient.
+    const allRawOrdersRef = useRef<FullOrder[]>([]);
+    const isDataFetchedRef = useRef(false);
 
     const userVisibleColumns = useMemo(() => new Set([
         'index', 'orderId', 'customerName', 'productInfo', 'location', 'pageInfo', 'total', 'shippingService', 'status', 'date', 'print'
     ]), []);
 
-    useEffect(() => {
-        const fetchOrders = async () => {
-            setLoading(true);
-            try {
-                const response = await fetch(`${WEB_APP_URL}/api/admin/all-orders`);
-                const result = await response.json();
-                if (result.status === 'success') {
-                    const allRaw: FullOrder[] = Array.isArray(result.data) ? result.data.filter((o: any) => o !== null) : [];
-                    
-                    // --- OPTIMIZATION FOR SAFARI iOS ---
-                    // Filter Raw Data to ONLY Today's date immediately to prevent OOM (Out of Memory) crashes on large datasets.
-                    // This creates a lightweight initial state.
-                    const todayStr = new Date().toDateString();
-                    const filteredRaw = allRaw.filter(o => new Date(o.Timestamp).toDateString() === todayStr);
-                    // -----------------------------------
-
-                    const allParsed = filteredRaw.map(o => {
-                        let products = [];
-                        try { if (o['Products (JSON)']) products = JSON.parse(o['Products (JSON)']); } catch(e) {}
-                        return { ...o, Products: products };
-                    });
-                    
-                    setGlobalOrders(allParsed);
-                    // Filter orders strictly by Team here
-                    const teamOnly = allParsed.filter(o => (o.Team || '').trim() === (team || '').trim());
-                    setOrders(teamOnly.sort((a, b) => new Date(b.Timestamp).getTime() - new Date(a.Timestamp).getTime()));
-                }
-            } catch (err: any) { console.error(err); } finally { setLoading(false); }
-        };
-        fetchOrders();
-    }, [team]);
-    
     const getDateBounds = (preset: DateRangePreset) => {
         const now = new Date();
         const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
         let start: Date | null = null;
-        let end: Date | null = new Date();
+        let end: Date | null = new Date(); // Default end is now
 
         switch (preset) {
-            case 'today': start = today; break;
-            case 'yesterday': start = new Date(today); start.setDate(today.getDate() - 1); end = new Date(today); end.setMilliseconds(-1); break;
-            case 'this_week': const d = now.getDay(); start = new Date(today); start.setDate(today.getDate() - (d === 0 ? 6 : d - 1)); break;
-            case 'this_month': start = new Date(now.getFullYear(), now.getMonth(), 1); break;
+            case 'today': 
+                start = today; 
+                break;
+            case 'yesterday': 
+                start = new Date(today); 
+                start.setDate(today.getDate() - 1); 
+                end = new Date(today); 
+                end.setMilliseconds(-1); 
+                break;
+            case 'this_week': 
+                const d = now.getDay(); 
+                start = new Date(today); 
+                start.setDate(today.getDate() - (d === 0 ? 6 : d - 1)); 
+                break;
+            case 'this_month': 
+                start = new Date(now.getFullYear(), now.getMonth(), 1); 
+                break;
             case 'custom': 
                 start = new Date(customStart + 'T00:00:00');
                 end = new Date(customEnd + 'T23:59:59');
@@ -78,13 +65,79 @@ const UserOrdersView: React.FC<{ team: string; onAdd: () => void }> = ({ team, o
         return { start, end };
     };
 
-    const filteredOrders = useMemo(() => {
-        const { start, end } = getDateBounds(dateRange);
-        return orders.filter(o => {
-            const orderDate = new Date(o.Timestamp);
-            if (start && orderDate < start) return false;
-            if (end && orderDate > end) return false;
+    // 1. Initial Data Fetch (Runs once)
+    useEffect(() => {
+        const fetchOrders = async () => {
+            setLoading(true);
+            try {
+                const response = await fetch(`${WEB_APP_URL}/api/admin/all-orders`);
+                const result = await response.json();
+                if (result.status === 'success') {
+                    // Store raw data in REF. Do NOT parse everything yet to save memory.
+                    const rawData = Array.isArray(result.data) ? result.data.filter((o: any) => o !== null) : [];
+                    allRawOrdersRef.current = rawData;
+                    isDataFetchedRef.current = true;
+                    
+                    // Trigger the first process manually or let the dependency array handle it
+                    processDataForRange('today'); 
+                }
+            } catch (err: any) { 
+                console.error(err); 
+            } finally { 
+                setLoading(false); 
+            }
+        };
+        fetchOrders();
+    }, []); // Empty dependency array = runs once on mount
 
+    // 2. Process Data when Date Range or Team Changes
+    // This function filters RAW data first, THEN parses only what is needed.
+    const processDataForRange = (range: DateRangePreset) => {
+        if (!isDataFetchedRef.current) return;
+        
+        setProcessing(true);
+        
+        // Small timeout to allow UI to show "Processing..." spinner
+        setTimeout(() => {
+            const { start, end } = getDateBounds(range);
+            
+            // Filter Raw Data first (Fast & Low Memory)
+            const rawFiltered = allRawOrdersRef.current.filter(o => {
+                if (!o.Timestamp) return false;
+                const orderDate = new Date(o.Timestamp);
+                if (start && orderDate < start) return false;
+                if (end && orderDate > end) return false;
+                return true;
+            });
+
+            // Parse ONLY the filtered subset
+            const parsedChunk = rawFiltered.map(o => {
+                let products = [];
+                try { if (o['Products (JSON)']) products = JSON.parse(o['Products (JSON)']); } catch(e) {}
+                return { ...o, Products: products };
+            });
+
+            // Set Global (for Top Teams within this period)
+            setGlobalOrders(parsedChunk);
+
+            // Filter strictly for current team
+            const teamOnly = parsedChunk.filter(o => (o.Team || '').trim() === (team || '').trim());
+            setOrders(teamOnly.sort((a, b) => new Date(b.Timestamp).getTime() - new Date(a.Timestamp).getTime()));
+            
+            setProcessing(false);
+        }, 10);
+    };
+
+    // Listen for changes in controls
+    useEffect(() => {
+        if (isDataFetchedRef.current) {
+            processDataForRange(dateRange);
+        }
+    }, [dateRange, customStart, customEnd, team]);
+
+    // Client-side search filtering (on top of date-filtered data)
+    const filteredOrders = useMemo(() => {
+        return orders.filter(o => {
             if (searchQuery.trim()) {
                 const q = searchQuery.toLowerCase();
                 return o['Order ID'].toLowerCase().includes(q) || 
@@ -93,22 +146,16 @@ const UserOrdersView: React.FC<{ team: string; onAdd: () => void }> = ({ team, o
             }
             return true;
         });
-    }, [orders, searchQuery, dateRange, customStart, customEnd]);
+    }, [orders, searchQuery]);
 
     const totalFilteredRevenue = useMemo(() => {
         return filteredOrders.reduce((sum, o) => sum + (Number(o['Grand Total']) || 0), 0);
     }, [filteredOrders]);
 
     const topTeams = useMemo(() => {
-        const { start, end } = getDateBounds(dateRange);
-        const periodOrders = globalOrders.filter(o => {
-            const orderDate = new Date(o.Timestamp);
-            if (start && orderDate < start) return false;
-            if (end && orderDate > end) return false;
-            return true;
-        });
+        // Calculate top teams based on the CURRENT date range (globalOrders contains parsed data for current range)
         const teamStats: Record<string, number> = {};
-        periodOrders.forEach(o => {
+        globalOrders.forEach(o => {
             const tName = (o.Team || 'Unassigned').trim();
             teamStats[tName] = (teamStats[tName] || 0) + (Number(o['Grand Total']) || 0);
         });
@@ -116,7 +163,7 @@ const UserOrdersView: React.FC<{ team: string; onAdd: () => void }> = ({ team, o
             .map(([name, revenue]) => ({ name, revenue }))
             .sort((a, b) => b.revenue - a.revenue)
             .slice(0, 3);
-    }, [globalOrders, dateRange, customStart, customEnd]);
+    }, [globalOrders]);
 
     const periodLabel = useMemo(() => {
         switch (dateRange) {
@@ -136,7 +183,7 @@ const UserOrdersView: React.FC<{ team: string; onAdd: () => void }> = ({ team, o
         </div>
     );
 
-    // Render Report View - Using the new dedicated UserSalesPageReport
+    // Render Report View
     if (showReport) {
         return (
             <div className="animate-fade-in p-2">
@@ -167,24 +214,28 @@ const UserOrdersView: React.FC<{ team: string; onAdd: () => void }> = ({ team, o
                 </div>
 
                 <div className="flex overflow-x-auto gap-4 px-2 pb-4 hide-scrollbar snap-x">
-                    {topTeams.map((t, i) => (
-                        <div key={t.name} className="flex-shrink-0 w-[240px] sm:w-[300px] snap-center bg-gray-900/60 backdrop-blur-xl border border-white/5 p-5 rounded-[2rem] flex items-center gap-4 relative overflow-hidden">
-                            <div className={`w-12 h-12 rounded-xl flex items-center justify-center text-2xl border ${
-                                i === 0 ? 'bg-yellow-500/20 text-yellow-500 border-yellow-500/30' : 
-                                i === 1 ? 'bg-gray-400/20 text-gray-300 border-gray-400/30' : 
-                                'bg-orange-600/20 text-orange-500 border-orange-600/30'
-                            }`}>
-                                {i === 0 ? '🥇' : i === 1 ? '🥈' : '🥉'}
+                    {topTeams.length === 0 ? (
+                        <div className="text-gray-500 text-xs p-4 italic">មិនមានទិន្នន័យសម្រាប់ {periodLabel}</div>
+                    ) : (
+                        topTeams.map((t, i) => (
+                            <div key={t.name} className="flex-shrink-0 w-[240px] sm:w-[300px] snap-center bg-gray-900/60 backdrop-blur-xl border border-white/5 p-5 rounded-[2rem] flex items-center gap-4 relative overflow-hidden">
+                                <div className={`w-12 h-12 rounded-xl flex items-center justify-center text-2xl border ${
+                                    i === 0 ? 'bg-yellow-500/20 text-yellow-500 border-yellow-500/30' : 
+                                    i === 1 ? 'bg-gray-400/20 text-gray-300 border-gray-400/30' : 
+                                    'bg-orange-600/20 text-orange-500 border-orange-600/30'
+                                }`}>
+                                    {i === 0 ? '🥇' : i === 1 ? '🥈' : '🥉'}
+                                </div>
+                                <div className="min-w-0 flex-1">
+                                    <h4 className="text-sm font-black text-white truncate uppercase tracking-tighter">{t.name}</h4>
+                                    <p className="text-lg font-black text-blue-400">${t.revenue.toLocaleString(undefined, { maximumFractionDigits: 0 })}</p>
+                                </div>
+                                <div className={`absolute -right-4 -bottom-4 w-20 h-20 rounded-full blur-3xl opacity-10 ${
+                                    i === 0 ? 'bg-yellow-500' : i === 1 ? 'bg-gray-400' : 'bg-orange-600'
+                                }`}></div>
                             </div>
-                            <div className="min-w-0 flex-1">
-                                <h4 className="text-sm font-black text-white truncate uppercase tracking-tighter">{t.name}</h4>
-                                <p className="text-lg font-black text-blue-400">${t.revenue.toLocaleString(undefined, { maximumFractionDigits: 0 })}</p>
-                            </div>
-                            <div className={`absolute -right-4 -bottom-4 w-20 h-20 rounded-full blur-3xl opacity-10 ${
-                                i === 0 ? 'bg-yellow-500' : i === 1 ? 'bg-gray-400' : 'bg-orange-600'
-                            }`}></div>
-                        </div>
-                    ))}
+                        ))
+                    )}
                 </div>
             </div>
 
@@ -192,10 +243,6 @@ const UserOrdersView: React.FC<{ team: string; onAdd: () => void }> = ({ team, o
             <div className="bg-gray-900/60 backdrop-blur-3xl p-4 rounded-[2rem] border border-white/5 space-y-4 shadow-2xl mx-1">
                 <div className="flex flex-col gap-4">
                     <div className="flex items-center gap-1 overflow-x-auto hide-scrollbar bg-black/40 p-1 rounded-xl border border-white/5">
-                        {/* 
-                            Note: For Mobile Optimization, currently only 'today' works fully as other data is filtered out.
-                            Other options will return empty/partial data unless we implement lazy loading.
-                        */}
                         {(['today', 'this_week', 'this_month', 'custom'] as const).map(p => (
                             <button 
                                 key={p} 
@@ -253,7 +300,11 @@ const UserOrdersView: React.FC<{ team: string; onAdd: () => void }> = ({ team, o
 
             {/* List View */}
             <div className="px-1">
-                {filteredOrders.length === 0 ? (
+                {processing ? (
+                    <div className="flex justify-center py-20">
+                        <Spinner size="md" />
+                    </div>
+                ) : filteredOrders.length === 0 ? (
                     <div className="text-center py-20 bg-gray-800/10 rounded-[2rem] border-2 border-dashed border-gray-800/50">
                         <p className="text-[10px] font-black text-gray-600 uppercase tracking-widest italic">រកមិនឃើញទិន្នន័យ</p>
                     </div>
