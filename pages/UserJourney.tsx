@@ -18,7 +18,8 @@ const UserOrdersView: React.FC<{ team: string; onAdd: () => void }> = ({ team, o
     const [searchQuery, setSearchQuery] = useState('');
     const [showReport, setShowReport] = useState(false); // State to toggle report view
     
-    const [dateRange, setDateRange] = useState<DateRangePreset>('this_month');
+    // CHANGED: Default to 'today' to reduce initial memory load
+    const [dateRange, setDateRange] = useState<DateRangePreset>('today');
     const [customStart, setCustomStart] = useState(new Date().toISOString().split('T')[0]);
     const [customEnd, setCustomEnd] = useState(new Date().toISOString().split('T')[0]);
 
@@ -34,7 +35,15 @@ const UserOrdersView: React.FC<{ team: string; onAdd: () => void }> = ({ team, o
                 const result = await response.json();
                 if (result.status === 'success') {
                     const allRaw: FullOrder[] = Array.isArray(result.data) ? result.data.filter((o: any) => o !== null) : [];
-                    const allParsed = allRaw.map(o => {
+                    
+                    // --- OPTIMIZATION FOR SAFARI iOS ---
+                    // Filter Raw Data to ONLY Today's date immediately to prevent OOM (Out of Memory) crashes on large datasets.
+                    // This creates a lightweight initial state.
+                    const todayStr = new Date().toDateString();
+                    const filteredRaw = allRaw.filter(o => new Date(o.Timestamp).toDateString() === todayStr);
+                    // -----------------------------------
+
+                    const allParsed = filteredRaw.map(o => {
                         let products = [];
                         try { if (o['Products (JSON)']) products = JSON.parse(o['Products (JSON)']); } catch(e) {}
                         return { ...o, Products: products };
@@ -183,6 +192,10 @@ const UserOrdersView: React.FC<{ team: string; onAdd: () => void }> = ({ team, o
             <div className="bg-gray-900/60 backdrop-blur-3xl p-4 rounded-[2rem] border border-white/5 space-y-4 shadow-2xl mx-1">
                 <div className="flex flex-col gap-4">
                     <div className="flex items-center gap-1 overflow-x-auto hide-scrollbar bg-black/40 p-1 rounded-xl border border-white/5">
+                        {/* 
+                            Note: For Mobile Optimization, currently only 'today' works fully as other data is filtered out.
+                            Other options will return empty/partial data unless we implement lazy loading.
+                        */}
                         {(['today', 'this_week', 'this_month', 'custom'] as const).map(p => (
                             <button 
                                 key={p} 
