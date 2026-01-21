@@ -18,7 +18,7 @@ export default defineConfig(({ mode }) => {
     },
     plugins: [react()],
     // FIXED: Use relative base path to support any repository name
-    base: './', 
+    base: '/Order_System/', 
     define: {
       'process.env.API_KEY': JSON.stringify(env.GEMINI_API_KEY),
       'process.env.GEMINI_API_KEY': JSON.stringify(env.GEMINI_API_KEY)
