@@ -1,5 +1,5 @@
 
-import React, { useState, useContext, useEffect, useMemo } from 'react';
+import React, { useState, useContext, useEffect, useMemo, useRef } from 'react';
 import { AppContext } from '../context/AppContext';
 import Spinner from '../components/common/Spinner';
 import { ParsedOrder, User } from '../types';
@@ -38,6 +38,7 @@ const OrdersDashboard: React.FC<OrdersDashboardProps> = ({ onBack }) => {
     const [allOrders, setAllOrders] = useState<ParsedOrder[]>([]);
     const [usersList, setUsersList] = useState<User[]>([]); 
     const [loading, setLoading] = useState(true);
+    const [loadingProgress, setLoadingProgress] = useState(0); // Progress bar for parsing
     const [fetchError, setFetchError] = useState<string | null>(null);
     const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
     const [isPdfModalOpen, setIsPdfModalOpen] = useState(false);
@@ -57,6 +58,7 @@ const OrdersDashboard: React.FC<OrdersDashboardProps> = ({ onBack }) => {
             product: '',
             bank: '',
             fulfillmentStore: '',
+            store: '', // New Store Filter
             page: '',
             location: '',
             internalCost: '',
@@ -106,9 +108,36 @@ const OrdersDashboard: React.FC<OrdersDashboardProps> = ({ onBack }) => {
         });
     };
 
+    // --- Lazy Parsing Logic ---
+    const parseOrdersInChunks = async (rawOrders: any[]) => {
+        const chunkSize = 500; // Process 500 orders at a time
+        let processedOrders: ParsedOrder[] = [];
+        
+        for (let i = 0; i < rawOrders.length; i += chunkSize) {
+            const chunk = rawOrders.slice(i, i + chunkSize);
+            
+            const parsedChunk = chunk.map((o: any) => {
+                let products = [];
+                try { if (o['Products (JSON)']) products = JSON.parse(o['Products (JSON)']); } catch (e) {}
+                return { ...o, Products: products, IsVerified: String(o.IsVerified).toUpperCase() === 'TRUE' };
+            });
+
+            processedOrders = [...processedOrders, ...parsedChunk];
+            
+            // Update UI with progress
+            setLoadingProgress(Math.round(((i + chunkSize) / rawOrders.length) * 100));
+            
+            // Yield to main thread to keep UI responsive (Spinner spinning)
+            await new Promise(resolve => setTimeout(resolve, 0));
+        }
+        return processedOrders;
+    };
+
     const fetchAllOrders = async () => {
         setLoading(true);
+        setLoadingProgress(0);
         setFetchError(null);
+        
         try {
             const [ordersRes, usersRes] = await Promise.all([
                 fetch(`${WEB_APP_URL}/api/admin/all-orders`),
@@ -121,13 +150,11 @@ const OrdersDashboard: React.FC<OrdersDashboardProps> = ({ onBack }) => {
             const usersData = await usersRes.json();
             
             if (ordersData.status === 'success') {
-                const parsed = (ordersData.data || [])
-                    .filter((o: any) => o !== null && o['Order ID'] !== 'Opening Balance')
-                    .map((o: any) => {
-                        let products = [];
-                        try { if (o['Products (JSON)']) products = JSON.parse(o['Products (JSON)']); } catch (e) {}
-                        return { ...o, Products: products, IsVerified: String(o.IsVerified).toUpperCase() === 'TRUE' };
-                    });
+                const rawData = (ordersData.data || []).filter((o: any) => o !== null && o['Order ID'] !== 'Opening Balance');
+                
+                // Use Lazy Parsing
+                const parsed = await parseOrdersInChunks(rawData);
+                
                 setAllOrders(parsed.sort((a: any, b: any) => new Date(b.Timestamp).getTime() - new Date(a.Timestamp).getTime()));
             } else {
                 setFetchError(ordersData.message || "Failed to load orders");
@@ -160,6 +187,7 @@ const OrdersDashboard: React.FC<OrdersDashboardProps> = ({ onBack }) => {
 
     const filteredOrders = useMemo(() => {
         return enrichedOrders.filter(order => {
+            // 1. Date Filter
             if (filters.datePreset !== 'all') {
                 const orderDate = new Date(order.Timestamp);
                 const now = new Date();
@@ -182,6 +210,17 @@ const OrdersDashboard: React.FC<OrdersDashboardProps> = ({ onBack }) => {
                 if (start && orderDate < start) return false;
                 if (end && orderDate > end) return false;
             }
+
+            // 2. Store Filter (NEW Logic using Page Mapping)
+            if (filters.store) {
+                // Find the page configuration to determine which store it belongs to
+                const pageConfig = appData.pages?.find(p => p.PageName === order.Page);
+                if (!pageConfig || pageConfig.DefaultStore !== filters.store) {
+                    return false;
+                }
+            }
+
+            // 3. Other Filters
             if (filters.team && order.Team !== filters.team) return false;
             if (filters.user && (order.User || '').trim().toLowerCase() !== filters.user.trim().toLowerCase()) return false;
             if (filters.paymentStatus && order['Payment Status'] !== filters.paymentStatus) return false;
@@ -201,7 +240,7 @@ const OrdersDashboard: React.FC<OrdersDashboardProps> = ({ onBack }) => {
             }
             return true;
         });
-    }, [enrichedOrders, filters, searchQuery]);
+    }, [enrichedOrders, filters, searchQuery, appData.pages]); // Added appData.pages to dependencies
 
     const toggleSelection = (id: string) => {
         setSelectedIds(prev => {
@@ -221,7 +260,14 @@ const OrdersDashboard: React.FC<OrdersDashboardProps> = ({ onBack }) => {
     if (loading) return (
         <div className="flex flex-col h-96 items-center justify-center gap-5">
             <Spinner size="lg" />
-            <p className="text-[10px] font-black text-blue-500 uppercase tracking-[0.4em] animate-pulse">Syncing Operational Logs...</p>
+            <div className="flex flex-col items-center gap-2">
+                <p className="text-[10px] font-black text-blue-500 uppercase tracking-[0.4em] animate-pulse">Syncing Operational Logs...</p>
+                {loadingProgress > 0 && (
+                    <div className="w-48 h-1 bg-gray-800 rounded-full overflow-hidden">
+                        <div className="h-full bg-blue-500 transition-all duration-300" style={{ width: `${loadingProgress}%` }}></div>
+                    </div>
+                )}
+            </div>
         </div>
     );
 

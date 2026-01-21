@@ -35,6 +35,7 @@ const ReportDashboard: React.FC<ReportDashboardProps> = ({ activeReport, onBack 
         product: '',
         bank: '',
         fulfillmentStore: '',
+        store: '',
         page: '',
         location: '',
         internalCost: '',

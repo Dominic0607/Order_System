@@ -30,7 +30,7 @@ export const DesktopGrandTotalRow: React.FC<DesktopGrandTotalRowProps> = ({ tota
             {showSelection && <td className="px-4 py-4"></td>}
             
             {isVisible('index') && (
-                <td className="px-4 py-4 text-center font-black text-blue-400">
+                <td className="px-4 py-4 text-center font-black text-blue-400 text-[clamp(12px,0.9vw,14px)]">
                     {totals.count}
                 </td>
             )}
@@ -40,7 +40,7 @@ export const DesktopGrandTotalRow: React.FC<DesktopGrandTotalRowProps> = ({ tota
             
             {isVisible('customerName') && (
                 <td className="px-6 py-4">
-                    <span className="text-xs font-black text-white uppercase tracking-widest">
+                    <span className="font-black text-white uppercase tracking-widest text-[clamp(11px,0.8vw,13px)]">
                         Grand Total (សរុបរួម)
                     </span>
                 </td>
@@ -53,7 +53,7 @@ export const DesktopGrandTotalRow: React.FC<DesktopGrandTotalRowProps> = ({ tota
             
             {isVisible('total') && (
                 <td className="px-6 py-4">
-                    <span className="text-lg font-black text-emerald-400 tracking-tighter shadow-emerald-500/20 drop-shadow-sm">
+                    <span className="font-black text-emerald-400 tracking-tighter shadow-emerald-500/20 drop-shadow-sm text-[clamp(16px,1.2vw,20px)]">
                         ${totals.grandTotal.toLocaleString(undefined, { minimumFractionDigits: 2 })}
                     </span>
                 </td>
@@ -63,7 +63,7 @@ export const DesktopGrandTotalRow: React.FC<DesktopGrandTotalRowProps> = ({ tota
             
             {isVisible('shippingCost') && (
                 <td className="px-6 py-4">
-                    <span className="text-sm font-black text-orange-400 font-mono">
+                    <span className="font-black text-orange-400 font-mono text-[clamp(13px,0.9vw,15px)]">
                         ${totals.internalCost.toLocaleString(undefined, { minimumFractionDigits: 2 })}
                     </span>
                 </td>
@@ -73,12 +73,12 @@ export const DesktopGrandTotalRow: React.FC<DesktopGrandTotalRowProps> = ({ tota
                 <td className="px-6 py-4">
                     <div className="flex flex-col gap-1.5 items-start">
                         {totals.paidCount > 0 && (
-                            <span className="text-[9px] font-black text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20 uppercase tracking-wider whitespace-nowrap">
+                            <span className="font-black text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20 uppercase tracking-wider whitespace-nowrap text-[clamp(10px,0.7vw,12px)]">
                                 Paid: {totals.paidCount}
                             </span>
                         )}
                         {totals.unpaidCount > 0 && (
-                            <span className="text-[9px] font-black text-red-400 bg-red-500/10 px-2 py-0.5 rounded border border-red-500/20 uppercase tracking-wider whitespace-nowrap">
+                            <span className="font-black text-red-400 bg-red-500/10 px-2 py-0.5 rounded border border-red-500/20 uppercase tracking-wider whitespace-nowrap text-[clamp(10px,0.7vw,12px)]">
                                 Unpaid: {totals.unpaidCount}
                             </span>
                         )}

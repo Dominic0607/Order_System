@@ -16,6 +16,7 @@ export interface FilterState {
     product: string;
     bank: string;
     fulfillmentStore: string;
+    store: string; // New: Sales Store / Brand
     page: string;
     location: string;
     internalCost: string;
@@ -82,7 +83,7 @@ const OrderFilters: React.FC<OrderFiltersProps> = ({
         setFilters({
             datePreset: 'this_month', startDate: '', endDate: '', team: '', user: '',
             paymentStatus: '', shippingService: '', product: '', bank: '',
-            fulfillmentStore: '', page: '', location: '', internalCost: ''
+            fulfillmentStore: '', store: '', page: '', location: '', internalCost: ''
         });
     };
 
@@ -119,7 +120,7 @@ const OrderFilters: React.FC<OrderFiltersProps> = ({
             {/* Filter Grid - Smart Responsive Layout */}
             <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-x-6 gap-y-6 px-1">
                 
-                {/* 0. Payment Status (New) */}
+                {/* 0. Payment Status */}
                 <div>
                     <label className="text-[10px] font-black text-gray-500 mb-2 block uppercase tracking-widest ml-2">Payment Status</label>
                     <div className="relative">
@@ -142,7 +143,16 @@ const OrderFilters: React.FC<OrderFiltersProps> = ({
                     </div>
                 </div>
 
-                {/* 1. Team Allocation */}
+                {/* 1. Store (Sales/Brand) - NEW */}
+                <div>
+                    <label className="text-[10px] font-black text-blue-400 mb-2 block uppercase tracking-widest ml-2">Store (Brand/Sales)</label>
+                    <select value={filters.store} onChange={e => setFilters({...filters, store: e.target.value})} className="form-select !bg-gray-900 border-gray-800 !py-3.5 rounded-2xl font-bold text-blue-100">
+                        <option value="">All Stores (Brands)</option>
+                        {appData.stores?.map(s => <option key={s.StoreName} value={s.StoreName}>{s.StoreName}</option>)}
+                    </select>
+                </div>
+
+                {/* 2. Team Allocation */}
                 <div>
                     <label className="text-[10px] font-black text-gray-500 mb-2 block uppercase tracking-widest ml-2">Team Allocation</label>
                     <select value={filters.team} onChange={e => setFilters({...filters, team: e.target.value})} className="form-select !bg-gray-900 border-gray-800 !py-3.5 rounded-2xl font-bold">
@@ -151,7 +161,7 @@ const OrderFilters: React.FC<OrderFiltersProps> = ({
                     </select>
                 </div>
 
-                {/* 2. Source Page */}
+                {/* 3. Source Page */}
                 <div>
                     <label className="text-[10px] font-black text-gray-500 mb-2 block uppercase tracking-widest ml-2">Source Page</label>
                     <select value={filters.page} onChange={e => setFilters({...filters, page: e.target.value})} className="form-select !bg-gray-900 border-gray-800 !py-3.5 rounded-2xl font-bold">
@@ -160,7 +170,16 @@ const OrderFilters: React.FC<OrderFiltersProps> = ({
                     </select>
                 </div>
 
-                {/* 3. Geography (Location) */}
+                {/* 4. Fulfillment Store */}
+                <div>
+                    <label className="text-[10px] font-black text-gray-500 mb-2 block uppercase tracking-widest ml-2">Fulfillment Store (Stock)</label>
+                    <select value={filters.fulfillmentStore} onChange={e => setFilters({...filters, fulfillmentStore: e.target.value})} className="form-select !bg-gray-900 border-gray-800 !py-3.5 rounded-2xl font-bold">
+                        <option value="">All Fulfillment Centers</option>
+                        {uniqueValues.fulfillmentStores.map(s => <option key={s} value={s}>{s}</option>)}
+                    </select>
+                </div>
+
+                {/* 5. Geography (Location) */}
                 <div>
                     <label className="text-[10px] font-black text-gray-500 mb-2 block uppercase tracking-widest ml-2">Geography (Location)</label>
                     <select value={filters.location} onChange={e => setFilters({...filters, location: e.target.value})} className="form-select !bg-gray-900 border-gray-800 !py-3.5 rounded-2xl font-bold">
@@ -169,7 +188,7 @@ const OrderFilters: React.FC<OrderFiltersProps> = ({
                     </select>
                 </div>
 
-                {/* 4. Logistics Method */}
+                {/* 6. Logistics Method */}
                 <div>
                     <label className="text-[10px] font-black text-gray-500 mb-2 block uppercase tracking-widest ml-2">Logistics Method</label>
                     <select value={filters.shippingService} onChange={e => setFilters({...filters, shippingService: e.target.value})} className="form-select !bg-gray-900 border-gray-800 !py-3.5 rounded-2xl font-bold">
@@ -178,34 +197,7 @@ const OrderFilters: React.FC<OrderFiltersProps> = ({
                     </select>
                 </div>
 
-                {/* 5. Exp. Cost (Internal) */}
-                <div>
-                    <label className="text-[10px] font-black text-gray-500 mb-2 block uppercase tracking-widest ml-2">Exp. Cost (Internal)</label>
-                    <select value={filters.internalCost} onChange={e => setFilters({...filters, internalCost: e.target.value})} className="form-select !bg-gray-900 border-gray-800 !py-3.5 rounded-2xl font-bold">
-                        <option value="">All Costs</option>
-                        {uniqueValues.costs.map(c => <option key={c} value={c}>${c}</option>)}
-                    </select>
-                </div>
-
-                {/* 6. Bank Account */}
-                <div>
-                    <label className="text-[10px] font-black text-gray-500 mb-2 block uppercase tracking-widest ml-2">គណនីធនាគារ (Bank)</label>
-                    <select value={filters.bank} onChange={e => setFilters({...filters, bank: e.target.value})} className="form-select !bg-gray-900 border-gray-800 !py-3.5 rounded-2xl font-bold">
-                        <option value="">All Bank Accounts</option>
-                        {uniqueValues.banks.map(b => <option key={b} value={b}>{b}</option>)}
-                    </select>
-                </div>
-
-                {/* 7. Fulfillment Store */}
-                <div>
-                    <label className="text-[10px] font-black text-gray-500 mb-2 block uppercase tracking-widest ml-2">Fulfillment Store</label>
-                    <select value={filters.fulfillmentStore} onChange={e => setFilters({...filters, fulfillmentStore: e.target.value})} className="form-select !bg-gray-900 border-gray-800 !py-3.5 rounded-2xl font-bold">
-                        <option value="">All Stores</option>
-                        {uniqueValues.fulfillmentStores.map(s => <option key={s} value={s}>{s}</option>)}
-                    </select>
-                </div>
-
-                {/* 8. Merchant Node */}
+                {/* 7. Merchant Node */}
                 <div>
                     <label className="text-[10px] font-black text-gray-500 mb-2 block uppercase tracking-widest ml-2">Merchant Node (User)</label>
                     <select value={filters.user} onChange={e => setFilters({...filters, user: e.target.value})} className="form-select !bg-gray-900 border-gray-800 !py-3.5 rounded-2xl font-bold">
@@ -214,7 +206,25 @@ const OrderFilters: React.FC<OrderFiltersProps> = ({
                     </select>
                 </div>
 
-                {/* 9. Product Asset - Full Width on Mobile/Tablet, Span 3 on Desktop */}
+                {/* 8. Exp. Cost (Internal) */}
+                <div>
+                    <label className="text-[10px] font-black text-gray-500 mb-2 block uppercase tracking-widest ml-2">Exp. Cost (Internal)</label>
+                    <select value={filters.internalCost} onChange={e => setFilters({...filters, internalCost: e.target.value})} className="form-select !bg-gray-900 border-gray-800 !py-3.5 rounded-2xl font-bold">
+                        <option value="">All Costs</option>
+                        {uniqueValues.costs.map(c => <option key={c} value={c}>${c}</option>)}
+                    </select>
+                </div>
+
+                {/* 9. Bank Account */}
+                <div>
+                    <label className="text-[10px] font-black text-gray-500 mb-2 block uppercase tracking-widest ml-2">គណនីធនាគារ (Bank)</label>
+                    <select value={filters.bank} onChange={e => setFilters({...filters, bank: e.target.value})} className="form-select !bg-gray-900 border-gray-800 !py-3.5 rounded-2xl font-bold">
+                        <option value="">All Bank Accounts</option>
+                        {uniqueValues.banks.map(b => <option key={b} value={b}>{b}</option>)}
+                    </select>
+                </div>
+
+                {/* 10. Product Asset */}
                 <div className="sm:col-span-2 xl:col-span-3">
                     <label className="text-[10px] font-black text-gray-500 mb-2 block uppercase tracking-widest ml-2">Asset Selection (Product)</label>
                     <SearchableProductDropdown 
