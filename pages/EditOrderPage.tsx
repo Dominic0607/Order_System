@@ -61,6 +61,46 @@ const EditOrderPage: React.FC<EditOrderPageProps> = ({ order, onSaveSuccess, onC
         };
     };
 
+    const handleAddProduct = () => {
+        setFormData(prev => {
+            const newProduct: Product = { 
+                id: Date.now() + Math.random(), // Ensure unique ID
+                name: '', 
+                quantity: 1, 
+                originalPrice: 0, 
+                finalPrice: 0, 
+                total: 0, 
+                discountPercent: 0, 
+                colorInfo: '', 
+                image: '', 
+                cost: 0, 
+                tags: '' 
+            };
+            const updatedProducts = [...prev.Products, newProduct];
+            const currentShipping = parseFloat(String(prev['Shipping Fee (Customer)'])) || 0;
+            const newTotals = recalculateTotals(updatedProducts, currentShipping);
+            
+            return { 
+                ...prev, 
+                Products: updatedProducts,
+                ...newTotals
+            };
+        });
+    };
+
+    const handleRemoveProduct = (idx: number) => {
+        if (formData.Products.length <= 1) { 
+            alert("មិនអាចលុបផលិតផលចុងក្រោយបានទេ (Cannot remove last item)"); 
+            return; 
+        }
+        setFormData(prev => {
+            const newProducts = prev.Products.filter((_, i) => i !== idx);
+            const currentShipping = Number(prev['Shipping Fee (Customer)']) || 0;
+            const newTotals = recalculateTotals(newProducts, currentShipping);
+            return { ...prev, Products: newProducts, ...newTotals };
+        });
+    };
+
     const handleCodeScanned = (scannedCode: string) => {
         const masterProduct = appData.products.find((p: MasterProduct) => p.Barcode && p.Barcode.trim() === scannedCode.trim());
         
@@ -138,14 +178,27 @@ const EditOrderPage: React.FC<EditOrderPageProps> = ({ order, onSaveSuccess, onC
             const productToUpdate = { ...newProducts[index] };
             
             if (field === 'name') {
+                // 1. Set the name explicitly (whether it exists in DB or not)
+                productToUpdate.name = value;
+
                 const masterProduct = appData.products.find((p: MasterProduct) => p.ProductName === value);
+                
                 if (masterProduct) {
-                    productToUpdate.name = masterProduct.ProductName;
+                    // 2a. Found in Database: Use predefined values
                     productToUpdate.originalPrice = masterProduct.Price;
                     productToUpdate.finalPrice = masterProduct.Price;
                     productToUpdate.cost = masterProduct.Cost;
                     productToUpdate.image = masterProduct.ImageURL;
                     productToUpdate.tags = extraTags !== undefined ? extraTags : masterProduct.Tags;
+                } else {
+                    // 2b. Custom Product: Reset to 0/Empty to allow manual entry
+                    // We only reset if it's a "new" name change, otherwise user might lose their custom price if they just edited a char.
+                    // But typically 'name' change means a selection change.
+                    productToUpdate.originalPrice = 0;
+                    productToUpdate.finalPrice = 0;
+                    productToUpdate.cost = 0;
+                    productToUpdate.image = '';
+                    productToUpdate.tags = '';
                 }
             } else if (field === 'finalPrice' || field === 'quantity') {
                 if (value === '' || String(value).endsWith('.')) {
@@ -160,6 +213,7 @@ const EditOrderPage: React.FC<EditOrderPageProps> = ({ order, onSaveSuccess, onC
                 productToUpdate[field] = value;
             }
             
+            // Recalculate Row Total
             const q = parseFloat(String(productToUpdate.quantity)) || 0;
             const p = parseFloat(String(productToUpdate.finalPrice)) || 0;
             productToUpdate.total = q * p;
@@ -235,9 +289,6 @@ const EditOrderPage: React.FC<EditOrderPageProps> = ({ order, onSaveSuccess, onC
                 total: (parseFloat(String(p.quantity)) || 0) * (parseFloat(String(p.finalPrice)) || 0)
             }));
             cleanNewData['Products (JSON)'] = JSON.stringify(productsWithSubtotals);
-            // Remove Products array from root object to avoid duplication in some backends, 
-            // though keeping it doesn't hurt if backend ignores it. 
-            // Better to keep cleanNewData consistent with Flat structure.
 
             const response = await fetch(`${WEB_APP_URL}/api/admin/update-order`, { 
                 method: 'POST', headers: { 'Content-Type': 'application/json' }, 
@@ -261,7 +312,7 @@ const EditOrderPage: React.FC<EditOrderPageProps> = ({ order, onSaveSuccess, onC
                     onCodeScanned={handleCodeScanned}
                     scanMode={scanMode}
                     setScanMode={setScanMode}
-                    productsInOrder={formData.Products as any} // Cast safely as BarcodeScannerModal just checks name/barcode
+                    productsInOrder={formData.Products as any} 
                     masterProducts={appData.products}
                 />
             )}
@@ -315,7 +366,6 @@ const EditOrderPage: React.FC<EditOrderPageProps> = ({ order, onSaveSuccess, onC
                             const b = appData.bankAccounts?.find((bank: any) => bank.BankName === val);
                             setBankLogo(b ? convertGoogleDriveUrl(b.LogoURL) : '');
                         }}
-                        onDelete={handleDelete}
                         selectedDistrict={selectedDistrict}
                         selectedSangkat={selectedSangkat}
                         bankLogo={bankLogo}
@@ -328,18 +378,8 @@ const EditOrderPage: React.FC<EditOrderPageProps> = ({ order, onSaveSuccess, onC
                         products={formData.Products}
                         masterProducts={appData.products}
                         onProductChange={handleProductChange}
-                        onAddProduct={() => setFormData(prev => ({ 
-                            ...prev, 
-                            Products: [...prev.Products, { id: Date.now(), name: '', quantity: 1, originalPrice: 0, finalPrice: 0, total: 0, discountPercent: 0, colorInfo: '', image: '', cost: 0, tags: '' }] 
-                        }))}
-                        onRemoveProduct={(idx) => {
-                            if (formData.Products.length <= 1) { alert("Cannot remove last item"); return; }
-                            setFormData(prev => {
-                                const newP = prev.Products.filter((_, i) => i !== idx);
-                                const newT = recalculateTotals(newP, Number(prev['Shipping Fee (Customer)']) || 0);
-                                return { ...prev, Products: newP, ...newT };
-                            });
-                        }}
+                        onAddProduct={handleAddProduct}
+                        onRemoveProduct={handleRemoveProduct}
                         onPreviewImage={previewImage}
                         onScanBarcode={() => setIsScannerVisible(true)}
                     />
@@ -350,6 +390,7 @@ const EditOrderPage: React.FC<EditOrderPageProps> = ({ order, onSaveSuccess, onC
                         shippingFee={formData['Shipping Fee (Customer)']}
                         onShippingFeeChange={handleInputChange}
                         onSave={handleSubmit}
+                        onDelete={handleDelete}
                         loading={loading}
                     />
                 </div>

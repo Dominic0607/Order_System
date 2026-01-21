@@ -17,7 +17,6 @@ interface EditCustomerPanelProps {
     onShippingMethodSelect: (method: any) => void;
     onDriverSelect: (driverName: string) => void;
     onBankChange: (e: React.ChangeEvent<HTMLSelectElement>) => void;
-    onDelete: () => void;
     selectedDistrict: string;
     selectedSangkat: string;
     bankLogo: string;
@@ -25,7 +24,7 @@ interface EditCustomerPanelProps {
 
 const EditCustomerPanel: React.FC<EditCustomerPanelProps> = ({
     formData, appData, onChange, onProvinceSelect, onDistrictChange, onSangkatChange,
-    onShippingMethodSelect, onDriverSelect, onBankChange, onDelete,
+    onShippingMethodSelect, onDriverSelect, onBankChange,
     selectedDistrict, selectedSangkat, bankLogo
 }) => {
     const [isDriverModalOpen, setIsDriverModalOpen] = useState(false);
@@ -153,13 +152,9 @@ const EditCustomerPanel: React.FC<EditCustomerPanelProps> = ({
                 </div>
             </div>
 
-            {/* Actions Card */}
+            {/* Note Input Card */}
             <div className="bg-gray-800/40 border border-white/5 rounded-[2rem] p-5 shadow-lg mt-auto flex-shrink-0">
                 <textarea name="Note" value={formData.Note || ''} onChange={onChange} rows={3} className="form-textarea bg-gray-900/80 border-gray-700 rounded-xl text-xs font-bold w-full resize-none text-gray-300 placeholder-gray-600 focus:border-blue-500" placeholder="ចំណាំ..." />
-                <button type="button" onClick={onDelete} className="w-full mt-4 py-3.5 bg-red-500/10 hover:bg-red-500 text-red-500 hover:text-white rounded-xl font-black uppercase text-[10px] tracking-[0.2em] border border-red-500/20 transition-all flex items-center justify-center gap-3 active:scale-95 group">
-                    <svg className="w-4 h-4 transition-transform group-hover:rotate-12" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" strokeWidth="2.5"/></svg> 
-                    Delete Order
-                </button>
             </div>
 
             {/* Driver Selection Modal */}
