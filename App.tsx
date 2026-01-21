@@ -7,6 +7,7 @@ import Spinner from './components/common/Spinner';
 import Modal from './components/common/Modal';
 import { AppContext, Language } from './context/AppContext';
 import BackgroundMusic from './components/common/BackgroundMusic';
+import { CacheService, CACHE_KEYS } from './services/cacheService';
 
 const LoginPage = React.lazy(() => import('./pages/LoginPage'));
 const RoleSelectionPage = React.lazy(() => import('./pages/RoleSelectionPage'));
@@ -59,23 +60,41 @@ const App: React.FC = () => {
     }, []);
 
     const fetchData = useCallback(async (force = false) => {
+        // 1. Optimistic Cache Load (Stale-While-Revalidate)
+        if (!force) {
+            const cachedData = CacheService.get<AppData>(CACHE_KEYS.APP_DATA);
+            if (cachedData) {
+                console.log("Loaded app data from cache");
+                setAppData(cachedData);
+                setIsGlobalLoading(false); // Unblock UI immediately if cache exists
+            }
+        }
+
         try {
+            // 2. Fetch fresh data from API
             const response = await fetch(`${WEB_APP_URL}/api/static-data`);
             if (response.ok) {
                 const result = await response.json();
                 if (result.status === 'success') {
                     const rawData = result.data || {};
-                    setAppData({
+                    const processedData = {
                         ...initialAppData,
                         ...rawData,
                         pages: rawData.pages || rawData.TeamsPages || [],
                         users: rawData.users || rawData.Users || [],
                         products: rawData.products || rawData.Products || [],
-                    });
+                    };
+                    
+                    setAppData(processedData);
+                    // Update cache
+                    CacheService.set(CACHE_KEYS.APP_DATA, processedData);
+                    console.log("App data updated from network");
                 }
             }
         } catch (e) {
             console.error("Data Fetch Error:", e);
+            // If offline and no cache was loaded in step 1, UI will remain in loading state or show error if we handle it here.
+            // But since step 1 handles existing cache, this catch block ensures we don't crash on network fail.
         } finally {
             setIsGlobalLoading(false);
         }
@@ -92,54 +111,36 @@ const App: React.FC = () => {
     }, [setAppState]);
 
     useEffect(() => {
-        const sessionString = localStorage.getItem('orderAppSession');
-        if (sessionString) {
-            try {
-                const session = JSON.parse(sessionString);
-                
-                // --- 48 Hour Cache Clearing Logic ---
-                // ប្តូរពី 24 ម៉ោង ទៅ 48 ម៉ោង ដើម្បីកាត់បន្ថយការ Login ញឹកញាប់
-                const CACHE_DURATION = 48 * 60 * 60 * 1000; 
-                const now = Date.now();
-                
-                if (now - session.timestamp > CACHE_DURATION) {
-                    console.log("Session expired (48h limit). Clearing cache.");
-                    localStorage.clear(); // Clear all local storage
-                    setCurrentUser(null);
-                    setAppState('login');
-                    setIsGlobalLoading(false);
-                    return;
-                }
-                // ------------------------------------
-
-                if (session.user) {
-                    setCurrentUser(session.user);
-                    fetchData();
-                    if (appState === 'login') determineAppState(session.user);
-                } else { setIsGlobalLoading(false); }
-            } catch (e) {
-                localStorage.removeItem('orderAppSession');
-                setIsGlobalLoading(false);
-            }
-        } else { setIsGlobalLoading(false); }
+        // Use CacheService for Session Management
+        const session = CacheService.get<{ user: User, timestamp: number }>(CACHE_KEYS.SESSION);
+        
+        if (session && session.user) {
+            setCurrentUser(session.user);
+            fetchData();
+            if (appState === 'login') determineAppState(session.user);
+        } else {
+            // Session expired or doesn't exist
+            setIsGlobalLoading(false);
+        }
     }, [fetchData]);
 
     const login = (user: User) => {
         setCurrentUser(user);
-        localStorage.setItem('orderAppSession', JSON.stringify({ user, timestamp: Date.now() }));
-        fetchData(true);
+        // Save session using CacheService (48h default)
+        CacheService.set(CACHE_KEYS.SESSION, { user, timestamp: Date.now() });
+        fetchData(true); // Force fetch on login
         determineAppState(user);
     };
 
     const logout = () => {
         setCurrentUser(null);
         setAppState('login');
-        localStorage.removeItem('orderAppSession');
-        localStorage.removeItem('appDataCache');
+        CacheService.remove(CACHE_KEYS.SESSION);
+        // Note: We keep APP_DATA cache to make next login faster
     };
 
     const refreshData = async () => {
-        await fetchData(true);
+        await fetchData(true); // Force fetch
         setRefreshTimestamp(Date.now());
     };
 
@@ -147,8 +148,8 @@ const App: React.FC = () => {
         if (currentUser) {
             const newUser = { ...currentUser, ...updatedData };
             setCurrentUser(newUser);
-            // Persist to local storage to ensure updates survive page reload
-            localStorage.setItem('orderAppSession', JSON.stringify({ user: newUser, timestamp: Date.now() }));
+            // Update session in cache
+            CacheService.set(CACHE_KEYS.SESSION, { user: newUser, timestamp: Date.now() });
         }
     };
 
