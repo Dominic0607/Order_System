@@ -34,7 +34,13 @@ const App: React.FC = () => {
     const [language, setLanguage] = useState<Language>(() => (localStorage.getItem('appLanguage') as Language) || 'en');
     const [appState, setAppState] = useUrlState<'login' | 'role_selection' | 'admin_dashboard' | 'user_journey'>('view', 'login');
     const [previewImageUrl, setPreviewImageUrl] = useState<string | null>(null);
-    const [unreadCount, setUnreadCount] = useState(0);
+    
+    // Initialize unreadCount from localStorage
+    const [unreadCount, setUnreadCount] = useState(() => {
+        const saved = localStorage.getItem('chatUnreadCount');
+        return saved ? parseInt(saved, 10) : 0;
+    });
+
     const [isChatOpen, setIsChatOpen] = useState(false);
     const [isChatVisible, setChatVisible] = useState(true);
     const [isGlobalLoading, setIsGlobalLoading] = useState(true);
@@ -43,6 +49,11 @@ const App: React.FC = () => {
         setLanguage(lang);
         localStorage.setItem('appLanguage', lang);
     };
+
+    // Sync unreadCount to localStorage whenever it changes
+    useEffect(() => {
+        localStorage.setItem('chatUnreadCount', unreadCount.toString());
+    }, [unreadCount]);
 
     useEffect(() => {
         const handleMouseMove = (e: MouseEvent) => {

@@ -128,6 +128,7 @@ export interface ChatMessage {
     timestamp: string;
     type: 'text' | 'image' | 'audio';
     fileID?: string;
+    isOptimistic?: boolean; // New field for optimistic UI
 }
 
 export interface AppData {

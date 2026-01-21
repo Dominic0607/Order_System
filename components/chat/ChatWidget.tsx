@@ -5,7 +5,7 @@ import { ChatMessage, User, BackendChatMessage } from '../../types';
 import Spinner from '../common/Spinner';
 import { useAudioRecorder } from '../../hooks/useAudioRecorder';
 import { compressImage } from '../../utils/imageCompressor';
-import { WEB_APP_URL } from '../../constants';
+import { WEB_APP_URL, SOUND_URLS } from '../../constants';
 import AudioPlayer from './AudioPlayer';
 import { fileToBase64, convertGoogleDriveUrl } from '../../utils/fileUtils';
 import UserAvatar from '../common/UserAvatar';
@@ -18,7 +18,6 @@ interface ChatWidgetProps {
 type ConnectionStatus = 'disconnected' | 'connecting' | 'connected';
 type ActiveTab = 'chat' | 'users';
 
-const notificationSound = new Audio('https://raw.githubusercontent.com/NateeDev/aistudio-template-order-management/main/public/assets/notification.mp3');
 const MemoizedAudioPlayer = React.memo(AudioPlayer);
 
 const ChatWidget: React.FC<ChatWidgetProps> = ({ isOpen, onClose }) => {
@@ -29,6 +28,10 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ isOpen, onClose }) => {
     const { isRecording, startRecording, stopRecording } = useAudioRecorder();
     const [recordingTime, setRecordingTime] = useState(0);
     const recordingIntervalRef = useRef<any>(null);
+
+    // Sound Refs
+    const soundNotification = useRef(new Audio(SOUND_URLS.NOTIFICATION));
+    const soundSent = useRef(new Audio(SOUND_URLS.SENT));
 
     const [messages, setMessages] = useState<ChatMessage[]>(() => {
         if (!CACHE_KEY) return [];
@@ -43,7 +46,7 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ isOpen, onClose }) => {
     const [isUploading, setIsUploading] = useState(false);
     const [isSendingAudio, setIsSendingAudio] = useState(false);
     const [isMuted, setIsMuted] = useState(() => localStorage.getItem('chatMuted') === 'true');
-    const [isHistoryLoading, setIsHistoryLoading] = useState(false); // Changed default to false, will set true on fetch
+    const [isHistoryLoading, setIsHistoryLoading] = useState(false); 
     const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>('disconnected');
     const [activeTab, setActiveTab] = useState<ActiveTab>('chat');
     
@@ -51,7 +54,30 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ isOpen, onClose }) => {
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const wsRef = useRef<WebSocket | null>(null);
     const isOpenRef = useRef(isOpen);
-    isOpenRef.current = isOpen;
+    
+    // Keep refs up to date for event handlers
+    const allUsersRef = useRef(allUsers);
+    const currentUserRef = useRef(currentUser);
+    const isMutedRef = useRef(isMuted);
+
+    useEffect(() => { allUsersRef.current = allUsers; }, [allUsers]);
+    useEffect(() => { currentUserRef.current = currentUser; }, [currentUser]);
+    useEffect(() => { isMutedRef.current = isMuted; }, [isMuted]);
+    useEffect(() => { isOpenRef.current = isOpen; }, [isOpen]);
+
+    // Reset Unread Count when chat is opened
+    useEffect(() => {
+        if (isOpen) {
+            setUnreadCount(0);
+        }
+    }, [isOpen, setUnreadCount]);
+
+    // Request Notification Permission
+    useEffect(() => {
+        if ('Notification' in window && Notification.permission === 'default') {
+            Notification.requestPermission();
+        }
+    }, []);
 
     // --- Audio Recording Logic ---
     const handleStartRecording = async () => {
@@ -63,7 +89,7 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ isOpen, onClose }) => {
     };
 
     const handleCancelRecording = async () => {
-        await stopRecording(); // Stop but don't use the blob
+        await stopRecording(); 
         if (recordingIntervalRef.current) clearInterval(recordingIntervalRef.current);
         setRecordingTime(0);
     };
@@ -74,12 +100,10 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ isOpen, onClose }) => {
         try {
             const audioBlob = await stopRecording();
             if (audioBlob) {
-                // Convert Blob to Base64
                 const reader = new FileReader();
                 reader.readAsDataURL(audioBlob);
                 reader.onloadend = async () => {
                     const base64data = reader.result as string;
-                    // Remove data:audio/webm;base64, prefix if present
                     const content = base64data.split(',')[1]; 
                     await handleSendMessage(content, 'audio');
                 };
@@ -111,16 +135,17 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ isOpen, onClose }) => {
 
     const setAndCacheMessages = useCallback((updater: React.SetStateAction<ChatMessage[]>) => {
         setMessages(prev => {
-            const next = typeof updater === 'function' ? updater(prev) : updater;
+            const next = typeof updater === 'function' ? (updater as any)(prev) : updater;
+            // Only cache valid messages, not pending ones if possible, but simplest is to cache all
             if (CACHE_KEY) localStorage.setItem(CACHE_KEY, JSON.stringify(next));
             return next;
         });
     }, [CACHE_KEY]);
 
     const transformBackendMessage = useCallback((msg: BackendChatMessage): ChatMessage => {
-        const user = allUsers.find(u => u.UserName === msg.UserName);
+        const user = allUsersRef.current.find(u => u.UserName === msg.UserName);
         return {
-            id: msg.Timestamp,
+            id: msg.Timestamp, // Using timestamp as ID from backend
             user: msg.UserName,
             fullName: user?.FullName || msg.UserName,
             avatar: user?.ProfilePictureURL || '',
@@ -128,11 +153,11 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ isOpen, onClose }) => {
                      msg.MessageType === 'audio' ? `${WEB_APP_URL}/api/chat/audio/${msg.FileID}` : msg.Content,
             timestamp: msg.Timestamp,
             type: msg.MessageType,
-            fileID: msg.FileID
+            fileID: msg.FileID,
+            isOptimistic: false
         };
-    }, [allUsers]);
+    }, []); // Removed dependency on allUsers to prevent recreation loop, used ref instead
 
-    // Independent Fetch History Function (REST API)
     const fetchHistory = useCallback(async () => {
         if (messages.length === 0) setIsHistoryLoading(true);
         try {
@@ -140,6 +165,7 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ isOpen, onClose }) => {
             const result = await res.json();
             if (result.status === 'success') {
                 const history = result.data.map(transformBackendMessage);
+                // Replace entire history to ensure sync
                 setAndCacheMessages(history.sort((a: ChatMessage, b: ChatMessage) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()));
             }
         } catch (e) { 
@@ -147,54 +173,99 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ isOpen, onClose }) => {
         } finally { 
             setIsHistoryLoading(false); 
         }
-    }, [transformBackendMessage, setAndCacheMessages, messages.length]);
+    }, [transformBackendMessage, setAndCacheMessages]);
 
-    const connectWebSocket = useCallback(() => {
-        if (wsRef.current?.readyState === WebSocket.OPEN) return;
-        
-        setConnectionStatus('connecting');
+    // WebSocket Logic
+    useEffect(() => {
         const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
         const host = WEB_APP_URL.replace(/^https?:\/\//, '');
-        const ws = new WebSocket(`${protocol}://${host}/api/chat/ws`);
-        
-        wsRef.current = ws;
+        const wsUrl = `${protocol}://${host}/api/chat/ws`;
 
-        ws.onopen = () => { 
-            setConnectionStatus('connected'); 
-            // Optional: Fetch history on reconnect to ensure no gaps, 
-            // but the primary fetch is handled by useEffect now.
-        };
-        ws.onclose = () => { setConnectionStatus('disconnected'); };
-        ws.onmessage = (e) => {
-            try {
-                const data = JSON.parse(e.data);
-                if (data.action === 'new_message') {
-                    const msg = transformBackendMessage(data.payload);
-                    setAndCacheMessages(prev => {
-                        if (prev.some(m => m.id === msg.id)) return prev;
-                        return [...prev, msg];
-                    });
-                    if (msg.user !== currentUser?.UserName && !isOpenRef.current) setUnreadCount(p => p + 1);
-                    if (msg.user !== currentUser?.UserName && !isMuted) notificationSound.play().catch(() => {});
-                }
-            } catch (err) { console.error("WS Message Error", err); }
-        };
-    }, [transformBackendMessage, currentUser, isMuted, setUnreadCount, setAndCacheMessages]);
+        const setupWs = () => {
+            if (wsRef.current?.readyState === WebSocket.OPEN) return;
 
-    // Initial Load Effect
-    useEffect(() => { 
+            setConnectionStatus('connecting');
+            const ws = new WebSocket(wsUrl);
+            wsRef.current = ws;
+
+            ws.onopen = () => {
+                setConnectionStatus('connected');
+                // Re-fetch history on reconnect to sync missed messages
+                if (isOpenRef.current) fetchHistory();
+            };
+
+            ws.onclose = () => {
+                setConnectionStatus('disconnected');
+                // Auto-reconnect after 3s
+                setTimeout(setupWs, 3000);
+            };
+
+            ws.onmessage = (e) => {
+                try {
+                    const data = JSON.parse(e.data);
+                    if (data.action === 'new_message') {
+                        const msg = transformBackendMessage(data.payload);
+                        
+                        setAndCacheMessages(prev => {
+                            // 1. Check if we already have this message ID (Backend ID)
+                            if (prev.some(m => m.id === msg.id)) return prev;
+
+                            // 2. Check for Optimistic Match (Deduplication)
+                            // We look for a pending message from the same user with same content/type
+                            const optimisticIndex = prev.findIndex(m => 
+                                m.isOptimistic && 
+                                m.user === msg.user && 
+                                m.type === msg.type &&
+                                (m.type === 'text' ? m.content === msg.content : true) // For media, content might differ (base64 vs url), so loose check
+                            );
+
+                            if (optimisticIndex !== -1) {
+                                // Replace optimistic with real message
+                                const newArr = [...prev];
+                                newArr[optimisticIndex] = msg;
+                                return newArr;
+                            }
+
+                            // 3. New Message
+                            return [...prev, msg];
+                        });
+
+                        // Notification Logic
+                        if (msg.user !== currentUserRef.current?.UserName) {
+                            if (!isOpenRef.current) {
+                                setUnreadCount(p => p + 1);
+                            }
+                            
+                            if (!isMutedRef.current) {
+                                soundNotification.current.currentTime = 0;
+                                soundNotification.current.play().catch(() => {});
+                            }
+
+                            if ('Notification' in window && Notification.permission === 'granted' && document.hidden) {
+                                new Notification(`New message from ${msg.fullName}`, {
+                                    body: msg.type === 'text' ? msg.content : `Sent a ${msg.type}`,
+                                    icon: convertGoogleDriveUrl(msg.avatar)
+                                });
+                            }
+                        }
+                    }
+                } catch (err) { console.error("WS Message Error", err); }
+            };
+        };
+
+        setupWs();
+
+        return () => {
+            wsRef.current?.close();
+        };
+    }, []); // Run once on mount
+
+    useEffect(() => {
         if (isOpen) {
             fetchUsers();
-            fetchHistory(); // Fetch immediately via REST
-            connectWebSocket(); // Connect WS for real-time
+            fetchHistory();
         }
-        return () => {
-            if (wsRef.current) {
-                wsRef.current.close();
-                wsRef.current = null;
-            }
-        };
-    }, [isOpen, connectWebSocket, fetchHistory]);
+    }, [isOpen, fetchUsers, fetchHistory]);
 
     // Auto-scroll to bottom
     const scrollToBottom = () => {
@@ -209,14 +280,57 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ isOpen, onClose }) => {
 
     const handleSendMessage = async (content: string, type: 'text' | 'image' | 'audio') => {
         if (!content.trim()) return;
+
+        // 1. Optimistic Update (Immediate Feedback)
+        const tempId = Date.now().toString();
+        
+        // For media, we need to handle content display differently if it's raw base64 vs url
+        // Here we assume content is valid for display (text or base64 data URI)
+        // If coming from file upload, content is pure base64, so we need to prefix it for display
+        let displayContent = content;
+        if (type === 'image' && !content.startsWith('http') && !content.startsWith('data:')) {
+            displayContent = `data:image/jpeg;base64,${content}`;
+        }
+        // Audio handling is tricky with base64 without mime type, usually audio/webm
+        if (type === 'audio' && !content.startsWith('http') && !content.startsWith('data:')) {
+             displayContent = `data:audio/webm;base64,${content}`;
+        }
+
+        const optimisticMsg: ChatMessage = {
+            id: tempId,
+            user: currentUser?.UserName || 'Unknown',
+            fullName: currentUser?.FullName || 'Me',
+            avatar: currentUser?.ProfilePictureURL || '',
+            content: displayContent,
+            timestamp: new Date().toISOString(),
+            type: type,
+            isOptimistic: true
+        };
+
+        setMessages(prev => [...prev, optimisticMsg]);
+        if (type === 'text') setNewMessage('');
+
         try {
-            await fetch(`${WEB_APP_URL}/api/chat/send`, {
+            const response = await fetch(`${WEB_APP_URL}/api/chat/send`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ userName: currentUser?.UserName, type, content: content.trim() })
             });
-            if (type === 'text') setNewMessage('');
-        } catch (e) { alert("បណ្តាញមានបញ្ហា"); }
+
+            if (!response.ok) throw new Error("Send Failed");
+
+            // Play outgoing sound on success
+            if (!isMuted) {
+                soundSent.current.currentTime = 0;
+                soundSent.current.play().catch(() => {});
+            }
+        } catch (e) {
+            console.error("Send Error:", e);
+            // Rollback optimistic update on error
+            setMessages(prev => prev.filter(m => m.id !== tempId));
+            if (type === 'text') setNewMessage(content); // Restore text
+            alert("ការបញ្ជូនសារបរាជ័យ (Send Failed)");
+        }
     };
 
     const handleFileUpload = async (file: File) => {
@@ -287,16 +401,19 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ isOpen, onClose }) => {
                                                 isMe 
                                                 ? 'bg-blue-600 text-white rounded-2xl rounded-tr-sm' 
                                                 : 'bg-gray-800 text-gray-200 rounded-2xl rounded-tl-sm border border-white/5'
-                                            }`}>
+                                            } ${msg.isOptimistic ? 'opacity-70' : ''}`}>
                                                 {!isMe && showAvatar && <p className="text-[10px] font-black text-blue-400 mb-1 uppercase tracking-wider">{user?.FullName || msg.fullName}</p>}
                                                 
                                                 {msg.type === 'text' && <p className="leading-relaxed text-sm whitespace-pre-wrap">{msg.content}</p>}
                                                 {msg.type === 'image' && <img src={msg.content} className="rounded-xl max-w-full cursor-pointer hover:opacity-90 transition-opacity border border-black/20" onClick={() => previewImage(msg.content)} alt="attachment" />}
                                                 {msg.type === 'audio' && <MemoizedAudioPlayer src={msg.content} isMe={isMe} />}
                                                 
-                                                <p className={`text-[9px] mt-1.5 text-right font-medium ${isMe ? 'text-blue-200' : 'text-gray-500'}`}>
-                                                    {new Date(msg.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
-                                                </p>
+                                                <div className="flex items-center justify-end gap-1 mt-1.5">
+                                                    <p className={`text-[9px] font-medium ${isMe ? 'text-blue-200' : 'text-gray-500'}`}>
+                                                        {new Date(msg.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                                                    </p>
+                                                    {msg.isOptimistic && <svg className="w-3 h-3 text-white/50 animate-spin" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>}
+                                                </div>
                                             </div>
                                         </div>
                                     </div>

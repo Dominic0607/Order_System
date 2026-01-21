@@ -19,3 +19,9 @@ export const BACKGROUND_MUSIC_URL = "";
 // សូមប្ដូរ Link រូបភាព Logo របស់អ្នកនៅទីនេះ (Google Drive Link ឬ Direct URL)
 // ប្រសិនបើទុកចោល (empty string) កម្មវិធីនឹងប្រើរូបតំណាងលំនាំដើម។
 export const APP_LOGO_URL = "https://drive.google.com/file/d/1vb9IG8wn31LDYtUKLurm6cMow0MI4Tee/view?usp=drive_link";
+
+// Chat Sounds
+export const SOUND_URLS = {
+    NOTIFICATION: 'https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3', // Ding/Chime
+    SENT: 'https://assets.mixkit.co/active_storage/sfx/2571/2571-preview.mp3' // Pop/Click
+};
