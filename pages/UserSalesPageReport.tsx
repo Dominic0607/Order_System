@@ -50,7 +50,7 @@ const UserSalesPageReport: React.FC<UserSalesPageReportProps> = ({
         }));
     };
 
-    // --- Date Filtering Logic (FIXED) ---
+    // --- Date Filtering Logic ---
     const filteredOrders = useMemo(() => {
         const now = new Date();
         const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -61,7 +61,7 @@ const UserSalesPageReport: React.FC<UserSalesPageReportProps> = ({
             case 'today': 
                 start = today; 
                 end = new Date(today);
-                end.setHours(23, 59, 59, 999); // End of today
+                end.setHours(23, 59, 59, 999); 
                 break;
             case 'yesterday': 
                 start = new Date(today); 
@@ -79,7 +79,7 @@ const UserSalesPageReport: React.FC<UserSalesPageReportProps> = ({
                 break;
             case 'this_month': 
                 start = new Date(now.getFullYear(), now.getMonth(), 1);
-                end = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999); // End of this month
+                end = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999); 
                 break;
             case 'last_month': 
                 start = new Date(now.getFullYear(), now.getMonth() - 1, 1); 
@@ -113,16 +113,20 @@ const UserSalesPageReport: React.FC<UserSalesPageReportProps> = ({
     const pageStats = useMemo(() => {
         const stats: Record<string, any> = {};
         
-        // 1. Initialize stats for ALL pages in this team (so we see 0 sales pages too)
+        // 1. Initialize stats for ALL pages in this team
         if (appData.pages) {
             const teamPages = appData.pages.filter(p => (p.Team || '').trim() === team);
             teamPages.forEach(p => {
                 stats[p.PageName] = {
                     pageName: p.PageName,
+                    teamName: team, // Required for shared components
                     logoUrl: p.PageLogoURL || '',
                     revenue: 0,
+                    profit: 0, // Required for shared components
                     orderCount: 0
                 };
+                // Initialize monthly breakdown keys to prevent undefined access
+                MONTHS.forEach(m => { stats[p.PageName][`rev_${m}`] = 0; stats[p.PageName][`prof_${m}`] = 0; });
             });
         }
 
@@ -133,17 +137,30 @@ const UserSalesPageReport: React.FC<UserSalesPageReportProps> = ({
             if (!stats[page]) {
                 const info = appData.pages?.find(p => p.PageName === page);
                 stats[page] = { 
-                    pageName: page, 
+                    pageName: page,
+                    teamName: team,
                     logoUrl: info?.PageLogoURL || '',
                     revenue: 0, 
+                    profit: 0,
                     orderCount: 0
                 };
+                MONTHS.forEach(m => { stats[page][`rev_${m}`] = 0; stats[page][`prof_${m}`] = 0; });
             }
 
             const rev = Number(o['Grand Total']) || 0;
+            const cost = (Number(o['Total Product Cost ($)']) || 0) + (Number(o['Internal Cost']) || 0);
+            const profit = rev - cost;
             
             stats[page].revenue += rev;
+            stats[page].profit += profit;
             stats[page].orderCount += 1;
+
+            if (o.Timestamp) {
+                const d = new Date(o.Timestamp);
+                const mName = MONTHS[d.getMonth()];
+                stats[page][`rev_${mName}`] += rev;
+                stats[page][`prof_${mName}`] += profit;
+            }
         });
 
         let result = Object.values(stats);
@@ -161,10 +178,18 @@ const UserSalesPageReport: React.FC<UserSalesPageReportProps> = ({
     }, [filteredOrders, sortConfig, appData.pages, showAllPages, team]);
 
     const grandTotals = useMemo(() => {
-        const totals: any = { revenue: 0, pagesCount: pageStats.length, orders: 0 };
+        const totals: any = { revenue: 0, profit: 0, pagesCount: pageStats.length, orders: 0 };
+        // Initialize monthly breakdown keys for grandTotals to prevent undefined access
+        MONTHS.forEach(m => { totals[`rev_${m}`] = 0; totals[`prof_${m}`] = 0; });
+
         pageStats.forEach((s: any) => { 
             totals.revenue += s.revenue; 
+            totals.profit += s.profit;
             totals.orders += s.orderCount;
+            MONTHS.forEach(m => { 
+                totals[`rev_${m}`] += s[`rev_${m}`]; 
+                totals[`prof_${m}`] += s[`prof_${m}`]; 
+            });
         });
         return totals;
     }, [pageStats]);
