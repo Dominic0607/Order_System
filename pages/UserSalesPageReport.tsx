@@ -1,5 +1,5 @@
 
-import React, { useState, useMemo, useContext } from 'react';
+import React, { useState, useMemo, useContext, useEffect } from 'react';
 import { AppContext } from '../context/AppContext';
 import { ParsedOrder } from '../types';
 import StatCard from '../components/performance/StatCard';
@@ -8,6 +8,8 @@ import 'jspdf-autotable';
 import Spinner from '../components/common/Spinner';
 import { convertGoogleDriveUrl } from '../utils/fileUtils';
 import SimpleBarChart from '../components/admin/SimpleBarChart';
+import { WEB_APP_URL } from '../constants';
+import { CacheService } from '../services/cacheService';
 
 // Import separate view components
 import SalesByPageDesktop from '../components/reports/SalesByPageDesktop';
@@ -15,7 +17,7 @@ import SalesByPageTablet from '../components/reports/SalesByPageTablet';
 import SalesByPageMobile from '../components/reports/SalesByPageMobile';
 
 interface UserSalesPageReportProps {
-    orders: ParsedOrder[]; // Expecting ALL orders for the team, filtering happens here
+    orders: ParsedOrder[]; // Kept for interface compatibility, but we fetch our own full data
     onBack: () => void;
     team: string;
 }
@@ -26,7 +28,7 @@ type DateRangePreset = 'today' | 'yesterday' | 'this_week' | 'this_month' | 'las
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
 const UserSalesPageReport: React.FC<UserSalesPageReportProps> = ({ 
-    orders, 
+    orders: initialOrders, 
     onBack, 
     team
 }) => {
@@ -38,10 +40,58 @@ const UserSalesPageReport: React.FC<UserSalesPageReportProps> = ({
     const [isExporting, setIsExporting] = useState(false);
     const [sortConfig, setSortConfig] = useState<{ key: SortKey, direction: 'asc' | 'desc' }>({ key: 'revenue', direction: 'desc' });
 
+    // Data State
+    const [fullOrders, setFullOrders] = useState<ParsedOrder[]>([]);
+    const [isLoadingData, setIsLoadingData] = useState(false);
+
     // --- Filter State ---
     const [datePreset, setDatePreset] = useState<DateRangePreset>('this_month');
     const [customStart, setCustomStart] = useState(new Date().toISOString().split('T')[0]);
     const [customEnd, setCustomEnd] = useState(new Date().toISOString().split('T')[0]);
+
+    // --- Data Fetching Logic with Cache ---
+    const checkAndFetchData = async () => {
+        const CACHE_KEY = 'user_sales_report_full_data';
+        const CACHE_DURATION = 5 * 60 * 1000; // 5 Minutes Expiry
+
+        // Check Cache first
+        const cached = CacheService.get<ParsedOrder[]>(CACHE_KEY);
+        
+        if (cached) {
+            console.log("Using cached data for report");
+            setFullOrders(cached);
+        } else {
+            // Cache expired or missing, fetch fresh data
+            console.log("Fetching fresh data for report...");
+            setIsLoadingData(true);
+            try {
+                const response = await fetch(`${WEB_APP_URL}/api/admin/all-orders`);
+                const result = await response.json();
+                
+                if (result.status === 'success') {
+                    const rawData = Array.isArray(result.data) ? result.data.filter((o: any) => o !== null) : [];
+                    const parsed = rawData.map((o: any) => {
+                        let products = [];
+                        try { if (o['Products (JSON)']) products = JSON.parse(o['Products (JSON)']); } catch(e) {}
+                        return { ...o, Products: products };
+                    });
+                    
+                    setFullOrders(parsed);
+                    // Save to cache
+                    CacheService.set(CACHE_KEY, parsed, CACHE_DURATION);
+                }
+            } catch (err) {
+                console.error("Failed to fetch report data", err);
+            } finally {
+                setIsLoadingData(false);
+            }
+        }
+    };
+
+    // Initial load
+    useEffect(() => {
+        checkAndFetchData();
+    }, []);
 
     const toggleSort = (key: SortKey) => {
         setSortConfig(prev => ({
@@ -50,8 +100,17 @@ const UserSalesPageReport: React.FC<UserSalesPageReportProps> = ({
         }));
     };
 
+    const handlePresetChange = (preset: DateRangePreset) => {
+        setDatePreset(preset);
+        // Check data freshness whenever user switches filters
+        checkAndFetchData();
+    };
+
     // --- Date Filtering Logic ---
     const filteredOrders = useMemo(() => {
+        // Use fullOrders if available, otherwise fallback to props (though fetch should handle it)
+        const sourceData = fullOrders.length > 0 ? fullOrders : initialOrders;
+
         const now = new Date();
         const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
         let start: Date | null = null;
@@ -95,7 +154,7 @@ const UserSalesPageReport: React.FC<UserSalesPageReportProps> = ({
                 break;
         }
 
-        return orders.filter(o => {
+        return sourceData.filter(o => {
             // Strict Team Check (Case Insensitive)
             if ((o.Team || '').trim().toLowerCase() !== team.trim().toLowerCase()) return false;
 
@@ -108,7 +167,7 @@ const UserSalesPageReport: React.FC<UserSalesPageReportProps> = ({
             }
             return orderDate >= start;
         });
-    }, [orders, team, datePreset, customStart, customEnd]);
+    }, [fullOrders, initialOrders, team, datePreset, customStart, customEnd]);
 
     const pageStats = useMemo(() => {
         const stats: Record<string, any> = {};
@@ -234,6 +293,10 @@ const UserSalesPageReport: React.FC<UserSalesPageReportProps> = ({
             .map(p => ({ label: p.pageName, value: p.revenue, imageUrl: p.logoUrl }));
     }, [pageStats]);
 
+    if (isLoadingData && fullOrders.length === 0) {
+        return <div className="flex h-96 items-center justify-center"><Spinner size="lg" /></div>;
+    }
+
     return (
         <div className="w-full space-y-6">
             {/* Header & Controls */}
@@ -253,14 +316,14 @@ const UserSalesPageReport: React.FC<UserSalesPageReportProps> = ({
                     {(['today', 'yesterday', 'this_week', 'this_month', 'last_month', 'all'] as const).map(preset => (
                         <button
                             key={preset}
-                            onClick={() => setDatePreset(preset)}
+                            onClick={() => handlePresetChange(preset)}
                             className={`px-4 py-2 text-[10px] font-black uppercase rounded-xl whitespace-nowrap transition-all ${datePreset === preset ? 'bg-blue-600 text-white shadow-lg' : 'text-gray-500 hover:bg-white/5'}`}
                         >
                             {preset.replace('_', ' ')}
                         </button>
                     ))}
                     <button
-                        onClick={() => setDatePreset('custom')}
+                        onClick={() => handlePresetChange('custom')}
                         className={`px-4 py-2 text-[10px] font-black uppercase rounded-xl whitespace-nowrap transition-all ${datePreset === 'custom' ? 'bg-blue-600 text-white shadow-lg' : 'text-gray-500 hover:bg-white/5'}`}
                     >
                         Custom
