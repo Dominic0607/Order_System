@@ -3,10 +3,24 @@
 <html lang="km">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>O-System</title>
-    <!-- ប្តូរទៅជា Direct Link សម្រាប់រូបភាព (ប្រើ Direct Download Link ពី Google Drive) -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>កម្មវិធីទម្លាក់ការកម្មង់</title>
+    
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="/manifest.json">
+    
+    <!-- iOS Support for Standalone Mode -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="O-System">
+    
+    <!-- Theme Color for Browser Address Bar -->
+    <meta name="theme-color" content="#020617">
+
+    <!-- Direct Link សម្រាប់រូបភាព -->
     <link rel="icon" type="image/png" href="https://lh3.googleusercontent.com/d/1vb9IG8wn31LDYtUKLurm6cMow0MI4Tee">
+    <link rel="apple-touch-icon" href="https://lh3.googleusercontent.com/d/1vb9IG8wn31LDYtUKLurm6cMow0MI4Tee">
+
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -44,9 +58,8 @@
   }
 }
 </script>
-<link rel="stylesheet" href="/index.css">
 </head>
-<body class="bg-gray-900 text-gray-200 antialiased">
+<body class="bg-gray-900 text-gray-200 antialiased overscroll-none">
     <div class="flare-light"></div>
     <div id="root"></div>
     <script type="module" src="/index.tsx"></script>
