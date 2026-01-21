@@ -41,7 +41,9 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ isOpen, onClose }) => {
         } catch (e) { return []; }
     });
 
+    // Initialize users from AppContext data instead of fetching again
     const [allUsers, setAllUsers] = useState<User[]>(appData.users || []);
+    
     const [newMessage, setNewMessage] = useState('');
     const [isUploading, setIsUploading] = useState(false);
     const [isSendingAudio, setIsSendingAudio] = useState(false);
@@ -52,6 +54,7 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ isOpen, onClose }) => {
     
     const fileInputRef = useRef<HTMLInputElement>(null);
     const messagesEndRef = useRef<HTMLDivElement>(null);
+    const chatBodyRef = useRef<HTMLDivElement>(null); // Ref for scroll container
     const wsRef = useRef<WebSocket | null>(null);
     const isOpenRef = useRef(isOpen);
     
@@ -64,6 +67,13 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ isOpen, onClose }) => {
     useEffect(() => { currentUserRef.current = currentUser; }, [currentUser]);
     useEffect(() => { isMutedRef.current = isMuted; }, [isMuted]);
     useEffect(() => { isOpenRef.current = isOpen; }, [isOpen]);
+
+    // Sync users from AppData if they change
+    useEffect(() => {
+        if (appData.users && appData.users.length > 0) {
+            setAllUsers(appData.users);
+        }
+    }, [appData.users]);
 
     // Reset Unread Count when chat is opened
     useEffect(() => {
@@ -123,16 +133,6 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ isOpen, onClose }) => {
     };
     // -----------------------------
 
-    const fetchUsers = async () => {
-        try {
-            const res = await fetch(`${WEB_APP_URL}/api/users`);
-            if (res.ok) {
-                const result = await res.json();
-                if (result.status === 'success') setAllUsers(result.data);
-            }
-        } catch (e) { console.error("User fetch failed", e); }
-    };
-
     const setAndCacheMessages = useCallback((updater: React.SetStateAction<ChatMessage[]>) => {
         setMessages(prev => {
             const next = typeof updater === 'function' ? (updater as any)(prev) : updater;
@@ -144,24 +144,29 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ isOpen, onClose }) => {
 
     const transformBackendMessage = useCallback((msg: BackendChatMessage): ChatMessage => {
         const user = allUsersRef.current.find(u => u.UserName === msg.UserName);
+        // Normalize type to lowercase to handle backend case inconsistency (e.g. 'Text' vs 'text')
+        const normalizedType = (msg.MessageType || 'text').toLowerCase() as 'text' | 'image' | 'audio';
+        
         return {
             id: msg.Timestamp, // Using timestamp as ID from backend
             user: msg.UserName,
             fullName: user?.FullName || msg.UserName,
             avatar: user?.ProfilePictureURL || '',
-            content: msg.MessageType === 'image' ? convertGoogleDriveUrl(msg.Content) : 
-                     msg.MessageType === 'audio' ? `${WEB_APP_URL}/api/chat/audio/${msg.FileID}` : msg.Content,
+            content: normalizedType === 'image' ? convertGoogleDriveUrl(msg.Content) : 
+                     normalizedType === 'audio' ? `${WEB_APP_URL}/api/chat/audio/${msg.FileID}` : msg.Content,
             timestamp: msg.Timestamp,
-            type: msg.MessageType,
+            type: normalizedType,
             fileID: msg.FileID,
             isOptimistic: false
         };
-    }, []); // Removed dependency on allUsers to prevent recreation loop, used ref instead
+    }, []); 
 
     const fetchHistory = useCallback(async () => {
+        if (!isOpenRef.current) return; // Optimization: Don't fetch if closed
         if (messages.length === 0) setIsHistoryLoading(true);
         try {
             const res = await fetch(`${WEB_APP_URL}/api/chat/messages`);
+            if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
             const result = await res.json();
             if (result.status === 'success') {
                 const history = result.data.map(transformBackendMessage);
@@ -169,11 +174,12 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ isOpen, onClose }) => {
                 setAndCacheMessages(history.sort((a: ChatMessage, b: ChatMessage) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()));
             }
         } catch (e) { 
-            console.error("Fetch history failed:", e); 
+            // Suppress error log to avoid noise when chat service is offline
+            console.warn("Chat history service unavailable"); 
         } finally { 
             setIsHistoryLoading(false); 
         }
-    }, [transformBackendMessage, setAndCacheMessages]);
+    }, [transformBackendMessage, setAndCacheMessages, messages.length]);
 
     // WebSocket Logic
     useEffect(() => {
@@ -262,45 +268,78 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ isOpen, onClose }) => {
 
     useEffect(() => {
         if (isOpen) {
-            fetchUsers();
             fetchHistory();
         }
-    }, [isOpen, fetchUsers, fetchHistory]);
+    }, [isOpen, fetchHistory]);
 
-    // Auto-scroll to bottom
-    const scrollToBottom = () => {
+    // --- Smart Auto-Scroll Logic ---
+    const scrollToBottom = (behavior: ScrollBehavior = 'smooth') => {
         if (messagesEndRef.current) {
-            messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
+            messagesEndRef.current.scrollIntoView({ behavior });
         }
     };
 
+    // 1. Initial Scroll (Instant) when opening chat or finished loading history
     useEffect(() => {
-        if (activeTab === 'chat') scrollToBottom();
-    }, [messages, activeTab, isOpen, isHistoryLoading]);
+        if (isOpen && activeTab === 'chat' && !isHistoryLoading) {
+            scrollToBottom('auto');
+        }
+    }, [isOpen, activeTab, isHistoryLoading]);
+
+    // 2. Conditional Scroll on New Messages
+    useEffect(() => {
+        if (!isOpen || activeTab !== 'chat' || isHistoryLoading) return;
+
+        const container = chatBodyRef.current;
+        if (container) {
+            const { scrollTop, scrollHeight, clientHeight } = container;
+            // Check if user is near bottom (allow 250px buffer for large messages)
+            const isAtBottom = scrollHeight - scrollTop - clientHeight < 250;
+            
+            const lastMessage = messages[messages.length - 1];
+            const isMe = lastMessage?.user === currentUser?.UserName;
+            const isOptimistic = lastMessage?.isOptimistic;
+
+            // Only auto-scroll if:
+            // - I sent the message (isMe)
+            // - It's a pending message (isOptimistic)
+            // - I was already reading the latest messages (isAtBottom)
+            if (isMe || isOptimistic || isAtBottom) {
+                scrollToBottom('smooth');
+            }
+        } else {
+            // Fallback if ref is missing
+            scrollToBottom('smooth');
+        }
+    }, [messages]); // Dependency on messages only
 
     const handleSendMessage = async (content: string, type: 'text' | 'image' | 'audio') => {
         if (!content.trim()) return;
 
+        // Ensure we have a user
+        const sendingUser = currentUserRef.current;
+        if (!sendingUser) {
+            console.error("No user logged in to send message");
+            alert("Please login to send messages.");
+            return;
+        }
+
         // 1. Optimistic Update (Immediate Feedback)
         const tempId = Date.now().toString();
         
-        // For media, we need to handle content display differently if it's raw base64 vs url
-        // Here we assume content is valid for display (text or base64 data URI)
-        // If coming from file upload, content is pure base64, so we need to prefix it for display
         let displayContent = content;
         if (type === 'image' && !content.startsWith('http') && !content.startsWith('data:')) {
             displayContent = `data:image/jpeg;base64,${content}`;
         }
-        // Audio handling is tricky with base64 without mime type, usually audio/webm
         if (type === 'audio' && !content.startsWith('http') && !content.startsWith('data:')) {
              displayContent = `data:audio/webm;base64,${content}`;
         }
 
         const optimisticMsg: ChatMessage = {
             id: tempId,
-            user: currentUser?.UserName || 'Unknown',
-            fullName: currentUser?.FullName || 'Me',
-            avatar: currentUser?.ProfilePictureURL || '',
+            user: sendingUser.UserName || 'Unknown',
+            fullName: sendingUser.FullName || 'Me',
+            avatar: sendingUser.ProfilePictureURL || '',
             content: displayContent,
             timestamp: new Date().toISOString(),
             type: type,
@@ -311,13 +350,26 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ isOpen, onClose }) => {
         if (type === 'text') setNewMessage('');
 
         try {
+            // Send payload with both naming conventions to support different backend expectations
+            const payload = { 
+                userName: sendingUser.UserName, 
+                UserName: sendingUser.UserName,
+                type: type,
+                MessageType: type,
+                content: content.trim(),
+                Content: content.trim()
+            };
+
             const response = await fetch(`${WEB_APP_URL}/api/chat/send`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ userName: currentUser?.UserName, type, content: content.trim() })
+                body: JSON.stringify(payload)
             });
 
-            if (!response.ok) throw new Error("Send Failed");
+            if (!response.ok) {
+                const errorText = await response.text();
+                throw new Error(`Server returned ${response.status}: ${errorText}`);
+            }
 
             // Play outgoing sound on success
             if (!isMuted) {
@@ -329,7 +381,7 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ isOpen, onClose }) => {
             // Rollback optimistic update on error
             setMessages(prev => prev.filter(m => m.id !== tempId));
             if (type === 'text') setNewMessage(content); // Restore text
-            alert("ការបញ្ជូនសារបរាជ័យ (Send Failed)");
+            alert("ការបញ្ជូនសារបរាជ័យ (Send Failed). Please try again.");
         }
     };
 
@@ -368,7 +420,10 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ isOpen, onClose }) => {
                 <button onClick={() => setActiveTab('users')} className={`text-xs font-bold uppercase tracking-wider transition-all ${activeTab === 'users' ? 'active bg-blue-600 text-white shadow-lg' : 'text-gray-500 hover:text-gray-300'}`}>Members</button>
             </div>
 
-            <div className="chat-body custom-scrollbar bg-[#0f172a] relative">
+            <div 
+                className="chat-body custom-scrollbar bg-[#0f172a] relative"
+                ref={chatBodyRef}
+            >
                 {activeTab === 'chat' ? (
                     <div className="chat-messages p-4 space-y-6 min-h-full">
                         {isHistoryLoading ? (
@@ -424,16 +479,22 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ isOpen, onClose }) => {
                     </div>
                 ) : (
                     <div className="p-4 space-y-3">
-                        {allUsers.map(u => (
-                            <div key={u.UserName} className="flex items-center gap-4 p-3 rounded-2xl bg-gray-800/40 border border-white/5 hover:bg-gray-800 transition-colors cursor-default">
-                                <UserAvatar avatarUrl={u.ProfilePictureURL} name={u.FullName} size="md" className="ring-2 ring-blue-500/20" />
-                                <div>
-                                    <p className="text-sm font-black text-white">{u.FullName}</p>
-                                    <p className="text-[10px] text-gray-500 font-mono uppercase tracking-wider">@{u.UserName}</p>
-                                </div>
-                                <div className={`ml-auto w-2 h-2 rounded-full ${u.IsSystemAdmin ? 'bg-yellow-500' : 'bg-blue-500'}`}></div>
+                        {allUsers.length === 0 ? (
+                            <div className="text-center text-gray-500 py-10">
+                                <p className="text-xs uppercase tracking-widest">No members found</p>
                             </div>
-                        ))}
+                        ) : (
+                            allUsers.map(u => (
+                                <div key={u.UserName} className="flex items-center gap-4 p-3 rounded-2xl bg-gray-800/40 border border-white/5 hover:bg-gray-800 transition-colors cursor-default">
+                                    <UserAvatar avatarUrl={u.ProfilePictureURL} name={u.FullName} size="md" className="ring-2 ring-blue-500/20" />
+                                    <div>
+                                        <p className="text-sm font-black text-white">{u.FullName}</p>
+                                        <p className="text-[10px] text-gray-500 font-mono uppercase tracking-wider">@{u.UserName}</p>
+                                    </div>
+                                    <div className={`ml-auto w-2 h-2 rounded-full ${u.IsSystemAdmin ? 'bg-yellow-500' : 'bg-blue-500'}`}></div>
+                                </div>
+                            ))
+                        )}
                     </div>
                 )}
             </div>
