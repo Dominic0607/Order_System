@@ -9,6 +9,7 @@ import BulkActionBarMobile from './BulkActionBarMobile';
 import { convertGoogleDriveUrl } from '../../utils/fileUtils';
 import ShippingMethodDropdown from '../common/ShippingMethodDropdown';
 import DriverSelector from '../orders/DriverSelector';
+import Spinner from '../common/Spinner';
 
 interface BulkActionManagerProps {
     orders: ParsedOrder[];
@@ -186,7 +187,9 @@ const BulkActionManager: React.FC<BulkActionManagerProps> = ({ orders, selectedI
                     </div>
                     <div className="grid grid-cols-2 gap-4">
                         <button onClick={() => setActiveModal(null)} className="py-4 text-gray-500 font-black uppercase text-xs tracking-widest hover:text-white transition-colors">បោះបង់</button>
-                        <button onClick={() => handleBulkUpdate({ 'Internal Cost': Number(costValue) })} className="py-4 bg-blue-600 text-white rounded-2xl font-black uppercase text-xs tracking-widest shadow-xl shadow-blue-600/20 active:scale-95" disabled={isProcessing || !costValue}>រក្សាទុក</button>
+                        <button onClick={() => handleBulkUpdate({ 'Internal Cost': Number(costValue) })} className="py-4 bg-blue-600 text-white rounded-2xl font-black uppercase text-xs tracking-widest shadow-xl shadow-blue-600/20 active:scale-95 flex items-center justify-center gap-2" disabled={isProcessing || !costValue}>
+                            {isProcessing ? <Spinner size="sm"/> : "រក្សាទុក"}
+                        </button>
                     </div>
                 </div>
             </Modal>
@@ -240,7 +243,7 @@ const BulkActionManager: React.FC<BulkActionManagerProps> = ({ orders, selectedI
                                                 <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${isSelected ? 'bg-black/40' : 'bg-black/20'}`}>
                                                     <img src={convertGoogleDriveUrl(b.LogoURL)} className="w-7 h-7 object-contain" alt="" />
                                                 </div>
-                                                <span className={`text-xs font-black truncate w-full text-left whitespace-normal leading-tight ${isSelected ? 'text-white' : 'text-gray-400 group-hover:text-gray-200'}`}>
+                                                <span className={`text-xs font-black w-full text-left whitespace-normal leading-tight ${isSelected ? 'text-white' : 'text-gray-400 group-hover:text-gray-200'}`}>
                                                     {b.BankName}
                                                 </span>
                                                 {isSelected && <div className="w-2 h-2 rounded-full bg-blue-500 shadow-[0_0_8px_#3b82f6]"></div>}
@@ -263,10 +266,10 @@ const BulkActionManager: React.FC<BulkActionManagerProps> = ({ orders, selectedI
                         <button onClick={() => setActiveModal(null)} className="py-4 text-gray-500 font-black uppercase text-xs tracking-widest hover:text-white transition-colors bg-gray-800/50 rounded-2xl hover:bg-gray-800">បោះបង់</button>
                         <button 
                             onClick={() => handleBulkUpdate({ 'Payment Status': paymentStatus, 'Payment Info': paymentStatus === 'Paid' ? paymentInfo : '' })} 
-                            className="py-4 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-500 hover:to-blue-600 text-white rounded-2xl font-black uppercase text-xs tracking-widest shadow-xl active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed transition-all" 
+                            className="py-4 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-500 hover:to-blue-600 text-white rounded-2xl font-black uppercase text-xs tracking-widest shadow-xl active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2" 
                             disabled={isProcessing || (paymentStatus === 'Paid' && !paymentInfo)}
                         >
-                            {isProcessing ? 'កំពុងរក្សាទុក...' : 'រក្សាទុកការផ្លាស់ប្តូរ'}
+                            {isProcessing ? <Spinner size="sm" /> : 'រក្សាទុកការផ្លាស់ប្តូរ'}
                         </button>
                     </div>
                 </div>
@@ -344,10 +347,10 @@ const BulkActionManager: React.FC<BulkActionManagerProps> = ({ orders, selectedI
                                 
                                 handleBulkUpdate(payload);
                             }} 
-                            className="py-4 bg-blue-600 text-white rounded-2xl font-black uppercase text-xs tracking-widest shadow-xl active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+                            className="py-4 bg-blue-600 text-white rounded-2xl font-black uppercase text-xs tracking-widest shadow-xl active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                             disabled={isProcessing || !shippingMethod || (requiresDriver && !shippingDriver)}
                         >
-                            រក្សាទុក
+                            {isProcessing ? <Spinner size="sm" /> : "រក្សាទុក"}
                         </button>
                     </div>
                 </div>
@@ -369,7 +372,20 @@ const BulkActionManager: React.FC<BulkActionManagerProps> = ({ orders, selectedI
 
                     <div className="grid grid-cols-2 gap-4">
                         <button onClick={() => setActiveModal(null)} className="py-4 text-gray-500 font-black uppercase text-xs tracking-widest">បោះបង់</button>
-                        <button onClick={handleBulkDelete} className="py-4 bg-red-600 text-white rounded-2xl font-black uppercase text-xs tracking-widest shadow-xl shadow-red-900/40 active:scale-95" disabled={isProcessing || !deletePassword}>បាទ, លុបទាំងអស់</button>
+                        <button 
+                            onClick={handleBulkDelete} 
+                            className="py-4 bg-red-600 text-white rounded-2xl font-black uppercase text-xs tracking-widest shadow-xl shadow-red-900/40 active:scale-95 disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2" 
+                            disabled={isProcessing || !deletePassword}
+                        >
+                            {isProcessing ? (
+                                <>
+                                    <Spinner size="sm" />
+                                    <span>កំពុងលុប...</span>
+                                </>
+                            ) : (
+                                "បាទ, លុបទាំងអស់"
+                            )}
+                        </button>
                     </div>
                 </div>
             </Modal>
