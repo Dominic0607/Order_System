@@ -54,11 +54,19 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ isOpen, onClose }) => {
     const [activeTab, setActiveTab] = useState<ActiveTab>('chat');
     
     const fileInputRef = useRef<HTMLInputElement>(null);
+    const textareaRef = useRef<HTMLTextAreaElement>(null);
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const chatBodyRef = useRef<HTMLDivElement>(null);
     const wsRef = useRef<WebSocket | null>(null);
     const isOpenRef = useRef(isOpen);
-    
+
+    useEffect(() => {
+        if (textareaRef.current) {
+            textareaRef.current.style.height = 'auto';
+            textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight, 96)}px`;
+        }
+    }, [newMessage]);
+
     const allUsersRef = useRef(allUsers);
     const currentUserRef = useRef(currentUser);
     const isMutedRef = useRef(isMuted);
@@ -535,6 +543,7 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ isOpen, onClose }) => {
                             
                             <div className="flex-grow relative">
                                 <textarea 
+                                    ref={textareaRef}
                                     value={newMessage} 
                                     onChange={e => setNewMessage(e.target.value)} 
                                     onKeyDown={e => {
