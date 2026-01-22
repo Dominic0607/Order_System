@@ -61,11 +61,14 @@ const CreateOrderPage: React.FC<CreateOrderPageProps> = ({ team, onSaveSuccess, 
     const [currentStep, setCurrentStep] = useState(1);
     const [isCancelModalOpen, setIsCancelModalOpen] = useState(false);
     
-    // SFX for Driver Selection
+    // SFX
     const sfxDriverSelect = useRef(new Audio('https://assets.mixkit.co/active_storage/sfx/2568/2568-preview.mp3'));
+    // Changed to Cash Register Sound
+    const sfxSuccess = useRef(new Audio('https://samnangh849-source.github.io/ButtonTest/Send.mp3'));
 
     useEffect(() => {
         sfxDriverSelect.current.volume = 0.4;
+        sfxSuccess.current.volume = 0.6;
     }, []);
 
     const initialOrderState = useMemo(() => ({
@@ -438,6 +441,11 @@ const CreateOrderPage: React.FC<CreateOrderPageProps> = ({ team, onSaveSuccess, 
             });
             const result = await res.json();
             if (!res.ok || result.status !== 'success') throw new Error(result.message || 'Error');
+            
+            // Play success sound
+            sfxSuccess.current.currentTime = 0;
+            sfxSuccess.current.play().catch(() => {});
+
             localStorage.removeItem(DRAFT_KEY);
             setSubmissionStatus({ type: 'success', message: `ជោគជ័យ! Order ID: ${result.orderId}` });
             setTimeout(onSaveSuccess, 3000);
