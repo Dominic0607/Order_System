@@ -89,6 +89,7 @@ const ReportsView: React.FC<ReportsViewProps> = ({ orders, reportType }) => {
 
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
                     <div className="lg:col-span-8 space-y-6">
+                        {/* Table 1: Methods */}
                         <div className="page-card !p-6 bg-gray-900/40 border-white/5">
                             <h3 className="text-sm font-black text-white uppercase tracking-widest mb-6 flex items-center gap-2">សង្ខេបតាមក្រុមហ៊ុនដឹកជញ្ជូន</h3>
                             <div className="overflow-x-auto">
@@ -108,10 +109,22 @@ const ReportsView: React.FC<ReportsViewProps> = ({ orders, reportType }) => {
                                             </tr>
                                         ))}
                                     </tbody>
+                                    <tfoot className="bg-white/5 border-t-2 border-white/10">
+                                        <tr>
+                                            <td className="px-4 py-3 text-right text-[10px] font-black uppercase text-gray-400 tracking-widest">Grand Total</td>
+                                            <td className="px-4 py-3 text-center font-black text-blue-300 text-base">
+                                                {shippingStats.methods.reduce((sum, m) => sum + m.orders, 0)}
+                                            </td>
+                                            <td className="px-4 py-3 text-right font-black text-emerald-400 text-base">
+                                                ${shippingStats.methods.reduce((sum, m) => sum + m.cost, 0).toLocaleString(undefined, {minimumFractionDigits: 2})}
+                                            </td>
+                                        </tr>
+                                    </tfoot>
                                 </table>
                             </div>
                         </div>
 
+                        {/* Table 2: Drivers */}
                         <div className="page-card !p-6 bg-gray-900/40 border-white/5">
                             <h3 className="text-sm font-black text-white uppercase tracking-widest mb-6 flex items-center gap-2">សង្ខេបតាមអ្នកដឹក (Drivers)</h3>
                             <div className="overflow-x-auto">
@@ -131,6 +144,17 @@ const ReportsView: React.FC<ReportsViewProps> = ({ orders, reportType }) => {
                                             </tr>
                                         ))}
                                     </tbody>
+                                    <tfoot className="bg-white/5 border-t-2 border-white/10">
+                                        <tr>
+                                            <td className="px-4 py-3 text-right text-[10px] font-black uppercase text-gray-400 tracking-widest">Grand Total</td>
+                                            <td className="px-4 py-3 text-center font-black text-blue-300 text-base">
+                                                {shippingStats.drivers.reduce((sum, d) => sum + d.orders, 0)}
+                                            </td>
+                                            <td className="px-4 py-3 text-right font-black text-emerald-400 text-base">
+                                                ${shippingStats.drivers.reduce((sum, d) => sum + d.cost, 0).toLocaleString(undefined, {minimumFractionDigits: 2})}
+                                            </td>
+                                        </tr>
+                                    </tfoot>
                                 </table>
                             </div>
                         </div>
