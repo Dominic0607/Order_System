@@ -1,3 +1,4 @@
+
 import React, { useMemo } from 'react';
 
 interface TeamStat {
@@ -41,15 +42,15 @@ const TeamRevenueTable: React.FC<TeamRevenueTableProps> = ({ stats, onStatClick 
                         </thead>
                         <tbody className="divide-y divide-gray-700/30">
                             {stats.map((team, idx) => (
-                                <tr key={team.name} className="hover:bg-blue-600/5 transition-colors group">
+                                <tr key={team.name} className="hover:bg-blue-600/5 transition-colors group cursor-pointer" onClick={() => onStatClick(team.name)}>
                                     <td className="px-6 py-4 font-bold text-gray-100 flex items-center gap-3">
                                         <span className="w-6 h-6 rounded-lg bg-gray-700 text-gray-400 flex items-center justify-center text-[10px] border border-gray-600">#{idx + 1}</span>
-                                        {team.name}
+                                        <span className="group-hover:text-blue-300 transition-colors">{team.name}</span>
                                     </td>
-                                    <td className="px-6 py-4 text-center text-blue-400 font-black cursor-pointer hover:underline" onClick={() => onStatClick(team.name)}>
+                                    <td className="px-6 py-4 text-center text-blue-400 font-black group-hover:underline">
                                         {team.orders}
                                     </td>
-                                    <td className="px-6 py-4 text-right font-black text-green-400">
+                                    <td className="px-6 py-4 text-right font-black text-green-400 group-hover:text-green-300 transition-colors">
                                         ${team.revenue.toLocaleString(undefined, { minimumFractionDigits: 2 })}
                                     </td>
                                 </tr>

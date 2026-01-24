@@ -24,21 +24,25 @@ const OrdersDashboard: React.FC<OrdersDashboardProps> = ({ onBack }) => {
     
     const [urlTeam, setUrlTeam] = useUrlState<string>('teamFilter', '');
     const [urlDate, setUrlDate] = useUrlState<string>('dateFilter', 'this_month');
+    const [urlLocation, setUrlLocation] = useUrlState<string>('locationFilter', '');
 
-    // EXCLUDE 'fulfillment' by default here
-    const [visibleColumns, setVisibleColumns] = useState<Set<string>>(new Set(
-        availableColumns.filter(c => 
-            c.key !== 'productInfo' && 
-            c.key !== 'print' && 
-            c.key !== 'check' && 
-            c.key !== 'fulfillment'
-        ).map(c => c.key)
-    ));
+    // Safe initialization for columns
+    const [visibleColumns, setVisibleColumns] = useState<Set<string>>(() => {
+        const defaults = availableColumns || [];
+        return new Set(
+            defaults.filter(c => 
+                c.key !== 'productInfo' && 
+                c.key !== 'print' && 
+                c.key !== 'check' && 
+                c.key !== 'fulfillment'
+            ).map(c => c.key)
+        );
+    });
 
     const [allOrders, setAllOrders] = useState<ParsedOrder[]>([]);
     const [usersList, setUsersList] = useState<User[]>([]); 
     const [loading, setLoading] = useState(true);
-    const [loadingProgress, setLoadingProgress] = useState(0); // Progress bar for parsing
+    const [loadingProgress, setLoadingProgress] = useState(0); 
     const [fetchError, setFetchError] = useState<string | null>(null);
     const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
     const [isPdfModalOpen, setIsPdfModalOpen] = useState(false);
@@ -55,30 +59,33 @@ const OrdersDashboard: React.FC<OrdersDashboardProps> = ({ onBack }) => {
             user: '',
             paymentStatus: '',
             shippingService: searchParams.get('shippingFilter') || '',
+            driver: searchParams.get('driverFilter') || '',
             product: '',
             bank: '',
             fulfillmentStore: '',
-            store: '', // New Store Filter
+            store: '',
             page: '',
-            location: '',
+            location: searchParams.get('locationFilter') || '',
             internalCost: '',
         };
     });
 
     useEffect(() => {
-        if (urlTeam !== filters.team || urlDate !== filters.datePreset) {
+        if (urlTeam !== filters.team || urlDate !== filters.datePreset || urlLocation !== filters.location) {
             setFilters(prev => ({
                 ...prev,
                 team: urlTeam || prev.team,
-                datePreset: (urlDate as any) || prev.datePreset
+                datePreset: (urlDate as any) || prev.datePreset,
+                location: urlLocation || prev.location
             }));
         }
-    }, [urlTeam, urlDate]);
+    }, [urlTeam, urlDate, urlLocation]);
 
     useEffect(() => {
         if (filters.team !== urlTeam) setUrlTeam(filters.team);
         if (filters.datePreset !== urlDate) setUrlDate(filters.datePreset);
-    }, [filters.team, filters.datePreset]);
+        if (filters.location !== urlLocation) setUrlLocation(filters.location);
+    }, [filters.team, filters.datePreset, filters.location]);
 
     const calculatedRange = useMemo(() => {
         const now = new Date();
@@ -213,7 +220,6 @@ const OrdersDashboard: React.FC<OrdersDashboardProps> = ({ onBack }) => {
 
             // 2. Store Filter (NEW Logic using Page Mapping)
             if (filters.store) {
-                // Find the page configuration to determine which store it belongs to
                 const pageConfig = appData.pages?.find(p => p.PageName === order.Page);
                 if (!pageConfig || pageConfig.DefaultStore !== filters.store) {
                     return false;
@@ -225,6 +231,7 @@ const OrdersDashboard: React.FC<OrdersDashboardProps> = ({ onBack }) => {
             if (filters.user && (order.User || '').trim().toLowerCase() !== filters.user.trim().toLowerCase()) return false;
             if (filters.paymentStatus && order['Payment Status'] !== filters.paymentStatus) return false;
             if (filters.shippingService && order['Internal Shipping Method'] !== filters.shippingService) return false;
+            if (filters.driver && order['Internal Shipping Details'] !== filters.driver) return false;
             if (filters.bank && order['Payment Info'] !== filters.bank) return false;
             if (filters.product && !order.Products.some(p => p.name === filters.product)) return false;
             if (filters.fulfillmentStore && order['Fulfillment Store'] !== filters.fulfillmentStore) return false;
@@ -240,7 +247,7 @@ const OrdersDashboard: React.FC<OrdersDashboardProps> = ({ onBack }) => {
             }
             return true;
         });
-    }, [enrichedOrders, filters, searchQuery, appData.pages]); // Added appData.pages to dependencies
+    }, [enrichedOrders, filters, searchQuery, appData.pages]);
 
     const toggleSelection = (id: string) => {
         setSelectedIds(prev => {

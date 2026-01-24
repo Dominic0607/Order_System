@@ -9,9 +9,10 @@ interface ProvinceStat {
 
 interface ProvincialSummaryListProps {
     stats: ProvinceStat[];
+    onProvinceClick?: (provinceName: string) => void;
 }
 
-const ProvincialSummaryList: React.FC<ProvincialSummaryListProps> = ({ stats }) => {
+const ProvincialSummaryList: React.FC<ProvincialSummaryListProps> = ({ stats, onProvinceClick }) => {
     return (
         <div className="space-y-4">
             <h3 className="text-lg font-bold text-white flex items-center px-1">
@@ -31,8 +32,12 @@ const ProvincialSummaryList: React.FC<ProvincialSummaryListProps> = ({ stats }) 
                         </thead>
                         <tbody className="divide-y divide-gray-700/30">
                             {stats.map((prov, idx) => (
-                                <tr key={prov.name} className="hover:bg-blue-600/5 transition-colors">
-                                    <td className="px-4 py-3 font-bold text-gray-200">
+                                <tr 
+                                    key={prov.name} 
+                                    className="hover:bg-blue-600/5 transition-colors cursor-pointer group"
+                                    onClick={() => onProvinceClick?.(prov.name)}
+                                >
+                                    <td className="px-4 py-3 font-bold text-gray-200 group-hover:text-blue-300 transition-colors">
                                         <div className="flex items-center gap-2">
                                             <span className="w-5 h-5 rounded-full bg-gray-700 text-[9px] text-gray-500 flex items-center justify-center border border-gray-600">
                                                 {idx + 1}
@@ -41,10 +46,10 @@ const ProvincialSummaryList: React.FC<ProvincialSummaryListProps> = ({ stats }) 
                                         </div>
                                     </td>
                                     <td className="px-4 py-3 text-right">
-                                        <span className="text-blue-400 font-black block">
+                                        <span className="text-blue-400 font-black block group-hover:text-blue-300">
                                             ${prov.revenue.toLocaleString(undefined, { minimumFractionDigits: 2 })}
                                         </span>
-                                        <span className="text-[9px] text-gray-500 uppercase tracking-tighter">
+                                        <span className="text-[9px] text-gray-500 uppercase tracking-tighter group-hover:text-gray-400">
                                             {prov.orders} orders
                                         </span>
                                     </td>

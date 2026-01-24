@@ -14,11 +14,12 @@ interface DashboardOverviewProps {
     teamRevenueStats: any[];
     provinceStats: any[];
     onTeamClick: (team: string) => void;
+    onProvinceClick: (province: string) => void;
 }
 
 const DashboardOverview: React.FC<DashboardOverviewProps> = ({
     currentUser, parsedOrders, revenueBreakdownPeriod, setRevenueBreakdownPeriod,
-    teamRevenueStats, provinceStats, onTeamClick
+    teamRevenueStats, provinceStats, onTeamClick, onProvinceClick
 }) => {
     const metrics = {
         revenue: parsedOrders.filter(o => {
@@ -74,7 +75,7 @@ const DashboardOverview: React.FC<DashboardOverviewProps> = ({
                     <ProvincialMap data={provinceStats} />
                 </div>
                 <div className="xl:col-span-4">
-                    <ProvincialSummaryList stats={provinceStats} />
+                    <ProvincialSummaryList stats={provinceStats} onProvinceClick={onProvinceClick} />
                 </div>
             </div>
         </div>
