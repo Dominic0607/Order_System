@@ -5,12 +5,16 @@ import StatCard from '../performance/StatCard';
 import TeamRevenueTable from './TeamRevenueTable';
 import ProvincialMap from './ProvincialMap';
 import ProvincialSummaryList from './ProvincialSummaryList';
+import DateRangeFilter, { DateRangePreset } from '../common/DateRangeFilter';
 
 interface DashboardOverviewProps {
     currentUser: User | null;
     parsedOrders: ParsedOrder[];
-    revenueBreakdownPeriod: 'today' | 'this_month' | 'this_year';
-    setRevenueBreakdownPeriod: (period: 'today' | 'this_month' | 'this_year') => void;
+    
+    // Updated props for flexible date filtering
+    dateFilter: { preset: string, start: string, end: string };
+    setDateFilter: (filter: { preset: string, start: string, end: string }) => void;
+
     teamRevenueStats: any[];
     provinceStats: any[];
     onTeamClick: (team: string) => void;
@@ -18,25 +22,52 @@ interface DashboardOverviewProps {
 }
 
 const DashboardOverview: React.FC<DashboardOverviewProps> = ({
-    currentUser, parsedOrders, revenueBreakdownPeriod, setRevenueBreakdownPeriod,
+    currentUser, parsedOrders, 
+    dateFilter, setDateFilter,
     teamRevenueStats, provinceStats, onTeamClick, onProvinceClick
 }) => {
+    
+    // Calculate metrics based on CURRENT filtered orders (which are already filtered in parent)
+    // OR filter them here if passed raw. Assuming `teamRevenueStats` etc are already filtered in parent.
+    // However, `metrics` below was doing its own filtering. Let's fix that.
+    
+    // Actually, `parsedOrders` passed here is ALL orders from `AdminDashboard`.
+    // We should filter here for the metrics cards to match the tables.
+    
+    const getOrderDate = (o: ParsedOrder) => new Date(o.Timestamp);
+    
+    const filteredMetricsOrders = parsedOrders.filter(o => {
+        if (!o.Timestamp) return false;
+        const d = getOrderDate(o);
+        const now = new Date();
+        const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        
+        if (dateFilter.preset === 'today') {
+            return d.toDateString() === now.toDateString();
+        } else if (dateFilter.preset === 'this_week') {
+            const day = now.getDay();
+            const start = new Date(today);
+            start.setDate(today.getDate() - (day === 0 ? 6 : day - 1));
+            const end = new Date(start);
+            end.setDate(start.getDate() + 6);
+            end.setHours(23, 59, 59);
+            return d >= start && d <= end;
+        } else if (dateFilter.preset === 'this_month') {
+            return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+        } else if (dateFilter.preset === 'custom') {
+            const start = dateFilter.start ? new Date(dateFilter.start + 'T00:00:00') : null;
+            const end = dateFilter.end ? new Date(dateFilter.end + 'T23:59:59') : null;
+            if (start && d < start) return false;
+            if (end && d > end) return false;
+            return true;
+        }
+        return true; // Fallback
+    });
+
     const metrics = {
-        revenue: parsedOrders.filter(o => {
-            const d = new Date(o.Timestamp);
-            const now = new Date();
-            if (revenueBreakdownPeriod === 'today') return d.toDateString() === now.toDateString();
-            if (revenueBreakdownPeriod === 'this_month') return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
-            return d.getFullYear() === now.getFullYear();
-        }).reduce((sum, o) => sum + (Number(o['Grand Total']) || 0), 0),
-        orders: parsedOrders.filter(o => {
-            const d = new Date(o.Timestamp);
-            const now = new Date();
-            if (revenueBreakdownPeriod === 'today') return d.toDateString() === now.toDateString();
-            if (revenueBreakdownPeriod === 'this_month') return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
-            return d.getFullYear() === now.getFullYear();
-        }).length,
-        unpaid: parsedOrders.filter(o => o['Payment Status'] === 'Unpaid').length
+        revenue: filteredMetricsOrders.reduce((sum, o) => sum + (Number(o['Grand Total']) || 0), 0),
+        orders: filteredMetricsOrders.length,
+        unpaid: filteredMetricsOrders.filter(o => o['Payment Status'] === 'Unpaid').length
     };
 
     return (
@@ -49,12 +80,17 @@ const DashboardOverview: React.FC<DashboardOverviewProps> = ({
                         {new Date().toLocaleDateString('km-KH', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
                     </p>
                 </div>
-                <div className="flex bg-black/40 p-1 rounded-xl border border-white/5">
-                    {(['today', 'this_month', 'this_year'] as const).map(p => (
-                        <button key={p} onClick={() => setRevenueBreakdownPeriod(p)} className={`px-4 py-1.5 text-[11px] lg:text-xs font-black uppercase rounded-lg transition-all ${revenueBreakdownPeriod === p ? 'bg-blue-600 text-white shadow-lg' : 'text-gray-500 hover:text-white'}`}>
-                            {p === 'today' ? 'ថ្ងៃនេះ' : p === 'this_month' ? 'ខែនេះ' : 'ឆ្នាំនេះ'}
-                        </button>
-                    ))}
+                
+                {/* Date Filter Component */}
+                <div className="w-full md:w-auto">
+                    <DateRangeFilter 
+                        dateRange={dateFilter.preset as DateRangePreset}
+                        onRangeChange={(r) => setDateFilter({ ...dateFilter, preset: r })}
+                        customStart={dateFilter.start}
+                        onCustomStartChange={(v) => setDateFilter({ ...dateFilter, start: v })}
+                        customEnd={dateFilter.end}
+                        onCustomEndChange={(v) => setDateFilter({ ...dateFilter, end: v })}
+                    />
                 </div>
             </div>
 

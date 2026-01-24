@@ -9,10 +9,12 @@ import { convertGoogleDriveUrl } from '../../utils/fileUtils';
 interface ShippingReportProps {
     orders: ParsedOrder[];
     appData: AppData;
-    dateFilter: string; // Receive current date filter context
+    dateFilter: string;
+    startDate?: string;
+    endDate?: string;
 }
 
-const ShippingReport: React.FC<ShippingReportProps> = ({ orders, appData, dateFilter }) => {
+const ShippingReport: React.FC<ShippingReportProps> = ({ orders, appData, dateFilter, startDate, endDate }) => {
     const [analysis, setAnalysis] = useState<string>('');
     const [loadingAnalysis, setLoadingAnalysis] = useState(false);
 
@@ -23,10 +25,10 @@ const ShippingReport: React.FC<ShippingReportProps> = ({ orders, appData, dateFi
             params.set('tab', 'orders');
             params.set(key, value); // 'shippingFilter' or 'driverFilter'
             
-            // Ensure date filter is passed correctly
-            if (dateFilter) {
-                params.set('dateFilter', dateFilter);
-            }
+            // Pass date filters
+            if (dateFilter) params.set('dateFilter', dateFilter);
+            if (startDate) params.set('startDate', startDate);
+            if (endDate) params.set('endDate', endDate);
             
             const newUrl = `${window.location.pathname}?${params.toString()}`;
             window.history.pushState(null, '', newUrl);

@@ -12,17 +12,19 @@ interface ReportsViewProps {
     orders: ParsedOrder[];
     allOrders: ParsedOrder[];
     reportType: 'overview' | 'performance' | 'profitability' | 'forecasting' | 'shipping';
-    dateFilter: string; // Receive date context
+    dateFilter: string;
+    startDate?: string;
+    endDate?: string;
 }
 
-const ReportsView: React.FC<ReportsViewProps> = ({ orders, reportType, dateFilter }) => {
+const ReportsView: React.FC<ReportsViewProps> = ({ orders, reportType, dateFilter, startDate, endDate }) => {
     const { appData } = useContext(AppContext);
     const [analysis, setAnalysis] = useState<string>('');
     const [loadingAnalysis, setLoadingAnalysis] = useState(false);
 
     // Handle Shipping Report separately via component
     if (reportType === 'shipping') {
-        return <ShippingReport orders={orders} appData={appData} dateFilter={dateFilter} />;
+        return <ShippingReport orders={orders} appData={appData} dateFilter={dateFilter} startDate={startDate} endDate={endDate} />;
     }
 
     const stats = useMemo(() => {

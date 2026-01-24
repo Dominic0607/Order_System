@@ -22,9 +22,12 @@ const OrdersDashboard: React.FC<OrdersDashboardProps> = ({ onBack }) => {
     const { appData, refreshData, refreshTimestamp, currentUser } = useContext(AppContext);
     const [editingOrderId, setEditingOrderId] = useUrlState<string>('editOrder', '');
     
+    // URL State for Filters
     const [urlTeam, setUrlTeam] = useUrlState<string>('teamFilter', '');
     const [urlDate, setUrlDate] = useUrlState<string>('dateFilter', 'this_month');
     const [urlLocation, setUrlLocation] = useUrlState<string>('locationFilter', '');
+    const [urlStart, setUrlStart] = useUrlState<string>('startDate', '');
+    const [urlEnd, setUrlEnd] = useUrlState<string>('endDate', '');
 
     // Safe initialization for columns
     const [visibleColumns, setVisibleColumns] = useState<Set<string>>(() => {
@@ -53,8 +56,8 @@ const OrdersDashboard: React.FC<OrdersDashboardProps> = ({ onBack }) => {
         const searchParams = new URLSearchParams(window.location.search);
         return {
             datePreset: (searchParams.get('dateFilter') as any) || 'this_month',
-            startDate: '',
-            endDate: '',
+            startDate: searchParams.get('startDate') || '',
+            endDate: searchParams.get('endDate') || '',
             team: searchParams.get('teamFilter') || '',
             user: '',
             paymentStatus: '',
@@ -70,22 +73,34 @@ const OrdersDashboard: React.FC<OrdersDashboardProps> = ({ onBack }) => {
         };
     });
 
+    // Sync state FROM URL changes
     useEffect(() => {
-        if (urlTeam !== filters.team || urlDate !== filters.datePreset || urlLocation !== filters.location) {
+        if (
+            urlTeam !== filters.team || 
+            urlDate !== filters.datePreset || 
+            urlLocation !== filters.location ||
+            urlStart !== filters.startDate ||
+            urlEnd !== filters.endDate
+        ) {
             setFilters(prev => ({
                 ...prev,
                 team: urlTeam || prev.team,
                 datePreset: (urlDate as any) || prev.datePreset,
-                location: urlLocation || prev.location
+                location: urlLocation || prev.location,
+                startDate: urlStart || prev.startDate,
+                endDate: urlEnd || prev.endDate
             }));
         }
-    }, [urlTeam, urlDate, urlLocation]);
+    }, [urlTeam, urlDate, urlLocation, urlStart, urlEnd]);
 
+    // Sync state TO URL changes
     useEffect(() => {
         if (filters.team !== urlTeam) setUrlTeam(filters.team);
         if (filters.datePreset !== urlDate) setUrlDate(filters.datePreset);
         if (filters.location !== urlLocation) setUrlLocation(filters.location);
-    }, [filters.team, filters.datePreset, filters.location]);
+        if (filters.startDate !== urlStart) setUrlStart(filters.startDate);
+        if (filters.endDate !== urlEnd) setUrlEnd(filters.endDate);
+    }, [filters.team, filters.datePreset, filters.location, filters.startDate, filters.endDate]);
 
     const calculatedRange = useMemo(() => {
         const now = new Date();

@@ -25,13 +25,15 @@ const ReportDashboard: React.FC<ReportDashboardProps> = ({ activeReport, onBack 
     const [usersList, setUsersList] = useState<User[]>([]);
     const [isFilterOpen, setIsFilterOpen] = useState(false);
     
-    // Sync Date Filter with URL for seamless navigation
+    // Sync Date Filters with URL
     const [urlDate, setUrlDate] = useUrlState<string>('dateFilter', 'this_month');
+    const [urlStart, setUrlStart] = useUrlState<string>('startDate', '');
+    const [urlEnd, setUrlEnd] = useUrlState<string>('endDate', '');
 
     const [filters, setFilters] = useState<FilterState>({
         datePreset: (urlDate as any) || 'this_month',
-        startDate: '',
-        endDate: '',
+        startDate: urlStart || '',
+        endDate: urlEnd || '',
         team: '',
         user: '',
         paymentStatus: '',
@@ -48,10 +50,10 @@ const ReportDashboard: React.FC<ReportDashboardProps> = ({ activeReport, onBack 
 
     // Update URL when filter changes
     useEffect(() => {
-        if (filters.datePreset !== urlDate) {
-            setUrlDate(filters.datePreset);
-        }
-    }, [filters.datePreset, setUrlDate, urlDate]);
+        if (filters.datePreset !== urlDate) setUrlDate(filters.datePreset);
+        if (filters.startDate !== urlStart) setUrlStart(filters.startDate);
+        if (filters.endDate !== urlEnd) setUrlEnd(filters.endDate);
+    }, [filters.datePreset, filters.startDate, filters.endDate, urlDate, urlStart, urlEnd, setUrlDate, setUrlStart, setUrlEnd]);
 
     const fetchInitialData = async () => {
         setLoading(true);
@@ -181,7 +183,7 @@ const ReportDashboard: React.FC<ReportDashboardProps> = ({ activeReport, onBack 
                 {activeReport === 'overview' && <ReportsView orders={filteredOrders} reportType="overview" allOrders={orders} dateFilter={filters.datePreset} />}
                 {activeReport === 'sales_team' && <SalesByTeamPage orders={filteredOrders} onBack={onBack} />}
                 {activeReport === 'sales_page' && <SalesByPageReport orders={filteredOrders} onBack={onBack} />}
-                {activeReport === 'shipping' && <ReportsView orders={filteredOrders} reportType="shipping" allOrders={orders} dateFilter={filters.datePreset} />}
+                {activeReport === 'shipping' && <ReportsView orders={filteredOrders} reportType="shipping" allOrders={orders} dateFilter={filters.datePreset} startDate={filters.startDate} endDate={filters.endDate} />}
                 {activeReport === 'profitability' && <ReportsView orders={filteredOrders} reportType="profitability" allOrders={orders} dateFilter={filters.datePreset} />}
                 {activeReport === 'performance' && <ReportsView orders={filteredOrders} reportType="performance" allOrders={orders} dateFilter={filters.datePreset} />}
                 {activeReport === 'forecasting' && <ReportsView orders={orders} reportType="forecasting" allOrders={orders} dateFilter={filters.datePreset} />}

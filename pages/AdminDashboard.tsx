@@ -4,7 +4,7 @@ import { AppContext } from '../context/AppContext';
 import Spinner from '../components/common/Spinner';
 import DesktopAdminLayout from '../components/admin/DesktopAdminLayout';
 import MobileAdminLayout from '../components/admin/MobileAdminLayout';
-import TabletAdminLayout from '../components/admin/TabletAdminLayout'; // Import New Layout
+import TabletAdminLayout from '../components/admin/TabletAdminLayout';
 import DashboardOverview from '../components/admin/DashboardOverview';
 import PerformanceTrackingPage from './PerformanceTrackingPage';
 import ReportDashboard from './ReportDashboard';
@@ -39,22 +39,29 @@ const AdminDashboard: React.FC = () => {
     const [screenSize, setScreenSize] = useState<'mobile' | 'tablet' | 'desktop'>('desktop');
     
     const [parsedOrders, setParsedOrders] = useState<ParsedOrder[]>([]);
-    const [revenueBreakdownPeriod, setRevenueBreakdownPeriod] = useState<'today' | 'this_month' | 'this_year'>('today');
+    
+    // New Date Filter State Object
+    const [dateFilter, setDateFilter] = useState({
+        preset: 'today',
+        start: new Date().toISOString().split('T')[0],
+        end: new Date().toISOString().split('T')[0]
+    });
     
     // URL State Setters
     const [, setTeamFilter] = useUrlState<string>('teamFilter', '');
     const [, setLocationFilter] = useUrlState<string>('locationFilter', '');
-    const [, setDateFilter] = useUrlState<string>('dateFilter', 'this_month');
+    const [, setUrlDateFilter] = useUrlState<string>('dateFilter', 'today');
+    const [, setUrlStartDate] = useUrlState<string>('startDate', '');
+    const [, setUrlEndDate] = useUrlState<string>('endDate', '');
 
     useEffect(() => {
         const handleResize = () => {
             const width = window.innerWidth;
             if (width < 768) setScreenSize('mobile');
-            else if (width < 1280) setScreenSize('tablet'); // Tablet range: 768px - 1279px
+            else if (width < 1280) setScreenSize('tablet');
             else setScreenSize('desktop');
         };
-        
-        handleResize(); // Init
+        handleResize(); 
         window.addEventListener('resize', handleResize);
         return () => window.removeEventListener('resize', handleResize);
     }, []);
@@ -85,33 +92,55 @@ const AdminDashboard: React.FC = () => {
 
     useEffect(() => { fetchOrders(); }, [refreshTimestamp]);
 
+    // Helper to filter data based on current state
+    const getFilteredData = () => {
+        const now = new Date();
+        const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        
+        return parsedOrders.filter(order => {
+            if (!order.Timestamp) return false;
+            const d = new Date(order.Timestamp);
+            
+            if (dateFilter.preset === 'today') {
+                return d.toDateString() === now.toDateString();
+            } else if (dateFilter.preset === 'this_week') {
+                const day = now.getDay();
+                const start = new Date(today);
+                start.setDate(today.getDate() - (day === 0 ? 6 : day - 1));
+                const end = new Date(start);
+                end.setDate(start.getDate() + 6);
+                end.setHours(23, 59, 59, 999);
+                return d >= start && d <= end;
+            } else if (dateFilter.preset === 'this_month') {
+                return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+            } else if (dateFilter.preset === 'custom') {
+                const start = dateFilter.start ? new Date(dateFilter.start + 'T00:00:00') : null;
+                const end = dateFilter.end ? new Date(dateFilter.end + 'T23:59:59') : null;
+                if (start && d < start) return false;
+                if (end && d > end) return false;
+                return true;
+            }
+            // fallback defaults
+            return d.toDateString() === now.toDateString();
+        });
+    };
+
+    const filteredData = useMemo(() => getFilteredData(), [parsedOrders, dateFilter]);
+
     const teamRevenueStats = useMemo(() => {
         const stats: Record<string, { name: string, revenue: number, orders: number }> = {};
-        const now = new Date();
-        parsedOrders.forEach(order => {
-            if (!order.Timestamp) return;
-            const d = new Date(order.Timestamp);
-            if (revenueBreakdownPeriod === 'today' && d.toDateString() !== now.toDateString()) return;
-            if (revenueBreakdownPeriod === 'this_month' && (d.getMonth() !== now.getMonth() || d.getFullYear() !== now.getFullYear())) return;
-            if (revenueBreakdownPeriod === 'this_year' && d.getFullYear() !== now.getFullYear()) return;
-
+        filteredData.forEach(order => {
             let teamName = order.Team || 'Unassigned';
             if (!stats[teamName]) stats[teamName] = { name: teamName, revenue: 0, orders: 0 };
             stats[teamName].revenue += (Number(order['Grand Total']) || 0);
             stats[teamName].orders += 1;
         });
         return Object.values(stats).sort((a, b) => b.revenue - a.revenue);
-    }, [parsedOrders, revenueBreakdownPeriod]);
+    }, [filteredData]);
 
     const provinceStats = useMemo(() => {
         const stats: Record<string, { name: string, revenue: number, orders: number }> = {};
-        const now = new Date();
-        parsedOrders.forEach(order => {
-            if (!order.Timestamp) return;
-            const d = new Date(order.Timestamp);
-            if (revenueBreakdownPeriod === 'today' && d.toDateString() !== now.toDateString()) return;
-            if (revenueBreakdownPeriod === 'this_month' && (d.getMonth() !== now.getMonth() || d.getFullYear() !== now.getFullYear())) return;
-            
+        filteredData.forEach(order => {
             const provinceName = (order.Location || '').split(/[,|\-|/]/)[0].trim();
             if (!provinceName || provinceName.toUpperCase() === 'N/A') return;
             
@@ -120,7 +149,7 @@ const AdminDashboard: React.FC = () => {
             stats[provinceName].orders += 1;
         });
         return Object.values(stats).sort((a, b) => b.revenue - a.revenue);
-    }, [parsedOrders, revenueBreakdownPeriod]);
+    }, [filteredData]);
 
     const handleNavChange = (id: string) => {
         if (id === 'reports') {
@@ -141,6 +170,24 @@ const AdminDashboard: React.FC = () => {
         setActiveReport(reportId);
     };
 
+    const navigateToOrders = (filterType: 'team' | 'location', value: string) => {
+        if (filterType === 'team') setTeamFilter(value);
+        if (filterType === 'location') setLocationFilter(value);
+        
+        // Sync Date Context to URL
+        setUrlDateFilter(dateFilter.preset);
+        if (dateFilter.preset === 'custom') {
+            setUrlStartDate(dateFilter.start);
+            setUrlEndDate(dateFilter.end);
+        } else {
+            // Clear custom dates if not custom preset
+            setUrlStartDate('');
+            setUrlEndDate('');
+        }
+        
+        setActiveDashboard('orders');
+    };
+
     const renderContent = () => {
         if (loading && parsedOrders.length === 0) return <div className="flex h-96 items-center justify-center"><Spinner size="lg" /></div>;
         switch (activeDashboard) {
@@ -150,20 +197,12 @@ const AdminDashboard: React.FC = () => {
                         <DashboardOverview 
                             currentUser={currentUser}
                             parsedOrders={parsedOrders}
-                            revenueBreakdownPeriod={revenueBreakdownPeriod}
-                            setRevenueBreakdownPeriod={setRevenueBreakdownPeriod}
+                            dateFilter={dateFilter}
+                            setDateFilter={setDateFilter}
                             teamRevenueStats={teamRevenueStats}
                             provinceStats={provinceStats}
-                            onTeamClick={(t) => { 
-                                setTeamFilter(t); 
-                                setDateFilter(revenueBreakdownPeriod); // Sync Date
-                                setActiveDashboard('orders'); 
-                            }}
-                            onProvinceClick={(p) => { 
-                                setLocationFilter(p); 
-                                setDateFilter(revenueBreakdownPeriod); // Sync Date
-                                setActiveDashboard('orders'); 
-                            }}
+                            onTeamClick={(t) => navigateToOrders('team', t)}
+                            onProvinceClick={(p) => navigateToOrders('location', p)}
                         />
                     );
                 }
