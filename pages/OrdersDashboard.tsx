@@ -24,14 +24,26 @@ const OrdersDashboard: React.FC<OrdersDashboardProps> = ({ onBack, initialFilter
     const [editingOrderId, setEditingOrderId] = useUrlState<string>('editOrder', '');
     
     // URL State for Filters (Keep for deep linking if user refreshes)
+    // Core
     const [urlTeam, setUrlTeam] = useUrlState<string>('teamFilter', '');
     const [urlDate, setUrlDate] = useUrlState<string>('dateFilter', 'this_month');
     const [urlLocation, setUrlLocation] = useUrlState<string>('locationFilter', '');
-    const [urlStore, setUrlStore] = useUrlState<string>('storeFilter', '');
+    const [urlStore, setUrlStore] = useUrlState<string>('storeFilter', ''); // This maps to fulfillmentStore filter
     const [urlStart, setUrlStart] = useUrlState<string>('startDate', '');
     const [urlEnd, setUrlEnd] = useUrlState<string>('endDate', '');
+    
+    // Logistics
     const [urlShipping, setUrlShipping] = useUrlState<string>('shippingFilter', '');
     const [urlDriver, setUrlDriver] = useUrlState<string>('driverFilter', '');
+    
+    // Extended Filters
+    const [urlBrand, setUrlBrand] = useUrlState<string>('brandFilter', '');
+    const [urlPayment, setUrlPayment] = useUrlState<string>('paymentFilter', '');
+    const [urlUser, setUrlUser] = useUrlState<string>('userFilter', '');
+    const [urlPage, setUrlPage] = useUrlState<string>('pageFilter', '');
+    const [urlCost, setUrlCost] = useUrlState<string>('costFilter', '');
+    const [urlBank, setUrlBank] = useUrlState<string>('bankFilter', '');
+    const [urlProduct, setUrlProduct] = useUrlState<string>('productFilter', '');
 
     // Safe initialization for columns
     const [visibleColumns, setVisibleColumns] = useState<Set<string>>(() => {
@@ -58,54 +70,34 @@ const OrdersDashboard: React.FC<OrdersDashboardProps> = ({ onBack, initialFilter
 
     const [filters, setFilters] = useState<FilterState>(() => {
         // Priority: Props -> URL -> Defaults
-        // If initialFilters are provided (from AdminDashboard navigation), use them.
-        // Otherwise fallback to URL params.
-        
         const searchParams = new URLSearchParams(window.location.search);
         
         return {
             datePreset: (initialFilters?.datePreset || searchParams.get('dateFilter') as any) || 'this_month',
             startDate: initialFilters?.startDate || searchParams.get('startDate') || '',
             endDate: initialFilters?.endDate || searchParams.get('endDate') || '',
+            
             team: initialFilters?.team || searchParams.get('teamFilter') || '',
-            user: '',
-            paymentStatus: '',
+            location: initialFilters?.location || searchParams.get('locationFilter') || '',
+            
+            // Note: 'storeFilter' URL param maps to 'fulfillmentStore' logic
+            fulfillmentStore: initialFilters?.fulfillmentStore || searchParams.get('storeFilter') || '',
+            
+            store: initialFilters?.store || searchParams.get('brandFilter') || '',
+            
             shippingService: initialFilters?.shippingService || searchParams.get('shippingFilter') || '',
             driver: initialFilters?.driver || searchParams.get('driverFilter') || '',
-            product: '',
-            bank: '',
-            fulfillmentStore: initialFilters?.fulfillmentStore || searchParams.get('storeFilter') || '',
-            store: '', 
-            page: '',
-            location: initialFilters?.location || searchParams.get('locationFilter') || '',
-            internalCost: '',
+            
+            paymentStatus: initialFilters?.paymentStatus || searchParams.get('paymentFilter') || '',
+            user: initialFilters?.user || searchParams.get('userFilter') || '',
+            page: initialFilters?.page || searchParams.get('pageFilter') || '',
+            internalCost: initialFilters?.internalCost || searchParams.get('costFilter') || '',
+            bank: initialFilters?.bank || searchParams.get('bankFilter') || '',
+            product: initialFilters?.product || searchParams.get('productFilter') || '',
         };
     });
 
-    // Sync state FROM URL changes (only if props didn't override)
-    // We only sync if the URL changes *after* mount to support back/forward browser buttons
-    useEffect(() => {
-        if (
-            urlTeam !== filters.team || 
-            urlDate !== filters.datePreset || 
-            urlLocation !== filters.location ||
-            urlStore !== filters.fulfillmentStore ||
-            urlStart !== filters.startDate ||
-            urlEnd !== filters.endDate ||
-            urlShipping !== filters.shippingService ||
-            urlDriver !== filters.driver
-        ) {
-            // Only update if URL actually has a value, or if we want to clear.
-            // But usually parent props control this on mount.
-            // This effect handles back button navigation mainly.
-            
-            // Check if current filter state matches URL state. If not, update filter.
-            // This is a bit tricky with dual sources of truth.
-            // We'll prioritize local state updates via setFilters, but listen here for popstate.
-        }
-    }, [urlTeam, urlDate, urlLocation, urlStore, urlStart, urlEnd, urlShipping, urlDriver]);
-
-    // Sync state TO URL changes (Debounced or direct)
+    // Sync state TO URL changes
     useEffect(() => {
         if (filters.team !== urlTeam) setUrlTeam(filters.team);
         if (filters.datePreset !== urlDate) setUrlDate(filters.datePreset);
@@ -115,7 +107,17 @@ const OrdersDashboard: React.FC<OrdersDashboardProps> = ({ onBack, initialFilter
         if (filters.endDate !== urlEnd) setUrlEnd(filters.endDate);
         if (filters.shippingService !== urlShipping) setUrlShipping(filters.shippingService);
         if (filters.driver !== urlDriver) setUrlDriver(filters.driver);
-    }, [filters, urlTeam, urlDate, urlLocation, urlStore, urlStart, urlEnd, urlShipping, urlDriver]);
+        
+        // Extended
+        if (filters.store !== urlBrand) setUrlBrand(filters.store);
+        if (filters.paymentStatus !== urlPayment) setUrlPayment(filters.paymentStatus);
+        if (filters.user !== urlUser) setUrlUser(filters.user);
+        if (filters.page !== urlPage) setUrlPage(filters.page);
+        if (filters.internalCost !== urlCost) setUrlCost(filters.internalCost);
+        if (filters.bank !== urlBank) setUrlBank(filters.bank);
+        if (filters.product !== urlProduct) setUrlProduct(filters.product);
+
+    }, [filters, urlTeam, urlDate, urlLocation, urlStore, urlStart, urlEnd, urlShipping, urlDriver, urlBrand, urlPayment, urlUser, urlPage, urlCost, urlBank, urlProduct]);
 
     const calculatedRange = useMemo(() => {
         const now = new Date();
@@ -147,24 +149,17 @@ const OrdersDashboard: React.FC<OrdersDashboardProps> = ({ onBack, initialFilter
 
     // --- Lazy Parsing Logic ---
     const parseOrdersInChunks = async (rawOrders: any[]) => {
-        const chunkSize = 500; // Process 500 orders at a time
+        const chunkSize = 500;
         let processedOrders: ParsedOrder[] = [];
-        
         for (let i = 0; i < rawOrders.length; i += chunkSize) {
             const chunk = rawOrders.slice(i, i + chunkSize);
-            
             const parsedChunk = chunk.map((o: any) => {
                 let products = [];
                 try { if (o['Products (JSON)']) products = JSON.parse(o['Products (JSON)']); } catch (e) {}
                 return { ...o, Products: products, IsVerified: String(o.IsVerified).toUpperCase() === 'TRUE' };
             });
-
             processedOrders = [...processedOrders, ...parsedChunk];
-            
-            // Update UI with progress
             setLoadingProgress(Math.round(((i + chunkSize) / rawOrders.length) * 100));
-            
-            // Yield to main thread to keep UI responsive (Spinner spinning)
             await new Promise(resolve => setTimeout(resolve, 0));
         }
         return processedOrders;
@@ -174,24 +169,16 @@ const OrdersDashboard: React.FC<OrdersDashboardProps> = ({ onBack, initialFilter
         setLoading(true);
         setLoadingProgress(0);
         setFetchError(null);
-        
         try {
             const [ordersRes, usersRes] = await Promise.all([
                 fetch(`${WEB_APP_URL}/api/admin/all-orders`),
                 fetch(`${WEB_APP_URL}/api/users`)
             ]);
-            
-            if (!ordersRes.ok || !usersRes.ok) throw new Error("Network Response Error");
-            
             const ordersData = await ordersRes.json();
             const usersData = await usersRes.json();
-            
             if (ordersData.status === 'success') {
                 const rawData = (ordersData.data || []).filter((o: any) => o !== null && o['Order ID'] !== 'Opening Balance');
-                
-                // Use Lazy Parsing
                 const parsed = await parseOrdersInChunks(rawData);
-                
                 setAllOrders(parsed.sort((a: any, b: any) => new Date(b.Timestamp).getTime() - new Date(a.Timestamp).getTime()));
             } else {
                 setFetchError(ordersData.message || "Failed to load orders");
@@ -200,9 +187,7 @@ const OrdersDashboard: React.FC<OrdersDashboardProps> = ({ onBack, initialFilter
         } catch (e: any) { 
             console.error("Fetch Error:", e);
             setFetchError("មិនអាចទាញយកទិន្នន័យបានទេ។ សូមពិនិត្យ Internet របស់អ្នក។");
-        } finally { 
-            setLoading(false); 
-        }
+        } finally { setLoading(false); }
     };
 
     useEffect(() => { fetchAllOrders(); }, [refreshTimestamp]);
@@ -230,7 +215,7 @@ const OrdersDashboard: React.FC<OrdersDashboardProps> = ({ onBack, initialFilter
                 const now = new Date();
                 const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
                 let start: Date | null = null;
-                let end: Date | null = new Date();
+                let end: Date | null = null;
                 switch (filters.datePreset) {
                     case 'today': start = today; break;
                     case 'yesterday': start = new Date(today); start.setDate(today.getDate() - 1); end = new Date(today); end.setMilliseconds(-1); break;
@@ -248,7 +233,13 @@ const OrdersDashboard: React.FC<OrdersDashboardProps> = ({ onBack, initialFilter
                 if (end && orderDate > end) return false;
             }
 
-            // 2. Store Filter (NEW Logic using Page Mapping)
+            // 2. Fulfillment Store Filter
+            if (filters.fulfillmentStore) {
+                const orderStore = order['Fulfillment Store'] || 'Unassigned';
+                if (orderStore !== filters.fulfillmentStore) return false;
+            }
+
+            // 3. Store Filter (Brand/Sales)
             if (filters.store) {
                 const pageConfig = appData.pages?.find(p => p.PageName === order.Page);
                 if (!pageConfig || pageConfig.DefaultStore !== filters.store) {
@@ -256,18 +247,17 @@ const OrdersDashboard: React.FC<OrdersDashboardProps> = ({ onBack, initialFilter
                 }
             }
 
-            // 3. Other Filters
+            // 4. Other Filters
             if (filters.team && order.Team !== filters.team) return false;
             if (filters.user && (order.User || '').trim().toLowerCase() !== filters.user.trim().toLowerCase()) return false;
             if (filters.paymentStatus && order['Payment Status'] !== filters.paymentStatus) return false;
+            
+            // Shipping Filters
             if (filters.shippingService && order['Internal Shipping Method'] !== filters.shippingService) return false;
             if (filters.driver && order['Internal Shipping Details'] !== filters.driver) return false;
+            
             if (filters.bank && order['Payment Info'] !== filters.bank) return false;
             if (filters.product && !order.Products.some(p => p.name === filters.product)) return false;
-            
-            // Fulfillment Store Filter
-            if (filters.fulfillmentStore && order['Fulfillment Store'] !== filters.fulfillmentStore) return false;
-            
             if (filters.page && order.Page !== filters.page) return false;
             if (filters.location && order.Location !== filters.location) return false;
             if (filters.internalCost && String(order['Internal Cost']) !== filters.internalCost) return false;

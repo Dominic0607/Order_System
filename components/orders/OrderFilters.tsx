@@ -1,7 +1,9 @@
 
-import React from 'react';
+import React, { useMemo } from 'react';
 import { ParsedOrder, User, AppData } from '../../types';
 import SearchableProductDropdown from '../common/SearchableProductDropdown';
+import DateWindowFilter from './filters/DateWindowFilter';
+import SelectFilter from './filters/SelectFilter';
 
 export type DateRangePreset = 'all' | 'today' | 'yesterday' | 'this_week' | 'last_week' | 'this_month' | 'last_month' | 'this_year' | 'last_year' | 'custom';
 
@@ -13,10 +15,11 @@ export interface FilterState {
     user: string;
     paymentStatus: string;
     shippingService: string;
+    driver: string;
     product: string;
     bank: string;
     fulfillmentStore: string;
-    store: string; // New: Sales Store / Brand
+    store: string;
     page: string;
     location: string;
     internalCost: string;
@@ -31,28 +34,16 @@ interface OrderFiltersProps {
     calculatedRange: string;
 }
 
-const datePresets: { label: string, value: DateRangePreset }[] = [
-    { label: 'ទាំងអស់ (All Time)', value: 'all' },
-    { label: 'ថ្ងៃនេះ (Today)', value: 'today' },
-    { label: 'ម្សិលមិញ (Yesterday)', value: 'yesterday' },
-    { label: 'សប្តាហ៍នេះ (This Week)', value: 'this_week' },
-    { label: 'សប្តាហ៍មុន (Last Week)', value: 'last_week' },
-    { label: 'ខែនេះ (This Month)', value: 'this_month' },
-    { label: 'ខែមុន (Last Month)', value: 'last_month' },
-    { label: 'ឆ្នាំនេះ (This Year)', value: 'this_year' },
-    { label: 'ឆ្នាំមុន (Last Year)', value: 'last_year' },
-    { label: 'កំណត់ខ្លួនឯង (Custom)', value: 'custom' },
-];
-
 const OrderFilters: React.FC<OrderFiltersProps> = ({ 
     filters, setFilters, orders, usersList, appData, calculatedRange 
 }) => {
     
-    // ទាញយក Unique Values ពីទិន្នន័យដែលមានស្រាប់
-    const uniqueValues = React.useMemo(() => {
+    // Extract Unique Values
+    const uniqueValues = useMemo(() => {
         const pages = new Set<string>();
         const locations = new Set<string>();
         const shippingMethods = new Set<string>();
+        const drivers = new Set<string>();
         const fulfillmentStores = new Set<string>();
         const banks = new Set<string>();
         const costs = new Set<string>();
@@ -62,6 +53,7 @@ const OrderFilters: React.FC<OrderFiltersProps> = ({
             if (o.Page) pages.add(o.Page);
             if (o.Location) locations.add(o.Location);
             if (o['Internal Shipping Method']) shippingMethods.add(o['Internal Shipping Method']);
+            if (o['Internal Shipping Details']) drivers.add(o['Internal Shipping Details']);
             if (o['Fulfillment Store']) fulfillmentStores.add(o['Fulfillment Store']);
             if (o['Payment Info']) banks.add(o['Payment Info']);
             if (o['Internal Cost'] !== undefined) costs.add(String(o['Internal Cost']));
@@ -72,6 +64,7 @@ const OrderFilters: React.FC<OrderFiltersProps> = ({
             pages: Array.from(pages).sort(),
             locations: Array.from(locations).sort(),
             shippingMethods: Array.from(shippingMethods).sort(),
+            drivers: Array.from(drivers).sort(),
             fulfillmentStores: Array.from(fulfillmentStores).sort(),
             banks: Array.from(banks).sort(),
             costs: Array.from(costs).sort((a, b) => Number(a) - Number(b)),
@@ -82,161 +75,129 @@ const OrderFilters: React.FC<OrderFiltersProps> = ({
     const handleReset = () => {
         setFilters({
             datePreset: 'this_month', startDate: '', endDate: '', team: '', user: '',
-            paymentStatus: '', shippingService: '', product: '', bank: '',
+            paymentStatus: '', shippingService: '', driver: '', product: '', bank: '',
             fulfillmentStore: '', store: '', page: '', location: '', internalCost: ''
         });
     };
 
+    const updateFilter = (key: keyof FilterState, value: string) => {
+        setFilters({ ...filters, [key]: value });
+    };
+
     return (
         <div className="space-y-8">
-            {/* Temporal Window Filter */}
-            <div className="bg-white/5 p-5 rounded-[1.8rem] border border-white/5 shadow-inner">
-                <label className="text-[10px] font-black text-blue-500 mb-3 block uppercase tracking-[0.2em] ml-2">Temporal Window</label>
-                <select 
-                    value={filters.datePreset} 
-                    onChange={e => setFilters({...filters, datePreset: e.target.value as any})} 
-                    className="form-select !bg-gray-900 border-gray-800 !py-3.5 !px-5 rounded-2xl font-bold text-gray-200 focus:border-blue-500/50"
-                >
-                    {datePresets.map(p => <option key={p.value} value={p.value}>{p.label}</option>)}
-                </select>
-                <div className="mt-3 bg-black/40 p-3 rounded-xl text-center text-[10px] font-mono text-gray-500 border border-white/5 uppercase tracking-widest">
-                    {calculatedRange}
-                </div>
-            </div>
+            <DateWindowFilter 
+                datePreset={filters.datePreset}
+                setDatePreset={(v) => setFilters({ ...filters, datePreset: v })}
+                startDate={filters.startDate}
+                setStartDate={(v) => updateFilter('startDate', v)}
+                endDate={filters.endDate}
+                setEndDate={(v) => updateFilter('endDate', v)}
+                calculatedRange={calculatedRange}
+            />
 
-            {filters.datePreset === 'custom' && (
-                <div className="grid grid-cols-2 gap-4 animate-fade-in px-1">
-                    <div>
-                        <label className="text-[9px] font-black text-gray-600 mb-1.5 ml-2 uppercase">From</label>
-                        <input type="date" value={filters.startDate} onChange={e => setFilters({...filters, startDate: e.target.value})} className="form-input !bg-gray-900 border-gray-800 rounded-xl !py-3" />
-                    </div>
-                    <div>
-                        <label className="text-[9px] font-black text-gray-600 mb-1.5 ml-2 uppercase">To</label>
-                        <input type="date" value={filters.endDate} onChange={e => setFilters({...filters, endDate: e.target.value})} className="form-input !bg-gray-900 border-gray-800 rounded-xl !py-3" />
-                    </div>
-                </div>
-            )}
-
-            {/* Filter Grid - Smart Responsive Layout */}
             <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-x-6 gap-y-6 px-1">
                 
-                {/* 0. Payment Status */}
-                <div>
-                    <label className="text-[10px] font-black text-gray-500 mb-2 block uppercase tracking-widest ml-2">Payment Status</label>
-                    <div className="relative">
-                        <select 
-                            value={filters.paymentStatus} 
-                            onChange={e => setFilters({...filters, paymentStatus: e.target.value})} 
-                            className={`form-select !bg-gray-900 border-gray-800 !py-3.5 rounded-2xl font-bold appearance-none ${
-                                filters.paymentStatus === 'Paid' ? 'text-emerald-400 border-emerald-500/30 shadow-[0_0_15px_rgba(16,185,129,0.1)]' : 
-                                filters.paymentStatus === 'Unpaid' ? 'text-red-400 border-red-500/30 shadow-[0_0_15px_rgba(239,68,68,0.1)]' : 'text-gray-200'
-                            }`}
-                        >
-                            <option value="">All Statuses</option>
-                            <option value="Paid">Paid (រួចរាល់)</option>
-                            <option value="Unpaid">Unpaid (COD)</option>
-                        </select>
-                        <div className="absolute right-10 top-1/2 -translate-y-1/2 pointer-events-none">
-                            {filters.paymentStatus === 'Paid' && <div className="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_8px_#10b981] animate-pulse"></div>}
-                            {filters.paymentStatus === 'Unpaid' && <div className="w-2 h-2 rounded-full bg-red-500 shadow-[0_0_8px_#ef4444] animate-pulse"></div>}
-                        </div>
-                    </div>
-                </div>
+                <SelectFilter 
+                    label="Payment Status" 
+                    value={filters.paymentStatus} 
+                    onChange={(v) => updateFilter('paymentStatus', v)}
+                    options={[{ label: 'Paid (រួចរាល់)', value: 'Paid' }, { label: 'Unpaid (COD)', value: 'Unpaid' }]}
+                    placeholder="All Statuses"
+                    variant="payment"
+                />
 
-                {/* 1. Store (Sales/Brand) - NEW */}
-                <div>
-                    <label className="text-[10px] font-black text-blue-400 mb-2 block uppercase tracking-widest ml-2">Store (Brand/Sales)</label>
-                    <select value={filters.store} onChange={e => setFilters({...filters, store: e.target.value})} className="form-select !bg-gray-900 border-gray-800 !py-3.5 rounded-2xl font-bold text-blue-100">
-                        <option value="">All Stores (Brands)</option>
-                        {appData.stores?.map(s => <option key={s.StoreName} value={s.StoreName}>{s.StoreName}</option>)}
-                    </select>
-                </div>
+                <SelectFilter 
+                    label="Store (Brand/Sales)" 
+                    value={filters.store} 
+                    onChange={(v) => updateFilter('store', v)}
+                    options={appData.stores?.map(s => s.StoreName) || []}
+                    placeholder="All Stores (Brands)"
+                />
 
-                {/* 2. Team Allocation */}
-                <div>
-                    <label className="text-[10px] font-black text-gray-500 mb-2 block uppercase tracking-widest ml-2">Team Allocation</label>
-                    <select value={filters.team} onChange={e => setFilters({...filters, team: e.target.value})} className="form-select !bg-gray-900 border-gray-800 !py-3.5 rounded-2xl font-bold">
-                        <option value="">All Operational Teams</option>
-                        {uniqueValues.teams.map(t => <option key={t} value={t}>{t}</option>)}
-                    </select>
-                </div>
+                <SelectFilter 
+                    label="Team Allocation" 
+                    value={filters.team} 
+                    onChange={(v) => updateFilter('team', v)}
+                    options={uniqueValues.teams}
+                    placeholder="All Operational Teams"
+                />
 
-                {/* 3. Source Page */}
-                <div>
-                    <label className="text-[10px] font-black text-gray-500 mb-2 block uppercase tracking-widest ml-2">Source Page</label>
-                    <select value={filters.page} onChange={e => setFilters({...filters, page: e.target.value})} className="form-select !bg-gray-900 border-gray-800 !py-3.5 rounded-2xl font-bold">
-                        <option value="">All Pages</option>
-                        {uniqueValues.pages.map(p => <option key={p} value={p}>{p}</option>)}
-                    </select>
-                </div>
+                <SelectFilter 
+                    label="Source Page" 
+                    value={filters.page} 
+                    onChange={(v) => updateFilter('page', v)}
+                    options={uniqueValues.pages}
+                    placeholder="All Pages"
+                />
 
-                {/* 4. Fulfillment Store */}
-                <div>
-                    <label className="text-[10px] font-black text-gray-500 mb-2 block uppercase tracking-widest ml-2">Fulfillment Store (Stock)</label>
-                    <select value={filters.fulfillmentStore} onChange={e => setFilters({...filters, fulfillmentStore: e.target.value})} className="form-select !bg-gray-900 border-gray-800 !py-3.5 rounded-2xl font-bold">
-                        <option value="">All Fulfillment Centers</option>
-                        {uniqueValues.fulfillmentStores.map(s => <option key={s} value={s}>{s}</option>)}
-                    </select>
-                </div>
+                <SelectFilter 
+                    label="Fulfillment Store (Stock)" 
+                    value={filters.fulfillmentStore} 
+                    onChange={(v) => updateFilter('fulfillmentStore', v)}
+                    options={uniqueValues.fulfillmentStores}
+                    placeholder="All Fulfillment Centers"
+                />
 
-                {/* 5. Geography (Location) */}
-                <div>
-                    <label className="text-[10px] font-black text-gray-500 mb-2 block uppercase tracking-widest ml-2">Geography (Location)</label>
-                    <select value={filters.location} onChange={e => setFilters({...filters, location: e.target.value})} className="form-select !bg-gray-900 border-gray-800 !py-3.5 rounded-2xl font-bold">
-                        <option value="">All Regions</option>
-                        {uniqueValues.locations.map(l => <option key={l} value={l}>{l}</option>)}
-                    </select>
-                </div>
+                <SelectFilter 
+                    label="Geography (Location)" 
+                    value={filters.location} 
+                    onChange={(v) => updateFilter('location', v)}
+                    options={uniqueValues.locations}
+                    placeholder="All Regions"
+                />
 
-                {/* 6. Logistics Method */}
-                <div>
-                    <label className="text-[10px] font-black text-gray-500 mb-2 block uppercase tracking-widest ml-2">Logistics Method</label>
-                    <select value={filters.shippingService} onChange={e => setFilters({...filters, shippingService: e.target.value})} className="form-select !bg-gray-900 border-gray-800 !py-3.5 rounded-2xl font-bold">
-                        <option value="">All Shipping Methods</option>
-                        {uniqueValues.shippingMethods.map(m => <option key={m} value={m}>{m}</option>)}
-                    </select>
-                </div>
+                <SelectFilter 
+                    label="Logistics Method" 
+                    value={filters.shippingService} 
+                    onChange={(v) => updateFilter('shippingService', v)}
+                    options={uniqueValues.shippingMethods}
+                    placeholder="All Shipping Methods"
+                />
 
-                {/* 7. Merchant Node */}
-                <div>
-                    <label className="text-[10px] font-black text-gray-500 mb-2 block uppercase tracking-widest ml-2">Merchant Node (User)</label>
-                    <select value={filters.user} onChange={e => setFilters({...filters, user: e.target.value})} className="form-select !bg-gray-900 border-gray-800 !py-3.5 rounded-2xl font-bold">
-                        <option value="">All Registered Users</option>
-                        {usersList.map(u => <option key={u.UserName} value={u.UserName}>{u.FullName}</option>)}
-                    </select>
-                </div>
+                <SelectFilter 
+                    label="Logistics Driver" 
+                    value={filters.driver} 
+                    onChange={(v) => updateFilter('driver', v)}
+                    options={uniqueValues.drivers}
+                    placeholder="All Drivers / Details"
+                />
 
-                {/* 8. Exp. Cost (Internal) */}
-                <div>
-                    <label className="text-[10px] font-black text-gray-500 mb-2 block uppercase tracking-widest ml-2">Exp. Cost (Internal)</label>
-                    <select value={filters.internalCost} onChange={e => setFilters({...filters, internalCost: e.target.value})} className="form-select !bg-gray-900 border-gray-800 !py-3.5 rounded-2xl font-bold">
-                        <option value="">All Costs</option>
-                        {uniqueValues.costs.map(c => <option key={c} value={c}>${c}</option>)}
-                    </select>
-                </div>
+                <SelectFilter 
+                    label="Merchant Node (User)" 
+                    value={filters.user} 
+                    onChange={(v) => updateFilter('user', v)}
+                    options={usersList.map(u => ({ label: u.FullName, value: u.UserName }))}
+                    placeholder="All Registered Users"
+                />
 
-                {/* 9. Bank Account */}
-                <div>
-                    <label className="text-[10px] font-black text-gray-500 mb-2 block uppercase tracking-widest ml-2">គណនីធនាគារ (Bank)</label>
-                    <select value={filters.bank} onChange={e => setFilters({...filters, bank: e.target.value})} className="form-select !bg-gray-900 border-gray-800 !py-3.5 rounded-2xl font-bold">
-                        <option value="">All Bank Accounts</option>
-                        {uniqueValues.banks.map(b => <option key={b} value={b}>{b}</option>)}
-                    </select>
-                </div>
+                <SelectFilter 
+                    label="Exp. Cost (Internal)" 
+                    value={filters.internalCost} 
+                    onChange={(v) => updateFilter('internalCost', v)}
+                    options={uniqueValues.costs.map(c => ({ label: `$${c}`, value: c }))}
+                    placeholder="All Costs"
+                />
 
-                {/* 10. Product Asset */}
+                <SelectFilter 
+                    label="គណនីធនាគារ (Bank)" 
+                    value={filters.bank} 
+                    onChange={(v) => updateFilter('bank', v)}
+                    options={uniqueValues.banks}
+                    placeholder="All Bank Accounts"
+                />
+
                 <div className="sm:col-span-2 xl:col-span-3">
                     <label className="text-[10px] font-black text-gray-500 mb-2 block uppercase tracking-widest ml-2">Asset Selection (Product)</label>
                     <SearchableProductDropdown 
                         products={appData.products} 
                         selectedProductName={filters.product} 
-                        onSelect={val => setFilters({...filters, product: val})} 
+                        onSelect={val => updateFilter('product', val)} 
                         showTagEditor={false} 
                     />
                 </div>
             </div>
 
-            {/* Reset Action */}
             <div className="pt-4">
                 <button 
                     onClick={handleReset}

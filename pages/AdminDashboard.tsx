@@ -47,17 +47,29 @@ const AdminDashboard: React.FC = () => {
         end: new Date().toISOString().split('T')[0]
     });
     
-    // URL State - Capture values to pass to OrdersDashboard
+    // --- URL State for Filters ---
+    // Core
     const [teamFilter, setTeamFilter] = useUrlState<string>('teamFilter', '');
     const [locationFilter, setLocationFilter] = useUrlState<string>('locationFilter', '');
-    const [storeFilter, setStoreFilter] = useUrlState<string>('storeFilter', '');
+    const [storeFilter, setStoreFilter] = useUrlState<string>('storeFilter', ''); // This maps to Fulfillment Store
+    
+    // Date
     const [urlDateFilter, setUrlDateFilter] = useUrlState<string>('dateFilter', 'today');
     const [urlStartDate, setUrlStartDate] = useUrlState<string>('startDate', '');
     const [urlEndDate, setUrlEndDate] = useUrlState<string>('endDate', '');
     
-    // Support filters from reports
+    // Logistics
     const [shippingFilter, setShippingFilter] = useUrlState<string>('shippingFilter', '');
     const [driverFilter, setDriverFilter] = useUrlState<string>('driverFilter', '');
+    
+    // Advanced Filters (New Support)
+    const [brandFilter, setBrandFilter] = useUrlState<string>('brandFilter', ''); // Maps to 'store' (Brand/Sales)
+    const [paymentFilter, setPaymentFilter] = useUrlState<string>('paymentFilter', '');
+    const [userFilter, setUserFilter] = useUrlState<string>('userFilter', '');
+    const [pageFilter, setPageFilter] = useUrlState<string>('pageFilter', '');
+    const [costFilter, setCostFilter] = useUrlState<string>('costFilter', '');
+    const [bankFilter, setBankFilter] = useUrlState<string>('bankFilter', '');
+    const [productFilter, setProductFilter] = useUrlState<string>('productFilter', '');
 
     useEffect(() => {
         const handleResize = () => {
@@ -188,18 +200,38 @@ const AdminDashboard: React.FC = () => {
 
     // Generalized Navigation Handler
     const handleNavigateWithFilters = (filters: any) => {
-        // Clear previous specific filters to avoid mixups
+        // Clear all filters first to ensure clean state
         setTeamFilter('');
         setLocationFilter('');
-        setStoreFilter('');
+        setStoreFilter(''); // Fulfillment Store
+        setBrandFilter(''); // Brand Store
         setShippingFilter('');
         setDriverFilter('');
+        setPaymentFilter('');
+        setUserFilter('');
+        setPageFilter('');
+        setCostFilter('');
+        setBankFilter('');
+        setProductFilter('');
 
+        // Apply new filters
         if (filters.team) setTeamFilter(filters.team);
         if (filters.location) setLocationFilter(filters.location);
-        if (filters.store) setStoreFilter(filters.store);
+        
+        // Fulfillment Store
+        if (filters.fulfillmentStore) setStoreFilter(filters.fulfillmentStore); 
+        // Brand Store (Note: ReportDashboard calls it 'store', OrdersDashboard expects 'store' for Brand)
+        if (filters.store) setBrandFilter(filters.store);
+        
         if (filters.shipping) setShippingFilter(filters.shipping);
         if (filters.driver) setDriverFilter(filters.driver);
+        
+        if (filters.paymentStatus) setPaymentFilter(filters.paymentStatus);
+        if (filters.user) setUserFilter(filters.user);
+        if (filters.page) setPageFilter(filters.page);
+        if (filters.internalCost) setCostFilter(filters.internalCost);
+        if (filters.bank) setBankFilter(filters.bank);
+        if (filters.product) setProductFilter(filters.product);
         
         // Handle Date Logic
         if (filters.datePreset) {
@@ -208,7 +240,6 @@ const AdminDashboard: React.FC = () => {
                 setUrlStartDate(filters.startDate);
                 setUrlEndDate(filters.endDate);
             } else {
-                // If switching away from custom, relying on preset is enough
                 setUrlStartDate('');
                 setUrlEndDate('');
             }
@@ -221,9 +252,9 @@ const AdminDashboard: React.FC = () => {
         const filters: any = {};
         if (filterType === 'team') filters.team = value;
         if (filterType === 'location') filters.location = value;
-        if (filterType === 'store') filters.store = value;
+        if (filterType === 'store') filters.fulfillmentStore = value; // Maps to Fulfillment Store from Overview
         
-        // Pass current date state
+        // Pass current date state from dashboard overview
         filters.datePreset = dateFilter.preset;
         if (dateFilter.preset === 'custom') {
             filters.startDate = dateFilter.start;
@@ -261,12 +292,19 @@ const AdminDashboard: React.FC = () => {
                         initialFilters={{
                             team: teamFilter,
                             location: locationFilter,
-                            fulfillmentStore: storeFilter,
+                            fulfillmentStore: storeFilter, // Maps to 'storeFilter' param (legacy)
+                            store: brandFilter,            // Maps to 'brandFilter' param
                             datePreset: urlDateFilter as any,
                             startDate: urlStartDate,
                             endDate: urlEndDate,
                             shippingService: shippingFilter,
-                            driver: driverFilter
+                            driver: driverFilter,
+                            paymentStatus: paymentFilter,
+                            user: userFilter,
+                            page: pageFilter,
+                            internalCost: costFilter,
+                            bank: bankFilter,
+                            product: productFilter
                         }}
                     />
                 );

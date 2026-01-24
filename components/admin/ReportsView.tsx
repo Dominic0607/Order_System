@@ -7,6 +7,7 @@ import GeminiButton from '../common/GeminiButton';
 import SimpleLineChart from '../common/SimpleLineChart';
 import StatCard from '../performance/StatCard';
 import ShippingReport from '../reports/ShippingReport';
+import { FilterState } from '../orders/OrderFilters';
 
 interface ReportsViewProps {
     orders: ParsedOrder[];
@@ -16,16 +17,17 @@ interface ReportsViewProps {
     startDate?: string;
     endDate?: string;
     onNavigate?: (filters: any) => void;
+    contextFilters?: FilterState;
 }
 
-const ReportsView: React.FC<ReportsViewProps> = ({ orders, reportType, dateFilter, startDate, endDate, onNavigate }) => {
+const ReportsView: React.FC<ReportsViewProps> = ({ orders, reportType, dateFilter, startDate, endDate, onNavigate, contextFilters }) => {
     const { appData } = useContext(AppContext);
     const [analysis, setAnalysis] = useState<string>('');
     const [loadingAnalysis, setLoadingAnalysis] = useState(false);
 
     // Handle Shipping Report separately via component
     if (reportType === 'shipping') {
-        return <ShippingReport orders={orders} appData={appData} dateFilter={dateFilter} startDate={startDate} endDate={endDate} onNavigate={onNavigate} />;
+        return <ShippingReport orders={orders} appData={appData} dateFilter={dateFilter} startDate={startDate} endDate={endDate} onNavigate={onNavigate} contextFilters={contextFilters} />;
     }
 
     const stats = useMemo(() => {

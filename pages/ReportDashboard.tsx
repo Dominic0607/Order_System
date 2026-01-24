@@ -135,10 +135,15 @@ const ReportDashboard: React.FC<ReportDashboardProps> = ({ activeReport, onBack,
             if (filters.page && o.Page !== filters.page) return false;
             if (filters.location && o.Location !== filters.location) return false;
             if (filters.internalCost && String(o['Internal Cost']) !== filters.internalCost) return false;
+            // Added Store (Brand) filter logic to match OrderFilters
+            if (filters.store) {
+               const pageConfig = appData.pages?.find(p => p.PageName === o.Page);
+               if (!pageConfig || pageConfig.DefaultStore !== filters.store) return false;
+            }
 
             return true;
         });
-    }, [orders, filters]);
+    }, [orders, filters, appData.pages]);
 
     const reportTitles: Record<ReportType, string> = {
         overview: 'សង្ខេបប្រតិបត្តិការ',
@@ -184,7 +189,18 @@ const ReportDashboard: React.FC<ReportDashboardProps> = ({ activeReport, onBack,
                 {activeReport === 'overview' && <ReportsView orders={filteredOrders} reportType="overview" allOrders={orders} dateFilter={filters.datePreset} />}
                 {activeReport === 'sales_team' && <SalesByTeamPage orders={filteredOrders} onBack={onBack} />}
                 {activeReport === 'sales_page' && <SalesByPageReport orders={filteredOrders} onBack={onBack} />}
-                {activeReport === 'shipping' && <ReportsView orders={filteredOrders} reportType="shipping" allOrders={orders} dateFilter={filters.datePreset} startDate={filters.startDate} endDate={filters.endDate} onNavigate={onNavigate} />}
+                {activeReport === 'shipping' && (
+                    <ReportsView 
+                        orders={filteredOrders} 
+                        reportType="shipping" 
+                        allOrders={orders} 
+                        dateFilter={filters.datePreset} 
+                        startDate={filters.startDate} 
+                        endDate={filters.endDate} 
+                        onNavigate={onNavigate}
+                        contextFilters={filters} 
+                    />
+                )}
                 {activeReport === 'profitability' && <ReportsView orders={filteredOrders} reportType="profitability" allOrders={orders} dateFilter={filters.datePreset} />}
                 {activeReport === 'performance' && <ReportsView orders={filteredOrders} reportType="performance" allOrders={orders} dateFilter={filters.datePreset} />}
                 {activeReport === 'forecasting' && <ReportsView orders={orders} reportType="forecasting" allOrders={orders} dateFilter={filters.datePreset} />}
