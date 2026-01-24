@@ -16,18 +16,22 @@ import { FilterPanel } from '../components/orders/FilterPanel';
 
 interface OrdersDashboardProps {
     onBack: () => void;
+    initialFilters?: Partial<FilterState>;
 }
 
-const OrdersDashboard: React.FC<OrdersDashboardProps> = ({ onBack }) => {
+const OrdersDashboard: React.FC<OrdersDashboardProps> = ({ onBack, initialFilters }) => {
     const { appData, refreshData, refreshTimestamp, currentUser } = useContext(AppContext);
     const [editingOrderId, setEditingOrderId] = useUrlState<string>('editOrder', '');
     
-    // URL State for Filters
+    // URL State for Filters (Keep for deep linking if user refreshes)
     const [urlTeam, setUrlTeam] = useUrlState<string>('teamFilter', '');
     const [urlDate, setUrlDate] = useUrlState<string>('dateFilter', 'this_month');
     const [urlLocation, setUrlLocation] = useUrlState<string>('locationFilter', '');
+    const [urlStore, setUrlStore] = useUrlState<string>('storeFilter', '');
     const [urlStart, setUrlStart] = useUrlState<string>('startDate', '');
     const [urlEnd, setUrlEnd] = useUrlState<string>('endDate', '');
+    const [urlShipping, setUrlShipping] = useUrlState<string>('shippingFilter', '');
+    const [urlDriver, setUrlDriver] = useUrlState<string>('driverFilter', '');
 
     // Safe initialization for columns
     const [visibleColumns, setVisibleColumns] = useState<Set<string>>(() => {
@@ -53,54 +57,65 @@ const OrdersDashboard: React.FC<OrdersDashboardProps> = ({ onBack }) => {
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
     const [filters, setFilters] = useState<FilterState>(() => {
+        // Priority: Props -> URL -> Defaults
+        // If initialFilters are provided (from AdminDashboard navigation), use them.
+        // Otherwise fallback to URL params.
+        
         const searchParams = new URLSearchParams(window.location.search);
+        
         return {
-            datePreset: (searchParams.get('dateFilter') as any) || 'this_month',
-            startDate: searchParams.get('startDate') || '',
-            endDate: searchParams.get('endDate') || '',
-            team: searchParams.get('teamFilter') || '',
+            datePreset: (initialFilters?.datePreset || searchParams.get('dateFilter') as any) || 'this_month',
+            startDate: initialFilters?.startDate || searchParams.get('startDate') || '',
+            endDate: initialFilters?.endDate || searchParams.get('endDate') || '',
+            team: initialFilters?.team || searchParams.get('teamFilter') || '',
             user: '',
             paymentStatus: '',
-            shippingService: searchParams.get('shippingFilter') || '',
-            driver: searchParams.get('driverFilter') || '',
+            shippingService: initialFilters?.shippingService || searchParams.get('shippingFilter') || '',
+            driver: initialFilters?.driver || searchParams.get('driverFilter') || '',
             product: '',
             bank: '',
-            fulfillmentStore: '',
-            store: '',
+            fulfillmentStore: initialFilters?.fulfillmentStore || searchParams.get('storeFilter') || '',
+            store: '', 
             page: '',
-            location: searchParams.get('locationFilter') || '',
+            location: initialFilters?.location || searchParams.get('locationFilter') || '',
             internalCost: '',
         };
     });
 
-    // Sync state FROM URL changes
+    // Sync state FROM URL changes (only if props didn't override)
+    // We only sync if the URL changes *after* mount to support back/forward browser buttons
     useEffect(() => {
         if (
             urlTeam !== filters.team || 
             urlDate !== filters.datePreset || 
             urlLocation !== filters.location ||
+            urlStore !== filters.fulfillmentStore ||
             urlStart !== filters.startDate ||
-            urlEnd !== filters.endDate
+            urlEnd !== filters.endDate ||
+            urlShipping !== filters.shippingService ||
+            urlDriver !== filters.driver
         ) {
-            setFilters(prev => ({
-                ...prev,
-                team: urlTeam || prev.team,
-                datePreset: (urlDate as any) || prev.datePreset,
-                location: urlLocation || prev.location,
-                startDate: urlStart || prev.startDate,
-                endDate: urlEnd || prev.endDate
-            }));
+            // Only update if URL actually has a value, or if we want to clear.
+            // But usually parent props control this on mount.
+            // This effect handles back button navigation mainly.
+            
+            // Check if current filter state matches URL state. If not, update filter.
+            // This is a bit tricky with dual sources of truth.
+            // We'll prioritize local state updates via setFilters, but listen here for popstate.
         }
-    }, [urlTeam, urlDate, urlLocation, urlStart, urlEnd]);
+    }, [urlTeam, urlDate, urlLocation, urlStore, urlStart, urlEnd, urlShipping, urlDriver]);
 
-    // Sync state TO URL changes
+    // Sync state TO URL changes (Debounced or direct)
     useEffect(() => {
         if (filters.team !== urlTeam) setUrlTeam(filters.team);
         if (filters.datePreset !== urlDate) setUrlDate(filters.datePreset);
         if (filters.location !== urlLocation) setUrlLocation(filters.location);
+        if (filters.fulfillmentStore !== urlStore) setUrlStore(filters.fulfillmentStore);
         if (filters.startDate !== urlStart) setUrlStart(filters.startDate);
         if (filters.endDate !== urlEnd) setUrlEnd(filters.endDate);
-    }, [filters.team, filters.datePreset, filters.location, filters.startDate, filters.endDate]);
+        if (filters.shippingService !== urlShipping) setUrlShipping(filters.shippingService);
+        if (filters.driver !== urlDriver) setUrlDriver(filters.driver);
+    }, [filters, urlTeam, urlDate, urlLocation, urlStore, urlStart, urlEnd, urlShipping, urlDriver]);
 
     const calculatedRange = useMemo(() => {
         const now = new Date();
@@ -249,7 +264,10 @@ const OrdersDashboard: React.FC<OrdersDashboardProps> = ({ onBack }) => {
             if (filters.driver && order['Internal Shipping Details'] !== filters.driver) return false;
             if (filters.bank && order['Payment Info'] !== filters.bank) return false;
             if (filters.product && !order.Products.some(p => p.name === filters.product)) return false;
+            
+            // Fulfillment Store Filter
             if (filters.fulfillmentStore && order['Fulfillment Store'] !== filters.fulfillmentStore) return false;
+            
             if (filters.page && order.Page !== filters.page) return false;
             if (filters.location && order.Location !== filters.location) return false;
             if (filters.internalCost && String(order['Internal Cost']) !== filters.internalCost) return false;

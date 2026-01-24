@@ -16,9 +16,10 @@ type ReportType = 'overview' | 'performance' | 'profitability' | 'forecasting' |
 interface ReportDashboardProps {
     activeReport: ReportType;
     onBack: () => void;
+    onNavigate?: (filters: any) => void;
 }
 
-const ReportDashboard: React.FC<ReportDashboardProps> = ({ activeReport, onBack }) => {
+const ReportDashboard: React.FC<ReportDashboardProps> = ({ activeReport, onBack, onNavigate }) => {
     const { appData, refreshTimestamp } = useContext(AppContext);
     const [loading, setLoading] = useState(true);
     const [orders, setOrders] = useState<ParsedOrder[]>([]);
@@ -183,7 +184,7 @@ const ReportDashboard: React.FC<ReportDashboardProps> = ({ activeReport, onBack 
                 {activeReport === 'overview' && <ReportsView orders={filteredOrders} reportType="overview" allOrders={orders} dateFilter={filters.datePreset} />}
                 {activeReport === 'sales_team' && <SalesByTeamPage orders={filteredOrders} onBack={onBack} />}
                 {activeReport === 'sales_page' && <SalesByPageReport orders={filteredOrders} onBack={onBack} />}
-                {activeReport === 'shipping' && <ReportsView orders={filteredOrders} reportType="shipping" allOrders={orders} dateFilter={filters.datePreset} startDate={filters.startDate} endDate={filters.endDate} />}
+                {activeReport === 'shipping' && <ReportsView orders={filteredOrders} reportType="shipping" allOrders={orders} dateFilter={filters.datePreset} startDate={filters.startDate} endDate={filters.endDate} onNavigate={onNavigate} />}
                 {activeReport === 'profitability' && <ReportsView orders={filteredOrders} reportType="profitability" allOrders={orders} dateFilter={filters.datePreset} />}
                 {activeReport === 'performance' && <ReportsView orders={filteredOrders} reportType="performance" allOrders={orders} dateFilter={filters.datePreset} />}
                 {activeReport === 'forecasting' && <ReportsView orders={orders} reportType="forecasting" allOrders={orders} dateFilter={filters.datePreset} />}

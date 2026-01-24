@@ -15,16 +15,17 @@ interface ReportsViewProps {
     dateFilter: string;
     startDate?: string;
     endDate?: string;
+    onNavigate?: (filters: any) => void;
 }
 
-const ReportsView: React.FC<ReportsViewProps> = ({ orders, reportType, dateFilter, startDate, endDate }) => {
+const ReportsView: React.FC<ReportsViewProps> = ({ orders, reportType, dateFilter, startDate, endDate, onNavigate }) => {
     const { appData } = useContext(AppContext);
     const [analysis, setAnalysis] = useState<string>('');
     const [loadingAnalysis, setLoadingAnalysis] = useState(false);
 
     // Handle Shipping Report separately via component
     if (reportType === 'shipping') {
-        return <ShippingReport orders={orders} appData={appData} dateFilter={dateFilter} startDate={startDate} endDate={endDate} />;
+        return <ShippingReport orders={orders} appData={appData} dateFilter={dateFilter} startDate={startDate} endDate={endDate} onNavigate={onNavigate} />;
     }
 
     const stats = useMemo(() => {

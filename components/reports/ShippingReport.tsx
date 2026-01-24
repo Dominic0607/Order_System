@@ -12,29 +12,27 @@ interface ShippingReportProps {
     dateFilter: string;
     startDate?: string;
     endDate?: string;
+    onNavigate?: (filters: any) => void;
 }
 
-const ShippingReport: React.FC<ShippingReportProps> = ({ orders, appData, dateFilter, startDate, endDate }) => {
+const ShippingReport: React.FC<ShippingReportProps> = ({ orders, appData, dateFilter, startDate, endDate, onNavigate }) => {
     const [analysis, setAnalysis] = useState<string>('');
     const [loadingAnalysis, setLoadingAnalysis] = useState(false);
 
     // Filter Navigation Handler
     const handleFilterNavigation = (key: string, value: string) => {
-        try {
-            const params = new URLSearchParams(window.location.search);
-            params.set('tab', 'orders');
-            params.set(key, value); // 'shippingFilter' or 'driverFilter'
+        if (onNavigate) {
+            // Construct filter object
+            const filters: any = {};
+            if (key === 'shippingFilter') filters.shipping = value;
+            if (key === 'driverFilter') filters.driver = value;
             
-            // Pass date filters
-            if (dateFilter) params.set('dateFilter', dateFilter);
-            if (startDate) params.set('startDate', startDate);
-            if (endDate) params.set('endDate', endDate);
+            // Pass current date context
+            filters.datePreset = dateFilter;
+            filters.startDate = startDate;
+            filters.endDate = endDate;
             
-            const newUrl = `${window.location.pathname}?${params.toString()}`;
-            window.history.pushState(null, '', newUrl);
-            window.dispatchEvent(new PopStateEvent('popstate', { state: null }));
-        } catch (e) {
-            console.error("Navigation error:", e);
+            onNavigate(filters);
         }
     };
 

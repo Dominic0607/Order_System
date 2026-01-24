@@ -40,19 +40,24 @@ const AdminDashboard: React.FC = () => {
     
     const [parsedOrders, setParsedOrders] = useState<ParsedOrder[]>([]);
     
-    // New Date Filter State Object
+    // New Date Filter State Object (Local)
     const [dateFilter, setDateFilter] = useState({
         preset: 'today',
         start: new Date().toISOString().split('T')[0],
         end: new Date().toISOString().split('T')[0]
     });
     
-    // URL State Setters
-    const [, setTeamFilter] = useUrlState<string>('teamFilter', '');
-    const [, setLocationFilter] = useUrlState<string>('locationFilter', '');
-    const [, setUrlDateFilter] = useUrlState<string>('dateFilter', 'today');
-    const [, setUrlStartDate] = useUrlState<string>('startDate', '');
-    const [, setUrlEndDate] = useUrlState<string>('endDate', '');
+    // URL State - Capture values to pass to OrdersDashboard
+    const [teamFilter, setTeamFilter] = useUrlState<string>('teamFilter', '');
+    const [locationFilter, setLocationFilter] = useUrlState<string>('locationFilter', '');
+    const [storeFilter, setStoreFilter] = useUrlState<string>('storeFilter', '');
+    const [urlDateFilter, setUrlDateFilter] = useUrlState<string>('dateFilter', 'today');
+    const [urlStartDate, setUrlStartDate] = useUrlState<string>('startDate', '');
+    const [urlEndDate, setUrlEndDate] = useUrlState<string>('endDate', '');
+    
+    // Support filters from reports
+    const [shippingFilter, setShippingFilter] = useUrlState<string>('shippingFilter', '');
+    const [driverFilter, setDriverFilter] = useUrlState<string>('driverFilter', '');
 
     useEffect(() => {
         const handleResize = () => {
@@ -138,6 +143,17 @@ const AdminDashboard: React.FC = () => {
         return Object.values(stats).sort((a, b) => b.revenue - a.revenue);
     }, [filteredData]);
 
+    const storeStats = useMemo(() => {
+        const stats: Record<string, { name: string, revenue: number, orders: number }> = {};
+        filteredData.forEach(order => {
+            let storeName = order['Fulfillment Store'] || 'Unassigned';
+            if (!stats[storeName]) stats[storeName] = { name: storeName, revenue: 0, orders: 0 };
+            stats[storeName].revenue += (Number(order['Grand Total']) || 0);
+            stats[storeName].orders += 1;
+        });
+        return Object.values(stats).sort((a, b) => b.revenue - a.revenue);
+    }, [filteredData]);
+
     const provinceStats = useMemo(() => {
         const stats: Record<string, { name: string, revenue: number, orders: number }> = {};
         filteredData.forEach(order => {
@@ -170,22 +186,51 @@ const AdminDashboard: React.FC = () => {
         setActiveReport(reportId);
     };
 
-    const navigateToOrders = (filterType: 'team' | 'location', value: string) => {
-        if (filterType === 'team') setTeamFilter(value);
-        if (filterType === 'location') setLocationFilter(value);
+    // Generalized Navigation Handler
+    const handleNavigateWithFilters = (filters: any) => {
+        // Clear previous specific filters to avoid mixups
+        setTeamFilter('');
+        setLocationFilter('');
+        setStoreFilter('');
+        setShippingFilter('');
+        setDriverFilter('');
+
+        if (filters.team) setTeamFilter(filters.team);
+        if (filters.location) setLocationFilter(filters.location);
+        if (filters.store) setStoreFilter(filters.store);
+        if (filters.shipping) setShippingFilter(filters.shipping);
+        if (filters.driver) setDriverFilter(filters.driver);
         
-        // Sync Date Context to URL
-        setUrlDateFilter(dateFilter.preset);
-        if (dateFilter.preset === 'custom') {
-            setUrlStartDate(dateFilter.start);
-            setUrlEndDate(dateFilter.end);
-        } else {
-            // Clear custom dates if not custom preset
-            setUrlStartDate('');
-            setUrlEndDate('');
+        // Handle Date Logic
+        if (filters.datePreset) {
+            setUrlDateFilter(filters.datePreset);
+            if (filters.datePreset === 'custom' && filters.startDate && filters.endDate) {
+                setUrlStartDate(filters.startDate);
+                setUrlEndDate(filters.endDate);
+            } else {
+                // If switching away from custom, relying on preset is enough
+                setUrlStartDate('');
+                setUrlEndDate('');
+            }
         }
         
         setActiveDashboard('orders');
+    };
+
+    const navigateToOrders = (filterType: 'team' | 'location' | 'store', value: string) => {
+        const filters: any = {};
+        if (filterType === 'team') filters.team = value;
+        if (filterType === 'location') filters.location = value;
+        if (filterType === 'store') filters.store = value;
+        
+        // Pass current date state
+        filters.datePreset = dateFilter.preset;
+        if (dateFilter.preset === 'custom') {
+            filters.startDate = dateFilter.start;
+            filters.endDate = dateFilter.end;
+        }
+        
+        handleNavigateWithFilters(filters);
     };
 
     const renderContent = () => {
@@ -201,14 +246,38 @@ const AdminDashboard: React.FC = () => {
                             setDateFilter={setDateFilter}
                             teamRevenueStats={teamRevenueStats}
                             provinceStats={provinceStats}
+                            storeStats={storeStats}
                             onTeamClick={(t) => navigateToOrders('team', t)}
                             onProvinceClick={(p) => navigateToOrders('location', p)}
+                            onStoreClick={(s) => navigateToOrders('store', s)}
                         />
                     );
                 }
                 return <PerformanceTrackingPage orders={parsedOrders} users={appData.users || []} targets={appData.targets || []} />;
-            case 'orders': return <OrdersDashboard onBack={() => setActiveDashboard('admin')} />;
-            case 'reports': return <ReportDashboard activeReport={activeReport} onBack={() => setActiveDashboard('admin')} />;
+            case 'orders': 
+                return (
+                    <OrdersDashboard 
+                        onBack={() => setActiveDashboard('admin')} 
+                        initialFilters={{
+                            team: teamFilter,
+                            location: locationFilter,
+                            fulfillmentStore: storeFilter,
+                            datePreset: urlDateFilter as any,
+                            startDate: urlStartDate,
+                            endDate: urlEndDate,
+                            shippingService: shippingFilter,
+                            driver: driverFilter
+                        }}
+                    />
+                );
+            case 'reports': 
+                return (
+                    <ReportDashboard 
+                        activeReport={activeReport} 
+                        onBack={() => setActiveDashboard('admin')}
+                        onNavigate={handleNavigateWithFilters} 
+                    />
+                );
             case 'settings': return <SettingsDashboard onBack={() => setActiveDashboard('admin')} />;
             case 'fulfillment': return <FulfillmentDashboard orders={parsedOrders} />;
             default: return null;

@@ -6,6 +6,7 @@ import TeamRevenueTable from './TeamRevenueTable';
 import ProvincialMap from './ProvincialMap';
 import ProvincialSummaryList from './ProvincialSummaryList';
 import DateRangeFilter, { DateRangePreset } from '../common/DateRangeFilter';
+import FulfillmentStoreTable from './FulfillmentStoreTable';
 
 interface DashboardOverviewProps {
     currentUser: User | null;
@@ -17,22 +18,18 @@ interface DashboardOverviewProps {
 
     teamRevenueStats: any[];
     provinceStats: any[];
+    storeStats: any[];
     onTeamClick: (team: string) => void;
     onProvinceClick: (province: string) => void;
+    onStoreClick: (store: string) => void;
 }
 
 const DashboardOverview: React.FC<DashboardOverviewProps> = ({
     currentUser, parsedOrders, 
     dateFilter, setDateFilter,
-    teamRevenueStats, provinceStats, onTeamClick, onProvinceClick
+    teamRevenueStats, provinceStats, storeStats,
+    onTeamClick, onProvinceClick, onStoreClick
 }) => {
-    
-    // Calculate metrics based on CURRENT filtered orders (which are already filtered in parent)
-    // OR filter them here if passed raw. Assuming `teamRevenueStats` etc are already filtered in parent.
-    // However, `metrics` below was doing its own filtering. Let's fix that.
-    
-    // Actually, `parsedOrders` passed here is ALL orders from `AdminDashboard`.
-    // We should filter here for the metrics cards to match the tables.
     
     const getOrderDate = (o: ParsedOrder) => new Date(o.Timestamp);
     
@@ -102,11 +99,15 @@ const DashboardOverview: React.FC<DashboardOverviewProps> = ({
             </div>
             
             {/* Main Tables */}
-            {/* Use xl:grid-cols-12 to trigger side-by-side only on larger screens (15"+ or 13" with sidebar collapsed) */}
+            {/* Split layout for Team and Store tables */}
             <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 lg:gap-8">
-                <div className="xl:col-span-12">
+                <div className="xl:col-span-6">
                     <TeamRevenueTable stats={teamRevenueStats} onStatClick={onTeamClick} />
                 </div>
+                <div className="xl:col-span-6">
+                    <FulfillmentStoreTable stats={storeStats} onStatClick={onStoreClick} />
+                </div>
+                
                 <div className="xl:col-span-8">
                     <ProvincialMap data={provinceStats} />
                 </div>
