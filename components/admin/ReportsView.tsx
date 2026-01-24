@@ -19,6 +19,16 @@ const ReportsView: React.FC<ReportsViewProps> = ({ orders, reportType }) => {
     const [analysis, setAnalysis] = useState<string>('');
     const [loadingAnalysis, setLoadingAnalysis] = useState(false);
 
+    const handleShippingMethodClick = (methodName: string) => {
+        const params = new URLSearchParams(window.location.search);
+        params.set('tab', 'orders');
+        params.set('shippingFilter', methodName);
+        
+        const newUrl = `${window.location.pathname}?${params.toString()}`;
+        window.history.pushState(null, '', newUrl);
+        window.dispatchEvent(new PopStateEvent('popstate', { state: null }));
+    };
+
     // គណនាទិន្នន័យសម្រាប់ Shipping Report
     const shippingStats = useMemo(() => {
         const totalInternalCost = orders.reduce((sum, o) => sum + (Number(o['Internal Cost']) || 0), 0);
@@ -104,8 +114,18 @@ const ReportsView: React.FC<ReportsViewProps> = ({ orders, reportType }) => {
                                                     <img src={convertGoogleDriveUrl(m.logo)} className="w-8 h-8 rounded-lg object-contain bg-gray-800 p-1 border border-gray-700" alt="" />
                                                     {m.name}
                                                 </td>
-                                                <td className="px-4 py-3 text-center font-black text-blue-400">{m.orders}</td>
-                                                <td className="px-4 py-3 text-right font-black text-white">${m.cost.toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
+                                                <td 
+                                                    className="px-4 py-3 text-center font-black text-blue-400 cursor-pointer hover:underline hover:text-blue-300 transition-colors"
+                                                    onClick={() => handleShippingMethodClick(m.name)}
+                                                >
+                                                    {m.orders}
+                                                </td>
+                                                <td 
+                                                    className="px-4 py-3 text-right font-black text-white cursor-pointer hover:underline hover:text-gray-300 transition-colors"
+                                                    onClick={() => handleShippingMethodClick(m.name)}
+                                                >
+                                                    ${m.cost.toLocaleString(undefined, {minimumFractionDigits: 2})}
+                                                </td>
                                             </tr>
                                         ))}
                                     </tbody>

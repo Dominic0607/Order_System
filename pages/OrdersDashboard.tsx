@@ -54,7 +54,7 @@ const OrdersDashboard: React.FC<OrdersDashboardProps> = ({ onBack }) => {
             team: searchParams.get('teamFilter') || '',
             user: '',
             paymentStatus: '',
-            shippingService: '',
+            shippingService: searchParams.get('shippingFilter') || '',
             product: '',
             bank: '',
             fulfillmentStore: '',
