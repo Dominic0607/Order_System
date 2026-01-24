@@ -40,8 +40,11 @@ const AdminDashboard: React.FC = () => {
     
     const [parsedOrders, setParsedOrders] = useState<ParsedOrder[]>([]);
     const [revenueBreakdownPeriod, setRevenueBreakdownPeriod] = useState<'today' | 'this_month' | 'this_year'>('today');
+    
+    // URL State Setters
     const [, setTeamFilter] = useUrlState<string>('teamFilter', '');
     const [, setLocationFilter] = useUrlState<string>('locationFilter', '');
+    const [, setDateFilter] = useUrlState<string>('dateFilter', 'this_month');
 
     useEffect(() => {
         const handleResize = () => {
@@ -151,8 +154,16 @@ const AdminDashboard: React.FC = () => {
                             setRevenueBreakdownPeriod={setRevenueBreakdownPeriod}
                             teamRevenueStats={teamRevenueStats}
                             provinceStats={provinceStats}
-                            onTeamClick={(t) => { setTeamFilter(t); setActiveDashboard('orders'); }}
-                            onProvinceClick={(p) => { setLocationFilter(p); setActiveDashboard('orders'); }}
+                            onTeamClick={(t) => { 
+                                setTeamFilter(t); 
+                                setDateFilter(revenueBreakdownPeriod); // Sync Date
+                                setActiveDashboard('orders'); 
+                            }}
+                            onProvinceClick={(p) => { 
+                                setLocationFilter(p); 
+                                setDateFilter(revenueBreakdownPeriod); // Sync Date
+                                setActiveDashboard('orders'); 
+                            }}
                         />
                     );
                 }

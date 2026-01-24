@@ -9,6 +9,7 @@ import SalesByTeamPage from './SalesByTeamPage';
 import SalesByPageReport from './SalesByPageReport';
 import Modal from '../components/common/Modal';
 import OrderFilters, { FilterState } from '../components/orders/OrderFilters';
+import { useUrlState } from '../hooks/useUrlState';
 
 type ReportType = 'overview' | 'performance' | 'profitability' | 'forecasting' | 'shipping' | 'sales_team' | 'sales_page';
 
@@ -24,14 +25,18 @@ const ReportDashboard: React.FC<ReportDashboardProps> = ({ activeReport, onBack 
     const [usersList, setUsersList] = useState<User[]>([]);
     const [isFilterOpen, setIsFilterOpen] = useState(false);
     
+    // Sync Date Filter with URL for seamless navigation
+    const [urlDate, setUrlDate] = useUrlState<string>('dateFilter', 'this_month');
+
     const [filters, setFilters] = useState<FilterState>({
-        datePreset: 'this_month',
+        datePreset: (urlDate as any) || 'this_month',
         startDate: '',
         endDate: '',
         team: '',
         user: '',
         paymentStatus: '',
         shippingService: '',
+        driver: '',
         product: '',
         bank: '',
         fulfillmentStore: '',
@@ -40,6 +45,13 @@ const ReportDashboard: React.FC<ReportDashboardProps> = ({ activeReport, onBack 
         location: '',
         internalCost: '',
     });
+
+    // Update URL when filter changes
+    useEffect(() => {
+        if (filters.datePreset !== urlDate) {
+            setUrlDate(filters.datePreset);
+        }
+    }, [filters.datePreset, setUrlDate, urlDate]);
 
     const fetchInitialData = async () => {
         setLoading(true);
@@ -113,6 +125,7 @@ const ReportDashboard: React.FC<ReportDashboardProps> = ({ activeReport, onBack 
             if (filters.user && (o.User || '').trim().toLowerCase() !== filters.user.trim().toLowerCase()) return false;
             if (filters.paymentStatus && o['Payment Status'] !== filters.paymentStatus) return false;
             if (filters.shippingService && o['Internal Shipping Method'] !== filters.shippingService) return false;
+            if (filters.driver && o['Internal Shipping Details'] !== filters.driver) return false;
             if (filters.bank && o['Payment Info'] !== filters.bank) return false;
             if (filters.product && !o.Products.some(p => p.name === filters.product)) return false;
             if (filters.fulfillmentStore && o['Fulfillment Store'] !== filters.fulfillmentStore) return false;
@@ -165,13 +178,13 @@ const ReportDashboard: React.FC<ReportDashboardProps> = ({ activeReport, onBack 
 
             {/* Dynamic Report Content Area */}
             <div className="min-h-[500px]">
-                {activeReport === 'overview' && <ReportsView orders={filteredOrders} reportType="overview" allOrders={orders} />}
+                {activeReport === 'overview' && <ReportsView orders={filteredOrders} reportType="overview" allOrders={orders} dateFilter={filters.datePreset} />}
                 {activeReport === 'sales_team' && <SalesByTeamPage orders={filteredOrders} onBack={onBack} />}
                 {activeReport === 'sales_page' && <SalesByPageReport orders={filteredOrders} onBack={onBack} />}
-                {activeReport === 'shipping' && <ReportsView orders={filteredOrders} reportType="shipping" allOrders={orders} />}
-                {activeReport === 'profitability' && <ReportsView orders={filteredOrders} reportType="profitability" allOrders={orders} />}
-                {activeReport === 'performance' && <ReportsView orders={filteredOrders} reportType="performance" allOrders={orders} />}
-                {activeReport === 'forecasting' && <ReportsView orders={orders} reportType="forecasting" allOrders={orders} />}
+                {activeReport === 'shipping' && <ReportsView orders={filteredOrders} reportType="shipping" allOrders={orders} dateFilter={filters.datePreset} />}
+                {activeReport === 'profitability' && <ReportsView orders={filteredOrders} reportType="profitability" allOrders={orders} dateFilter={filters.datePreset} />}
+                {activeReport === 'performance' && <ReportsView orders={filteredOrders} reportType="performance" allOrders={orders} dateFilter={filters.datePreset} />}
+                {activeReport === 'forecasting' && <ReportsView orders={orders} reportType="forecasting" allOrders={orders} dateFilter={filters.datePreset} />}
             </div>
 
             {/* Global Filter Modal */}
