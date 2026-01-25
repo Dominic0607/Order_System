@@ -106,6 +106,16 @@ const UserSalesPageReport: React.FC<UserSalesPageReportProps> = ({
         checkAndFetchData();
     };
 
+    const handleNavigate = (key: string, value: string) => {
+        // Navigation not yet implemented for User Report View (Drill-down to orders list in user view logic is complex)
+        console.log("Navigate", key, value);
+    };
+
+    const handleMonthClick = (pageName: string, monthIndex: number) => {
+        // Navigation not yet implemented for User Report View
+        console.log("Month Click", pageName, monthIndex);
+    };
+
     // --- Date Filtering Logic ---
     const filteredOrders = useMemo(() => {
         // Use fullOrders if available, otherwise fallback to props (though fetch should handle it)
@@ -358,6 +368,8 @@ const UserSalesPageReport: React.FC<UserSalesPageReportProps> = ({
                 onExportPDF={handleExportPDF}
                 isExporting={isExporting}
                 onPreviewImage={previewImage}
+                onNavigate={handleNavigate}
+                onMonthClick={handleMonthClick}
             />
             
             {/* 2. Tablet View */}
@@ -365,12 +377,15 @@ const UserSalesPageReport: React.FC<UserSalesPageReportProps> = ({
                 data={pageStats}
                 grandTotals={grandTotals}
                 onPreviewImage={previewImage}
+                onNavigate={handleNavigate}
+                onMonthClick={handleMonthClick}
             />
 
             {/* 3. Mobile View */}
             <SalesByPageMobile 
                 data={pageStats}
                 onPreviewImage={previewImage}
+                onNavigate={handleNavigate}
             />
 
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 pb-10">

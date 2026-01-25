@@ -9,10 +9,13 @@ interface SalesByPageTabletTableProps {
     displayRow: boolean[];
     MONTHS: string[];
     grandTotals: any;
+    onNavigate: (key: string, value: string) => void;
+    onPreviewImage: (url: string) => void;
+    onMonthClick: (pageName: string, monthIndex: number) => void;
 }
 
 const SalesByPageTabletTable: React.FC<SalesByPageTabletTableProps> = ({ 
-    data, dataType, rowSpans, displayRow, MONTHS, grandTotals 
+    data, dataType, rowSpans, displayRow, MONTHS, grandTotals, onNavigate, onPreviewImage, onMonthClick
 }) => {
     return (
         <div className="bg-[#0f172a] border border-white/10 rounded-[2.5rem] overflow-hidden shadow-2xl animate-fade-in flex flex-col w-full relative">
@@ -47,7 +50,8 @@ const SalesByPageTabletTable: React.FC<SalesByPageTabletTableProps> = ({
                                     {displayRow[idx] ? (
                                         <td 
                                             rowSpan={rowSpans[idx]} 
-                                            className={`sticky left-[50px] z-20 ${stickyBg} border-r border-white/5 border-b border-white/5 align-middle px-4`}
+                                            className={`sticky left-[50px] z-20 ${stickyBg} border-r border-white/5 border-b border-white/5 align-middle px-4 cursor-pointer hover:bg-gray-800`}
+                                            onClick={() => onNavigate('team', item.teamName)}
                                         >
                                             <div className="font-black text-white bg-gray-800 border border-white/10 px-2.5 py-1.5 rounded-xl inline-block shadow-sm text-[10px] tracking-wide truncate max-w-[90px]">
                                                 {item.teamName}
@@ -55,23 +59,33 @@ const SalesByPageTabletTable: React.FC<SalesByPageTabletTableProps> = ({
                                         </td>
                                     ) : null}
 
-                                    <td className={`sticky left-[160px] z-20 ${stickyBg} border-r border-white/5 border-b border-white/5 shadow-[6px_0_15px_-3px_rgba(0,0,0,0.5)] px-4`}>
+                                    <td 
+                                        className={`sticky left-[160px] z-20 ${stickyBg} border-r border-white/5 border-b border-white/5 shadow-[6px_0_15px_-3px_rgba(0,0,0,0.5)] px-4 cursor-pointer hover:bg-gray-800`}
+                                        onClick={() => onNavigate('page', item.pageName)}
+                                    >
                                         <div className="flex items-center gap-3">
-                                            <div className="w-8 h-8 rounded-lg p-0.5 bg-gray-800 border border-white/10 flex-shrink-0">
+                                            <div className="w-8 h-8 rounded-lg p-0.5 bg-gray-800 border border-white/10 flex-shrink-0" onClick={(e) => { e.stopPropagation(); onPreviewImage(convertGoogleDriveUrl(item.logoUrl)); }}>
                                                 <img src={convertGoogleDriveUrl(item.logoUrl)} className="w-full h-full rounded-md object-cover" alt="" />
                                             </div>
-                                            <span className="truncate max-w-[140px] text-xs font-bold text-gray-200 group-hover:text-white transition-colors" title={item.pageName}>{item.pageName}</span>
+                                            <span className="truncate max-w-[140px] text-xs font-bold text-gray-200 group-hover:text-blue-300 transition-colors" title={item.pageName}>{item.pageName}</span>
                                         </div>
                                     </td>
 
-                                    <td className={`px-6 text-right font-black ${dataType === 'revenue' ? 'text-blue-400 bg-blue-900/5' : 'text-emerald-400 bg-emerald-900/5'} border-r border-white/5 border-b border-white/5 text-sm`}>
+                                    <td 
+                                        className={`px-6 text-right font-black ${dataType === 'revenue' ? 'text-blue-400 bg-blue-900/5 group-hover:bg-blue-900/20' : 'text-emerald-400 bg-emerald-900/5 group-hover:bg-emerald-900/20'} border-r border-white/5 border-b border-white/5 text-sm cursor-pointer`}
+                                        onClick={() => onNavigate('page', item.pageName)}
+                                    >
                                         ${(dataType === 'revenue' ? item.revenue : item.profit).toLocaleString()}
                                     </td>
 
-                                    {MONTHS.map(m => {
+                                    {MONTHS.map((m, mIdx) => {
                                         const val = item[`${prefix}_${m}`] || 0;
                                         return (
-                                            <td key={m} className={`px-4 text-right font-mono text-xs border-b border-white/5 ${val > 0 ? 'text-gray-300 font-bold' : 'text-gray-700'}`}>
+                                            <td 
+                                                key={m} 
+                                                className={`px-4 text-right font-mono text-xs border-b border-white/5 cursor-pointer hover:bg-gray-800 transition-colors ${val > 0 ? 'text-gray-300 font-bold' : 'text-gray-700'}`}
+                                                onClick={() => onMonthClick(item.pageName, mIdx)}
+                                            >
                                                 {val !== 0 ? val.toLocaleString() : '-'}
                                             </td>
                                         );

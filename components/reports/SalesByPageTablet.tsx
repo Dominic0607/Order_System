@@ -7,6 +7,8 @@ interface SalesByPageTabletProps {
     data: any[];
     grandTotals?: any;
     onPreviewImage: (url: string) => void;
+    onNavigate: (key: string, value: string) => void;
+    onMonthClick: (pageName: string, monthIndex: number) => void;
 }
 
 type ViewMode = 'table' | 'grid';
@@ -14,7 +16,7 @@ type DataType = 'revenue' | 'profit';
 
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
-const SalesByPageTablet: React.FC<SalesByPageTabletProps> = ({ data, grandTotals, onPreviewImage }) => {
+const SalesByPageTablet: React.FC<SalesByPageTabletProps> = ({ data, grandTotals, onPreviewImage, onNavigate, onMonthClick }) => {
     const [viewMode, setViewMode] = useState<ViewMode>('table');
     const [dataType, setDataType] = useState<DataType>('revenue');
 
@@ -74,7 +76,7 @@ const SalesByPageTablet: React.FC<SalesByPageTabletProps> = ({ data, grandTotals
                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M3 14h18m-9-4v8m-7 0h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>
                         </button>
                         <button onClick={() => setViewMode('grid')} className={`p-2.5 rounded-xl transition-all ${viewMode === 'grid' ? 'bg-gray-700 text-white shadow-lg' : 'text-gray-500 hover:text-white'}`}>
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2z" /></svg>
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6a2 2 0 012-2h2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2z" /></svg>
                         </button>
                     </div>
                 </div>
@@ -84,22 +86,22 @@ const SalesByPageTablet: React.FC<SalesByPageTabletProps> = ({ data, grandTotals
                 // GRID VIEW
                 <div className="grid grid-cols-2 gap-5 animate-fade-in">
                     {data.map((item: any) => (
-                        <div key={item.pageName} className="bg-gray-800/40 border border-white/10 rounded-[2.5rem] p-6 shadow-xl flex flex-col relative overflow-hidden group hover:border-blue-500/30 transition-all">
+                        <div key={item.pageName} className="bg-gray-800/40 border border-white/10 rounded-[2.5rem] p-6 shadow-xl flex flex-col relative overflow-hidden group hover:border-blue-500/30 transition-all cursor-pointer" onClick={() => onNavigate('page', item.pageName)}>
                             {/* Decorative Background */}
                             <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-bl from-white/5 to-transparent rounded-bl-[100px] pointer-events-none transition-opacity group-hover:opacity-100 opacity-50"></div>
                             
                             <div className="flex items-center gap-5 mb-5 relative z-10">
-                                <div className="w-14 h-14 rounded-2xl overflow-hidden border-2 border-gray-700 bg-gray-950 p-0.5 flex-shrink-0 shadow-2xl group-hover:scale-105 transition-transform">
-                                    <img src={convertGoogleDriveUrl(item.logoUrl)} className="w-full h-full object-cover rounded-xl" alt="" onClick={() => onPreviewImage(convertGoogleDriveUrl(item.logoUrl))} />
+                                <div className="w-14 h-14 rounded-2xl overflow-hidden border-2 border-gray-700 bg-gray-950 p-0.5 flex-shrink-0 shadow-2xl group-hover:scale-105 transition-transform" onClick={(e) => { e.stopPropagation(); onPreviewImage(convertGoogleDriveUrl(item.logoUrl)); }}>
+                                    <img src={convertGoogleDriveUrl(item.logoUrl)} className="w-full h-full object-cover rounded-xl" alt="" />
                                 </div>
                                 <div className="min-w-0">
-                                    <h4 className="text-base font-black text-white truncate leading-tight uppercase tracking-tight">{item.pageName}</h4>
+                                    <h4 className="text-base font-black text-white truncate leading-tight uppercase tracking-tight group-hover:text-blue-300 transition-colors">{item.pageName}</h4>
                                     <span className="text-[10px] bg-blue-900/30 text-blue-300 px-3 py-1 rounded-full border border-blue-500/20 font-black uppercase mt-1.5 inline-block tracking-widest">{item.teamName}</span>
                                 </div>
                             </div>
                             
                             <div className="space-y-3 flex-grow relative z-10">
-                                <div className="flex justify-between items-center bg-black/20 p-3 rounded-2xl border border-white/5">
+                                <div className="flex justify-between items-center bg-black/20 p-3 rounded-2xl border border-white/5 group-hover:bg-blue-600/10 transition-colors">
                                     <span className="text-[10px] font-black text-gray-500 uppercase tracking-widest">Revenue</span>
                                     <span className="text-base font-black text-blue-400 tracking-tight">${item.revenue.toLocaleString()}</span>
                                 </div>
@@ -120,6 +122,9 @@ const SalesByPageTablet: React.FC<SalesByPageTabletProps> = ({ data, grandTotals
                     displayRow={displayRow}
                     MONTHS={MONTHS}
                     grandTotals={grandTotals}
+                    onNavigate={onNavigate}
+                    onPreviewImage={onPreviewImage}
+                    onMonthClick={onMonthClick}
                 />
             )}
         </div>

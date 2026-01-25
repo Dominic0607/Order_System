@@ -13,13 +13,15 @@ interface SalesByPageDesktopProps {
     onExportPDF: () => void;
     isExporting: boolean;
     onPreviewImage: (url: string) => void;
+    onNavigate: (key: string, value: string) => void;
+    onMonthClick: (pageName: string, monthIndex: number) => void;
 }
 
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
 const SalesByPageDesktop: React.FC<SalesByPageDesktopProps> = ({ 
     data, grandTotals, sortConfig, onToggleSort,
-    showAllPages, setShowAllPages, onExportPDF, isExporting, onPreviewImage
+    showAllPages, setShowAllPages, onExportPDF, isExporting, onPreviewImage, onNavigate, onMonthClick
 }) => {
     const [showBorders, setShowBorders] = useState(true);
     const [isFrozen, setIsFrozen] = useState(false);
@@ -27,7 +29,6 @@ const SalesByPageDesktop: React.FC<SalesByPageDesktopProps> = ({
     const [isMerged, setIsMerged] = useState(true);
 
     // FIX: Calculate row spans based on *adjacent* equality in the current sorted list
-    // This prevents table breaking when rows are sorted by revenue (scattered teams)
     const { rowSpans, displayRow } = useMemo(() => {
         const spans: number[] = new Array(data.length).fill(0);
         const display: boolean[] = new Array(data.length).fill(true);
@@ -36,21 +37,15 @@ const SalesByPageDesktop: React.FC<SalesByPageDesktopProps> = ({
         while (i < data.length) {
             const currentTeam = data[i].teamName;
             let count = 1;
-            // Look ahead for adjacent same teams
             while (i + count < data.length && data[i + count].teamName === currentTeam) {
                 count++;
             }
-            
-            // The first row of the group gets the span
             spans[i] = count;
             display[i] = true;
-            
-            // Subsequent rows in the group are hidden
             for (let j = 1; j < count; j++) {
                 spans[i + j] = 0;
                 display[i + j] = false;
             }
-            
             i += count;
         }
         return { rowSpans: spans, displayRow: display };
@@ -146,16 +141,54 @@ const SalesByPageDesktop: React.FC<SalesByPageDesktopProps> = ({
                                             // Handle Merged Cells
                                             if (col.key === 'teamName') {
                                                 if (!shouldDisplayTeam) return null;
-                                                return <td key={col.key} rowSpan={currentSpan} className={`${cellClass} font-black text-white bg-gray-900/95 align-middle text-center ${stickyClass} ${showFillColor ? colorSet.border : ''} border-b border-white/10`} style={stickyStyle}><div className="bg-gray-800/80 py-1 px-3 rounded-xl border border-white/5 shadow-sm inline-block">{item.teamName}</div></td>;
+                                                return <td 
+                                                    key={col.key} 
+                                                    rowSpan={currentSpan} 
+                                                    className={`${cellClass} font-black text-white bg-gray-900/95 align-middle text-center ${stickyClass} ${showFillColor ? colorSet.border : ''} border-b border-white/10 cursor-pointer hover:text-blue-400`} 
+                                                    style={stickyStyle}
+                                                    onClick={() => onNavigate('team', item.teamName)}
+                                                >
+                                                    <div className="bg-gray-800/80 py-1 px-3 rounded-xl border border-white/5 shadow-sm inline-block">{item.teamName}</div>
+                                                </td>;
                                             }
                                             
-                                            if (col.key === 'logo') return <td key={col.key} className={`${cellClass} text-center ${stickyClass} border-b border-white/10`} style={stickyStyle}><img src={convertGoogleDriveUrl(item.logoUrl)} className="w-9 h-9 rounded-full border border-gray-700 mx-auto shadow-md" alt="logo" onClick={() => onPreviewImage(convertGoogleDriveUrl(item.logoUrl))} /></td>;
-                                            if (col.key === 'pageName') return <td key={col.key} className={`${cellClass} font-black text-white ${stickyClass} border-b border-white/10`} style={stickyStyle}>{item.pageName}</td>;
-                                            if (col.key.includes('total')) return <td key={col.key} className={`${cellClass} text-right font-black ${stickyClass} ${type === 'Revenue' ? 'text-blue-100 bg-blue-600/10' : 'text-green-100 bg-green-600/10'} border-b border-white/10`} style={stickyStyle}>${(type === 'Revenue' ? item.revenue : item.profit).toLocaleString(undefined, {minimumFractionDigits: 2})}</td>;
+                                            if (col.key === 'logo') return <td key={col.key} className={`${cellClass} text-center ${stickyClass} border-b border-white/10`} style={stickyStyle}><img src={convertGoogleDriveUrl(item.logoUrl)} className="w-9 h-9 rounded-full border border-gray-700 mx-auto shadow-md cursor-pointer hover:scale-110 transition-transform" alt="logo" onClick={() => onPreviewImage(convertGoogleDriveUrl(item.logoUrl))} /></td>;
+                                            
+                                            if (col.key === 'pageName') {
+                                                return <td 
+                                                    key={col.key} 
+                                                    className={`${cellClass} font-black text-white ${stickyClass} border-b border-white/10 cursor-pointer hover:text-blue-400 hover:underline transition-colors`} 
+                                                    style={stickyStyle}
+                                                    onClick={() => onNavigate('page', item.pageName)}
+                                                >
+                                                    {item.pageName}
+                                                </td>;
+                                            }
+                                            
+                                            if (col.key.includes('total')) {
+                                                return <td 
+                                                    key={col.key} 
+                                                    className={`${cellClass} text-right font-black ${stickyClass} ${type === 'Revenue' ? 'text-blue-100 bg-blue-600/10 hover:text-blue-300' : 'text-green-100 bg-green-600/10'} border-b border-white/10 cursor-pointer`} 
+                                                    style={stickyStyle}
+                                                    onClick={() => onNavigate('page', item.pageName)}
+                                                >
+                                                    ${(type === 'Revenue' ? item.revenue : item.profit).toLocaleString(undefined, {minimumFractionDigits: 2})}
+                                                </td>;
+                                            }
+                                            
                                             if (col.key.startsWith(prefix)) {
                                                 const val = item[col.key] || 0;
                                                 const color = type === 'Profit' ? (val > 0 ? 'text-green-400' : val < 0 ? 'text-red-400' : 'text-gray-500') : (val > 0 ? 'text-blue-300' : 'text-gray-500');
-                                                return <td key={col.key} className={`${cellClass} text-right font-bold font-mono ${color} border-b border-white/10`}>{val !== 0 ? `$${val.toLocaleString(undefined, {minimumFractionDigits: 2})}` : '-'}</td>;
+                                                const monthIndex = MONTHS.indexOf(col.key.split('_')[1]);
+                                                return (
+                                                    <td 
+                                                        key={col.key} 
+                                                        className={`${cellClass} text-right font-bold font-mono ${color} border-b border-white/10 cursor-pointer hover:bg-gray-800 transition-colors`}
+                                                        onClick={() => onMonthClick(item.pageName, monthIndex)}
+                                                    >
+                                                        {val !== 0 ? `$${val.toLocaleString(undefined, {minimumFractionDigits: 2})}` : '-'}
+                                                    </td>
+                                                );
                                             }
                                             return <td key={col.key} className={`${cellClass} border-b border-white/10`}>-</td>;
                                         })}
