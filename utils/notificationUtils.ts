@@ -26,55 +26,62 @@ export const requestNotificationPermission = async (): Promise<boolean> => {
 
 /**
  * Sends a system native notification using Service Worker (if available) or standard Notification API.
- * This works for both Desktop and Mobile (Android/iOS PWA).
- * @param title The title of the notification
- * @param body The body text of the notification
+ * Optimized for high reliability on Android and Windows.
  */
 export const sendSystemNotification = async (title: string, body: string) => {
     if (!('Notification' in window)) return;
 
+    // Check permission again
     if (Notification.permission !== 'granted') {
-        // Try requesting permission one last time if not strictly denied
-        const granted = await requestNotificationPermission();
-        if (!granted) return;
+        return;
     }
 
-    // Use 'any' to allow 'vibrate' property
+    // Prepare Icon (Use a fallback if the main logo is complex, but try logo first)
+    const iconUrl = convertGoogleDriveUrl(APP_LOGO_URL) || 'https://cdn-icons-png.flaticon.com/512/733/733585.png';
+
+    // Options configuration
+    // Note: We append Date.now() to the tag to force the browser to treat it as a NEW notification every time
+    // This solves the issue where notifications stop appearing if they have the same tag.
     const options: any = {
         body: body,
-        icon: convertGoogleDriveUrl(APP_LOGO_URL),
-        badge: convertGoogleDriveUrl(APP_LOGO_URL),
-        vibrate: [200, 100, 200],
-        tag: 'system-alert',
+        icon: iconUrl,
+        badge: iconUrl, // Small icon for Android status bar
+        vibrate: [200, 100, 200, 100, 200], // Longer vibration pattern
+        tag: 'osystem-alert-' + Date.now(), // FORCE UNIQUE TAG
         renotify: true,
-        requireInteraction: false,
+        requireInteraction: true, // Keep notification on screen until user interacts (Desktop)
         data: {
-            dateOfArrival: Date.now(),
-            primaryKey: 1
+            url: window.location.href // Used by SW to focus window
         }
     };
 
     try {
-        // 1. Try Service Worker Registration (Best for Mobile/PWA)
+        // Method 1: Try Service Worker (Most reliable for Mobile/PWA)
         if ('serviceWorker' in navigator) {
             const registration = await navigator.serviceWorker.getRegistration();
-            if (registration && registration.showNotification) {
-                await registration.showNotification(title, options);
-                return; // Success via SW
+            
+            if (registration) {
+                // Check if active
+                if(registration.active) {
+                    await registration.showNotification(title, options);
+                    console.log("Notification sent via Service Worker");
+                    return;
+                }
             }
         }
     } catch (e) {
-        console.warn("Service Worker notification failed, trying fallback...", e);
+        console.warn("SW Notification failed, falling back to classic API", e);
     }
 
-    // 2. Fallback to Standard Web API (Best for Desktop)
+    // Method 2: Classic Web Notification API (Fallback for Desktop)
     try {
         const notification = new Notification(title, options);
         notification.onclick = function() {
             window.focus();
             notification.close();
         };
+        console.log("Notification sent via Classic API");
     } catch (e) {
-        console.error("Standard Notification API failed:", e);
+        console.error("All notification methods failed:", e);
     }
 };
