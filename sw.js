@@ -7,13 +7,13 @@ const urlsToCache = [
 ];
 
 self.addEventListener('install', (event) => {
+  self.skipWaiting();
   event.waitUntil(
     caches.open(CACHE_NAME)
       .then((cache) => {
         return cache.addAll(urlsToCache);
       })
   );
-  self.skipWaiting();
 });
 
 self.addEventListener('activate', (event) => {
@@ -52,18 +52,19 @@ self.addEventListener('fetch', (event) => {
 // Handle Notification Clicks
 self.addEventListener('notificationclick', function(event) {
   event.notification.close();
+  // Focus the window if open, otherwise open new
   event.waitUntil(
     clients.matchAll({ type: 'window', includeUncontrolled: true }).then(function(clientList) {
       if (clientList.length > 0) {
         let client = clientList[0];
-        for (let i = 0; i < clientList.length; i++) {
-          if (clientList[i].focused) {
-            client = clientList[i];
-          }
+        // Focus existing window
+        if (client.focus) {
+            return client.focus();
         }
-        return client.focus();
       }
-      return clients.openWindow('/');
+      if (clients.openWindow) {
+        return clients.openWindow('/');
+      }
     })
   );
 });

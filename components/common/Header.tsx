@@ -7,7 +7,7 @@ import UserAvatar from './UserAvatar';
 import { APP_LOGO_URL } from '../../constants';
 import Spinner from './Spinner';
 import { translations } from '../../translations';
-import { requestNotificationPermission } from '../../utils/notificationUtils';
+import { requestNotificationPermission, sendSystemNotification } from '../../utils/notificationUtils';
 
 interface HeaderProps {
     onBackToRoleSelect: () => void;
@@ -52,6 +52,12 @@ const Header: React.FC<HeaderProps> = ({ onBackToRoleSelect, appState }) => {
     const handleEnableNotifications = async () => {
         await requestNotificationPermission();
         setNotificationPermission(Notification.permission);
+    };
+
+    const handleTestNotification = async () => {
+        await requestNotificationPermission();
+        sendSystemNotification("Test Notification 🔔", "សួស្តី! ប្រព័ន្ធ Notification របស់អ្នកដំណើរការហើយ។");
+        setDropdownOpen(false);
     };
 
     const handleHomeClick = (e: React.MouseEvent) => {
@@ -132,7 +138,7 @@ const Header: React.FC<HeaderProps> = ({ onBackToRoleSelect, appState }) => {
                                 <svg className={`w-3.5 h-3.5 text-gray-500 transition-transform duration-300 ${dropdownOpen ? 'rotate-180' : ''}`} xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="3"><path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" /></svg>
                             </button>
 
-                            {/* Dropdown Menu (Matches User's Image Style) */}
+                            {/* Dropdown Menu */}
                             {dropdownOpen && (
                                 <div className="absolute right-0 mt-4 w-64 bg-[#1a2235] border border-white/10 rounded-[1.8rem] shadow-[0_30px_70px_rgba(0,0,0,0.7)] py-3 z-50 animate-fade-in-scale backdrop-blur-3xl overflow-hidden">
                                     <div className="px-5 py-3 border-b border-white/5 mb-2">
@@ -144,6 +150,12 @@ const Header: React.FC<HeaderProps> = ({ onBackToRoleSelect, appState }) => {
                                     <button onClick={() => { setEditProfileModalOpen(true); setDropdownOpen(false); }} className="w-full text-left px-5 py-3 text-sm font-bold text-gray-200 hover:bg-blue-600 transition-colors flex items-center gap-3">
                                         <svg className="w-4 h-4 opacity-60" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
                                         {t.edit_profile}
+                                    </button>
+
+                                    {/* Test Notification (NEW) */}
+                                    <button onClick={handleTestNotification} className="w-full text-left px-5 py-3 text-sm font-bold text-gray-200 hover:bg-blue-600 transition-colors flex items-center gap-3">
+                                        <svg className="w-4 h-4 opacity-60" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" /></svg>
+                                        Test Notification
                                     </button>
 
                                     {/* Refresh Data */}
