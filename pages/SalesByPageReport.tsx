@@ -244,6 +244,7 @@ const SalesByPageReport: React.FC<SalesByPageReportProps> = ({
                 data={pageStats}
                 onPreviewImage={previewImage}
                 onNavigate={handleFilterNavigation}
+                onMonthClick={handleMonthClick}
             />
 
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 pb-10">
