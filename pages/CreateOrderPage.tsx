@@ -446,6 +446,23 @@ const CreateOrderPage: React.FC<CreateOrderPageProps> = ({ team, onSaveSuccess, 
             sfxSuccess.current.currentTime = 0;
             sfxSuccess.current.play().catch(() => {});
 
+            // *** NEW: Send Global Notification via Chat System ***
+            try {
+                const notificationMessage = `📢 SYSTEM_ALERT: New Order from ${team} ($${payload.grandTotal})`;
+                await fetch(`${WEB_APP_URL}/api/chat/send`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        userName: currentUser?.UserName,
+                        type: 'text',
+                        content: notificationMessage
+                    })
+                });
+            } catch (notifyErr) {
+                console.warn("Failed to send system notification", notifyErr);
+            }
+            // -----------------------------------------------------
+
             localStorage.removeItem(DRAFT_KEY);
             setSubmissionStatus({ type: 'success', message: `ជោគជ័យ! Order ID: ${result.orderId}` });
             setTimeout(onSaveSuccess, 3000);

@@ -22,7 +22,7 @@ type ActiveTab = 'chat' | 'users';
 const MemoizedAudioPlayer = React.memo(AudioPlayer);
 
 const ChatWidget: React.FC<ChatWidgetProps> = ({ isOpen, onClose }) => {
-    const { currentUser, appData, previewImage, setUnreadCount } = useContext(AppContext);
+    const { currentUser, appData, previewImage, setUnreadCount, showNotification } = useContext(AppContext);
     const CACHE_KEY = useMemo(() => currentUser ? `chatHistoryCache_${currentUser.UserName}` : null, [currentUser]);
 
     // Audio Recorder Hook
@@ -54,19 +54,11 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ isOpen, onClose }) => {
     const [activeTab, setActiveTab] = useState<ActiveTab>('chat');
     
     const fileInputRef = useRef<HTMLInputElement>(null);
-    const textareaRef = useRef<HTMLTextAreaElement>(null);
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const chatBodyRef = useRef<HTMLDivElement>(null);
     const wsRef = useRef<WebSocket | null>(null);
     const isOpenRef = useRef(isOpen);
-
-    useEffect(() => {
-        if (textareaRef.current) {
-            textareaRef.current.style.height = 'auto';
-            textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight, 96)}px`;
-        }
-    }, [newMessage]);
-
+    
     const allUsersRef = useRef(allUsers);
     const currentUserRef = useRef(currentUser);
     const isMutedRef = useRef(isMuted);
@@ -289,7 +281,19 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ isOpen, onClose }) => {
                 try {
                     const data = JSON.parse(e.data);
                     if (data.action === 'new_message') {
-                        const msg = transformBackendMessage(data.payload);
+                        const backendMsg = data.payload;
+                        
+                        // *** Global Notification Trigger ***
+                        if (backendMsg.Content && backendMsg.Content.includes('📢 SYSTEM_ALERT:')) {
+                            const alertMsg = backendMsg.Content.replace('📢 SYSTEM_ALERT:', '').trim();
+                            showNotification(alertMsg, 'success');
+                            if (!isMutedRef.current) {
+                                const audio = new Audio(SOUND_URLS.NOTIFICATION);
+                                audio.play().catch(() => {});
+                            }
+                        }
+
+                        const msg = transformBackendMessage(backendMsg);
                         setAndCacheMessages(prev => {
                             if (prev.some(m => m.id === msg.id)) return prev;
                             const optimisticIndex = prev.findIndex(m => 
@@ -307,7 +311,7 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ isOpen, onClose }) => {
                         setTimeout(() => scrollToBottom('smooth'), 100);
                         if (msg.user !== currentUserRef.current?.UserName) {
                             if (!isOpenRef.current) setUnreadCount(p => p + 1);
-                            if (!isMutedRef.current) {
+                            if (!isMutedRef.current && !backendMsg.Content.includes('SYSTEM_ALERT')) {
                                 soundNotification.current.currentTime = 0;
                                 soundNotification.current.play().catch(() => {});
                             }
@@ -468,35 +472,44 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ isOpen, onClose }) => {
                                 const isMe = msg.user === currentUser?.UserName;
                                 const user = allUsers.find(u => u.UserName === msg.user);
                                 const showAvatar = index === 0 || messages[index - 1].user !== msg.user;
+                                const isSystemAlert = msg.content.includes('SYSTEM_ALERT');
                                 
                                 return (
                                     <div key={msg.id + index} className={`flex flex-col ${isMe ? 'items-end' : 'items-start'} animate-fade-in-up`}>
-                                        <div className={`flex max-w-[85%] gap-3 ${isMe ? 'flex-row-reverse' : ''}`}>
-                                            <div className={`flex-shrink-0 w-8 flex flex-col justify-end`}>
-                                                {showAvatar ? (
-                                                    <UserAvatar avatarUrl={user?.ProfilePictureURL || msg.avatar} name={user?.FullName || msg.fullName} size="sm" className="ring-2 ring-white/10" />
-                                                ) : <div className="w-8"></div>}
-                                            </div>
-                                            
-                                            <div className={`relative px-4 py-3 shadow-lg ${
-                                                isMe 
-                                                ? 'bg-blue-600 text-white rounded-2xl rounded-tr-sm' 
-                                                : 'bg-gray-800 text-gray-200 rounded-2xl rounded-tl-sm border border-white/5'
-                                            } ${msg.isOptimistic ? 'opacity-70' : ''}`}>
-                                                {!isMe && showAvatar && <p className="text-[10px] font-black text-blue-400 mb-1 uppercase tracking-wider">{user?.FullName || msg.fullName}</p>}
-                                                
-                                                {msg.type === 'text' && <p className="leading-relaxed text-sm whitespace-pre-wrap">{msg.content}</p>}
-                                                {msg.type === 'image' && <img src={msg.content} className="rounded-xl max-w-full cursor-pointer hover:opacity-90 transition-opacity border border-black/20" onClick={() => previewImage(msg.content)} alt="attachment" />}
-                                                {msg.type === 'audio' && <MemoizedAudioPlayer src={msg.content} isMe={isMe} />}
-                                                
-                                                <div className="flex items-center justify-end gap-1 mt-1.5">
-                                                    <p className={`text-[9px] font-medium ${isMe ? 'text-blue-200' : 'text-gray-500'}`}>
-                                                        {new Date(msg.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
-                                                    </p>
-                                                    {msg.isOptimistic && <svg className="w-3 h-3 text-white/50 animate-spin" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>}
+                                        {isSystemAlert ? (
+                                            <div className="w-full flex justify-center my-2">
+                                                <div className="bg-blue-900/40 border border-blue-500/30 rounded-xl px-4 py-2 text-[10px] font-bold text-blue-300 text-center shadow-lg">
+                                                    {msg.content.replace('📢 SYSTEM_ALERT:', '').trim()}
                                                 </div>
                                             </div>
-                                        </div>
+                                        ) : (
+                                            <div className={`flex max-w-[85%] gap-3 ${isMe ? 'flex-row-reverse' : ''}`}>
+                                                <div className={`flex-shrink-0 w-8 flex flex-col justify-end`}>
+                                                    {showAvatar ? (
+                                                        <UserAvatar avatarUrl={user?.ProfilePictureURL || msg.avatar} name={user?.FullName || msg.fullName} size="sm" className="ring-2 ring-white/10" />
+                                                    ) : <div className="w-8"></div>}
+                                                </div>
+                                                
+                                                <div className={`relative px-4 py-3 shadow-lg ${
+                                                    isMe 
+                                                    ? 'bg-blue-600 text-white rounded-2xl rounded-tr-sm' 
+                                                    : 'bg-gray-800 text-gray-200 rounded-2xl rounded-tl-sm border border-white/5'
+                                                } ${msg.isOptimistic ? 'opacity-70' : ''}`}>
+                                                    {!isMe && showAvatar && <p className="text-[10px] font-black text-blue-400 mb-1 uppercase tracking-wider">{user?.FullName || msg.fullName}</p>}
+                                                    
+                                                    {msg.type === 'text' && <p className="leading-relaxed text-sm whitespace-pre-wrap">{msg.content}</p>}
+                                                    {msg.type === 'image' && <img src={msg.content} className="rounded-xl max-w-full cursor-pointer hover:opacity-90 transition-opacity border border-black/20" onClick={() => previewImage(msg.content)} alt="attachment" />}
+                                                    {msg.type === 'audio' && <MemoizedAudioPlayer src={msg.content} isMe={isMe} />}
+                                                    
+                                                    <div className="flex items-center justify-end gap-1 mt-1.5">
+                                                        <p className={`text-[9px] font-medium ${isMe ? 'text-blue-200' : 'text-gray-500'}`}>
+                                                            {new Date(msg.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                                                        </p>
+                                                        {msg.isOptimistic && <svg className="w-3 h-3 text-white/50 animate-spin" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        )}
                                     </div>
                                 );
                             })
@@ -543,7 +556,6 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ isOpen, onClose }) => {
                             
                             <div className="flex-grow relative">
                                 <textarea 
-                                    ref={textareaRef}
                                     value={newMessage} 
                                     onChange={e => setNewMessage(e.target.value)} 
                                     onKeyDown={e => {

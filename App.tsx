@@ -8,6 +8,7 @@ import Modal from './components/common/Modal';
 import { AppContext, Language } from './context/AppContext';
 import BackgroundMusic from './components/common/BackgroundMusic';
 import { CacheService, CACHE_KEYS } from './services/cacheService';
+import Toast from './components/common/Toast';
 
 const LoginPage = React.lazy(() => import('./pages/LoginPage'));
 const RoleSelectionPage = React.lazy(() => import('./pages/RoleSelectionPage'));
@@ -35,6 +36,9 @@ const App: React.FC = () => {
     const [appState, setAppState] = useUrlState<'login' | 'role_selection' | 'admin_dashboard' | 'user_journey'>('view', 'login');
     const [previewImageUrl, setPreviewImageUrl] = useState<string | null>(null);
     
+    // Notification State
+    const [notification, setNotification] = useState<{ message: string; type: 'success' | 'info' | 'error' } | null>(null);
+    
     // Initialize unreadCount from localStorage
     const [unreadCount, setUnreadCount] = useState(() => {
         const saved = localStorage.getItem('chatUnreadCount');
@@ -48,6 +52,10 @@ const App: React.FC = () => {
     const handleLanguageChange = (lang: Language) => {
         setLanguage(lang);
         localStorage.setItem('appLanguage', lang);
+    };
+
+    const showNotification = (message: string, type: 'success' | 'info' | 'error' = 'info') => {
+        setNotification({ message, type });
     };
 
     // Sync unreadCount to localStorage whenever it changes
@@ -186,7 +194,8 @@ const App: React.FC = () => {
             setAppState, setOriginalAdminUser, fetchData, setCurrentUser, setChatVisibility: setChatVisible,
             isSidebarCollapsed, setIsSidebarCollapsed, setIsChatOpen,
             isMobileMenuOpen, setIsMobileMenuOpen,
-            language, setLanguage: handleLanguageChange
+            language, setLanguage: handleLanguageChange,
+            showNotification
         }}>
             <div className="min-h-screen relative z-10">
                 <BackgroundMusic />
@@ -206,6 +215,16 @@ const App: React.FC = () => {
                         <LoginPage />
                     )}
                 </Suspense>
+                
+                {/* Global Notification Toast */}
+                {notification && (
+                    <Toast 
+                        message={notification.message} 
+                        type={notification.type} 
+                        onClose={() => setNotification(null)} 
+                    />
+                )}
+
                 {previewImageUrl && (
                     <Modal isOpen={true} onClose={() => setPreviewImageUrl(null)} maxWidth="max-w-4xl">
                         <div className="relative p-2"><img src={previewImageUrl} className="max-h-[85vh] w-full object-contain rounded-xl" alt="Preview" /></div>

@@ -31,6 +31,7 @@ export interface AppContextType {
     setIsMobileMenuOpen: (isOpen: boolean) => void;
     language: Language;
     setLanguage: (lang: Language) => void;
+    showNotification: (message: string, type?: 'success' | 'info' | 'error') => void;
 }
 
 export const AppContext = createContext<AppContextType>({} as AppContextType);
