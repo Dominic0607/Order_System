@@ -5,7 +5,7 @@ import { ChatMessage, User, BackendChatMessage } from '../../types';
 import Spinner from '../common/Spinner';
 import { useAudioRecorder } from '../../hooks/useAudioRecorder';
 import { compressImage } from '../../utils/imageCompressor';
-import { WEB_APP_URL, SOUND_URLS } from '../../constants';
+import { WEB_APP_URL, SOUND_URLS, APP_LOGO_URL } from '../../constants';
 import AudioPlayer from './AudioPlayer';
 import { fileToBase64, convertGoogleDriveUrl } from '../../utils/fileUtils';
 import UserAvatar from '../common/UserAvatar';
@@ -98,12 +98,40 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ isOpen, onClose }) => {
         if (isOpen) setUnreadCount(0);
     }, [isOpen, setUnreadCount]);
 
-    // Permission
+    // Permission for System Notifications
     useEffect(() => {
         if ('Notification' in window && Notification.permission === 'default') {
             Notification.requestPermission();
         }
     }, []);
+
+    // --- Helper: Send System Notification ---
+    const sendSystemNotification = (title: string, body: string) => {
+        if (!('Notification' in window)) return;
+
+        const options = {
+            body: body,
+            icon: convertGoogleDriveUrl(APP_LOGO_URL), // Show App Logo
+            badge: convertGoogleDriveUrl(APP_LOGO_URL),
+            vibrate: [200, 100, 200],
+            tag: 'system-alert'
+        };
+
+        if (Notification.permission === "granted") {
+            // Try Service Worker first (Better for Mobile PWA background)
+            if (navigator.serviceWorker && navigator.serviceWorker.ready) {
+                navigator.serviceWorker.ready.then(registration => {
+                    registration.showNotification(title, options);
+                }).catch(() => {
+                    // Fallback if SW not ready
+                    new Notification(title, options);
+                });
+            } else {
+                // Standard Desktop/Fallback
+                new Notification(title, options);
+            }
+        }
+    };
 
     // --- Audio Workflow (FIXED: Extract ID from URL if needed) ---
     const handleStartRecording = async () => {
@@ -286,11 +314,18 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ isOpen, onClose }) => {
                         // *** Global Notification Trigger ***
                         if (backendMsg.Content && backendMsg.Content.includes('📢 SYSTEM_ALERT:')) {
                             const alertMsg = backendMsg.Content.replace('📢 SYSTEM_ALERT:', '').trim();
+                            
+                            // 1. App Toast (In-App)
                             showNotification(alertMsg, 'success');
+                            
+                            // 2. Play Sound
                             if (!isMutedRef.current) {
                                 const audio = new Audio(SOUND_URLS.NOTIFICATION);
                                 audio.play().catch(() => {});
                             }
+
+                            // 3. System Native Notification (Phone/Desktop)
+                            sendSystemNotification("ការកម្មង់ថ្មី 📦", alertMsg);
                         }
 
                         const msg = transformBackendMessage(backendMsg);
