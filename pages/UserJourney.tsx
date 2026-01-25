@@ -6,34 +6,60 @@ import { WEB_APP_URL } from '../constants';
 import Spinner from '../components/common/Spinner';
 import OrdersList from '../components/orders/OrdersList';
 import CreateOrderPage from './CreateOrderPage';
+import EditOrderPage from './EditOrderPage'; 
 import { useUrlState } from '../hooks/useUrlState';
 import UserSalesPageReport from './UserSalesPageReport'; 
 
-type DateRangePreset = 'today' | 'yesterday' | 'this_week' | 'this_month' | 'custom';
+type DateRangePreset = 'today' | 'yesterday' | 'this_week' | 'this_month' | 'last_month' | 'this_year' | 'last_year' | 'all' | 'custom';
+
+// Define the state shape for the report filters
+interface ReportFilterState {
+    datePreset: DateRangePreset;
+    customStart: string;
+    customEnd: string;
+}
 
 const UserOrdersView: React.FC<{ team: string; onAdd: () => void }> = ({ team, onAdd }) => {
+    const { currentUser, refreshData } = useContext(AppContext);
+    
     // Stores parsed orders for the CURRENTLY SELECTED date range only
     const [orders, setOrders] = useState<ParsedOrder[]>([]);
     const [globalOrders, setGlobalOrders] = useState<ParsedOrder[]>([]); // For Top Teams stats
     
+    // Drilldown State
+    const [drilldownFilters, setDrilldownFilters] = useState<any>(null);
+    const [drilldownData, setDrilldownData] = useState<ParsedOrder[]>([]);
+    const [editingOrder, setEditingOrder] = useState<ParsedOrder | null>(null);
+    
     const [loading, setLoading] = useState(true);
-    const [processing, setProcessing] = useState(false); // New state for local filtering calculation
+    const [processing, setProcessing] = useState(false); 
     const [searchQuery, setSearchQuery] = useState('');
     const [showReport, setShowReport] = useState(false);
     
+    // Dashboard Date State
     const [dateRange, setDateRange] = useState<DateRangePreset>('today');
     const [customStart, setCustomStart] = useState(new Date().toISOString().split('T')[0]);
     const [customEnd, setCustomEnd] = useState(new Date().toISOString().split('T')[0]);
 
-    // REF to hold ALL raw data. This doesn't trigger re-renders and is memory efficient.
+    // Report State (Lifted up to preserve on back)
+    const [reportFilters, setReportFilters] = useState<ReportFilterState>({
+        datePreset: 'this_month',
+        customStart: new Date().toISOString().split('T')[0],
+        customEnd: new Date().toISOString().split('T')[0]
+    });
+
+    // REF to hold ALL raw data.
     const allRawOrdersRef = useRef<FullOrder[]>([]);
     const isDataFetchedRef = useRef(false);
 
-    const userVisibleColumns = useMemo(() => new Set([
-        'index', 'orderId', 'customerName', 'productInfo', 'location', 'pageInfo', 'total', 'shippingService', 'status', 'date', 'print'
-    ]), []);
+    // Permission Check
+    const isSystemAdmin = !!currentUser?.IsSystemAdmin;
 
-    const getDateBounds = (preset: DateRangePreset) => {
+    const userVisibleColumns = useMemo(() => new Set([
+        'index', 'orderId', 'customerName', 'productInfo', 'location', 'pageInfo', 'total', 'shippingService', 'status', 'date', 'print', ...(isSystemAdmin ? ['actions'] : [])
+    ]), [isSystemAdmin]);
+
+    const getDateBounds = (preset: DateRangePreset, cStart?: string, cEnd?: string) => {
         const now = new Date();
         const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
         let start: Date | null = null;
@@ -42,6 +68,8 @@ const UserOrdersView: React.FC<{ team: string; onAdd: () => void }> = ({ team, o
         switch (preset) {
             case 'today': 
                 start = today; 
+                end = new Date(today);
+                end.setHours(23, 59, 59, 999);
                 break;
             case 'yesterday': 
                 start = new Date(today); 
@@ -53,13 +81,29 @@ const UserOrdersView: React.FC<{ team: string; onAdd: () => void }> = ({ team, o
                 const d = now.getDay(); 
                 start = new Date(today); 
                 start.setDate(today.getDate() - (d === 0 ? 6 : d - 1)); 
+                end = new Date(start);
+                end.setDate(start.getDate() + 6);
+                end.setHours(23, 59, 59, 999);
                 break;
             case 'this_month': 
                 start = new Date(now.getFullYear(), now.getMonth(), 1); 
+                end = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+                break;
+            case 'last_month':
+                start = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+                end = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59, 999);
+                break;
+            case 'this_year':
+                start = new Date(now.getFullYear(), 0, 1);
+                end = new Date(now.getFullYear(), 11, 31, 23, 59, 59, 999);
+                break;
+            case 'last_year':
+                start = new Date(now.getFullYear() - 1, 0, 1);
+                end = new Date(now.getFullYear() - 1, 11, 31, 23, 59, 59, 999);
                 break;
             case 'custom': 
-                start = new Date(customStart + 'T00:00:00');
-                end = new Date(customEnd + 'T23:59:59');
+                if (cStart) start = new Date(cStart + 'T00:00:00');
+                if (cEnd) end = new Date(cEnd + 'T23:59:59');
                 break;
         }
         return { start, end };
@@ -73,12 +117,9 @@ const UserOrdersView: React.FC<{ team: string; onAdd: () => void }> = ({ team, o
                 const response = await fetch(`${WEB_APP_URL}/api/admin/all-orders`);
                 const result = await response.json();
                 if (result.status === 'success') {
-                    // Store raw data in REF. Do NOT parse everything yet to save memory.
                     const rawData = Array.isArray(result.data) ? result.data.filter((o: any) => o !== null) : [];
                     allRawOrdersRef.current = rawData;
                     isDataFetchedRef.current = true;
-                    
-                    // Trigger the first process manually or let the dependency array handle it
                     processDataForRange('today'); 
                 }
             } catch (err: any) { 
@@ -88,20 +129,17 @@ const UserOrdersView: React.FC<{ team: string; onAdd: () => void }> = ({ team, o
             }
         };
         fetchOrders();
-    }, []); // Empty dependency array = runs once on mount
+    }, []);
 
-    // 2. Process Data when Date Range or Team Changes
-    // This function filters RAW data first, THEN parses only what is needed.
+    // 2. Process Data for Dashboard View
     const processDataForRange = (range: DateRangePreset) => {
         if (!isDataFetchedRef.current) return;
         
         setProcessing(true);
-        
-        // Small timeout to allow UI to show "Processing..." spinner
         setTimeout(() => {
-            const { start, end } = getDateBounds(range);
+            const { start, end } = getDateBounds(range, customStart, customEnd);
             
-            // Filter Raw Data first (Fast & Low Memory)
+            // Filter Raw Data first
             const rawFiltered = allRawOrdersRef.current.filter(o => {
                 if (!o.Timestamp) return false;
                 const orderDate = new Date(o.Timestamp);
@@ -110,20 +148,20 @@ const UserOrdersView: React.FC<{ team: string; onAdd: () => void }> = ({ team, o
                 return true;
             });
 
-            // Parse ONLY the filtered subset
             const parsedChunk = rawFiltered.map(o => {
                 let products = [];
                 try { if (o['Products (JSON)']) products = JSON.parse(o['Products (JSON)']); } catch(e) {}
-                return { ...o, Products: products };
+                return { 
+                    ...o, 
+                    Products: products, 
+                    IsVerified: String(o.IsVerified).toUpperCase() === 'TRUE',
+                    FulfillmentStatus: o.FulfillmentStatus as any 
+                };
             });
 
-            // Set Global (for Top Teams within this period)
             setGlobalOrders(parsedChunk);
-
-            // Filter strictly for current team
             const teamOnly = parsedChunk.filter(o => (o.Team || '').trim() === (team || '').trim());
             setOrders(teamOnly.sort((a, b) => new Date(b.Timestamp).getTime() - new Date(a.Timestamp).getTime()));
-            
             setProcessing(false);
         }, 10);
     };
@@ -135,9 +173,67 @@ const UserOrdersView: React.FC<{ team: string; onAdd: () => void }> = ({ team, o
         }
     }, [dateRange, customStart, customEnd, team]);
 
-    // Client-side search filtering (on top of date-filtered data)
+    // Process Drilldown Data (Updated to handle month clicks correctly)
+    useEffect(() => {
+        if (drilldownFilters && isDataFetchedRef.current) {
+            setProcessing(true);
+            setTimeout(() => {
+                const raw = allRawOrdersRef.current;
+                
+                // Determine Date Range from Drilldown Filters
+                let start: Date | null = null;
+                let end: Date | null = null;
+
+                if (drilldownFilters.isMonthlyDrilldown) {
+                    // Exact dates passed from report
+                    if (drilldownFilters.customStart) start = new Date(drilldownFilters.customStart + 'T00:00:00');
+                    if (drilldownFilters.customEnd) end = new Date(drilldownFilters.customEnd + 'T23:59:59');
+                } else if (drilldownFilters.datePreset === 'custom') {
+                    if (drilldownFilters.customStart) start = new Date(drilldownFilters.customStart + 'T00:00:00');
+                    if (drilldownFilters.customEnd) end = new Date(drilldownFilters.customEnd + 'T23:59:59');
+                } else if (drilldownFilters.datePreset) {
+                    const bounds = getDateBounds(drilldownFilters.datePreset);
+                    start = bounds.start;
+                    end = bounds.end;
+                }
+
+                const filtered = raw.filter(o => {
+                    // Date Check
+                    if (start || end) {
+                        if (!o.Timestamp) return false;
+                        const d = new Date(o.Timestamp);
+                        if (start && d < start) return false;
+                        if (end && d > end) return false;
+                    }
+                    // Team Check
+                    if (drilldownFilters.team && (o.Team || '').trim() !== drilldownFilters.team) return false;
+                    // Page Check
+                    if (drilldownFilters.page && o.Page !== drilldownFilters.page) return false;
+
+                    return true;
+                });
+
+                const parsed = filtered.map(o => {
+                    let products = [];
+                    try { if (o['Products (JSON)']) products = JSON.parse(o['Products (JSON)']); } catch(e) {}
+                    return { 
+                        ...o, 
+                        Products: products, 
+                        IsVerified: String(o.IsVerified).toUpperCase() === 'TRUE',
+                        FulfillmentStatus: o.FulfillmentStatus as any 
+                    };
+                });
+
+                setDrilldownData(parsed.sort((a, b) => new Date(b.Timestamp).getTime() - new Date(a.Timestamp).getTime()));
+                setProcessing(false);
+            }, 10);
+        }
+    }, [drilldownFilters]);
+
+    // Client-side search filtering
     const filteredOrders = useMemo(() => {
-        return orders.filter(o => {
+        const source = drilldownFilters ? drilldownData : orders;
+        return source.filter(o => {
             if (searchQuery.trim()) {
                 const q = searchQuery.toLowerCase();
                 return o['Order ID'].toLowerCase().includes(q) || 
@@ -146,14 +242,13 @@ const UserOrdersView: React.FC<{ team: string; onAdd: () => void }> = ({ team, o
             }
             return true;
         });
-    }, [orders, searchQuery]);
+    }, [orders, drilldownData, drilldownFilters, searchQuery]);
 
     const totalFilteredRevenue = useMemo(() => {
         return filteredOrders.reduce((sum, o) => sum + (Number(o['Grand Total']) || 0), 0);
     }, [filteredOrders]);
 
     const topTeams = useMemo(() => {
-        // Calculate top teams based on the CURRENT date range (globalOrders contains parsed data for current range)
         const teamStats: Record<string, number> = {};
         globalOrders.forEach(o => {
             const tName = (o.Team || 'Unassigned').trim();
@@ -176,12 +271,69 @@ const UserOrdersView: React.FC<{ team: string; onAdd: () => void }> = ({ team, o
         }
     }, [dateRange]);
 
+    const handleSaveEdit = () => {
+        setEditingOrder(null);
+        setLoading(true);
+        refreshData().then(() => {
+             window.location.reload(); 
+        });
+    };
+
     if (loading) return (
         <div className="flex flex-col justify-center items-center h-96 gap-4">
             <Spinner size="lg" />
             <p className="text-[10px] font-black text-blue-500 uppercase tracking-[0.4em] animate-pulse">Initializing Data Stream...</p>
         </div>
     );
+
+    // Render Edit Page
+    if (editingOrder) {
+        return (
+            <div className="animate-fade-in p-2">
+                <EditOrderPage 
+                    order={editingOrder} 
+                    onSaveSuccess={handleSaveEdit}
+                    onCancel={() => setEditingOrder(null)} 
+                />
+            </div>
+        );
+    }
+
+    // Render Drilldown View
+    if (drilldownFilters) {
+        return (
+            <div className="animate-fade-in p-2 min-h-screen flex flex-col">
+                <div className="flex items-center justify-between mb-6 bg-gray-900/50 p-4 rounded-3xl border border-white/5">
+                    <div>
+                        <h2 className="text-lg font-black text-white uppercase tracking-tight italic">ផ្ទាំងរបាយការណ៍ប្រតិបត្តិការណ៍</h2>
+                        <div className="flex items-center gap-2 mt-1">
+                            <span className="text-[10px] font-bold text-blue-400 bg-blue-900/20 px-2 py-0.5 rounded border border-blue-500/20">{drilldownFilters.page || 'All Pages'}</span>
+                            {drilldownFilters.isMonthlyDrilldown && (
+                                <span className="text-[10px] font-bold text-emerald-400 bg-emerald-900/20 px-2 py-0.5 rounded border border-emerald-500/20">
+                                    {drilldownFilters.customStart} - {drilldownFilters.customEnd}
+                                </span>
+                            )}
+                            <span className="text-[10px] text-gray-500 font-bold">{drilldownData.length} entries</span>
+                        </div>
+                    </div>
+                    <button onClick={() => setDrilldownFilters(null)} className="px-6 py-2 bg-gray-800 hover:bg-gray-700 text-white rounded-xl text-xs font-black uppercase tracking-widest border border-white/10 transition-all active:scale-95">
+                        Back
+                    </button>
+                </div>
+
+                {processing ? (
+                    <div className="flex justify-center py-20"><Spinner size="md" /></div>
+                ) : (
+                    <OrdersList 
+                        orders={filteredOrders} 
+                        showActions={isSystemAdmin} 
+                        visibleColumns={userVisibleColumns}
+                        onEdit={isSystemAdmin ? setEditingOrder : undefined}
+                    />
+                )}
+            </div>
+        );
+    }
 
     // Render Report View
     if (showReport) {
@@ -191,6 +343,10 @@ const UserOrdersView: React.FC<{ team: string; onAdd: () => void }> = ({ team, o
                     orders={orders} 
                     onBack={() => setShowReport(false)} 
                     team={team}
+                    onNavigate={(filters) => setDrilldownFilters(filters)}
+                    // Pass the report state down so it can be controlled
+                    initialFilters={reportFilters}
+                    onFilterChange={setReportFilters}
                 />
             </div>
         );
@@ -310,7 +466,12 @@ const UserOrdersView: React.FC<{ team: string; onAdd: () => void }> = ({ team, o
                     </div>
                 ) : (
                     <div className="animate-fade-in-up">
-                        <OrdersList orders={filteredOrders} showActions={false} visibleColumns={userVisibleColumns} />
+                        <OrdersList 
+                            orders={filteredOrders} 
+                            showActions={isSystemAdmin} 
+                            visibleColumns={userVisibleColumns} 
+                            onEdit={isSystemAdmin ? setEditingOrder : undefined}
+                        />
                     </div>
                 )}
             </div>

@@ -16,21 +16,33 @@ import SalesByPageDesktop from '../components/reports/SalesByPageDesktop';
 import SalesByPageTablet from '../components/reports/SalesByPageTablet';
 import SalesByPageMobile from '../components/reports/SalesByPageMobile';
 
+interface ReportFilterState {
+    datePreset: DateRangePreset;
+    customStart: string;
+    customEnd: string;
+}
+
 interface UserSalesPageReportProps {
-    orders: ParsedOrder[]; // Kept for interface compatibility, but we fetch our own full data
+    orders: ParsedOrder[]; 
     onBack: () => void;
     team: string;
+    onNavigate?: (filters: any) => void;
+    initialFilters: ReportFilterState;
+    onFilterChange: (newFilters: ReportFilterState) => void;
 }
 
 type SortKey = 'revenue' | 'pageName';
-type DateRangePreset = 'today' | 'yesterday' | 'this_week' | 'this_month' | 'last_month' | 'all' | 'custom';
+type DateRangePreset = 'today' | 'yesterday' | 'this_week' | 'this_month' | 'last_month' | 'this_year' | 'last_year' | 'all' | 'custom';
 
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
 const UserSalesPageReport: React.FC<UserSalesPageReportProps> = ({ 
     orders: initialOrders, 
     onBack, 
-    team
+    team,
+    onNavigate,
+    initialFilters,
+    onFilterChange
 }) => {
     const { appData, previewImage } = useContext(AppContext);
     const [showBorders, setShowBorders] = useState(true);
@@ -44,25 +56,16 @@ const UserSalesPageReport: React.FC<UserSalesPageReportProps> = ({
     const [fullOrders, setFullOrders] = useState<ParsedOrder[]>([]);
     const [isLoadingData, setIsLoadingData] = useState(false);
 
-    // --- Filter State ---
-    const [datePreset, setDatePreset] = useState<DateRangePreset>('this_month');
-    const [customStart, setCustomStart] = useState(new Date().toISOString().split('T')[0]);
-    const [customEnd, setCustomEnd] = useState(new Date().toISOString().split('T')[0]);
-
     // --- Data Fetching Logic with Cache ---
     const checkAndFetchData = async () => {
         const CACHE_KEY = 'user_sales_report_full_data';
         const CACHE_DURATION = 5 * 60 * 1000; // 5 Minutes Expiry
 
-        // Check Cache first
         const cached = CacheService.get<ParsedOrder[]>(CACHE_KEY);
         
         if (cached) {
-            console.log("Using cached data for report");
             setFullOrders(cached);
         } else {
-            // Cache expired or missing, fetch fresh data
-            console.log("Fetching fresh data for report...");
             setIsLoadingData(true);
             try {
                 const response = await fetch(`${WEB_APP_URL}/api/admin/all-orders`);
@@ -77,7 +80,6 @@ const UserSalesPageReport: React.FC<UserSalesPageReportProps> = ({
                     });
                     
                     setFullOrders(parsed);
-                    // Save to cache
                     CacheService.set(CACHE_KEY, parsed, CACHE_DURATION);
                 }
             } catch (err) {
@@ -88,7 +90,6 @@ const UserSalesPageReport: React.FC<UserSalesPageReportProps> = ({
         }
     };
 
-    // Initial load
     useEffect(() => {
         checkAndFetchData();
     }, []);
@@ -101,24 +102,124 @@ const UserSalesPageReport: React.FC<UserSalesPageReportProps> = ({
     };
 
     const handlePresetChange = (preset: DateRangePreset) => {
-        setDatePreset(preset);
-        // Check data freshness whenever user switches filters
+        const newFilters = { ...initialFilters, datePreset: preset };
+        onFilterChange(newFilters);
         checkAndFetchData();
     };
 
+    const handleCustomDateChange = (key: 'customStart' | 'customEnd', value: string) => {
+        const newFilters = { ...initialFilters, [key]: value };
+        onFilterChange(newFilters);
+    };
+
     const handleNavigate = (key: string, value: string) => {
-        // Navigation not yet implemented for User Report View (Drill-down to orders list in user view logic is complex)
-        console.log("Navigate", key, value);
+        if (onNavigate) {
+            const filters: any = { team };
+            filters.datePreset = initialFilters.datePreset;
+            if (initialFilters.datePreset === 'custom') {
+                filters.customStart = initialFilters.customStart;
+                filters.customEnd = initialFilters.customEnd;
+            }
+            
+            if (key === 'page') filters.page = value;
+            onNavigate(filters);
+        }
     };
 
     const handleMonthClick = (pageName: string, monthIndex: number) => {
-        // Navigation not yet implemented for User Report View
-        console.log("Month Click", pageName, monthIndex);
+        if (onNavigate) {
+            const now = new Date();
+            const currentYear = now.getFullYear();
+            
+            // 1. Determine Target Year
+            let targetYear = initialFilters.datePreset === 'last_year' ? currentYear - 1 : currentYear;
+            
+            // Special Case: If custom date is set, check the year from customStart
+            if (initialFilters.datePreset === 'custom' && initialFilters.customStart) {
+                const customY = new Date(initialFilters.customStart).getFullYear();
+                if (!isNaN(customY)) targetYear = customY;
+            }
+
+            // 2. Define Month Bounds (The full month clicked)
+            const monthStart = new Date(targetYear, monthIndex, 1);
+            const monthEnd = new Date(targetYear, monthIndex + 1, 0, 23, 59, 59);
+
+            // 3. Define Active Filter Bounds (The currently applied filter)
+            let filterStart: Date | null = null;
+            let filterEnd: Date | null = null;
+
+            switch (initialFilters.datePreset) {
+                case 'today':
+                    filterStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+                    filterEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59);
+                    break;
+                case 'yesterday':
+                    const y = new Date(now); y.setDate(y.getDate() - 1);
+                    filterStart = new Date(y.getFullYear(), y.getMonth(), y.getDate());
+                    filterEnd = new Date(y.getFullYear(), y.getMonth(), y.getDate(), 23, 59, 59);
+                    break;
+                case 'this_week':
+                    const day = now.getDay();
+                    const wStart = new Date(now); wStart.setDate(now.getDate() - (day === 0 ? 6 : day - 1));
+                    const wEnd = new Date(wStart); wEnd.setDate(wStart.getDate() + 6);
+                    filterStart = new Date(wStart.setHours(0,0,0,0));
+                    filterEnd = new Date(wEnd.setHours(23,59,59,999));
+                    break;
+                case 'this_month':
+                    filterStart = new Date(currentYear, now.getMonth(), 1);
+                    filterEnd = new Date(currentYear, now.getMonth() + 1, 0, 23, 59, 59);
+                    break;
+                case 'custom':
+                    if (initialFilters.customStart) filterStart = new Date(initialFilters.customStart + 'T00:00:00');
+                    if (initialFilters.customEnd) filterEnd = new Date(initialFilters.customEnd + 'T23:59:59');
+                    break;
+                default:
+                    // For 'all', 'this_year', 'last_year', we don't strictly constrain inside the month 
+                    // (the month bounds themselves act as the constraint).
+                    filterStart = null;
+                    filterEnd = null;
+            }
+
+            // 4. Calculate Intersection (The overlap between Month and Filter)
+            let finalStart = monthStart;
+            let finalEnd = monthEnd;
+
+            // If Filter Start is LATER than Month Start, use Filter Start
+            if (filterStart && filterStart > monthStart) {
+                finalStart = filterStart;
+            }
+            // If Filter End is EARLIER than Month End, use Filter End
+            if (filterEnd && filterEnd < monthEnd) {
+                finalEnd = filterEnd;
+            }
+
+            // 5. Fallback Logic: If no overlap (e.g., Filter is Feb 1, but user clicked Jan column)
+            // We fallback to showing the full month data (or empty) rather than an invalid date range.
+            if (finalStart > finalEnd) {
+                finalStart = monthStart;
+                finalEnd = monthEnd;
+            }
+            
+            const fmt = (d: Date) => {
+                const y = d.getFullYear();
+                const m = String(d.getMonth() + 1).padStart(2, '0');
+                const day = String(d.getDate()).padStart(2, '0');
+                return `${y}-${m}-${day}`;
+            };
+
+            onNavigate({
+                team,
+                page: pageName,
+                datePreset: 'custom',
+                customStart: fmt(finalStart),
+                customEnd: fmt(finalEnd),
+                isMonthlyDrilldown: true
+            });
+        }
     };
 
     // --- Date Filtering Logic ---
     const filteredOrders = useMemo(() => {
-        // Use fullOrders if available, otherwise fallback to props (though fetch should handle it)
         const sourceData = fullOrders.length > 0 ? fullOrders : initialOrders;
 
         const now = new Date();
@@ -126,7 +227,7 @@ const UserSalesPageReport: React.FC<UserSalesPageReportProps> = ({
         let start: Date | null = null;
         let end: Date | null = null; 
 
-        switch (datePreset) {
+        switch (initialFilters.datePreset) {
             case 'today': 
                 start = today; 
                 end = new Date(today);
@@ -154,13 +255,21 @@ const UserSalesPageReport: React.FC<UserSalesPageReportProps> = ({
                 start = new Date(now.getFullYear(), now.getMonth() - 1, 1); 
                 end = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59, 999); 
                 break;
+            case 'this_year':
+                start = new Date(now.getFullYear(), 0, 1);
+                end = new Date(now.getFullYear(), 11, 31, 23, 59, 59, 999);
+                break;
+            case 'last_year':
+                start = new Date(now.getFullYear() - 1, 0, 1);
+                end = new Date(now.getFullYear() - 1, 11, 31, 23, 59, 59, 999);
+                break;
             case 'all': 
                 start = null; 
                 end = null; 
                 break;
             case 'custom': 
-                start = new Date(customStart + 'T00:00:00');
-                end = new Date(customEnd + 'T23:59:59');
+                start = new Date(initialFilters.customStart + 'T00:00:00');
+                end = new Date(initialFilters.customEnd + 'T23:59:59');
                 break;
         }
 
@@ -177,29 +286,26 @@ const UserSalesPageReport: React.FC<UserSalesPageReportProps> = ({
             }
             return orderDate >= start;
         });
-    }, [fullOrders, initialOrders, team, datePreset, customStart, customEnd]);
+    }, [fullOrders, initialOrders, team, initialFilters]);
 
     const pageStats = useMemo(() => {
         const stats: Record<string, any> = {};
         
-        // 1. Initialize stats for ALL pages in this team
         if (appData.pages) {
             const teamPages = appData.pages.filter(p => (p.Team || '').trim() === team);
             teamPages.forEach(p => {
                 stats[p.PageName] = {
                     pageName: p.PageName,
-                    teamName: team, // Required for shared components
+                    teamName: team, 
                     logoUrl: p.PageLogoURL || '',
                     revenue: 0,
-                    profit: 0, // Required for shared components
+                    profit: 0, 
                     orderCount: 0
                 };
-                // Initialize monthly breakdown keys to prevent undefined access
                 MONTHS.forEach(m => { stats[p.PageName][`rev_${m}`] = 0; stats[p.PageName][`prof_${m}`] = 0; });
             });
         }
 
-        // 2. Aggregate data from Filtered Orders
         filteredOrders.forEach(o => {
             const page = o.Page || 'Unknown';
             
@@ -248,7 +354,6 @@ const UserSalesPageReport: React.FC<UserSalesPageReportProps> = ({
 
     const grandTotals = useMemo(() => {
         const totals: any = { revenue: 0, profit: 0, pagesCount: pageStats.length, orders: 0 };
-        // Initialize monthly breakdown keys for grandTotals to prevent undefined access
         MONTHS.forEach(m => { totals[`rev_${m}`] = 0; totals[`prof_${m}`] = 0; });
 
         pageStats.forEach((s: any) => { 
@@ -272,9 +377,8 @@ const UserSalesPageReport: React.FC<UserSalesPageReportProps> = ({
                 doc.setFontSize(18);
                 doc.text(`Sales Report - Team: ${team}`, pageWidth / 2, 15, { align: 'center' });
                 doc.setFontSize(12);
-                doc.text(`Period: ${datePreset.toUpperCase()}`, pageWidth / 2, 22, { align: 'center' });
+                doc.text(`Period: ${initialFilters.datePreset.toUpperCase()}`, pageWidth / 2, 22, { align: 'center' });
                 
-                // Add Summary Table
                 doc.autoTable({
                     startY: 30,
                     head: [['Metric', 'Value']],
@@ -323,18 +427,18 @@ const UserSalesPageReport: React.FC<UserSalesPageReportProps> = ({
 
                 {/* Filters */}
                 <div className="flex overflow-x-auto gap-2 p-1 bg-gray-900/50 rounded-2xl border border-white/5 max-w-full no-scrollbar">
-                    {(['today', 'yesterday', 'this_week', 'this_month', 'last_month', 'all'] as const).map(preset => (
+                    {(['today', 'yesterday', 'this_week', 'this_month', 'last_month', 'this_year', 'last_year', 'all'] as const).map(preset => (
                         <button
                             key={preset}
                             onClick={() => handlePresetChange(preset)}
-                            className={`px-4 py-2 text-[10px] font-black uppercase rounded-xl whitespace-nowrap transition-all ${datePreset === preset ? 'bg-blue-600 text-white shadow-lg' : 'text-gray-500 hover:bg-white/5'}`}
+                            className={`px-4 py-2 text-[10px] font-black uppercase rounded-xl whitespace-nowrap transition-all ${initialFilters.datePreset === preset ? 'bg-blue-600 text-white shadow-lg' : 'text-gray-500 hover:bg-white/5'}`}
                         >
                             {preset.replace('_', ' ')}
                         </button>
                     ))}
                     <button
                         onClick={() => handlePresetChange('custom')}
-                        className={`px-4 py-2 text-[10px] font-black uppercase rounded-xl whitespace-nowrap transition-all ${datePreset === 'custom' ? 'bg-blue-600 text-white shadow-lg' : 'text-gray-500 hover:bg-white/5'}`}
+                        className={`px-4 py-2 text-[10px] font-black uppercase rounded-xl whitespace-nowrap transition-all ${initialFilters.datePreset === 'custom' ? 'bg-blue-600 text-white shadow-lg' : 'text-gray-500 hover:bg-white/5'}`}
                     >
                         Custom
                     </button>
@@ -342,11 +446,11 @@ const UserSalesPageReport: React.FC<UserSalesPageReportProps> = ({
             </div>
 
             {/* Custom Date Inputs */}
-            {datePreset === 'custom' && (
+            {initialFilters.datePreset === 'custom' && (
                 <div className="flex items-center gap-4 bg-gray-800/30 p-4 rounded-2xl border border-white/5 animate-fade-in-down">
-                    <input type="date" value={customStart} onChange={e => setCustomStart(e.target.value)} className="bg-gray-900 border border-gray-700 rounded-xl px-4 py-2 text-white text-xs font-bold" />
+                    <input type="date" value={initialFilters.customStart} onChange={e => handleCustomDateChange('customStart', e.target.value)} className="bg-gray-900 border border-gray-700 rounded-xl px-4 py-2 text-white text-xs font-bold" />
                     <span className="text-gray-500 font-bold">-</span>
-                    <input type="date" value={customEnd} onChange={e => setCustomEnd(e.target.value)} className="bg-gray-900 border border-gray-700 rounded-xl px-4 py-2 text-white text-xs font-bold" />
+                    <input type="date" value={initialFilters.customEnd} onChange={e => handleCustomDateChange('customEnd', e.target.value)} className="bg-gray-900 border border-gray-700 rounded-xl px-4 py-2 text-white text-xs font-bold" />
                 </div>
             )}
 
