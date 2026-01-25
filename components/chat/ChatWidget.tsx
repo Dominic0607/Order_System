@@ -5,11 +5,12 @@ import { ChatMessage, User, BackendChatMessage } from '../../types';
 import Spinner from '../common/Spinner';
 import { useAudioRecorder } from '../../hooks/useAudioRecorder';
 import { compressImage } from '../../utils/imageCompressor';
-import { WEB_APP_URL, SOUND_URLS, APP_LOGO_URL } from '../../constants';
+import { WEB_APP_URL, SOUND_URLS } from '../../constants';
 import AudioPlayer from './AudioPlayer';
 import { fileToBase64, convertGoogleDriveUrl } from '../../utils/fileUtils';
 import UserAvatar from '../common/UserAvatar';
 import ChatMembers from './ChatMembers';
+import { requestNotificationPermission, sendSystemNotification } from '../../utils/notificationUtils';
 
 interface ChatWidgetProps {
     isOpen: boolean;
@@ -98,40 +99,10 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ isOpen, onClose }) => {
         if (isOpen) setUnreadCount(0);
     }, [isOpen, setUnreadCount]);
 
-    // Permission for System Notifications
+    // Request Permission for System Notifications on Mount
     useEffect(() => {
-        if ('Notification' in window && Notification.permission === 'default') {
-            Notification.requestPermission();
-        }
+        requestNotificationPermission();
     }, []);
-
-    // --- Helper: Send System Notification ---
-    const sendSystemNotification = (title: string, body: string) => {
-        if (!('Notification' in window)) return;
-
-        const options = {
-            body: body,
-            icon: convertGoogleDriveUrl(APP_LOGO_URL), // Show App Logo
-            badge: convertGoogleDriveUrl(APP_LOGO_URL),
-            vibrate: [200, 100, 200],
-            tag: 'system-alert'
-        };
-
-        if (Notification.permission === "granted") {
-            // Try Service Worker first (Better for Mobile PWA background)
-            if (navigator.serviceWorker && navigator.serviceWorker.ready) {
-                navigator.serviceWorker.ready.then(registration => {
-                    registration.showNotification(title, options);
-                }).catch(() => {
-                    // Fallback if SW not ready
-                    new Notification(title, options);
-                });
-            } else {
-                // Standard Desktop/Fallback
-                new Notification(title, options);
-            }
-        }
-    };
 
     // --- Audio Workflow (FIXED: Extract ID from URL if needed) ---
     const handleStartRecording = async () => {
@@ -324,7 +295,7 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ isOpen, onClose }) => {
                                 audio.play().catch(() => {});
                             }
 
-                            // 3. System Native Notification (Phone/Desktop)
+                            // 3. System Native Notification (Phone/Desktop) using separate utility
                             sendSystemNotification("ការកម្មង់ថ្មី 📦", alertMsg);
                         }
 
