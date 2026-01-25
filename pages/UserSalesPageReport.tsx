@@ -174,8 +174,6 @@ const UserSalesPageReport: React.FC<UserSalesPageReportProps> = ({
                     if (initialFilters.customEnd) filterEnd = new Date(initialFilters.customEnd + 'T23:59:59');
                     break;
                 default:
-                    // For 'all', 'this_year', 'last_year', we don't strictly constrain inside the month 
-                    // (the month bounds themselves act as the constraint).
                     filterStart = null;
                     filterEnd = null;
             }
@@ -490,6 +488,7 @@ const UserSalesPageReport: React.FC<UserSalesPageReportProps> = ({
                 data={pageStats}
                 onPreviewImage={previewImage}
                 onNavigate={handleNavigate}
+                onMonthClick={handleMonthClick}
             />
 
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 pb-10">
