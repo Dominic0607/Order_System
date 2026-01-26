@@ -176,12 +176,17 @@ const App: React.FC = () => {
                 if (response.ok) {
                     const result = await response.json();
                     if (result.status === 'success') {
-                        const newSettings = result.data.settings || result.data.Settings || [];
-                        // Update appData settings silently to trigger the check below
-                        setAppData(prev => ({
-                            ...prev,
-                            settings: newSettings
-                        }));
+                        const rawData = result.data || {};
+                        const newSettings = rawData.settings || rawData.Settings || [];
+                        
+                        // Only update settings part of state to avoid full re-render flickering
+                        setAppData(prev => {
+                            // Simple check if settings actually changed to prevent loop
+                            if (JSON.stringify(prev.settings) !== JSON.stringify(newSettings)) {
+                                return { ...prev, settings: newSettings };
+                            }
+                            return prev;
+                        });
                     }
                 }
             } catch (err) {
@@ -215,7 +220,7 @@ const App: React.FC = () => {
                 
                 // Force Logout if action dictates
                 if (systemSetting.Action === 'ForceLogout') {
-                    showNotification("System Updated. Forced Logout initiated...", 'info');
+                    showNotification("System Updated. Updating...", 'info');
                     // Add a slight delay for user to see the message
                     setTimeout(() => {
                         logout();
