@@ -164,7 +164,37 @@ const App: React.FC = () => {
         setRefreshTimestamp(Date.now());
     };
 
-    // System Update Check
+    // --- SYSTEM UPDATE REAL-TIME POLLING ---
+    useEffect(() => {
+        // Only poll if user is logged in
+        if (!currentUser) return;
+
+        const checkForUpdates = async () => {
+            try {
+                // Fetch ONLY static data silently (no loading spinner) to check settings
+                const response = await fetch(`${WEB_APP_URL}/api/static-data`);
+                if (response.ok) {
+                    const result = await response.json();
+                    if (result.status === 'success') {
+                        const newSettings = result.data.settings || result.data.Settings || [];
+                        // Update appData settings silently to trigger the check below
+                        setAppData(prev => ({
+                            ...prev,
+                            settings: newSettings
+                        }));
+                    }
+                }
+            } catch (err) {
+                console.warn("Silent poll failed", err);
+            }
+        };
+
+        // Poll every 15 seconds
+        const intervalId = setInterval(checkForUpdates, 15000);
+        return () => clearInterval(intervalId);
+    }, [currentUser]);
+
+    // System Update Action Trigger
     useEffect(() => {
         if (!appData?.settings || !currentUser) return;
 
@@ -185,7 +215,7 @@ const App: React.FC = () => {
                 
                 // Force Logout if action dictates
                 if (systemSetting.Action === 'ForceLogout') {
-                    showNotification("System Updated. Updating...", 'info');
+                    showNotification("System Updated. Forced Logout initiated...", 'info');
                     // Add a slight delay for user to see the message
                     setTimeout(() => {
                         logout();
