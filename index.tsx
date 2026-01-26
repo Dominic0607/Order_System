@@ -40,9 +40,11 @@ try {
     );
 } catch (error) {
     console.error("Failed to mount application:", error);
-    rootElement.innerHTML = `<div style="color: red; padding: 20px;">
-        <h1>Application Error</h1>
+    // Added z-index and background to ensure error is visible over the app background
+    rootElement.innerHTML = `<div style="color: #ff6b6b; padding: 20px; background: rgba(0,0,0,0.9); position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 9999; overflow: auto;">
+        <h1 style="font-size: 24px; margin-bottom: 10px;">Application Error</h1>
         <p>Failed to load application. Please check the console for details.</p>
-        <pre>${error instanceof Error ? error.message : String(error)}</pre>
+        <pre style="background: #333; padding: 10px; border-radius: 5px; white-space: pre-wrap;">${error instanceof Error ? error.message : String(error)}</pre>
+        <button onclick="window.location.reload()" style="margin-top: 20px; padding: 10px 20px; background: #3b82f6; color: white; border: none; border-radius: 5px; cursor: pointer;">Reload Page</button>
     </div>`;
 }

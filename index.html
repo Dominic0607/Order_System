@@ -8,7 +8,7 @@
     
     <!-- PWA Manifest -->
     <link rel="manifest" href="./manifest.json">
-    <link rel="manifest" href="%PUBLIC_URL%/manifest.json" />
+    
     <!-- iOS Support for Standalone Mode -->
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -32,7 +32,19 @@
     <link href="https://fonts.googleapis.com/css2?family=Kantumruy+Pro:ital,wght@0,100..700;1,100..700&display=swap" rel="stylesheet">
     
     <link rel="stylesheet" href="index.css">
+    
+    <!-- Global Error Handler: Shows errors on screen instead of blank page -->
     <script>
+      window.onerror = function(message, source, lineno, colno, error) {
+        const root = document.getElementById('root');
+        if (root && root.innerHTML.trim() === '') {
+            const errorDiv = document.createElement('div');
+            errorDiv.style.cssText = 'position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.9); color:red; padding:20px; z-index:9999; overflow:auto; font-family:monospace;';
+            errorDiv.innerHTML = '<h3>Startup Error</h3><p>' + message + '</p><p>' + source + ':' + lineno + '</p>';
+            document.body.appendChild(errorDiv);
+        }
+      };
+      
       (function() {
         window.global = window;
         window.process = window.process || {
@@ -42,6 +54,10 @@
         };
       })();
     </script>
+
+    <!-- ES Module Shims: Critical for Import Map compatibility in older browsers/Safari -->
+    <script async src="https://ga.jspm.io/npm:es-module-shims@1.10.0/dist/es-module-shims.js"></script>
+
 <script type="importmap">
 {
   "imports": {
