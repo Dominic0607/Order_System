@@ -15,13 +15,13 @@ const DriverSelector: React.FC<DriverSelectorProps> = ({ drivers, selectedDriver
     const sfxSelect = useRef<HTMLAudioElement | null>(null);
 
     useEffect(() => {
-        // Updated Sci-fi UI sounds
-        // Hover: Crisp digital blip
+        // High-Tech Digital Interface Sounds
+        // Hover: Short crisp digital tick
         sfxHover.current = new Audio('https://assets.mixkit.co/active_storage/sfx/2572/2572-preview.mp3'); 
-        // Select: Mechanical Energy Lock-in
+        // Select: Mechanical/Sci-fi Lock-in sound
         sfxSelect.current = new Audio('https://assets.mixkit.co/active_storage/sfx/2570/2570-preview.mp3'); 
         
-        if (sfxHover.current) sfxHover.current.volume = 0.2;
+        if (sfxHover.current) sfxHover.current.volume = 0.15;
         if (sfxSelect.current) sfxSelect.current.volume = 0.4;
     }, []);
 
@@ -64,6 +64,7 @@ const DriverSelector: React.FC<DriverSelectorProps> = ({ drivers, selectedDriver
                     background: #0f172a; /* Slate 900 */
                     border-radius: 1rem;
                     z-index: 1;
+                    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.5);
                 }
 
                 /* Electric Flux Effect (Active State) */
@@ -73,21 +74,21 @@ const DriverSelector: React.FC<DriverSelectorProps> = ({ drivers, selectedDriver
                     inset: -2px;
                     z-index: -1;
                     /* Electric Gradient Colors: Cyan -> Blue -> Purple -> Cyan */
-                    background: conic-gradient(from var(--angle), transparent 70%, #22d3ee, #3b82f6, #a855f7, #22d3ee);
+                    background: conic-gradient(from var(--angle), transparent 60%, #22d3ee, #3b82f6, #a855f7, #22d3ee);
                     border-radius: inherit;
-                    animation: spin-flux 2.5s linear infinite;
+                    animation: spin-flux 2s linear infinite;
                 }
 
                 /* Outer Glow (Blur) */
                 .flux-card.selected::before {
-                    filter: blur(12px);
-                    opacity: 0.6;
+                    filter: blur(10px);
+                    opacity: 0.7;
                 }
 
                 /* Floating Text Animation */
                 @keyframes float-text {
                     0%, 100% { transform: translateY(0); }
-                    50% { transform: translateY(-3px); }
+                    50% { transform: translateY(-2px); }
                 }
                 .animate-float-text {
                     animation: float-text 3s ease-in-out infinite;
@@ -100,7 +101,7 @@ const DriverSelector: React.FC<DriverSelectorProps> = ({ drivers, selectedDriver
                     <p className="text-gray-500 font-black uppercase tracking-[0.2em] text-[10px]">NO DRIVERS DETECTED</p>
                 </div>
             ) : (
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-5 p-1">
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-5 p-2">
                     {drivers.map((d) => (
                         <DriverCard 
                             key={d.DriverName}
@@ -116,12 +117,14 @@ const DriverSelector: React.FC<DriverSelectorProps> = ({ drivers, selectedDriver
     );
 };
 
-const DriverCard = ({ driver, isSelected, onSelect, onHover }: { 
-    driver: Driver, 
-    isSelected: boolean, 
-    onSelect: () => void,
-    onHover: () => void 
-}) => {
+interface DriverCardProps {
+    driver: Driver;
+    isSelected: boolean;
+    onSelect: () => void;
+    onHover: () => void;
+}
+
+const DriverCard: React.FC<DriverCardProps> = ({ driver, isSelected, onSelect, onHover }) => {
     return (
         <div
             onClick={onSelect}
@@ -130,7 +133,7 @@ const DriverCard = ({ driver, isSelected, onSelect, onHover }: {
                 flux-card relative h-48 cursor-pointer transition-all duration-300 group overflow-visible
                 flex flex-col items-center justify-end pb-3
                 ${isSelected 
-                    ? 'selected scale-[1.03]' 
+                    ? 'selected scale-[1.03]' // Reduced scaling from previous versions
                     : 'border border-white/5 hover:border-blue-500/30 grayscale opacity-70 hover:opacity-100 hover:grayscale-0'
                 }
             `}
@@ -151,7 +154,7 @@ const DriverCard = ({ driver, isSelected, onSelect, onHover }: {
             {/* Driver Image */}
             <div className={`
                 absolute inset-x-0 transition-all duration-500 z-10 flex justify-center
-                ${isSelected ? 'top-2 bottom-12' : 'top-3 bottom-10'}
+                ${isSelected ? 'top-3 bottom-12' : 'top-4 bottom-10'}
             `}>
                 <div className={`
                     relative w-full h-full max-w-[85%] rounded-xl overflow-hidden transition-all duration-500
