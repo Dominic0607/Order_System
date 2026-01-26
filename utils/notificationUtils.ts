@@ -26,62 +26,58 @@ export const requestNotificationPermission = async (): Promise<boolean> => {
 
 /**
  * Sends a system native notification using Service Worker (if available) or standard Notification API.
- * Optimized for high reliability on Android and Windows.
+ * Optimized for Chrome compatibility.
  */
 export const sendSystemNotification = async (title: string, body: string) => {
     if (!('Notification' in window)) return;
 
-    // Check permission again
     if (Notification.permission !== 'granted') {
         return;
     }
 
-    // Prepare Icon (Use a fallback if the main logo is complex, but try logo first)
-    const iconUrl = convertGoogleDriveUrl(APP_LOGO_URL) || 'https://cdn-icons-png.flaticon.com/512/733/733585.png';
+    // CHROME FIX: Google Drive images (redirects) often break Chrome Notifications.
+    // We use a safe, static CDN image for the notification icon to ensure it displays.
+    const safeIcon = "https://cdn-icons-png.flaticon.com/512/1827/1827404.png"; // Bell Icon
 
-    // Options configuration
-    // Note: We append Date.now() to the tag to force the browser to treat it as a NEW notification every time
-    // This solves the issue where notifications stop appearing if they have the same tag.
+    const uniqueTag = 'osystem-alert-' + Date.now();
+
     const options: any = {
         body: body,
-        icon: iconUrl,
-        badge: iconUrl, // Small icon for Android status bar
-        vibrate: [200, 100, 200, 100, 200], // Longer vibration pattern
-        tag: 'osystem-alert-' + Date.now(), // FORCE UNIQUE TAG
+        icon: safeIcon, 
+        badge: safeIcon,
+        vibrate: [200, 100, 200],
+        tag: uniqueTag,
         renotify: true,
-        requireInteraction: true, // Keep notification on screen until user interacts (Desktop)
+        requireInteraction: true, // Forces notification to stay until user clicks (Good for Chrome)
         data: {
-            url: window.location.href // Used by SW to focus window
-        }
+            url: window.location.href
+        },
+        silent: false
     };
 
-    try {
-        // Method 1: Try Service Worker (Most reliable for Mobile/PWA)
-        if ('serviceWorker' in navigator) {
+    // 1. Try Service Worker (Preferred for Chrome/Android)
+    if ('serviceWorker' in navigator) {
+        try {
             const registration = await navigator.serviceWorker.getRegistration();
-            
-            if (registration) {
-                // Check if active
-                if(registration.active) {
-                    await registration.showNotification(title, options);
-                    console.log("Notification sent via Service Worker");
-                    return;
-                }
+            if (registration && registration.active) {
+                await registration.showNotification(title, options);
+                console.log("Notification sent via Service Worker");
+                return;
             }
+        } catch (e) {
+            console.warn("Service Worker notification failed, trying fallback...", e);
         }
-    } catch (e) {
-        console.warn("SW Notification failed, falling back to classic API", e);
     }
 
-    // Method 2: Classic Web Notification API (Fallback for Desktop)
+    // 2. Fallback to Classic API (Works for Safari/Desktop if SW fails)
     try {
         const notification = new Notification(title, options);
         notification.onclick = function() {
             window.focus();
             notification.close();
         };
-        console.log("Notification sent via Classic API");
+        console.log("Notification sent via Web API");
     } catch (e) {
-        console.error("All notification methods failed:", e);
+        console.error("Notification failed completely:", e);
     }
 };
