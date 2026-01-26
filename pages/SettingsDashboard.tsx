@@ -1,4 +1,3 @@
-
 import React, { useState, useContext, useEffect, useRef, useMemo } from 'react';
 import { AppContext } from '../context/AppContext';
 import Spinner from '../components/common/Spinner';
@@ -300,13 +299,46 @@ const ConfigEditModal = ({ section, item, onClose, onSave }: { section: ConfigSe
     );
 };
 
+const SystemUpdateModal = ({ isOpen, onClose, onConfirm, isProcessing }: { isOpen: boolean, onClose: () => void, onConfirm: () => void, isProcessing: boolean }) => {
+    if (!isOpen) return null;
+    return (
+        <Modal isOpen={isOpen} onClose={onClose} maxWidth="max-w-md">
+            <div className="p-6 text-center">
+                <div className="w-16 h-16 bg-red-500/10 rounded-full flex items-center justify-center mx-auto mb-4 border border-red-500/20 animate-pulse">
+                    <svg className="w-8 h-8 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+                </div>
+                <h3 className="text-xl font-black text-white mb-2 uppercase tracking-tight">System Update</h3>
+                <p className="text-gray-400 text-sm mb-8 leading-relaxed">
+                    សកម្មភាពនេះនឹងតម្រូវឱ្យអ្នកប្រើប្រាស់ទាំងអស់ (All Users) ចាកចេញពីប្រព័ន្ធ (Log Out) ដើម្បីធ្វើបច្ចុប្បន្នភាព។
+                    <br/><br/>
+                    <span className="text-red-400 font-bold bg-red-900/20 px-2 py-1 rounded">តើអ្នកប្រាកដទេ?</span>
+                </p>
+                <div className="flex gap-3 justify-center">
+                    <button onClick={onClose} className="px-6 py-3 rounded-xl bg-gray-800 text-gray-400 font-bold hover:bg-gray-700 transition-all border border-gray-700">បោះបង់</button>
+                    <button 
+                        onClick={onConfirm} 
+                        disabled={isProcessing}
+                        className="px-6 py-3 rounded-xl bg-red-600 text-white font-bold hover:bg-red-500 transition-all flex items-center gap-2 shadow-lg shadow-red-900/20 active:scale-95 disabled:opacity-50"
+                    >
+                        {isProcessing ? <Spinner size="sm" /> : 'Confirm Update'}
+                    </button>
+                </div>
+            </div>
+        </Modal>
+    );
+};
+
 const SettingsDashboard: React.FC<SettingsDashboardProps> = ({ onBack, initialSection }) => {
-    const { appData, refreshData } = useContext(AppContext);
+    const { appData, refreshData, logout } = useContext(AppContext);
     const [desktopSection, setDesktopSection] = useState<string>(initialSection || 'users');
     const [mobileSection, setMobileSection] = useState<string | null>(initialSection || null);
     const [modal, setModal] = useState<{ isOpen: boolean, sectionId: string, item: any | null }>({ isOpen: false, sectionId: '', item: null });
     const [localUsers, setLocalUsers] = useState<any[]>([]);
     const [isPdfOpen, setIsPdfOpen] = useState(false);
+    
+    // System Update State
+    const [isUpdateModalOpen, setIsUpdateModalOpen] = useState(false);
+    const [isUpdatingSystem, setIsUpdatingSystem] = useState(false);
 
     const activeId = (window.innerWidth < 768) ? mobileSection : desktopSection;
     const activeSection = configSections.find(s => s.id === activeId);
@@ -344,6 +376,35 @@ const SettingsDashboard: React.FC<SettingsDashboardProps> = ({ onBack, initialSe
             });
             await refreshData();
         } catch (err) { alert('Delete failed'); }
+    };
+
+    const handleSystemUpdate = async () => {
+        setIsUpdatingSystem(true);
+        try {
+            // Update a 'Settings' sheet to trigger logout for everyone
+            // We assume a 'Settings' sheet exists or we create a flag in a known sheet.
+            // Using 'Settings' sheet with Key='SystemVersion', Value=Timestamp, Action='ForceLogout'
+            await fetch(`${WEB_APP_URL}/api/admin/update-sheet`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    sheetName: 'Settings', 
+                    primaryKey: { 'Key': 'SystemVersion' },
+                    newData: { 'Value': Date.now().toString(), 'Action': 'ForceLogout' } 
+                })
+            });
+            
+            // Wait a bit to simulate processing and let the server handle it
+            await new Promise(resolve => setTimeout(resolve, 2000));
+            
+            // Logout current admin to complete the cycle locally
+            logout();
+            window.location.reload();
+        } catch (err) {
+            console.error(err);
+            setIsUpdatingSystem(false);
+            alert("Update command failed. Check connection.");
+        }
     };
 
     // Mobile Categories View
@@ -389,6 +450,16 @@ const SettingsDashboard: React.FC<SettingsDashboardProps> = ({ onBack, initialSe
                     </div>
                 </div>
                 <div className="flex gap-2 w-full sm:w-auto">
+                    {/* Update Version Button */}
+                    <button 
+                        onClick={() => setIsUpdateModalOpen(true)} 
+                        className="flex-1 sm:flex-none btn bg-gray-800 border border-gray-700 hover:border-red-500/50 hover:bg-red-900/10 hover:text-red-400 text-gray-400 px-4 transition-all flex items-center justify-center gap-2"
+                        title="Update Version & Force Logout"
+                    >
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+                        <span className="hidden xl:inline text-xs font-bold uppercase tracking-wider">Update Version</span>
+                    </button>
+
                     {activeId === 'pages' && <button onClick={() => setIsPdfOpen(true)} className="flex-1 sm:flex-none btn btn-secondary px-6">PDF Export</button>}
                     <button onClick={() => setModal({ isOpen: true, sectionId: activeId, item: null })} className="flex-1 sm:flex-none btn btn-primary px-10 shadow-lg shadow-blue-600/20 font-black">+ បន្ថែមថ្មី</button>
                     <button onClick={onBack} className="hidden md:flex btn btn-secondary px-6">ត្រឡប់</button>
@@ -497,6 +568,13 @@ const SettingsDashboard: React.FC<SettingsDashboardProps> = ({ onBack, initialSe
                     onSave={() => { setModal({ ...modal, isOpen: false }); refreshData(); }}
                 />
             )}
+
+            <SystemUpdateModal 
+                isOpen={isUpdateModalOpen}
+                onClose={() => setIsUpdateModalOpen(false)}
+                onConfirm={handleSystemUpdate}
+                isProcessing={isUpdatingSystem}
+            />
 
             {isPdfOpen && (
                 <PagesPdfExportModal 

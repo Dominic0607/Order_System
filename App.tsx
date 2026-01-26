@@ -102,6 +102,7 @@ const App: React.FC = () => {
                         pages: rawData.pages || rawData.TeamsPages || [],
                         users: rawData.users || rawData.Users || [],
                         products: rawData.products || rawData.Products || [],
+                        settings: rawData.settings || rawData.Settings || [],
                     };
                     
                     setAppData(processedData);
@@ -162,6 +163,38 @@ const App: React.FC = () => {
         await fetchData(true); // Force fetch
         setRefreshTimestamp(Date.now());
     };
+
+    // System Update Check
+    useEffect(() => {
+        if (!appData?.settings || !currentUser) return;
+
+        const systemSetting = Array.isArray(appData.settings) 
+            ? appData.settings.find((s: any) => s.Key === 'SystemVersion') 
+            : null;
+
+        if (systemSetting && systemSetting.Value) {
+            const serverVersion = String(systemSetting.Value);
+            const localVersion = localStorage.getItem('systemVersion');
+
+            // If versions differ
+            if (localVersion !== serverVersion) {
+                console.log(`System Update Detected: ${localVersion} -> ${serverVersion}`);
+                
+                // Update local version immediately to prevent loop if we just refresh
+                localStorage.setItem('systemVersion', serverVersion);
+                
+                // Force Logout if action dictates
+                if (systemSetting.Action === 'ForceLogout') {
+                    showNotification("System Updated. Updating...", 'info');
+                    // Add a slight delay for user to see the message
+                    setTimeout(() => {
+                        logout();
+                        window.location.reload(); 
+                    }, 2000);
+                }
+            }
+        }
+    }, [appData.settings, currentUser]);
 
     const updateCurrentUser = (updatedData: Partial<User>) => {
         if (currentUser) {
