@@ -28,9 +28,6 @@ const DeliveryListGeneratorModal: React.FC<DeliveryListGeneratorModalProps> = ({
     const [selectedShipping, setSelectedShipping] = useState('ACC Delivery Agent');
 
     // Step 2: Verification State (Set of Order IDs that are successful)
-    // Default: Check ALL initially or None? Usually easier if we assume success and uncheck failures, 
-    // but based on prompt "verify by clicking", let's default to verified for easier workflow, or empty.
-    // Let's default to empty (Unverified) so they have to check it (Scan/Check process).
     const [verifiedIds, setVerifiedIds] = useState<Set<string>>(new Set());
 
     // Reset state on open
@@ -87,7 +84,8 @@ const DeliveryListGeneratorModal: React.FC<DeliveryListGeneratorModalProps> = ({
         text += `🏭 ឃ្លាំង: ${selectedStore}\n`;
         text += `--------------------------------\n\n`;
         
-        let totalSuccessUSD = 0;
+        let totalSuccessPaid = 0;
+        let totalSuccessCOD = 0;
         let totalFailedUSD = 0;
 
         filteredOrders.forEach((o, index) => {
@@ -129,7 +127,11 @@ const DeliveryListGeneratorModal: React.FC<DeliveryListGeneratorModalProps> = ({
             
             // Calculate Split Totals
             if (isSuccess) {
-                totalSuccessUSD += grandTotal;
+                if (isPaid) {
+                    totalSuccessPaid += grandTotal;
+                } else {
+                    totalSuccessCOD += grandTotal;
+                }
             } else {
                 totalFailedUSD += grandTotal;
             }
@@ -139,11 +141,17 @@ const DeliveryListGeneratorModal: React.FC<DeliveryListGeneratorModalProps> = ({
             text += "    (មិនមានទិន្នន័យសម្រាប់ថ្ងៃនេះ)\n";
         }
 
+        const totalSuccessUSD = totalSuccessPaid + totalSuccessCOD;
+
         text += `--------------------------------\n`;
         text += `📦 **ចំនួនកញ្ចប់សរុប:** ${filteredOrders.length} កញ្ចប់\n`;
         
         // Bold Success Total
         text += `💰 **សរុបទឹកប្រាក់ (ដឹកជោគជ័យ): $${totalSuccessUSD.toFixed(2)}**\n`;
+        if (totalSuccessUSD > 0) {
+            text += `   ├─ 🟢 Paid: $${totalSuccessPaid.toFixed(2)}\n`;
+            text += `   └─ 🔴 COD: $${totalSuccessCOD.toFixed(2)}\n`;
+        }
         
         // Add Emoji for Failed Total
         if (totalFailedUSD > 0) {
