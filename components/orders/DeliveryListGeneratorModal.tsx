@@ -149,7 +149,7 @@ const DeliveryListGeneratorModal: React.FC<DeliveryListGeneratorModalProps> = ({
         // Bold Success Total
         text += `💰 **សរុបទឹកប្រាក់ (ដឹកជោគជ័យ): $${totalSuccessUSD.toFixed(2)}**\n`;
         if (totalSuccessUSD > 0) {
-            text += `   ├─ 🟢 _Paid: $${totalSuccessPaid.toFixed(2)}_\n`;
+            text += `   ├─ 🟢 Paid: $${totalSuccessPaid.toFixed(2)}\n`;
             text += `   └─ 🔴 **COD: $${totalSuccessCOD.toFixed(2)}** 💸\n`;
         }
         
