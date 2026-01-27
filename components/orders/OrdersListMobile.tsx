@@ -85,6 +85,19 @@ const OrdersListMobile: React.FC<OrdersListMobileProps> = ({
         return phone;
     };
 
+    // Safe Date Parsing for iOS
+    const getSafeDateString = (dateStr: string) => {
+        try {
+            if (!dateStr) return '';
+            const safeStr = dateStr.replace(' ', 'T');
+            const date = new Date(safeStr);
+            if (isNaN(date.getTime())) return dateStr; // Return original if parse fails
+            return date.toLocaleDateString('km-KH');
+        } catch (e) {
+            return dateStr;
+        }
+    };
+
     return (
         <div className="space-y-5 pb-40">
             {/* Grand Total Summary */}
@@ -166,7 +179,7 @@ const OrdersListMobile: React.FC<OrdersListMobileProps> = ({
                                                 )}
                                             </td>
                                             <td className="p-3 text-[9px] text-gray-500 font-bold">
-                                                {new Date(order.Timestamp).toLocaleDateString('km-KH')}
+                                                {getSafeDateString(order.Timestamp)}
                                             </td>
                                         </tr>
                                     );
@@ -243,7 +256,7 @@ const OrdersListMobile: React.FC<OrdersListMobileProps> = ({
                                         {order['Payment Status']}
                                     </span>
                                     <span className="text-[9px] text-gray-600 font-bold mt-1">
-                                        {new Date(order.Timestamp).toLocaleDateString('km-KH')}
+                                        {getSafeDateString(order.Timestamp)}
                                     </span>
                                 </div>
                             </div>
@@ -309,7 +322,7 @@ const OrdersListMobile: React.FC<OrdersListMobileProps> = ({
                                             <p className="text-[9px] text-gray-500 font-black uppercase tracking-widest mb-1">Shipping</p>
                                             <div className="flex items-center gap-1.5">
                                                 {shippingLogo && <img src={shippingLogo} className="w-3.5 h-3.5 object-contain" alt="" />}
-                                                <p className="text-xs font-bold text-orange-400 truncate max-w-[80px]">{order['Internal Shipping Method']}</p>
+                                                <span className="text-xs font-bold text-orange-400">{order['Internal Shipping Method']?.substring(0, 10)}</span>
                                             </div>
                                         </div>
                                         {order['Internal Cost'] > 0 && (

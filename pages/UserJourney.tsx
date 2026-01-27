@@ -113,6 +113,13 @@ const UserOrdersView: React.FC<{ team: string; onAdd: () => void }> = ({ team, o
         return { start, end };
     };
 
+    // Helper for safe date parsing on iOS
+    const getSafeDate = (dateStr: string) => {
+        if (!dateStr) return new Date();
+        // Replace space with T for ISO compliance (iOS requirement)
+        return new Date(dateStr.replace(' ', 'T'));
+    };
+
     // 1. Initial Data Fetch (Runs once)
     useEffect(() => {
         const fetchOrders = async () => {
@@ -146,7 +153,9 @@ const UserOrdersView: React.FC<{ team: string; onAdd: () => void }> = ({ team, o
             // Filter Raw Data first
             const rawFiltered = allRawOrdersRef.current.filter(o => {
                 if (!o.Timestamp) return false;
-                const orderDate = new Date(o.Timestamp);
+                const orderDate = getSafeDate(o.Timestamp);
+                if (isNaN(orderDate.getTime())) return false;
+
                 if (start && orderDate < start) return false;
                 if (end && orderDate > end) return false;
                 return true;
@@ -168,7 +177,11 @@ const UserOrdersView: React.FC<{ team: string; onAdd: () => void }> = ({ team, o
             
             // orders contains orders ONLY for the current user's team
             const teamOnly = parsedChunk.filter(o => (o.Team || '').trim() === (team || '').trim());
-            setOrders(teamOnly.sort((a, b) => new Date(b.Timestamp).getTime() - new Date(a.Timestamp).getTime()));
+            setOrders(teamOnly.sort((a, b) => {
+                const dA = getSafeDate(a.Timestamp);
+                const dB = getSafeDate(b.Timestamp);
+                return (isNaN(dB.getTime()) ? 0 : dB.getTime()) - (isNaN(dA.getTime()) ? 0 : dA.getTime());
+            }));
             setProcessing(false);
         }, 10);
     };
@@ -208,7 +221,8 @@ const UserOrdersView: React.FC<{ team: string; onAdd: () => void }> = ({ team, o
                     // Date Check
                     if (start || end) {
                         if (!o.Timestamp) return false;
-                        const d = new Date(o.Timestamp);
+                        const d = getSafeDate(o.Timestamp);
+                        if (isNaN(d.getTime())) return false;
                         if (start && d < start) return false;
                         if (end && d > end) return false;
                     }
@@ -231,7 +245,11 @@ const UserOrdersView: React.FC<{ team: string; onAdd: () => void }> = ({ team, o
                     };
                 });
 
-                setDrilldownData(parsed.sort((a, b) => new Date(b.Timestamp).getTime() - new Date(a.Timestamp).getTime()));
+                setDrilldownData(parsed.sort((a, b) => {
+                    const dA = getSafeDate(a.Timestamp);
+                    const dB = getSafeDate(b.Timestamp);
+                    return (isNaN(dB.getTime()) ? 0 : dB.getTime()) - (isNaN(dA.getTime()) ? 0 : dA.getTime());
+                }));
                 setProcessing(false);
             }, 10);
         }

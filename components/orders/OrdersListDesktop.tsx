@@ -103,6 +103,19 @@ const OrdersListDesktop: React.FC<OrdersListDesktopProps> = ({
         return phone;
     };
 
+    // Safe Date Parsing for iOS
+    const getSafeDateObj = (dateStr: string) => {
+        try {
+            if (!dateStr) return new Date();
+            const safeStr = dateStr.replace(' ', 'T');
+            const date = new Date(safeStr);
+            if (isNaN(date.getTime())) return new Date(); // Fallback
+            return date;
+        } catch (e) {
+            return new Date();
+        }
+    };
+
     return (
         <div className="page-card !p-0 shadow-2xl border-white/5 bg-gray-900/60 backdrop-blur-3xl rounded-[2.5rem] flex flex-col h-[calc(100vh-220px)]">
             {/* Header Table (Sticky) */}
@@ -200,6 +213,8 @@ const OrdersListDesktop: React.FC<OrdersListDesktopProps> = ({
                                 const isNearBottom = index > orders.length - 3 && orders.length > 4;
                                 const tooltipPosClass = isNearBottom ? "bottom-full mb-3" : "top-full mt-3";
                                 const tooltipArrowClass = isNearBottom ? "-bottom-2 border-r border-b" : "-top-2 border-t border-l";
+                                
+                                const orderDate = getSafeDateObj(order.Timestamp);
 
                                 return (
                                     <tr key={orderId} className={`${isVerified ? 'bg-emerald-500/[0.03]' : isSelected ? 'bg-blue-500/10' : 'hover:bg-white/[0.02]'} transition-all group relative`} style={{ height: `${ROW_HEIGHT}px` }}>
@@ -305,8 +320,8 @@ const OrdersListDesktop: React.FC<OrdersListDesktopProps> = ({
                                         {isVisible('date') && (
                                             <td className="px-4 py-5">
                                                 <div className="flex flex-col items-start">
-                                                    <span className="font-bold text-gray-400 text-[clamp(11px,0.8vw,12px)]">{new Date(order.Timestamp).toLocaleDateString('km-KH')}</span>
-                                                    <span className="font-mono text-blue-500/80 font-black text-[clamp(10px,0.7vw,11px)]">{new Date(order.Timestamp).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })}</span>
+                                                    <span className="font-bold text-gray-400 text-[clamp(11px,0.8vw,12px)]">{orderDate.toLocaleDateString('km-KH')}</span>
+                                                    <span className="font-mono text-blue-500/80 font-black text-[clamp(10px,0.7vw,11px)]">{orderDate.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })}</span>
                                                 </div>
                                             </td>
                                         )}
