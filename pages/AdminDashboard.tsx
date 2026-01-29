@@ -90,7 +90,13 @@ const AdminDashboard: React.FC = () => {
             if (response.ok) {
                 const result = await response.json();
                 if (result.status === 'success') {
-                    const rawOrders: FullOrder[] = Array.isArray(result.data) ? result.data.filter((o: any) => o !== null) : [];
+                    // Filter out Opening Balance
+                    const rawOrders: FullOrder[] = Array.isArray(result.data) ? result.data.filter((o: any) => 
+                        o !== null && 
+                        o['Order ID'] !== 'Opening_Balance' && 
+                        o['Order ID'] !== 'Opening Balance'
+                    ) : [];
+                    
                     const parsed = rawOrders.map(o => {
                         let products = [];
                         try { if (o['Products (JSON)']) products = JSON.parse(o['Products (JSON)']); } catch(e) {}

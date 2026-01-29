@@ -67,10 +67,12 @@ const ReportDashboard: React.FC<ReportDashboardProps> = ({ activeReport, onBack,
             const usersData = await usersRes.json();
             
             if (ordersData.status === 'success') {
-                const parsed = (ordersData.data || []).filter((o: any) => o !== null).map((o: any) => {
-                    let p = []; try { if (o['Products (JSON)']) p = JSON.parse(o['Products (JSON)']); } catch (e) {}
-                    return { ...o, Products: p };
-                });
+                const parsed = (ordersData.data || [])
+                    .filter((o: any) => o !== null && o['Order ID'] !== 'Opening_Balance' && o['Order ID'] !== 'Opening Balance')
+                    .map((o: any) => {
+                        let p = []; try { if (o['Products (JSON)']) p = JSON.parse(o['Products (JSON)']); } catch (e) {}
+                        return { ...o, Products: p };
+                    });
                 setOrders(parsed);
             }
             if (usersData.status === 'success') setUsersList(usersData.data || []);
@@ -188,7 +190,17 @@ const ReportDashboard: React.FC<ReportDashboardProps> = ({ activeReport, onBack,
             <div className="min-h-[500px]">
                 {activeReport === 'overview' && <ReportsView orders={filteredOrders} reportType="overview" allOrders={orders} dateFilter={filters.datePreset} />}
                 {activeReport === 'sales_team' && <SalesByTeamPage orders={filteredOrders} onBack={onBack} />}
-                {activeReport === 'sales_page' && <SalesByPageReport orders={filteredOrders} onBack={onBack} />}
+                {activeReport === 'sales_page' && (
+                    <SalesByPageReport 
+                        orders={filteredOrders} 
+                        onBack={onBack} 
+                        onNavigate={onNavigate}
+                        contextFilters={filters}
+                        dateFilter={filters.datePreset}
+                        startDate={filters.startDate}
+                        endDate={filters.endDate}
+                    />
+                )}
                 {activeReport === 'shipping' && (
                     <ReportsView 
                         orders={filteredOrders} 

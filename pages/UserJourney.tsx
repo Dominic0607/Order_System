@@ -152,6 +152,9 @@ const UserOrdersView: React.FC<{ team: string; onAdd: () => void }> = ({ team, o
             
             // Filter Raw Data first
             const rawFiltered = allRawOrdersRef.current.filter(o => {
+                // Filter out Opening Balance
+                if (o['Order ID'] === 'Opening_Balance' || o['Order ID'] === 'Opening Balance') return false;
+
                 if (!o.Timestamp) return false;
                 const orderDate = getSafeDate(o.Timestamp);
                 if (isNaN(orderDate.getTime())) return false;
@@ -218,6 +221,9 @@ const UserOrdersView: React.FC<{ team: string; onAdd: () => void }> = ({ team, o
                 }
 
                 const filtered = raw.filter(o => {
+                    // Exclude Opening Balance
+                    if (o['Order ID'] === 'Opening_Balance' || o['Order ID'] === 'Opening Balance') return false;
+
                     // Date Check
                     if (start || end) {
                         if (!o.Timestamp) return false;

@@ -177,7 +177,12 @@ const OrdersDashboard: React.FC<OrdersDashboardProps> = ({ onBack, initialFilter
             const ordersData = await ordersRes.json();
             const usersData = await usersRes.json();
             if (ordersData.status === 'success') {
-                const rawData = (ordersData.data || []).filter((o: any) => o !== null && o['Order ID'] !== 'Opening Balance');
+                // Filter out Opening Balance (both formats)
+                const rawData = (ordersData.data || []).filter((o: any) => 
+                    o !== null && 
+                    o['Order ID'] !== 'Opening Balance' && 
+                    o['Order ID'] !== 'Opening_Balance'
+                );
                 const parsed = await parseOrdersInChunks(rawData);
                 setAllOrders(parsed.sort((a: any, b: any) => new Date(b.Timestamp).getTime() - new Date(a.Timestamp).getTime()));
             } else {
