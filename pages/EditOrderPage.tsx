@@ -49,6 +49,18 @@ const EditOrderPage: React.FC<EditOrderPageProps> = ({ order, onSaveSuccess, onC
 
     const formatForInput = (timestamp: string) => {
         if (!timestamp) return '';
+        
+        // Handle "YYYY-MM-DD H:mm" or "YYYY-MM-DD HH:mm" specifically
+        const match = timestamp.match(/^(\d{4})-(\d{1,2})-(\d{1,2})\s(\d{1,2}):(\d{2})/);
+        if (match) {
+            const y = match[1];
+            const m = match[2].padStart(2, '0');
+            const d = match[3].padStart(2, '0');
+            const h = match[4].padStart(2, '0');
+            const min = match[5].padStart(2, '0');
+            return `${y}-${m}-${d}T${h}:${min}`;
+        }
+
         const d = new Date(timestamp);
         if (isNaN(d.getTime())) return '';
         const pad = (n: number) => n.toString().padStart(2, '0');
@@ -59,6 +71,10 @@ const EditOrderPage: React.FC<EditOrderPageProps> = ({ order, onSaveSuccess, onC
         if (!e.target.value) return;
         const d = new Date(e.target.value);
         if (!isNaN(d.getTime())) {
+             // For saving, we can use ISO string as it's standard, 
+             // but if DB requires strict non-ISO, the backend should handle it or we format here.
+             // Assuming Backend accepts ISO or we convert to local string.
+             // Let's use ISO for state consistency.
              setFormData(prev => ({ ...prev, Timestamp: d.toISOString() }));
         }
     };

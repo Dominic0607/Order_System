@@ -165,6 +165,25 @@ const OrdersDashboard: React.FC<OrdersDashboardProps> = ({ onBack, initialFilter
         return processedOrders;
     };
 
+    // Robust Date Parsing helper for sorting
+    const getOrderTimestamp = (order: any) => {
+        const ts = order.Timestamp;
+        if (!ts) return 0;
+        
+        // Handle "YYYY-MM-DD H:mm" format explicitly
+        const match = ts.match(/^(\d{4})-(\d{1,2})-(\d{1,2})\s(\d{1,2}):(\d{2})/);
+        if (match) {
+            return new Date(
+                parseInt(match[1]),
+                parseInt(match[2]) - 1,
+                parseInt(match[3]),
+                parseInt(match[4]),
+                parseInt(match[5])
+            ).getTime();
+        }
+        return new Date(ts).getTime();
+    };
+
     const fetchAllOrders = async () => {
         setLoading(true);
         setLoadingProgress(0);
@@ -184,7 +203,9 @@ const OrdersDashboard: React.FC<OrdersDashboardProps> = ({ onBack, initialFilter
                     o['Order ID'] !== 'Opening_Balance'
                 );
                 const parsed = await parseOrdersInChunks(rawData);
-                setAllOrders(parsed.sort((a: any, b: any) => new Date(b.Timestamp).getTime() - new Date(a.Timestamp).getTime()));
+                
+                // Sort using the robust timestamp parser
+                setAllOrders(parsed.sort((a: any, b: any) => getOrderTimestamp(b) - getOrderTimestamp(a)));
             } else {
                 setFetchError(ordersData.message || "Failed to load orders");
             }
@@ -216,7 +237,10 @@ const OrdersDashboard: React.FC<OrdersDashboardProps> = ({ onBack, initialFilter
         return enrichedOrders.filter(order => {
             // 1. Date Filter
             if (filters.datePreset !== 'all') {
-                const orderDate = new Date(order.Timestamp);
+                // Use robust parsing for filtering as well
+                const ts = getOrderTimestamp(order);
+                const orderDate = new Date(ts);
+                
                 const now = new Date();
                 const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
                 let start: Date | null = null;

@@ -103,13 +103,26 @@ const OrdersListDesktop: React.FC<OrdersListDesktopProps> = ({
         return phone;
     };
 
-    // Safe Date Parsing for iOS
+    // Robust Date Parsing for custom format (YYYY-MM-DD H:mm)
     const getSafeDateObj = (dateStr: string) => {
+        if (!dateStr) return new Date();
+        
+        // Handle format: "2026-01-30 7:00"
+        const match = dateStr.match(/^(\d{4})-(\d{1,2})-(\d{1,2})\s(\d{1,2}):(\d{2})/);
+        if (match) {
+            return new Date(
+                parseInt(match[1]),
+                parseInt(match[2]) - 1, // Month is 0-indexed
+                parseInt(match[3]),
+                parseInt(match[4]),
+                parseInt(match[5])
+            );
+        }
+
+        // Fallback for other formats
         try {
-            if (!dateStr) return new Date();
-            const safeStr = dateStr.replace(' ', 'T');
-            const date = new Date(safeStr);
-            if (isNaN(date.getTime())) return new Date(); // Fallback
+            const date = new Date(dateStr);
+            if (isNaN(date.getTime())) return new Date();
             return date;
         } catch (e) {
             return new Date();
