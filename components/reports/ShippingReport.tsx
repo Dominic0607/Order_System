@@ -6,8 +6,6 @@ import GeminiButton from '../common/GeminiButton';
 import StatCard from '../performance/StatCard';
 import { convertGoogleDriveUrl } from '../../utils/fileUtils';
 import { FilterState } from '../orders/OrderFilters';
-import { jsPDF } from 'jspdf';
-import autoTable from 'jspdf-autotable';
 import { APP_LOGO_URL } from '../../constants';
 import Spinner from '../common/Spinner';
 
@@ -24,7 +22,6 @@ interface ShippingReportProps {
 const ShippingReport: React.FC<ShippingReportProps> = ({ orders, appData, dateFilter, startDate, endDate, onNavigate, contextFilters }) => {
     const [analysis, setAnalysis] = useState<string>('');
     const [loadingAnalysis, setLoadingAnalysis] = useState(false);
-    const [isExportingPdf, setIsExportingPdf] = useState(false);
     const [storeFilter, setStoreFilter] = useState<string>('All');
 
     // Filter Navigation Handler
@@ -164,199 +161,178 @@ const ShippingReport: React.FC<ShippingReportProps> = ({ orders, appData, dateFi
         document.body.removeChild(link);
     };
 
-    // --- Helper: Load Khmer Font with Robust Fallbacks ---
-    const loadKhmerFont = async (doc: jsPDF) => {
-        const fontUrls = [
-            // CDN 1: jsDelivr (Main)
-            'https://cdn.jsdelivr.net/gh/google/fonts@main/ofl/kantumruypro/KantumruyPro-Regular.ttf',
-            // CDN 2: Raw GitHub (Fallback)
-            'https://raw.githubusercontent.com/google/fonts/main/ofl/kantumruypro/KantumruyPro-Regular.ttf',
-            // CDN 3: Statically (Alternative)
-            'https://cdn.statically.io/gh/google/fonts/main/ofl/kantumruypro/KantumruyPro-Regular.ttf'
-        ];
-
-        for (const url of fontUrls) {
-            try {
-                console.log(`Attempting to fetch font from: ${url}`);
-                const response = await fetch(url);
-                if (!response.ok) throw new Error(`Status ${response.status}`);
-                
-                const buffer = await response.arrayBuffer();
-                const fontBase64 = arrayBufferToBase64(buffer);
-                
-                doc.addFileToVFS('Kantumruy.ttf', fontBase64);
-                doc.addFont('Kantumruy.ttf', 'Kantumruy', 'normal');
-                doc.setFont('Kantumruy');
-                
-                console.log("Font loaded successfully");
-                return true;
-            } catch (e) {
-                console.warn(`Failed to fetch font from ${url}`, e);
-                // Continue to next URL
-            }
+    // --- New Tab Print/Export Handler ---
+    const handleOpenPrintView = () => {
+        const printWindow = window.open('', '_blank');
+        if (!printWindow) {
+            alert("Please allow popups to view the report.");
+            return;
         }
+
+        const periodText = dateFilter === 'custom' ? `${startDate} to ${endDate}` : dateFilter.toUpperCase();
         
-        console.error("All font fetch attempts failed");
-        alert("បរាជ័យក្នុងការទាញយក Font ខ្មែរ។ PDF នឹងមិនបង្ហាញអក្សរខ្មែរត្រឹមត្រូវទេ។ (Failed to load Khmer font)");
-        return false;
-    };
+        // Helper to generate rows HTML
+        const generateRows = (data: any[], type: string) => {
+            return data.map((item, idx) => `
+                <tr class="border-b border-gray-200 hover:bg-gray-50">
+                    <td class="py-3 px-4 text-sm text-gray-700 font-bold">${idx + 1}</td>
+                    <td class="py-3 px-4 text-sm font-bold text-gray-800">${item.name}</td>
+                    <td class="py-3 px-4 text-center text-sm font-mono font-bold text-blue-600">${item.orders}</td>
+                    <td class="py-3 px-4 text-right text-sm font-mono font-bold text-gray-800">$${item.cost.toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
+                </tr>
+            `).join('');
+        };
 
-    const arrayBufferToBase64 = (buffer: ArrayBuffer) => {
-        let binary = '';
-        const bytes = new Uint8Array(buffer);
-        const len = bytes.byteLength;
-        for (let i = 0; i < len; i++) {
-            binary += String.fromCharCode(bytes[i]);
-        }
-        return window.btoa(binary);
-    };
-
-    // --- PDF Export with Khmer Support ---
-    const handleExportPDF = async () => {
-        if (isExportingPdf) return;
-        setIsExportingPdf(true);
-        
-        try {
-            const doc = new jsPDF();
-            
-            // 1. Load Font (Must await success)
-            // Even if it fails, we proceed, but with a warning shown in loadKhmerFont
-            await loadKhmerFont(doc);
-
-            // 2. Header
-            doc.setFontSize(18);
-            doc.setTextColor(40);
-            doc.text("របាយការណ៍ដឹកជញ្ជូន (Shipping Report)", 14, 20);
-            
-            doc.setFontSize(10);
-            doc.setTextColor(100);
-            const periodText = dateFilter === 'custom' ? `${startDate} to ${endDate}` : dateFilter.toUpperCase();
-            doc.text(`Period: ${periodText}`, 14, 26);
-            doc.text(`Store Filter: ${storeFilter}`, 14, 31);
-            doc.text(`Generated: ${new Date().toLocaleString('km-KH')}`, 14, 36);
-
-            // 3. Summary Metrics
-            const summaryData = [
-                ['Total Internal Cost', 'Customer Fees', 'Net Balance'],
-                [`$${shippingStats.totalInternalCost.toLocaleString()}`, `$${shippingStats.totalCustomerFee.toLocaleString()}`, `$${shippingStats.netShipping.toLocaleString()}`]
-            ];
-            
-            autoTable(doc, {
-                startY: 42,
-                head: [summaryData[0]],
-                body: [summaryData[1]],
-                theme: 'grid',
-                styles: { font: 'Kantumruy', fontStyle: 'normal' }, // Apply Khmer Font
-                headStyles: { fillColor: [240, 240, 240], textColor: [60, 60, 60], fontStyle: 'bold', halign: 'center' },
-                bodyStyles: { fillColor: [255, 255, 255], textColor: [0, 0, 0], fontStyle: 'bold', fontSize: 12, halign: 'center', minCellHeight: 12, valign: 'middle' },
-                columnStyles: {
-                    0: { textColor: [220, 38, 38] }, // Red
-                    1: { textColor: [22, 163, 74] }, // Green
-                    2: { textColor: [0, 0, 0] }      // Black
-                }
-            });
-
-            // 4. Table 1: Shipping Methods
-            doc.setFontSize(14);
-            doc.setTextColor(0);
-            // @ts-ignore
-            let finalY = doc.lastAutoTable.finalY + 15;
-            doc.text("1. ក្រុមហ៊ុនដឹកជញ្ជូន (Shipping Companies)", 14, finalY);
-
-            autoTable(doc, {
-                startY: finalY + 5,
-                head: [['ក្រុមហ៊ុន', 'ចំនួន (Orders)', 'ទឹកប្រាក់បង់ ($)']],
-                body: [
-                    ...shippingStats.methods.map(m => [m.name, m.orders, m.cost.toFixed(2)]),
-                    ['សរុប (TOTAL)', shippingStats.methods.reduce((s,i)=>s+i.orders,0), shippingStats.methods.reduce((s,i)=>s+i.cost,0).toFixed(2)]
-                ],
-                theme: 'striped',
-                styles: { font: 'Kantumruy' }, // Apply Khmer Font
-                headStyles: { fillColor: [41, 128, 185] },
-                footStyles: { fillColor: [240, 240, 240], textColor: [0, 0, 0], fontStyle: 'bold' },
-                didParseCell: (data) => {
-                    if (data.section === 'body' && data.row.index === shippingStats.methods.length) {
-                        data.row.styles.fontStyle = 'bold';
-                        data.row.styles.fillColor = [240, 240, 240];
+        const htmlContent = `
+            <!DOCTYPE html>
+            <html lang="km">
+            <head>
+                <meta charset="UTF-8">
+                <title>Shipping Report - ${storeFilter}</title>
+                <script src="https://cdn.tailwindcss.com"></script>
+                <link href="https://fonts.googleapis.com/css2?family=Kantumruy+Pro:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+                <style>
+                    body { font-family: 'Kantumruy Pro', sans-serif; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+                    @media print { 
+                        .no-print { display: none !important; } 
+                        body { background: white; }
+                        .page-break { page-break-inside: avoid; }
                     }
-                },
-                columnStyles: {
-                    1: { halign: 'center' },
-                    2: { halign: 'right' }
-                }
-            });
+                </style>
+            </head>
+            <body class="bg-gray-100 min-h-screen py-10 print:py-0">
+                
+                <!-- Action Bar (Hidden on Print) -->
+                <div class="no-print fixed top-0 left-0 right-0 bg-gray-900 text-white p-4 shadow-lg flex justify-between items-center z-50">
+                    <div class="font-bold text-lg">Shipping Report Preview</div>
+                    <div class="flex gap-3">
+                        <button onclick="window.close()" class="px-4 py-2 rounded bg-gray-700 hover:bg-gray-600 transition">Close</button>
+                        <button onclick="window.print()" class="px-6 py-2 rounded bg-blue-600 hover:bg-blue-500 font-bold transition shadow-lg flex items-center gap-2">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path></svg>
+                            Print / Save as PDF
+                        </button>
+                    </div>
+                </div>
 
-            // 5. Table 2: Drivers
-            // @ts-ignore
-            finalY = doc.lastAutoTable.finalY + 15;
-            if (finalY > 250) { doc.addPage(); finalY = 20; }
-            
-            doc.text("2. អ្នកដឹក (Drivers)", 14, finalY);
+                <!-- Report Container (A4 Style) -->
+                <div class="max-w-[210mm] mx-auto bg-white p-10 shadow-2xl print:shadow-none print:w-full mt-10 print:mt-0 mb-10">
+                    
+                    <!-- Header -->
+                    <div class="flex justify-between items-start border-b-2 border-black pb-6 mb-8">
+                        <div>
+                            <h1 class="text-3xl font-black text-gray-900 uppercase tracking-tight">របាយការណ៍ដឹកជញ្ជូន</h1>
+                            <p class="text-sm text-gray-500 font-bold mt-1 uppercase tracking-widest">Shipping & Fulfillment Cost</p>
+                        </div>
+                        <div class="text-right">
+                            <p class="text-xs font-bold text-gray-500 uppercase">Period</p>
+                            <p class="text-sm font-black text-gray-900">${periodText}</p>
+                            <p class="text-xs font-bold text-gray-500 uppercase mt-2">Filter Store</p>
+                            <p class="text-sm font-black text-blue-600">${storeFilter}</p>
+                        </div>
+                    </div>
 
-            autoTable(doc, {
-                startY: finalY + 5,
-                head: [['ឈ្មោះអ្នកដឹក', 'ចំនួន (Orders)', 'ទឹកប្រាក់បង់ ($)']],
-                body: [
-                    ...shippingStats.drivers.map(d => [d.name, d.orders, d.cost.toFixed(2)]),
-                    ['សរុប (TOTAL)', shippingStats.drivers.reduce((s,i)=>s+i.orders,0), shippingStats.drivers.reduce((s,i)=>s+i.cost,0).toFixed(2)]
-                ],
-                theme: 'striped',
-                styles: { font: 'Kantumruy' }, // Apply Khmer Font
-                headStyles: { fillColor: [39, 174, 96] },
-                didParseCell: (data) => {
-                    if (data.section === 'body' && data.row.index === shippingStats.drivers.length) {
-                        data.row.styles.fontStyle = 'bold';
-                        data.row.styles.fillColor = [240, 240, 240];
-                    }
-                },
-                columnStyles: {
-                    1: { halign: 'center' },
-                    2: { halign: 'right' }
-                }
-            });
+                    <!-- Summary Cards -->
+                    <div class="grid grid-cols-3 gap-6 mb-10">
+                        <div class="p-4 bg-red-50 rounded-xl border border-red-100 text-center">
+                            <p class="text-xs font-black text-red-400 uppercase tracking-widest mb-1">Total Internal Cost</p>
+                            <p class="text-2xl font-black text-gray-800">$${shippingStats.totalInternalCost.toLocaleString()}</p>
+                        </div>
+                        <div class="p-4 bg-green-50 rounded-xl border border-green-100 text-center">
+                            <p class="text-xs font-black text-green-500 uppercase tracking-widest mb-1">Customer Fees</p>
+                            <p class="text-2xl font-black text-gray-800">$${shippingStats.totalCustomerFee.toLocaleString()}</p>
+                        </div>
+                        <div class="p-4 bg-gray-50 rounded-xl border border-gray-200 text-center">
+                            <p class="text-xs font-black text-gray-500 uppercase tracking-widest mb-1">Total Orders</p>
+                            <p class="text-2xl font-black text-gray-800">${shippingStats.totalOrders}</p>
+                        </div>
+                    </div>
 
-            // 6. Table 3: Fulfillment Stores
-            // @ts-ignore
-            finalY = doc.lastAutoTable.finalY + 15;
-            if (finalY > 250) { doc.addPage(); finalY = 20; }
+                    <!-- Table 1: Companies -->
+                    <div class="mb-10 page-break">
+                        <h2 class="text-lg font-black text-blue-800 border-l-4 border-blue-600 pl-3 mb-4 uppercase">1. ក្រុមហ៊ុនដឹកជញ្ជូន (Companies)</h2>
+                        <table class="w-full border-collapse">
+                            <thead>
+                                <tr class="bg-blue-600 text-white">
+                                    <th class="py-2 px-4 text-left text-xs font-black uppercase w-12">#</th>
+                                    <th class="py-2 px-4 text-left text-xs font-black uppercase">Company Name</th>
+                                    <th class="py-2 px-4 text-center text-xs font-black uppercase w-24">Orders</th>
+                                    <th class="py-2 px-4 text-right text-xs font-black uppercase w-32">Cost ($)</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${generateRows(shippingStats.methods, 'company')}
+                            </tbody>
+                            <tfoot class="bg-gray-100 font-black">
+                                <tr>
+                                    <td colspan="2" class="py-3 px-4 text-right uppercase text-xs tracking-widest text-gray-500">Total</td>
+                                    <td class="py-3 px-4 text-center text-blue-600">${shippingStats.methods.reduce((s,i)=>s+i.orders,0)}</td>
+                                    <td class="py-3 px-4 text-right text-gray-900">$${shippingStats.methods.reduce((s,i)=>s+i.cost,0).toFixed(2)}</td>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
 
-            doc.text("3. ឃ្លាំង (Fulfillment Stores)", 14, finalY);
+                    <!-- Table 2: Drivers -->
+                    <div class="mb-10 page-break">
+                        <h2 class="text-lg font-black text-emerald-700 border-l-4 border-emerald-600 pl-3 mb-4 uppercase">2. អ្នកដឹក (Drivers)</h2>
+                        <table class="w-full border-collapse">
+                            <thead>
+                                <tr class="bg-emerald-600 text-white">
+                                    <th class="py-2 px-4 text-left text-xs font-black uppercase w-12">#</th>
+                                    <th class="py-2 px-4 text-left text-xs font-black uppercase">Driver Name</th>
+                                    <th class="py-2 px-4 text-center text-xs font-black uppercase w-24">Orders</th>
+                                    <th class="py-2 px-4 text-right text-xs font-black uppercase w-32">Cost ($)</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${generateRows(shippingStats.drivers, 'driver')}
+                            </tbody>
+                            <tfoot class="bg-gray-100 font-black">
+                                <tr>
+                                    <td colspan="2" class="py-3 px-4 text-right uppercase text-xs tracking-widest text-gray-500">Total</td>
+                                    <td class="py-3 px-4 text-center text-blue-600">${shippingStats.drivers.reduce((s,i)=>s+i.orders,0)}</td>
+                                    <td class="py-3 px-4 text-right text-gray-900">$${shippingStats.drivers.reduce((s,i)=>s+i.cost,0).toFixed(2)}</td>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
 
-            autoTable(doc, {
-                startY: finalY + 5,
-                head: [['ឈ្មោះឃ្លាំង', 'ចំនួន (Orders)', 'ទឹកប្រាក់បង់ ($)']],
-                body: [
-                    ...shippingStats.stores.map(s => [s.name, s.orders, s.cost.toFixed(2)]),
-                    ['សរុប (TOTAL)', shippingStats.stores.reduce((s,i)=>s+i.orders,0), shippingStats.stores.reduce((s,i)=>s+i.cost,0).toFixed(2)]
-                ],
-                theme: 'striped',
-                styles: { font: 'Kantumruy' }, // Apply Khmer Font
-                headStyles: { fillColor: [243, 156, 18] },
-                didParseCell: (data) => {
-                    if (data.section === 'body' && data.row.index === shippingStats.stores.length) {
-                        data.row.styles.fontStyle = 'bold';
-                        data.row.styles.fillColor = [240, 240, 240];
-                    }
-                },
-                columnStyles: {
-                    1: { halign: 'center' },
-                    2: { halign: 'right' }
-                }
-            });
+                    <!-- Table 3: Stores -->
+                    <div class="page-break">
+                        <h2 class="text-lg font-black text-orange-700 border-l-4 border-orange-500 pl-3 mb-4 uppercase">3. ឃ្លាំង (Fulfillment Stores)</h2>
+                        <table class="w-full border-collapse">
+                            <thead>
+                                <tr class="bg-orange-500 text-white">
+                                    <th class="py-2 px-4 text-left text-xs font-black uppercase w-12">#</th>
+                                    <th class="py-2 px-4 text-left text-xs font-black uppercase">Store Name</th>
+                                    <th class="py-2 px-4 text-center text-xs font-black uppercase w-24">Orders</th>
+                                    <th class="py-2 px-4 text-right text-xs font-black uppercase w-32">Cost ($)</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${generateRows(shippingStats.stores, 'store')}
+                            </tbody>
+                            <tfoot class="bg-gray-100 font-black">
+                                <tr>
+                                    <td colspan="2" class="py-3 px-4 text-right uppercase text-xs tracking-widest text-gray-500">Total</td>
+                                    <td class="py-3 px-4 text-center text-blue-600">${shippingStats.stores.reduce((s,i)=>s+i.orders,0)}</td>
+                                    <td class="py-3 px-4 text-right text-gray-900">$${shippingStats.stores.reduce((s,i)=>s+i.cost,0).toFixed(2)}</td>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
 
-            doc.save(`Shipping_Report_${storeFilter}_${new Date().toISOString().slice(0, 10)}.pdf`);
+                    <div class="mt-12 pt-6 border-t border-gray-200 text-center text-xs text-gray-400">
+                        Generated by O-System on ${new Date().toLocaleString('km-KH')}
+                    </div>
 
-        } catch (err) {
-            console.error("PDF Export Error:", err);
-            // Alert already handled in loadKhmerFont if that was the cause, otherwise generic alert
-            if (String(err).includes("Font")) {
-                // already alerted
-            } else {
-                alert("បរាជ័យក្នុងការបង្កើត PDF ។");
-            }
-        } finally {
-            setIsExportingPdf(false);
-        }
+                </div>
+            </body>
+            </html>
+        `;
+
+        printWindow.document.write(htmlContent);
+        printWindow.document.close();
     };
 
     return (
@@ -393,12 +369,11 @@ const ShippingReport: React.FC<ShippingReportProps> = ({ orders, appData, dateFi
                             Excel
                         </button>
                         <button 
-                            onClick={handleExportPDF}
-                            disabled={isExportingPdf}
-                            className="flex-1 sm:flex-none justify-center px-4 py-2.5 bg-red-600/10 border border-red-500/30 text-red-400 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-red-600 hover:text-white transition-all flex items-center gap-2 active:scale-95 disabled:opacity-50"
+                            onClick={handleOpenPrintView}
+                            className="flex-1 sm:flex-none justify-center px-4 py-2.5 bg-red-600/10 border border-red-500/30 text-red-400 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-red-600 hover:text-white transition-all flex items-center gap-2 active:scale-95"
                         >
-                            {isExportingPdf ? <Spinner size="sm" /> : <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" /></svg>}
-                            PDF
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" /></svg>
+                            View & Print
                         </button>
                     </div>
                 </div>

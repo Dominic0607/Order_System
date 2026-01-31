@@ -85,13 +85,26 @@ const OrdersListMobile: React.FC<OrdersListMobileProps> = ({
         return phone;
     };
 
-    // Safe Date Parsing for iOS
+    // Safe Date Parsing for iOS & custom DB Format (YYYY-MM-DD H:mm)
     const getSafeDateString = (dateStr: string) => {
+        if (!dateStr) return '';
+
+        // Handle format: "2026-01-30 7:00"
+        const match = dateStr.match(/^(\d{4})-(\d{1,2})-(\d{1,2})\s(\d{1,2}):(\d{2})/);
+        if (match) {
+            const date = new Date(
+                parseInt(match[1]),
+                parseInt(match[2]) - 1, // Month is 0-indexed
+                parseInt(match[3]),
+                parseInt(match[4]),
+                parseInt(match[5])
+            );
+            return date.toLocaleDateString('km-KH');
+        }
+
         try {
-            if (!dateStr) return '';
-            const safeStr = dateStr.replace(' ', 'T');
-            const date = new Date(safeStr);
-            if (isNaN(date.getTime())) return dateStr; // Return original if parse fails
+            const date = new Date(dateStr);
+            if (isNaN(date.getTime())) return dateStr; 
             return date.toLocaleDateString('km-KH');
         } catch (e) {
             return dateStr;
@@ -362,15 +375,7 @@ const OrdersListMobile: React.FC<OrdersListMobileProps> = ({
                                             onChange={() => toggleOrderVerified(order['Order ID'], isVerified)} 
                                             className={`w-12 h-12 rounded-xl appearance-none border transition-all cursor-pointer ${isVerified ? 'bg-emerald-500 border-emerald-400' : 'bg-gray-800 border-gray-600'}`}
                                         />
-                                        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                                            {isUpdating ? (
-                                                <Spinner size="sm" />
-                                            ) : isVerified ? (
-                                                <svg className="w-6 h-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>
-                                            ) : (
-                                                <span className="text-[9px] font-black text-gray-500 uppercase">Check</span>
-                                            )}
-                                        </div>
+                                        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">{isUpdating ? <Spinner size="sm" /> : isVerified ? <svg className="w-6 h-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg> : <span className="text-[9px] font-black text-gray-500 uppercase">Check</span>}</div>
                                     </div>
                                 )}
                             </div>

@@ -113,11 +113,25 @@ const UserOrdersView: React.FC<{ team: string; onAdd: () => void }> = ({ team, o
         return { start, end };
     };
 
-    // Helper for safe date parsing on iOS
+    // Helper for safe date parsing with custom format support
     const getSafeDate = (dateStr: string) => {
         if (!dateStr) return new Date();
-        // Replace space with T for ISO compliance (iOS requirement)
-        return new Date(dateStr.replace(' ', 'T'));
+        
+        // Handle "YYYY-MM-DD H:mm" format (e.g. 2026-01-30 7:00)
+        const match = dateStr.match(/^(\d{4})-(\d{1,2})-(\d{1,2})\s(\d{1,2}):(\d{2})/);
+        if (match) {
+            return new Date(
+                parseInt(match[1]),
+                parseInt(match[2]) - 1,
+                parseInt(match[3]),
+                parseInt(match[4]),
+                parseInt(match[5])
+            );
+        }
+
+        const d = new Date(dateStr);
+        if (isNaN(d.getTime())) return new Date();
+        return d;
     };
 
     // 1. Initial Data Fetch (Runs once)
