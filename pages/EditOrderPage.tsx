@@ -244,6 +244,10 @@ const EditOrderPage: React.FC<EditOrderPageProps> = ({ order, onSaveSuccess, onC
     const handleDelete = async () => {
         if (!window.confirm(`តើអ្នកពិតជាចង់លុបប្រតិបត្តិការណ៍ ID: ${formData['Order ID']} មែនទេ?`)) return;
         if (!currentUser) return;
+        
+        // Safe username fallback
+        const loggingUser = currentUser.UserName || 'Unknown User';
+
         try {
             const response = await fetch(`${WEB_APP_URL}/api/admin/delete-order`, {
                 method: 'POST',
@@ -251,7 +255,7 @@ const EditOrderPage: React.FC<EditOrderPageProps> = ({ order, onSaveSuccess, onC
                 body: JSON.stringify({ 
                     orderId: formData['Order ID'], 
                     team: formData.Team, 
-                    userName: currentUser.UserName,
+                    userName: loggingUser, // Ensure this is populated
                     telegramMessageId1: formData['Telegram Message ID 1'],
                     telegramMessageId2: formData['Telegram Message ID 2'],
                     telegramChatId: formData.TelegramValue
@@ -282,6 +286,8 @@ const EditOrderPage: React.FC<EditOrderPageProps> = ({ order, onSaveSuccess, onC
              return;
         }
 
+        const loggingUser = currentUser?.UserName || 'Unknown User';
+
         try {
             const finalShippingFee = parseFloat(String(formData['Shipping Fee (Customer)'])) || 0;
             const finalTotals = recalculateTotals(formData.Products, finalShippingFee);
@@ -308,7 +314,12 @@ const EditOrderPage: React.FC<EditOrderPageProps> = ({ order, onSaveSuccess, onC
 
             const response = await fetch(`${WEB_APP_URL}/api/admin/update-order`, { 
                 method: 'POST', headers: { 'Content-Type': 'application/json' }, 
-                body: JSON.stringify({ orderId: formData['Order ID'], team: formData.Team, userName: currentUser?.UserName, newData: cleanNewData }) 
+                body: JSON.stringify({ 
+                    orderId: formData['Order ID'], 
+                    team: formData.Team, 
+                    userName: loggingUser, // Ensure this is populated for logs
+                    newData: cleanNewData 
+                }) 
             });
             
             const result = await response.json();
