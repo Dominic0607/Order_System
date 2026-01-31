@@ -6,6 +6,10 @@ import GeminiButton from '../common/GeminiButton';
 import StatCard from '../performance/StatCard';
 import { convertGoogleDriveUrl } from '../../utils/fileUtils';
 import { FilterState } from '../orders/OrderFilters';
+import { jsPDF } from 'jspdf';
+import autoTable from 'jspdf-autotable';
+import { APP_LOGO_URL } from '../../constants';
+import Spinner from '../common/Spinner';
 
 interface ShippingReportProps {
     orders: ParsedOrder[];
@@ -20,38 +24,33 @@ interface ShippingReportProps {
 const ShippingReport: React.FC<ShippingReportProps> = ({ orders, appData, dateFilter, startDate, endDate, onNavigate, contextFilters }) => {
     const [analysis, setAnalysis] = useState<string>('');
     const [loadingAnalysis, setLoadingAnalysis] = useState(false);
+    const [isExportingPdf, setIsExportingPdf] = useState(false);
+    const [storeFilter, setStoreFilter] = useState<string>('All');
 
     // Filter Navigation Handler
     const handleFilterNavigation = (key: string, value: string) => {
         if (onNavigate) {
-            // Start with base context filters to preserve state (Team, Store, Payment, etc.)
             const filters: any = {};
-            
-            // Map known context filters to simple object
             if (contextFilters) {
                 if (contextFilters.team) filters.team = contextFilters.team;
-                if (contextFilters.store) filters.store = contextFilters.store; // Brand Store
+                if (contextFilters.store) filters.store = contextFilters.store; 
                 if (contextFilters.paymentStatus) filters.paymentStatus = contextFilters.paymentStatus;
                 if (contextFilters.user) filters.user = contextFilters.user;
                 if (contextFilters.page) filters.page = contextFilters.page;
                 if (contextFilters.bank) filters.bank = contextFilters.bank;
                 if (contextFilters.product) filters.product = contextFilters.product;
                 if (contextFilters.internalCost) filters.internalCost = contextFilters.internalCost;
-                
-                // Be careful with overlapping concepts
-                if (contextFilters.fulfillmentStore) filters.fulfillmentStore = contextFilters.fulfillmentStore; 
                 if (contextFilters.location) filters.location = contextFilters.location;
             }
 
-            // Apply Specific Drill-Down Overrides
-            if (key === 'shippingFilter') filters.shipping = value; // Maps to 'shippingService'
-            if (key === 'driverFilter') filters.driver = value;     // Maps to 'driver'
-            
-            // If the user clicked specifically on a store in the report table, that overrides the context
-            // Note: In ShippingReport, the "Store" column refers to Fulfillment Store (Stock)
+            if (key === 'shippingFilter') filters.shipping = value;
+            if (key === 'driverFilter') filters.driver = value;     
             if (key === 'fulfillmentStore') filters.fulfillmentStore = value; 
             
-            // Pass current date context to keep the timeframe consistent
+            if (storeFilter !== 'All' && key !== 'fulfillmentStore') {
+                filters.fulfillmentStore = storeFilter;
+            }
+
             filters.datePreset = dateFilter;
             filters.startDate = startDate;
             filters.endDate = endDate;
@@ -60,18 +59,23 @@ const ShippingReport: React.FC<ShippingReportProps> = ({ orders, appData, dateFi
         }
     };
 
-    // គណនាទិន្នន័យសម្រាប់ Shipping Report
+    // 1. Filter Orders based on Store Selection
+    const filteredOrders = useMemo(() => {
+        if (storeFilter === 'All') return orders;
+        return orders.filter(o => o['Fulfillment Store'] === storeFilter);
+    }, [orders, storeFilter]);
+
+    // 2. Calculate Stats based on Filtered Orders
     const shippingStats = useMemo(() => {
-        const totalInternalCost = orders.reduce((sum, o) => sum + (Number(o['Internal Cost']) || 0), 0);
-        const totalCustomerFee = orders.reduce((sum, o) => sum + (Number(o['Shipping Fee (Customer)']) || 0), 0);
+        const totalInternalCost = filteredOrders.reduce((sum, o) => sum + (Number(o['Internal Cost']) || 0), 0);
+        const totalCustomerFee = filteredOrders.reduce((sum, o) => sum + (Number(o['Shipping Fee (Customer)']) || 0), 0);
         const netShipping = totalCustomerFee - totalInternalCost;
         
         const methods: Record<string, { name: string, cost: number, orders: number, logo: string }> = {};
         const drivers: Record<string, { name: string, cost: number, orders: number, photo: string }> = {};
         const stores: Record<string, { name: string, cost: number, orders: number }> = {};
 
-        orders.forEach(o => {
-            // 1. Methods Logic
+        filteredOrders.forEach(o => {
             const mName = o['Internal Shipping Method'] || 'Other';
             if (!methods[mName]) {
                 const info = appData.shippingMethods?.find(sm => sm.MethodName === mName);
@@ -80,7 +84,6 @@ const ShippingReport: React.FC<ShippingReportProps> = ({ orders, appData, dateFi
             methods[mName].cost += (Number(o['Internal Cost']) || 0);
             methods[mName].orders += 1;
 
-            // 2. Drivers Logic
             const dName = o['Internal Shipping Details'] || 'N/A';
             if (dName !== 'N/A') {
                 if (!drivers[dName]) {
@@ -91,7 +94,6 @@ const ShippingReport: React.FC<ShippingReportProps> = ({ orders, appData, dateFi
                 drivers[dName].orders += 1;
             }
 
-            // 3. Fulfillment Store Logic
             const sName = o['Fulfillment Store'] || 'Unassigned';
             if (!stores[sName]) {
                 stores[sName] = { name: sName, cost: 0, orders: 0 };
@@ -104,12 +106,12 @@ const ShippingReport: React.FC<ShippingReportProps> = ({ orders, appData, dateFi
             totalInternalCost,
             totalCustomerFee,
             netShipping,
-            totalOrders: orders.length,
+            totalOrders: filteredOrders.length,
             methods: Object.values(methods).sort((a, b) => b.cost - a.cost),
             drivers: Object.values(drivers).sort((a, b) => b.cost - a.cost),
             stores: Object.values(stores).sort((a, b) => b.cost - a.cost)
         };
-    }, [orders, appData]);
+    }, [filteredOrders, appData]);
 
     const handleAnalyze = async () => {
         setLoadingAnalysis(true);
@@ -119,8 +121,289 @@ const ShippingReport: React.FC<ShippingReportProps> = ({ orders, appData, dateFi
         } catch (e) { setAnalysis("AI Analysis error."); } finally { setLoadingAnalysis(false); }
     };
 
+    const handleExportExcel = () => {
+        let csvContent = "\uFEFF"; 
+        csvContent += "SHIPPING COST REPORT SUMMARY\n";
+        csvContent += `Generated Date,${new Date().toLocaleDateString()}\n`;
+        csvContent += `Period,${dateFilter === 'custom' ? `${startDate} to ${endDate}` : dateFilter}\n`;
+        csvContent += `Filter Store,${storeFilter}\n\n`;
+        
+        csvContent += "Metric,Value\n";
+        csvContent += `Total Internal Cost,${shippingStats.totalInternalCost.toFixed(2)}\n`;
+        csvContent += `Total Customer Fee,${shippingStats.totalCustomerFee.toFixed(2)}\n`;
+        csvContent += `Net Shipping,${shippingStats.netShipping.toFixed(2)}\n`;
+        csvContent += `Total Orders,${shippingStats.totalOrders}\n\n`;
+
+        csvContent += "SHIPPING METHODS (COMPANIES)\n";
+        csvContent += "Company Name,Total Orders,Total Cost ($)\n";
+        shippingStats.methods.forEach(m => {
+            csvContent += `"${m.name}",${m.orders},${m.cost.toFixed(2)}\n`;
+        });
+        csvContent += "\n";
+
+        csvContent += "DRIVERS\n";
+        csvContent += "Driver Name,Total Orders,Total Cost ($)\n";
+        shippingStats.drivers.forEach(d => {
+            csvContent += `"${d.name}",${d.orders},${d.cost.toFixed(2)}\n`;
+        });
+        csvContent += "\n";
+
+        csvContent += "FULFILLMENT STORES (STOCK)\n";
+        csvContent += "Store Name,Total Orders,Total Cost ($)\n";
+        shippingStats.stores.forEach(s => {
+            csvContent += `"${s.name}",${s.orders},${s.cost.toFixed(2)}\n`;
+        });
+
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement("a");
+        const url = URL.createObjectURL(blob);
+        link.setAttribute("href", url);
+        link.setAttribute("download", `Shipping_Report_${storeFilter}_${new Date().toISOString().slice(0, 10)}.csv`);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    };
+
+    // --- Helper: Load Khmer Font with Robust Fallbacks ---
+    const loadKhmerFont = async (doc: jsPDF) => {
+        const fontUrls = [
+            // CDN 1: jsDelivr (Main)
+            'https://cdn.jsdelivr.net/gh/google/fonts@main/ofl/kantumruypro/KantumruyPro-Regular.ttf',
+            // CDN 2: Raw GitHub (Fallback)
+            'https://raw.githubusercontent.com/google/fonts/main/ofl/kantumruypro/KantumruyPro-Regular.ttf',
+            // CDN 3: Statically (Alternative)
+            'https://cdn.statically.io/gh/google/fonts/main/ofl/kantumruypro/KantumruyPro-Regular.ttf'
+        ];
+
+        for (const url of fontUrls) {
+            try {
+                console.log(`Attempting to fetch font from: ${url}`);
+                const response = await fetch(url);
+                if (!response.ok) throw new Error(`Status ${response.status}`);
+                
+                const buffer = await response.arrayBuffer();
+                const fontBase64 = arrayBufferToBase64(buffer);
+                
+                doc.addFileToVFS('Kantumruy.ttf', fontBase64);
+                doc.addFont('Kantumruy.ttf', 'Kantumruy', 'normal');
+                doc.setFont('Kantumruy');
+                
+                console.log("Font loaded successfully");
+                return true;
+            } catch (e) {
+                console.warn(`Failed to fetch font from ${url}`, e);
+                // Continue to next URL
+            }
+        }
+        
+        console.error("All font fetch attempts failed");
+        alert("បរាជ័យក្នុងការទាញយក Font ខ្មែរ។ PDF នឹងមិនបង្ហាញអក្សរខ្មែរត្រឹមត្រូវទេ។ (Failed to load Khmer font)");
+        return false;
+    };
+
+    const arrayBufferToBase64 = (buffer: ArrayBuffer) => {
+        let binary = '';
+        const bytes = new Uint8Array(buffer);
+        const len = bytes.byteLength;
+        for (let i = 0; i < len; i++) {
+            binary += String.fromCharCode(bytes[i]);
+        }
+        return window.btoa(binary);
+    };
+
+    // --- PDF Export with Khmer Support ---
+    const handleExportPDF = async () => {
+        if (isExportingPdf) return;
+        setIsExportingPdf(true);
+        
+        try {
+            const doc = new jsPDF();
+            
+            // 1. Load Font (Must await success)
+            // Even if it fails, we proceed, but with a warning shown in loadKhmerFont
+            await loadKhmerFont(doc);
+
+            // 2. Header
+            doc.setFontSize(18);
+            doc.setTextColor(40);
+            doc.text("របាយការណ៍ដឹកជញ្ជូន (Shipping Report)", 14, 20);
+            
+            doc.setFontSize(10);
+            doc.setTextColor(100);
+            const periodText = dateFilter === 'custom' ? `${startDate} to ${endDate}` : dateFilter.toUpperCase();
+            doc.text(`Period: ${periodText}`, 14, 26);
+            doc.text(`Store Filter: ${storeFilter}`, 14, 31);
+            doc.text(`Generated: ${new Date().toLocaleString('km-KH')}`, 14, 36);
+
+            // 3. Summary Metrics
+            const summaryData = [
+                ['Total Internal Cost', 'Customer Fees', 'Net Balance'],
+                [`$${shippingStats.totalInternalCost.toLocaleString()}`, `$${shippingStats.totalCustomerFee.toLocaleString()}`, `$${shippingStats.netShipping.toLocaleString()}`]
+            ];
+            
+            autoTable(doc, {
+                startY: 42,
+                head: [summaryData[0]],
+                body: [summaryData[1]],
+                theme: 'grid',
+                styles: { font: 'Kantumruy', fontStyle: 'normal' }, // Apply Khmer Font
+                headStyles: { fillColor: [240, 240, 240], textColor: [60, 60, 60], fontStyle: 'bold', halign: 'center' },
+                bodyStyles: { fillColor: [255, 255, 255], textColor: [0, 0, 0], fontStyle: 'bold', fontSize: 12, halign: 'center', minCellHeight: 12, valign: 'middle' },
+                columnStyles: {
+                    0: { textColor: [220, 38, 38] }, // Red
+                    1: { textColor: [22, 163, 74] }, // Green
+                    2: { textColor: [0, 0, 0] }      // Black
+                }
+            });
+
+            // 4. Table 1: Shipping Methods
+            doc.setFontSize(14);
+            doc.setTextColor(0);
+            // @ts-ignore
+            let finalY = doc.lastAutoTable.finalY + 15;
+            doc.text("1. ក្រុមហ៊ុនដឹកជញ្ជូន (Shipping Companies)", 14, finalY);
+
+            autoTable(doc, {
+                startY: finalY + 5,
+                head: [['ក្រុមហ៊ុន', 'ចំនួន (Orders)', 'ទឹកប្រាក់បង់ ($)']],
+                body: [
+                    ...shippingStats.methods.map(m => [m.name, m.orders, m.cost.toFixed(2)]),
+                    ['សរុប (TOTAL)', shippingStats.methods.reduce((s,i)=>s+i.orders,0), shippingStats.methods.reduce((s,i)=>s+i.cost,0).toFixed(2)]
+                ],
+                theme: 'striped',
+                styles: { font: 'Kantumruy' }, // Apply Khmer Font
+                headStyles: { fillColor: [41, 128, 185] },
+                footStyles: { fillColor: [240, 240, 240], textColor: [0, 0, 0], fontStyle: 'bold' },
+                didParseCell: (data) => {
+                    if (data.section === 'body' && data.row.index === shippingStats.methods.length) {
+                        data.row.styles.fontStyle = 'bold';
+                        data.row.styles.fillColor = [240, 240, 240];
+                    }
+                },
+                columnStyles: {
+                    1: { halign: 'center' },
+                    2: { halign: 'right' }
+                }
+            });
+
+            // 5. Table 2: Drivers
+            // @ts-ignore
+            finalY = doc.lastAutoTable.finalY + 15;
+            if (finalY > 250) { doc.addPage(); finalY = 20; }
+            
+            doc.text("2. អ្នកដឹក (Drivers)", 14, finalY);
+
+            autoTable(doc, {
+                startY: finalY + 5,
+                head: [['ឈ្មោះអ្នកដឹក', 'ចំនួន (Orders)', 'ទឹកប្រាក់បង់ ($)']],
+                body: [
+                    ...shippingStats.drivers.map(d => [d.name, d.orders, d.cost.toFixed(2)]),
+                    ['សរុប (TOTAL)', shippingStats.drivers.reduce((s,i)=>s+i.orders,0), shippingStats.drivers.reduce((s,i)=>s+i.cost,0).toFixed(2)]
+                ],
+                theme: 'striped',
+                styles: { font: 'Kantumruy' }, // Apply Khmer Font
+                headStyles: { fillColor: [39, 174, 96] },
+                didParseCell: (data) => {
+                    if (data.section === 'body' && data.row.index === shippingStats.drivers.length) {
+                        data.row.styles.fontStyle = 'bold';
+                        data.row.styles.fillColor = [240, 240, 240];
+                    }
+                },
+                columnStyles: {
+                    1: { halign: 'center' },
+                    2: { halign: 'right' }
+                }
+            });
+
+            // 6. Table 3: Fulfillment Stores
+            // @ts-ignore
+            finalY = doc.lastAutoTable.finalY + 15;
+            if (finalY > 250) { doc.addPage(); finalY = 20; }
+
+            doc.text("3. ឃ្លាំង (Fulfillment Stores)", 14, finalY);
+
+            autoTable(doc, {
+                startY: finalY + 5,
+                head: [['ឈ្មោះឃ្លាំង', 'ចំនួន (Orders)', 'ទឹកប្រាក់បង់ ($)']],
+                body: [
+                    ...shippingStats.stores.map(s => [s.name, s.orders, s.cost.toFixed(2)]),
+                    ['សរុប (TOTAL)', shippingStats.stores.reduce((s,i)=>s+i.orders,0), shippingStats.stores.reduce((s,i)=>s+i.cost,0).toFixed(2)]
+                ],
+                theme: 'striped',
+                styles: { font: 'Kantumruy' }, // Apply Khmer Font
+                headStyles: { fillColor: [243, 156, 18] },
+                didParseCell: (data) => {
+                    if (data.section === 'body' && data.row.index === shippingStats.stores.length) {
+                        data.row.styles.fontStyle = 'bold';
+                        data.row.styles.fillColor = [240, 240, 240];
+                    }
+                },
+                columnStyles: {
+                    1: { halign: 'center' },
+                    2: { halign: 'right' }
+                }
+            });
+
+            doc.save(`Shipping_Report_${storeFilter}_${new Date().toISOString().slice(0, 10)}.pdf`);
+
+        } catch (err) {
+            console.error("PDF Export Error:", err);
+            // Alert already handled in loadKhmerFont if that was the cause, otherwise generic alert
+            if (String(err).includes("Font")) {
+                // already alerted
+            } else {
+                alert("បរាជ័យក្នុងការបង្កើត PDF ។");
+            }
+        } finally {
+            setIsExportingPdf(false);
+        }
+    };
+
     return (
         <div className="space-y-8 animate-fade-in pb-12">
+            
+            {/* Header Actions */}
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-gray-900/40 p-4 rounded-3xl border border-white/5">
+                <div>
+                    <h2 className="text-xl font-black text-white uppercase tracking-tight">របាយការណ៍ដឹកជញ្ជូន</h2>
+                    <p className="text-xs text-gray-500 font-bold mt-1">Shipping & Fulfillment Cost Analysis</p>
+                </div>
+                <div className="flex flex-col sm:flex-row gap-3 items-center w-full sm:w-auto">
+                    {/* Store Filter Dropdown */}
+                    <div className="bg-gray-800 p-1 rounded-xl border border-white/10 flex items-center w-full sm:w-auto">
+                        <span className="text-[10px] font-bold text-gray-500 uppercase px-3 whitespace-nowrap">View:</span>
+                        <select 
+                            value={storeFilter} 
+                            onChange={(e) => setStoreFilter(e.target.value)}
+                            className="bg-transparent border-none text-xs font-black text-white focus:ring-0 cursor-pointer py-1.5 pr-8 pl-1 w-full"
+                        >
+                            <option value="All">All Stores</option>
+                            {appData.stores?.map(s => (
+                                <option key={s.StoreName} value={s.StoreName}>{s.StoreName}</option>
+                            ))}
+                        </select>
+                    </div>
+
+                    <div className="flex gap-2 w-full sm:w-auto">
+                        <button 
+                            onClick={handleExportExcel}
+                            className="flex-1 sm:flex-none justify-center px-4 py-2.5 bg-emerald-600/10 border border-emerald-500/30 text-emerald-400 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-emerald-600 hover:text-white transition-all flex items-center gap-2 active:scale-95"
+                        >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+                            Excel
+                        </button>
+                        <button 
+                            onClick={handleExportPDF}
+                            disabled={isExportingPdf}
+                            className="flex-1 sm:flex-none justify-center px-4 py-2.5 bg-red-600/10 border border-red-500/30 text-red-400 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-red-600 hover:text-white transition-all flex items-center gap-2 active:scale-95 disabled:opacity-50"
+                        >
+                            {isExportingPdf ? <Spinner size="sm" /> : <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" /></svg>}
+                            PDF
+                        </button>
+                    </div>
+                </div>
+            </div>
+
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 <StatCard label="ចំណាយដឹកជញ្ជូនសរុប" value={`$${shippingStats.totalInternalCost.toLocaleString()}`} icon="🚚" colorClass="from-orange-600 to-red-500" />
                 <StatCard label="ថ្លៃដឹកពីអតិថិជន" value={`$${shippingStats.totalCustomerFee.toLocaleString()}`} icon="💰" colorClass="from-blue-600 to-indigo-500" />
