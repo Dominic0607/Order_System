@@ -47,6 +47,22 @@ const EditOrderPage: React.FC<EditOrderPageProps> = ({ order, onSaveSuccess, onC
 
     // --- Logic Handlers ---
 
+    const formatForInput = (timestamp: string) => {
+        if (!timestamp) return '';
+        const d = new Date(timestamp);
+        if (isNaN(d.getTime())) return '';
+        const pad = (n: number) => n.toString().padStart(2, '0');
+        return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+    };
+
+    const handleDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (!e.target.value) return;
+        const d = new Date(e.target.value);
+        if (!isNaN(d.getTime())) {
+             setFormData(prev => ({ ...prev, Timestamp: d.toISOString() }));
+        }
+    };
+
     const recalculateTotals = (products: Product[], shippingFee: number): Partial<ParsedOrder> => {
         const subtotal = products.reduce((sum, p) => sum + (p.total || 0), 0);
         const grandTotal = subtotal + shippingFee;
@@ -324,9 +340,21 @@ const EditOrderPage: React.FC<EditOrderPageProps> = ({ order, onSaveSuccess, onC
                         <span className="w-1.5 h-6 bg-blue-600 rounded-full"></span>
                         Edit Order
                     </h1>
-                    <div className="flex items-center gap-2 mt-1">
+                    <div className="flex flex-wrap items-center gap-2 mt-1">
                         <span className="text-[10px] font-mono font-bold text-gray-500 bg-gray-900 px-2 py-0.5 rounded border border-gray-800">#{formData['Order ID']}</span>
                         <span className="text-[10px] text-gray-500 font-bold uppercase">{formData.Team}</span>
+                        {/* Date Picker */}
+                        <div className="flex items-center gap-1 bg-gray-900 px-2 py-0.5 rounded border border-gray-800">
+                            <label htmlFor="order-date" className="text-[10px] font-black text-gray-600 uppercase cursor-pointer">Date</label>
+                            <input 
+                                id="order-date"
+                                type="datetime-local"
+                                value={formatForInput(formData.Timestamp)}
+                                onChange={handleDateChange}
+                                className="bg-transparent border-none text-[10px] font-bold text-blue-400 p-0 focus:ring-0 h-4"
+                                style={{ colorScheme: 'dark' }}
+                            />
+                        </div>
                     </div>
                 </div>
                 <button onClick={onCancel} className="px-6 py-2.5 bg-gray-800 border border-gray-700 hover:bg-gray-700 text-gray-400 font-black rounded-xl uppercase text-[10px] tracking-widest transition-all">បោះបង់</button>
