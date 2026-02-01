@@ -17,9 +17,10 @@ interface ShippingReportProps {
     endDate?: string;
     onNavigate?: (filters: any) => void;
     contextFilters?: FilterState;
+    onBack?: () => void; // New prop for User Journey navigation
 }
 
-const ShippingReport: React.FC<ShippingReportProps> = ({ orders, appData, dateFilter, startDate, endDate, onNavigate, contextFilters }) => {
+const ShippingReport: React.FC<ShippingReportProps> = ({ orders, appData, dateFilter, startDate, endDate, onNavigate, contextFilters, onBack }) => {
     const [analysis, setAnalysis] = useState<string>('');
     const [loadingAnalysis, setLoadingAnalysis] = useState(false);
     const [storeFilter, setStoreFilter] = useState<string>('All');
@@ -340,9 +341,16 @@ const ShippingReport: React.FC<ShippingReportProps> = ({ orders, appData, dateFi
             
             {/* Header Actions */}
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-gray-900/40 p-4 rounded-3xl border border-white/5">
-                <div>
-                    <h2 className="text-xl font-black text-white uppercase tracking-tight">របាយការណ៍ដឹកជញ្ជូន</h2>
-                    <p className="text-xs text-gray-500 font-bold mt-1">Shipping & Fulfillment Cost Analysis</p>
+                <div className="flex items-center gap-4">
+                    {onBack && (
+                        <button onClick={onBack} className="bg-gray-800 p-3 rounded-2xl border border-gray-700 hover:bg-gray-700 active:scale-95 transition-all">
+                            <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" /></svg>
+                        </button>
+                    )}
+                    <div>
+                        <h2 className="text-xl font-black text-white uppercase tracking-tight">របាយការណ៍ដឹកជញ្ជូន</h2>
+                        <p className="text-xs text-gray-500 font-bold mt-1">Shipping & Fulfillment Cost Analysis</p>
+                    </div>
                 </div>
                 <div className="flex flex-col sm:flex-row gap-3 items-center w-full sm:w-auto">
                     {/* Store Filter Dropdown */}

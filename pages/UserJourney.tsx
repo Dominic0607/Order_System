@@ -10,6 +10,7 @@ import EditOrderPage from './EditOrderPage';
 import { useUrlState } from '../hooks/useUrlState';
 import UserSalesPageReport from './UserSalesPageReport'; 
 import DeliveryListGeneratorModal from '../components/orders/DeliveryListGeneratorModal';
+import ShippingReport from '../components/reports/ShippingReport';
 
 type DateRangePreset = 'today' | 'yesterday' | 'this_week' | 'this_month' | 'last_month' | 'this_year' | 'last_year' | 'all' | 'custom';
 
@@ -35,7 +36,10 @@ const UserOrdersView: React.FC<{ team: string; onAdd: () => void }> = ({ team, o
     const [loading, setLoading] = useState(true);
     const [processing, setProcessing] = useState(false); 
     const [searchQuery, setSearchQuery] = useState('');
+    
+    // Feature States
     const [showReport, setShowReport] = useState(false);
+    const [showShippingReport, setShowShippingReport] = useState(false); // New state for Shipping Report
     
     // Delivery Modal State
     const [isDeliveryModalOpen, setIsDeliveryModalOpen] = useState(false);
@@ -250,6 +254,10 @@ const UserOrdersView: React.FC<{ team: string; onAdd: () => void }> = ({ team, o
                     if (drilldownFilters.team && (o.Team || '').trim() !== drilldownFilters.team) return false;
                     // Page Check
                     if (drilldownFilters.page && o.Page !== drilldownFilters.page) return false;
+                    // Shipping/Driver Checks from ShippingReport drilldown
+                    if (drilldownFilters.shipping && o['Internal Shipping Method'] !== drilldownFilters.shipping) return false;
+                    if (drilldownFilters.driver && o['Internal Shipping Details'] !== drilldownFilters.driver) return false;
+                    if (drilldownFilters.fulfillmentStore && o['Fulfillment Store'] !== drilldownFilters.fulfillmentStore) return false;
 
                     return true;
                 });
@@ -352,7 +360,9 @@ const UserOrdersView: React.FC<{ team: string; onAdd: () => void }> = ({ team, o
                     <div>
                         <h2 className="text-lg font-black text-white uppercase tracking-tight italic">ផ្ទាំងរបាយការណ៍ប្រតិបត្តិការណ៍</h2>
                         <div className="flex items-center gap-2 mt-1">
-                            <span className="text-[10px] font-bold text-blue-400 bg-blue-900/20 px-2 py-0.5 rounded border border-blue-500/20">{drilldownFilters.page || 'All Pages'}</span>
+                            <span className="text-[10px] font-bold text-blue-400 bg-blue-900/20 px-2 py-0.5 rounded border border-blue-500/20">
+                                {drilldownFilters.page || drilldownFilters.shipping || 'Filtered View'}
+                            </span>
                             {drilldownFilters.isMonthlyDrilldown && (
                                 <span className="text-[10px] font-bold text-emerald-400 bg-emerald-900/20 px-2 py-0.5 rounded border border-emerald-500/20">
                                     {drilldownFilters.customStart} - {drilldownFilters.customEnd}
@@ -380,7 +390,7 @@ const UserOrdersView: React.FC<{ team: string; onAdd: () => void }> = ({ team, o
         );
     }
 
-    // Render Report View
+    // Render Page Report View
     if (showReport) {
         return (
             <div className="animate-fade-in p-2">
@@ -392,6 +402,26 @@ const UserOrdersView: React.FC<{ team: string; onAdd: () => void }> = ({ team, o
                     // Pass the report state down so it can be controlled
                     initialFilters={reportFilters}
                     onFilterChange={setReportFilters}
+                />
+            </div>
+        );
+    }
+
+    // Render Shipping Report View
+    if (showShippingReport) {
+        return (
+            <div className="animate-fade-in p-2 min-h-screen">
+                <ShippingReport 
+                    orders={orders} 
+                    appData={appData} 
+                    dateFilter={dateRange}
+                    startDate={customStart}
+                    endDate={customEnd}
+                    onNavigate={(filters) => {
+                        setDrilldownFilters(filters);
+                        setShowShippingReport(false);
+                    }}
+                    onBack={() => setShowShippingReport(false)}
                 />
             </div>
         );
@@ -468,8 +498,8 @@ const UserOrdersView: React.FC<{ team: string; onAdd: () => void }> = ({ team, o
                         </div>
                     </div>
 
-                    {/* Report & Delivery Buttons Grid */}
-                    <div className="grid grid-cols-2 gap-3">
+                    {/* Report & Delivery Buttons Grid - Expanded to 3 columns */}
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
                         <button 
                             onClick={() => setShowReport(true)}
                             className="py-3 bg-indigo-600/10 border border-indigo-500/30 text-indigo-400 rounded-xl font-black uppercase text-[10px] tracking-widest hover:bg-indigo-600 hover:text-white transition-all flex items-center justify-center gap-2 active:scale-95"
@@ -478,8 +508,15 @@ const UserOrdersView: React.FC<{ team: string; onAdd: () => void }> = ({ team, o
                             Page Report
                         </button>
                         <button 
+                            onClick={() => setShowShippingReport(true)}
+                            className="py-3 bg-orange-600/10 border border-orange-500/30 text-orange-400 rounded-xl font-black uppercase text-[10px] tracking-widest hover:bg-orange-600 hover:text-white transition-all flex items-center justify-center gap-2 active:scale-95"
+                        >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16V6a1 1 0 00-1-1H4a1 1 0 00-1 1v10a1 1 0 001 1h8a1 1 0 001-1z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 8h-2m2 4h-2m-2-4h.01M17 16h.01" /></svg>
+                            Shipping Cost
+                        </button>
+                        <button 
                             onClick={() => setIsDeliveryModalOpen(true)}
-                            className="py-3 bg-emerald-600/10 border border-emerald-500/30 text-emerald-400 rounded-xl font-black uppercase text-[10px] tracking-widest hover:bg-emerald-600 hover:text-white transition-all flex items-center justify-center gap-2 active:scale-95"
+                            className="py-3 bg-emerald-600/10 border border-emerald-500/30 text-emerald-400 rounded-xl font-black uppercase text-[10px] tracking-widest hover:bg-emerald-600 hover:text-white transition-all flex items-center justify-center gap-2 active:scale-95 col-span-2 md:col-span-1"
                         >
                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" /></svg>
                             Delivery List
