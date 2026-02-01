@@ -23,10 +23,11 @@ const BulkActionManager: React.FC<BulkActionManagerProps> = ({ orders, selectedI
     const [isProcessing, setIsProcessing] = useState(false);
     
     // Modals visibility
-    const [activeModal, setActiveModal] = useState<'cost' | 'payment' | 'shipping' | 'delete' | null>(null);
+    const [activeModal, setActiveModal] = useState<'cost' | 'payment' | 'shipping' | 'delete' | 'date' | null>(null);
 
     // Form states
     const [costValue, setCostValue] = useState('');
+    const [bulkDate, setBulkDate] = useState('');
     
     // Payment States
     const [paymentStatus, setPaymentStatus] = useState('Paid');
@@ -105,6 +106,88 @@ const BulkActionManager: React.FC<BulkActionManagerProps> = ({ orders, selectedI
         }
     };
 
+    const handleBulkDateUpdate = async () => {
+        if (selectedIds.size === 0 || !bulkDate) return;
+        setIsProcessing(true);
+
+        try {
+            const idArray = Array.from(selectedIds);
+            
+            // Parse new date components [Year, Month, Day]
+            const [newYear, newMonth, newDay] = bulkDate.split('-').map(Number);
+
+            for (const id of idArray) {
+                const originalOrder = orders.find(o => o['Order ID'] === id);
+                if (!originalOrder) continue;
+
+                // Create date object from original timestamp to preserve time
+                const originalDate = new Date(originalOrder.Timestamp);
+                
+                // Construct new date object using New Date + Original Time
+                const newTimestamp = new Date(
+                    newYear, 
+                    newMonth - 1, // Month is 0-indexed in JS Date
+                    newDay, 
+                    originalDate.getHours(), 
+                    originalDate.getMinutes(), 
+                    originalDate.getSeconds()
+                );
+
+                const mergedData = { ...originalOrder, Timestamp: newTimestamp.toISOString() };
+                
+                // Reuse existing payload structure construction
+                const cleanPayload: any = {
+                    "Timestamp": mergedData.Timestamp,
+                    "Order ID": mergedData['Order ID'],
+                    "User": mergedData.User,
+                    "Page": mergedData.Page,
+                    "TelegramValue": mergedData.TelegramValue,
+                    "Customer Name": mergedData['Customer Name'],
+                    "Customer Phone": mergedData['Customer Phone'],
+                    "Location": mergedData.Location,
+                    "Address Details": mergedData['Address Details'],
+                    "Note": mergedData.Note || "",
+                    "Shipping Fee (Customer)": mergedData['Shipping Fee (Customer)'],
+                    "Subtotal": mergedData.Subtotal,
+                    "Grand Total": mergedData['Grand Total'],
+                    "Internal Shipping Method": mergedData['Internal Shipping Method'],
+                    "Internal Shipping Details": mergedData['Internal Shipping Details'],
+                    "Internal Cost": Number(mergedData['Internal Cost']) || 0,
+                    "Payment Status": mergedData['Payment Status'],
+                    "Payment Info": mergedData['Payment Info'] || "",
+                    "Discount ($)": mergedData['Discount ($)'],
+                    "Total Product Cost ($)": mergedData['Total Product Cost ($)'],
+                    "Fulfillment Store": mergedData['Fulfillment Store'],
+                    "Team": mergedData.Team,
+                    "Scheduled Time": mergedData['Scheduled Time'] || "",
+                    "IsVerified": mergedData.IsVerified
+                };
+                cleanPayload['Products (JSON)'] = JSON.stringify(mergedData.Products);
+
+                await fetch(`${WEB_APP_URL}/api/admin/update-order`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        orderId: id, 
+                        team: mergedData.Team, 
+                        userName: currentUser?.UserName, 
+                        newData: cleanPayload 
+                    })
+                });
+            }
+            
+            await refreshData();
+            setActiveModal(null);
+            setBulkDate('');
+            onComplete();
+        } catch (e) {
+            console.error("Bulk date update failed:", e);
+            alert("ការកែប្រែកាលបរិច្ឆេទបរាជ័យ!");
+        } finally {
+            setIsProcessing(false);
+        }
+    };
+
     const handleBulkDelete = async () => {
         if (selectedIds.size === 0) return;
         if (deletePassword !== currentUser?.Password) {
@@ -177,7 +260,40 @@ const BulkActionManager: React.FC<BulkActionManagerProps> = ({ orders, selectedI
 
             {/* Modals */}
             
-            {/* 1. COST MODAL */}
+            {/* 1. DATE MODAL */}
+            <Modal isOpen={activeModal === 'date'} onClose={() => setActiveModal(null)} maxWidth="max-w-sm">
+                <div className="p-8 bg-[#0f172a] rounded-[3rem] border border-white/10">
+                    <div className="w-16 h-16 bg-cyan-500/20 text-cyan-400 rounded-full flex items-center justify-center mx-auto mb-6 border border-cyan-500/30">
+                        <span className="text-3xl">📅</span>
+                    </div>
+                    <h3 className="text-xl font-black text-white text-center mb-2 uppercase tracking-tight">កែប្រែកាលបរិច្ឆេទ</h3>
+                    <p className="text-[10px] text-gray-500 font-bold text-center mb-6 uppercase tracking-widest">
+                        ម៉ោងនឹងរក្សាទុកដូចដើម (Time Unchanged)
+                    </p>
+                    
+                    <div className="relative mb-8">
+                        <input 
+                            type="date" 
+                            value={bulkDate} 
+                            onChange={e => setBulkDate(e.target.value)} 
+                            className="form-input !bg-black/40 !border-gray-700 !py-4 text-white font-bold text-center rounded-[2rem] focus:ring-4 focus:ring-cyan-500/10 transition-all w-full"
+                        />
+                    </div>
+                    
+                    <div className="grid grid-cols-2 gap-4">
+                        <button onClick={() => setActiveModal(null)} className="py-4 text-gray-500 font-black uppercase text-xs tracking-widest hover:text-white transition-colors">បោះបង់</button>
+                        <button 
+                            onClick={handleBulkDateUpdate} 
+                            className="py-4 bg-cyan-600 text-white rounded-2xl font-black uppercase text-xs tracking-widest shadow-xl shadow-cyan-600/20 active:scale-95 flex items-center justify-center gap-2" 
+                            disabled={isProcessing || !bulkDate}
+                        >
+                            {isProcessing ? <Spinner size="sm"/> : "រក្សាទុក"}
+                        </button>
+                    </div>
+                </div>
+            </Modal>
+
+            {/* 2. COST MODAL */}
             <Modal isOpen={activeModal === 'cost'} onClose={() => setActiveModal(null)} maxWidth="max-w-sm">
                 <div className="p-8 bg-[#0f172a] rounded-[3rem] border border-white/10">
                     <h3 className="text-xl font-black text-white text-center mb-8 uppercase tracking-tight">កែប្រែថ្លៃដឹកដើម (Cost)</h3>
@@ -194,7 +310,7 @@ const BulkActionManager: React.FC<BulkActionManagerProps> = ({ orders, selectedI
                 </div>
             </Modal>
 
-            {/* 2. PAYMENT MODAL (IMPROVED) */}
+            {/* 3. PAYMENT MODAL */}
             <Modal isOpen={activeModal === 'payment'} onClose={() => setActiveModal(null)} maxWidth="max-w-lg">
                 <div className="p-6 sm:p-8 bg-[#0f172a] rounded-[2.5rem] border border-white/10 overflow-hidden flex flex-col max-h-[85vh]">
                     <div className="flex-shrink-0">
@@ -275,7 +391,7 @@ const BulkActionManager: React.FC<BulkActionManagerProps> = ({ orders, selectedI
                 </div>
             </Modal>
 
-            {/* 3. SHIPPING MODAL - Reusable Components */}
+            {/* 4. SHIPPING MODAL */}
             <Modal isOpen={activeModal === 'shipping'} onClose={() => setActiveModal(null)} maxWidth="max-w-xl">
                 <div className="p-6 sm:p-8 bg-[#0f172a] rounded-[2.5rem] border border-white/10 max-h-[85vh] flex flex-col">
                     <h3 className="text-lg font-black text-white text-center mb-6 uppercase tracking-tight flex-shrink-0">កែប្រែក្រុមហ៊ុនដឹកជញ្ជូន</h3>
@@ -356,7 +472,7 @@ const BulkActionManager: React.FC<BulkActionManagerProps> = ({ orders, selectedI
                 </div>
             </Modal>
 
-            {/* 4. DELETE MODAL */}
+            {/* 5. DELETE MODAL */}
             <Modal isOpen={activeModal === 'delete'} onClose={() => setActiveModal(null)} maxWidth="max-w-md">
                 <div className="p-8 bg-[#0f172a] rounded-[3rem] border border-white/10">
                     <div className="w-16 h-16 bg-red-500/20 text-red-500 rounded-full flex items-center justify-center mx-auto mb-6">

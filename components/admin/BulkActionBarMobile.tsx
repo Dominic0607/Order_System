@@ -6,7 +6,7 @@ interface BulkActionBarMobileProps {
     isProcessing: boolean;
     onVerify: () => void;
     onUnverify: () => void;
-    onOpenModal: (type: 'cost' | 'payment' | 'shipping' | 'delete') => void;
+    onOpenModal: (type: 'cost' | 'payment' | 'shipping' | 'delete' | 'date') => void;
     onClearSelection: () => void;
 }
 
@@ -59,6 +59,11 @@ const BulkActionBarMobile: React.FC<BulkActionBarMobileProps> = ({
                     </div>
 
                     {/* Edit Actions */}
+                    <button onClick={() => onOpenModal('date')} className="flex flex-col items-center justify-center w-16 h-14 bg-gray-800/50 rounded-xl border border-white/5 active:bg-gray-700">
+                        <span className="text-lg">📅</span>
+                        <span className="text-[8px] font-black uppercase text-gray-400 mt-0.5">Date</span>
+                    </button>
+
                     <button onClick={() => onOpenModal('cost')} className="flex flex-col items-center justify-center w-16 h-14 bg-gray-800/50 rounded-xl border border-white/5 active:bg-gray-700">
                         <span className="text-lg">💰</span>
                         <span className="text-[8px] font-black uppercase text-gray-400 mt-0.5">Cost</span>

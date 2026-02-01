@@ -7,7 +7,7 @@ interface BulkActionBarDesktopProps {
     isProcessing: boolean;
     onVerify: () => void;
     onUnverify: () => void;
-    onOpenModal: (type: 'cost' | 'payment' | 'shipping' | 'delete') => void;
+    onOpenModal: (type: 'cost' | 'payment' | 'shipping' | 'delete' | 'date') => void;
     onClearSelection: () => void;
 }
 
@@ -61,6 +61,7 @@ const BulkActionBarDesktop: React.FC<BulkActionBarDesktopProps> = ({
                 </div>
 
                 <div className="flex items-center gap-1 bg-white/5 px-6 py-1.5 rounded-[1.8rem] border border-white/5 relative z-10">
+                    <button onClick={() => onOpenModal('date')} className="px-3.5 py-3 hover:text-white text-cyan-400 text-[11px] font-black uppercase tracking-widest transition-all hover:scale-110">DATE</button>
                     <button onClick={() => onOpenModal('cost')} className="px-3.5 py-3 hover:text-white text-[#f6ad55] text-[11px] font-black uppercase tracking-widest transition-all hover:scale-110">COST</button>
                     <button onClick={() => onOpenModal('payment')} className="px-3.5 py-3 hover:text-white text-[#4299e1] text-[11px] font-black uppercase tracking-widest transition-all hover:scale-110">PAY</button>
                     <button onClick={() => onOpenModal('shipping')} className="px-3.5 py-3 hover:text-white text-[#9f7aea] text-[11px] font-black uppercase tracking-widest transition-all hover:scale-110">SHIP</button>
