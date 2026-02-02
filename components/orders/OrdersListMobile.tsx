@@ -5,6 +5,7 @@ import { AppContext } from '../../context/AppContext';
 import { convertGoogleDriveUrl } from '../../utils/fileUtils';
 import Spinner from '../common/Spinner';
 import { MobileGrandTotalCard } from './OrderGrandTotal';
+import Modal from '../common/Modal';
 
 interface OrdersListMobileProps {
     orders: ParsedOrder[];
@@ -15,7 +16,9 @@ interface OrdersListMobileProps {
     onEdit?: (order: ParsedOrder) => void;
     handlePrint: (order: ParsedOrder) => void;
     handleCopy: (id: string) => void;
+    handleCopyTemplate: (order: ParsedOrder) => void;
     copiedId: string | null;
+    copiedTemplateId: string | null;
     toggleOrderVerified: (id: string, currentStatus: boolean) => void;
     updatingIds: Set<string>;
 }
@@ -29,7 +32,9 @@ const OrdersListMobile: React.FC<OrdersListMobileProps> = ({
     onEdit,
     handlePrint,
     handleCopy,
+    handleCopyTemplate,
     copiedId,
+    copiedTemplateId,
     toggleOrderVerified,
     updatingIds
 }) => {
@@ -40,6 +45,9 @@ const OrdersListMobile: React.FC<OrdersListMobileProps> = ({
         const saved = localStorage.getItem('mobile_view_preference');
         return (saved === 'card' || saved === 'table') ? saved : 'table';
     });
+
+    // State for viewing detailed products modal
+    const [viewingProductsOrder, setViewingProductsOrder] = useState<ParsedOrder | null>(null);
 
     const handleViewChange = (mode: 'card' | 'table') => {
         setViewMode(mode);
@@ -162,6 +170,7 @@ const OrdersListMobile: React.FC<OrdersListMobileProps> = ({
                                 {visibleOrders.map((order) => {
                                     const isSelected = selectedIds.has(order['Order ID']);
                                     const isVerified = order.IsVerified === true || String(order.IsVerified).toUpperCase() === 'TRUE';
+                                    const isThisTemplateCopied = copiedTemplateId === order['Order ID'];
                                     
                                     return (
                                         <tr key={order['Order ID']} className={`${isSelected ? 'bg-blue-900/20' : isVerified ? 'bg-emerald-900/5' : 'hover:bg-white/5'} transition-colors`}>
@@ -185,11 +194,19 @@ const OrdersListMobile: React.FC<OrdersListMobileProps> = ({
                                                 </span>
                                             </td>
                                             <td className="p-3 text-center">
-                                                {onEdit && (
-                                                    <button onClick={() => onEdit(order)} className="text-gray-400 hover:text-white">
-                                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
+                                                <div className="flex items-center gap-2 justify-center">
+                                                    <button 
+                                                        onClick={() => handleCopyTemplate(order)}
+                                                        className={`text-gray-400 hover:text-white transition-all active:scale-90 ${isThisTemplateCopied ? 'text-indigo-400' : ''}`}
+                                                    >
+                                                        {isThisTemplateCopied ? <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7"/></svg> : <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" /></svg>}
                                                     </button>
-                                                )}
+                                                    {onEdit && (
+                                                        <button onClick={() => onEdit(order)} className="text-gray-400 hover:text-white">
+                                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
+                                                        </button>
+                                                    )}
+                                                </div>
                                             </td>
                                             <td className="p-3 text-[9px] text-gray-500 font-bold">
                                                 {getSafeDateString(order.Timestamp)}
@@ -213,6 +230,7 @@ const OrdersListMobile: React.FC<OrdersListMobileProps> = ({
                     const isSelected = selectedIds.has(order['Order ID']);
                     const shippingLogo = getShippingLogo(order['Internal Shipping Method']);
                     const isThisCopied = copiedId === order['Order ID'];
+                    const isThisTemplateCopied = copiedTemplateId === order['Order ID'];
 
                     return (
                         <div 
@@ -245,7 +263,7 @@ const OrdersListMobile: React.FC<OrdersListMobileProps> = ({
                                             />
                                         </div>
                                     )}
-                                    <div>
+                                    <div className="flex gap-2">
                                         <button 
                                             onClick={() => handleCopy(order['Order ID'])}
                                             className={`
@@ -260,6 +278,24 @@ const OrdersListMobile: React.FC<OrdersListMobileProps> = ({
                                                 #{order['Order ID'].substring(0, 8)}
                                             </span>
                                             {isThisCopied && <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>}
+                                        </button>
+                                        
+                                        {/* Copy Template Button */}
+                                        <button
+                                            onClick={() => handleCopyTemplate(order)}
+                                            className={`
+                                                flex items-center justify-center w-8 h-8 rounded-xl border transition-all active:scale-95
+                                                ${isThisTemplateCopied 
+                                                    ? 'bg-indigo-500/20 border-indigo-500/50 text-indigo-400' 
+                                                    : 'bg-black/30 border-white/5 text-gray-400 hover:text-white'
+                                                }
+                                            `}
+                                        >
+                                            {isThisTemplateCopied ? (
+                                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7"/></svg>
+                                            ) : (
+                                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" /></svg>
+                                            )}
                                         </button>
                                     </div>
                                 </div>
@@ -297,11 +333,11 @@ const OrdersListMobile: React.FC<OrdersListMobileProps> = ({
                                 </div>
                             </div>
 
-                            {/* Product List (Scrollable if many) */}
+                            {/* Product List (Collapsible / Modal Trigger) */}
                             {isProductInfoVisible && order.Products && order.Products.length > 0 && (
                                 <div className="bg-black/20 rounded-2xl p-3 border border-white/5 mb-5 shadow-inner">
                                     <div className="flex overflow-x-auto gap-3 pb-2 snap-x no-scrollbar">
-                                        {order.Products.map((p, i) => {
+                                        {order.Products.slice(0, 4).map((p, i) => {
                                             const masterProd = appData.products?.find(mp => mp.ProductName === p.name);
                                             const displayImg = p.image || masterProd?.ImageURL || '';
                                             return (
@@ -319,6 +355,19 @@ const OrdersListMobile: React.FC<OrdersListMobileProps> = ({
                                                 </div>
                                             );
                                         })}
+                                        
+                                        {/* Show More Trigger for Many Products */}
+                                        {order.Products.length > 4 && (
+                                            <button 
+                                                onClick={() => setViewingProductsOrder(order)}
+                                                className="flex-shrink-0 w-[100px] snap-center bg-gray-800/80 rounded-xl p-2 border border-white/10 flex flex-col items-center justify-center gap-2 hover:bg-gray-700 transition-colors active:scale-95"
+                                            >
+                                                <div className="w-10 h-10 rounded-full bg-blue-600/20 text-blue-400 flex items-center justify-center border border-blue-500/30">
+                                                    <span className="font-black text-sm">+{order.Products.length - 4}</span>
+                                                </div>
+                                                <span className="text-[9px] font-bold text-gray-400 uppercase tracking-wider">View All</span>
+                                            </button>
+                                        )}
                                     </div>
                                 </div>
                             )}
@@ -363,7 +412,7 @@ const OrdersListMobile: React.FC<OrdersListMobileProps> = ({
                                         onClick={() => handlePrint(order)} 
                                         className="w-12 h-12 flex items-center justify-center bg-gray-800 text-gray-400 rounded-xl border border-white/10 hover:text-white active:scale-90 transition-all"
                                     >
-                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" /></svg>
+                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" /></svg>
                                     </button>
                                 )}
 
@@ -394,6 +443,49 @@ const OrdersListMobile: React.FC<OrdersListMobileProps> = ({
                         Load More ({orders.length - displayCount} remaining)
                     </button>
                 </div>
+            )}
+
+            {/* Product Details Modal for Large Lists */}
+            {viewingProductsOrder && (
+                <Modal isOpen={true} onClose={() => setViewingProductsOrder(null)} maxWidth="max-w-lg">
+                    <div className="p-6 bg-[#0f172a] rounded-[2rem] border border-white/10 shadow-2xl">
+                        <div className="flex justify-between items-center mb-6 border-b border-white/10 pb-4">
+                            <div>
+                                <h3 className="text-lg font-black text-white uppercase tracking-tight">Products List</h3>
+                                <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest">Order #{viewingProductsOrder['Order ID'].substring(0, 8)}</p>
+                            </div>
+                            <button onClick={() => setViewingProductsOrder(null)} className="p-2 bg-gray-800 rounded-full text-gray-400 hover:text-white transition-all active:scale-90">
+                                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                            </button>
+                        </div>
+                        <div className="space-y-3 max-h-[60vh] overflow-y-auto custom-scrollbar pr-2">
+                            {viewingProductsOrder.Products.map((p, i) => {
+                                 const masterProd = appData.products?.find(mp => mp.ProductName === p.name);
+                                 const displayImg = p.image || masterProd?.ImageURL || '';
+                                 return (
+                                    <div key={i} className="flex items-start gap-4 p-3 bg-gray-800/50 rounded-2xl border border-white/5 hover:border-white/10 transition-colors">
+                                        <div className="w-16 h-16 rounded-xl bg-black/40 overflow-hidden border border-white/10 flex-shrink-0 shadow-inner">
+                                            <img src={convertGoogleDriveUrl(displayImg)} className="w-full h-full object-cover" alt="" />
+                                        </div>
+                                        <div className="flex-grow min-w-0 pt-1">
+                                            <h4 className="text-sm font-bold text-white leading-tight mb-1 line-clamp-2">{p.name}</h4>
+                                            <div className="flex flex-wrap gap-2 text-[10px]">
+                                                <span className="bg-blue-600/20 text-blue-400 px-2 py-0.5 rounded font-black border border-blue-500/20">x{p.quantity}</span>
+                                                <span className="text-gray-400 font-bold self-center">Price: ${p.finalPrice?.toFixed(2)}</span>
+                                                {p.colorInfo && <span className="bg-purple-600/20 text-purple-400 px-2 py-0.5 rounded font-bold border border-purple-500/20">{p.colorInfo}</span>}
+                                            </div>
+                                            <p className="text-xs font-black text-white mt-1.5 text-right tracking-tight">${(p.total || 0).toFixed(2)}</p>
+                                        </div>
+                                    </div>
+                                 );
+                            })}
+                        </div>
+                        <div className="mt-6 pt-4 border-t border-white/10 flex justify-between items-center">
+                            <span className="text-gray-400 text-xs font-bold uppercase tracking-widest">Total Items</span>
+                            <span className="text-white font-black text-lg">{viewingProductsOrder.Products.reduce((sum, p) => sum + (Number(p.quantity) || 0), 0)}</span>
+                        </div>
+                    </div>
+                </Modal>
             )}
             
             <style>{`

@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useEffect, useContext } from 'react';
 import { User, ParsedOrder } from '../../types';
 import StatCard from '../performance/StatCard';
 import TeamRevenueTable from './TeamRevenueTable';
@@ -7,6 +7,7 @@ import ProvincialMap from './ProvincialMap';
 import ProvincialSummaryList from './ProvincialSummaryList';
 import DateRangeFilter, { DateRangePreset } from '../common/DateRangeFilter';
 import FulfillmentStoreTable from './FulfillmentStoreTable';
+import { AppContext } from '../../context/AppContext';
 
 interface DashboardOverviewProps {
     currentUser: User | null;
@@ -30,6 +31,8 @@ const DashboardOverview: React.FC<DashboardOverviewProps> = ({
     teamRevenueStats, provinceStats, storeStats,
     onTeamClick, onProvinceClick, onStoreClick
 }) => {
+    // Note: We intentionally do NOT set a mobile page title here.
+    // The requirement is to show the App Logo for the Dashboard view.
     
     const getOrderDate = (o: ParsedOrder) => new Date(o.Timestamp);
     

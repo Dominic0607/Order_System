@@ -25,6 +25,7 @@ const OrdersList: React.FC<OrdersListProps> = ({
 }) => {
     const { refreshData } = useContext(AppContext);
     const [copiedId, setCopiedId] = useState<string | null>(null);
+    const [copiedTemplateId, setCopiedTemplateId] = useState<string | null>(null);
     const [updatingIds, setUpdatingIds] = useState<Set<string>>(new Set());
     const [localOrders, setLocalOrders] = useState<ParsedOrder[]>(orders);
 
@@ -71,6 +72,59 @@ const OrdersList: React.FC<OrdersListProps> = ({
         setTimeout(() => setCopiedId(null), 2000);
     };
 
+    const generateTelegramTemplate = (order: ParsedOrder) => {
+        const productLines = order.Products.map(p =>
+            `   ▪️ ${p.quantity}x ${p.name} ($${(p.finalPrice || 0).toFixed(2)})`
+        ).join('\n');
+
+        const paymentText = order['Payment Status'] === 'Paid'
+            ? '✅ *ទូទាត់រួច*'
+            : '❌ *មិនទាន់ទូទាត់ (COD)*';
+
+        // Date without time
+        let dateStr = '';
+        try {
+             // Handle custom date format if needed or standard ISO
+             const d = new Date(order.Timestamp);
+             if (!isNaN(d.getTime())) {
+                 dateStr = d.toLocaleDateString('km-KH', { year: 'numeric', month: '2-digit', day: '2-digit' });
+             } else {
+                 dateStr = String(order.Timestamp || '').split(' ')[0];
+             }
+        } catch(e) {
+             dateStr = String(order.Timestamp || '');
+        }
+
+        // Updated Template Format as requested
+        return `✅សូមបងពិនិត្យលេខទូរស័ព្ទ និងទីតាំងម្ដងទៀតបង 🙏
+📃 *Page:* ${order.Page}
+👤 *អតិថិជន:* *${order['Customer Name']}*
+📞 *លេខទូរស័ព្ទ:* \`${order['Customer Phone']}\`
+📍 *ទីតាំង:* ${order.Location}
+🏠 *អាសយដ្ឋាន:* ${order['Address Details'] || 'N/A'}
+
+ *----------- ផលិតផល -----------*
+${productLines}
+
+💰 *សរុប:*
+  - តម្លៃទំនិញ: $${(order.Subtotal || 0).toFixed(2)}
+  - សេវាដឹក: $${(order['Shipping Fee (Customer)'] || 0).toFixed(2)}
+  - *សរុបចុងក្រោយ: $${(order['Grand Total'] || 0).toFixed(2)}*
+ ${paymentText}
+
+🚚 *វិធីសាស្រ្តដឹកជញ្ជូន:* ${order['Internal Shipping Method']}
+📅 ${dateStr}
+--------------------------------------
+អរគុណបង🙏🥰 | ID: \`${order['Order ID']}\``;
+    };
+
+    const handleCopyTemplate = (order: ParsedOrder) => {
+        const text = generateTelegramTemplate(order);
+        navigator.clipboard.writeText(text);
+        setCopiedTemplateId(order['Order ID']);
+        setTimeout(() => setCopiedTemplateId(null), 2000);
+    };
+
     const handlePrint = (order: ParsedOrder) => {
         if (!LABEL_PRINTER_URL_BASE || !order) return;
         const validatedPhone = formatPhone(order['Customer Phone']);
@@ -101,7 +155,9 @@ const OrdersList: React.FC<OrdersListProps> = ({
         onEdit,
         handlePrint,
         handleCopy,
+        handleCopyTemplate,
         copiedId,
+        copiedTemplateId,
         toggleOrderVerified,
         updatingIds
     };

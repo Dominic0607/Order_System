@@ -20,9 +20,15 @@ interface OrdersDashboardProps {
 }
 
 const OrdersDashboard: React.FC<OrdersDashboardProps> = ({ onBack, initialFilters }) => {
-    const { appData, refreshData, refreshTimestamp, currentUser } = useContext(AppContext);
+    const { appData, refreshData, refreshTimestamp, currentUser, setMobilePageTitle } = useContext(AppContext);
     const [editingOrderId, setEditingOrderId] = useUrlState<string>('editOrder', '');
     
+    // Set Mobile Title
+    useEffect(() => {
+        setMobilePageTitle('គ្រប់គ្រងប្រតិបត្តិការណ៍');
+        return () => setMobilePageTitle(null);
+    }, [setMobilePageTitle]);
+
     // URL State for Filters (Keep for deep linking if user refreshes)
     // Core
     const [urlTeam, setUrlTeam] = useUrlState<string>('teamFilter', '');
@@ -384,7 +390,7 @@ const OrdersDashboard: React.FC<OrdersDashboardProps> = ({ onBack, initialFilter
 
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end mb-10 gap-6 px-1">
                 <div>
-                    <h1 className="text-3xl lg:text-5xl font-black text-white italic tracking-tighter leading-relaxed mb-3 py-1">គ្រប់គ្រងប្រតិបត្តិការណ៍</h1>
+                    <h1 className="hidden md:block text-3xl lg:text-5xl font-black text-white italic tracking-tighter leading-relaxed mb-3 py-1">គ្រប់គ្រងប្រតិបត្តិការណ៍</h1>
                     <div className="flex items-center gap-3">
                         <div className="flex items-center gap-2 px-4 py-1.5 bg-blue-600/10 rounded-full border border-blue-500/20">
                             <div className="w-2 h-2 rounded-full bg-blue-500 animate-pulse"></div>
@@ -393,7 +399,7 @@ const OrdersDashboard: React.FC<OrdersDashboardProps> = ({ onBack, initialFilter
                     </div>
                 </div>
                 <div className="flex gap-3">
-                    <button onClick={onBack} className="group flex items-center gap-3 px-8 py-4 bg-gray-800/40 backdrop-blur-xl border border-white/5 hover:border-blue-500/30 text-gray-500 hover:text-blue-400 font-black uppercase tracking-widest text-[12px] rounded-2xl transition-all shadow-xl active:scale-95">
+                    <button onClick={onBack} className="hidden md:flex group items-center gap-3 px-8 py-4 bg-gray-800/40 backdrop-blur-xl border border-white/5 hover:border-blue-500/30 text-gray-500 hover:text-blue-400 font-black uppercase tracking-widest text-[12px] rounded-2xl transition-all shadow-xl active:scale-95">
                         <svg className="w-5 h-5 transform group-hover:-translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={3}><path d="M10 19l-7-7m0 0l7-7m-7 7h18" /></svg>
                         Back to Core
                     </button>

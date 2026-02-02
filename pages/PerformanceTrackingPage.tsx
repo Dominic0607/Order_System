@@ -1,5 +1,5 @@
 
-import React, { useState, useMemo, useContext } from 'react';
+import React, { useState, useMemo, useContext, useEffect } from 'react';
 import { ParsedOrder, User, Target } from '../types';
 import { usePerformanceData } from '../hooks/usePerformanceData';
 import { AppContext } from '../context/AppContext';
@@ -21,13 +21,38 @@ type DateRangePreset = 'this_month' | 'last_month' | 'quarter' | 'year' | 'all';
 type LeaderboardMetric = 'revenue' | 'orderCount' | 'achievement';
 
 const PerformanceTrackingPage: React.FC<PerformanceTrackingPageProps> = ({ orders, users, targets }) => {
-    const { previewImage } = useContext(AppContext);
+    const { previewImage, setMobilePageTitle } = useContext(AppContext);
     const [activeTab, setActiveTab] = useState<PerformanceTab>('overview');
     const [filters, setFilters] = useState({
         datePreset: 'this_month' as DateRangePreset,
         team: '',
+        store: '',
     });
     const [leaderboardMetric, setLeaderboardMetric] = useState<LeaderboardMetric>('revenue');
+
+    // Set Mobile Title
+    useEffect(() => {
+        setMobilePageTitle('PERFORMANCE');
+        return () => setMobilePageTitle(null);
+    }, [setMobilePageTitle]);
+
+    // Extract unique stores
+    const stores = useMemo(() => {
+        const unique = new Set<string>();
+        orders.forEach(o => {
+            if (o['Fulfillment Store']) unique.add(o['Fulfillment Store']);
+        });
+        return Array.from(unique).sort();
+    }, [orders]);
+
+    // Extract unique teams (optional, but good for completeness if we want to enable team filtering later)
+    const teams = useMemo(() => {
+        const unique = new Set<string>();
+        orders.forEach(o => {
+            if (o.Team) unique.add(o.Team);
+        });
+        return Array.from(unique).sort();
+    }, [orders]);
 
     const filteredOrders = useMemo(() => {
         const now = new Date();
@@ -47,7 +72,8 @@ const PerformanceTrackingPage: React.FC<PerformanceTrackingPageProps> = ({ order
             const orderDate = new Date(order.Timestamp);
             const dateMatch = (!startDate || orderDate >= startDate) && (!endDate || orderDate <= endDate);
             const teamMatch = !filters.team || order.Team === filters.team;
-            return dateMatch && teamMatch;
+            const storeMatch = !filters.store || order['Fulfillment Store'] === filters.store;
+            return dateMatch && teamMatch && storeMatch;
         });
     }, [orders, filters]);
 
@@ -73,11 +99,11 @@ const PerformanceTrackingPage: React.FC<PerformanceTrackingPageProps> = ({ order
     const EmptyDataPlaceholder = () => (
         <div className="flex flex-col items-center justify-center p-12 text-center bg-gray-800/20 border-2 border-dashed border-gray-700 rounded-3xl animate-fade-in">
             <div className="w-20 h-20 bg-gray-800 rounded-full flex items-center justify-center mb-4">
-                <svg className="w-10 h-10 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+                <svg className="w-10 h-10 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
             </div>
             <h3 className="text-xl font-bold text-white mb-2">មិនទាន់មានទិន្នន័យសម្រាប់ជម្រើសនេះ</h3>
-            <p className="text-gray-400 max-w-xs mx-auto mb-6 text-sm">សូមសាកល្បងប្តូរ "កាលបរិច្ឆេទ" ឬ "ក្រុម" ដើម្បីមើលទិន្នន័យផ្សេងទៀត។</p>
-            <button onClick={() => setFilters({ ...filters, datePreset: 'all' })} className="btn btn-secondary text-xs">បង្ហាញទិន្នន័យទាំងអស់ (All Time)</button>
+            <p className="text-gray-400 max-w-xs mx-auto mb-6 text-sm">សូមសាកល្បងប្តូរ "កាលបរិច្ឆេទ" ឬ "ក្រុម/Store" ដើម្បីមើលទិន្នន័យផ្សេងទៀត។</p>
+            <button onClick={() => setFilters({ ...filters, datePreset: 'all', team: '', store: '' })} className="btn btn-secondary text-xs">បង្ហាញទិន្នន័យទាំងអស់ (All Time)</button>
         </div>
     );
 
@@ -105,14 +131,33 @@ const PerformanceTrackingPage: React.FC<PerformanceTrackingPageProps> = ({ order
                 </div>
 
                 <div className="flex flex-wrap items-center gap-2 w-full lg:w-auto">
+                    {/* Date Preset */}
                     <div className="flex items-center bg-gray-800/50 rounded-xl px-3 py-1.5 border border-gray-700 flex-1 sm:flex-none">
-                        <span className="text-[10px] text-gray-500 font-bold uppercase mr-2">ជម្រើស:</span>
+                        <span className="text-[10px] text-gray-500 font-bold uppercase mr-2">កាលបរិច្ឆេទ:</span>
                         <select className="bg-transparent border-none focus:ring-0 text-xs font-bold text-blue-400 cursor-pointer w-full sm:w-auto" value={filters.datePreset} onChange={e => setFilters({...filters, datePreset: e.target.value as DateRangePreset})}>
                             <option value="this_month">ខែនេះ</option>
                             <option value="last_month">ខែមុន</option>
                             <option value="quarter">ត្រីមាសនេះ</option>
                             <option value="year">ឆ្នាំនេះ</option>
                             <option value="all">ទាំងអស់</option>
+                        </select>
+                    </div>
+
+                    {/* Store Filter */}
+                    <div className="flex items-center bg-gray-800/50 rounded-xl px-3 py-1.5 border border-gray-700 flex-1 sm:flex-none">
+                        <span className="text-[10px] text-gray-500 font-bold uppercase mr-2">Store:</span>
+                        <select className="bg-transparent border-none focus:ring-0 text-xs font-bold text-emerald-400 cursor-pointer w-full sm:w-auto" value={filters.store} onChange={e => setFilters({...filters, store: e.target.value})}>
+                            <option value="">All Stores</option>
+                            {stores.map(s => <option key={s} value={s}>{s}</option>)}
+                        </select>
+                    </div>
+
+                    {/* Team Filter */}
+                    <div className="flex items-center bg-gray-800/50 rounded-xl px-3 py-1.5 border border-gray-700 flex-1 sm:flex-none">
+                        <span className="text-[10px] text-gray-500 font-bold uppercase mr-2">Team:</span>
+                        <select className="bg-transparent border-none focus:ring-0 text-xs font-bold text-purple-400 cursor-pointer w-full sm:w-auto" value={filters.team} onChange={e => setFilters({...filters, team: e.target.value})}>
+                            <option value="">All Teams</option>
+                            {teams.map(t => <option key={t} value={t}>{t}</option>)}
                         </select>
                     </div>
                 </div>
@@ -134,7 +179,7 @@ const PerformanceTrackingPage: React.FC<PerformanceTrackingPageProps> = ({ order
             )}
 
             {activeTab === 'targets' && (
-                byUser.length === 0 ? <div className="col-span-full py-12 text-center text-gray-500">មិនមានព័ត៌មានគោលដៅអ្នកលក់សម្រាប់ខែនេះ</div> : <TargetsTab data={byUser} />
+                byUser.length === 0 ? <div className="col-span-full py-12 text-center text-gray-500">មិនមានព័ត៌មានគោលដៅអ្នកលក់សម្រាប់ជម្រើសនេះ</div> : <TargetsTab data={byUser} />
             )}
         </div>
     );

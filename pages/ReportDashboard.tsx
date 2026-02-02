@@ -20,11 +20,28 @@ interface ReportDashboardProps {
 }
 
 const ReportDashboard: React.FC<ReportDashboardProps> = ({ activeReport, onBack, onNavigate }) => {
-    const { appData, refreshTimestamp } = useContext(AppContext);
+    const { appData, refreshTimestamp, setMobilePageTitle } = useContext(AppContext);
     const [loading, setLoading] = useState(true);
     const [orders, setOrders] = useState<ParsedOrder[]>([]);
     const [usersList, setUsersList] = useState<User[]>([]);
     const [isFilterOpen, setIsFilterOpen] = useState(false);
+    
+    // Updated titles to match user request (English, Uppercase to match style)
+    const reportTitles: Record<ReportType, string> = {
+        overview: 'OVERVIEW',
+        sales_team: 'SALES TEAM REPORT',
+        sales_page: 'SALES PAGE REPORT',
+        performance: 'PERFORMANCE',
+        profitability: 'PROFITABILITY',
+        shipping: 'SHIPPING COST',
+        forecasting: 'FORECASTING'
+    };
+
+    // Update Mobile Header Title
+    useEffect(() => {
+        setMobilePageTitle(reportTitles[activeReport]);
+        return () => setMobilePageTitle(null);
+    }, [activeReport, setMobilePageTitle]);
     
     // Sync Date Filters with URL
     const [urlDate, setUrlDate] = useUrlState<string>('dateFilter', 'this_month');
@@ -147,16 +164,6 @@ const ReportDashboard: React.FC<ReportDashboardProps> = ({ activeReport, onBack,
         });
     }, [orders, filters, appData.pages]);
 
-    const reportTitles: Record<ReportType, string> = {
-        overview: 'សង្ខេបប្រតិបត្តិការ',
-        sales_team: 'របាយការណ៍ក្រុម',
-        sales_page: 'របាយការណ៍ Page',
-        performance: 'ការអនុវត្ត (KPI)',
-        profitability: 'វិភាគប្រាក់ចំណេញ',
-        shipping: 'ចំណាយដឹកជញ្ជូន',
-        forecasting: 'ការព្យាករណ៍ AI'
-    };
-
     if (loading) return <div className="flex h-screen items-center justify-center bg-gray-950"><Spinner size="lg" /></div>;
 
     const activeFilterCount = Object.values(filters).filter(v => v !== '' && v !== 'this_month' && v !== 'all').length;
@@ -166,7 +173,7 @@ const ReportDashboard: React.FC<ReportDashboardProps> = ({ activeReport, onBack,
             {/* Header */}
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-gray-800/20 p-6 rounded-[2.5rem] border border-white/5 backdrop-blur-md">
                 <div>
-                    <h1 className="text-2xl font-black text-white uppercase tracking-tight italic">{reportTitles[activeReport]}</h1>
+                    <h1 className="hidden sm:block text-2xl font-black text-white uppercase tracking-tight italic">{reportTitles[activeReport]}</h1>
                     <div className="flex items-center gap-2 mt-1">
                         <span className="w-2 h-2 rounded-full bg-blue-500 animate-pulse"></span>
                         <p className="text-[10px] text-blue-400 font-black uppercase tracking-widest">

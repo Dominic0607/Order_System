@@ -15,7 +15,9 @@ interface OrdersListTabletProps {
     onEdit?: (order: ParsedOrder) => void;
     handlePrint: (order: ParsedOrder) => void;
     handleCopy: (id: string) => void;
+    handleCopyTemplate: (order: ParsedOrder) => void;
     copiedId: string | null;
+    copiedTemplateId: string | null;
     toggleOrderVerified: (id: string, currentStatus: boolean) => void;
     updatingIds: Set<string>;
 }
@@ -29,7 +31,9 @@ const OrdersListTablet: React.FC<OrdersListTabletProps> = ({
     onEdit,
     handlePrint,
     handleCopy,
+    handleCopyTemplate,
     copiedId,
+    copiedTemplateId,
     toggleOrderVerified,
     updatingIds
 }) => {
@@ -74,6 +78,7 @@ const OrdersListTablet: React.FC<OrdersListTabletProps> = ({
                     const isSelected = selectedIds.has(order['Order ID']);
                     const shippingLogo = getShippingLogo(order['Internal Shipping Method']);
                     const isThisCopied = copiedId === order['Order ID'];
+                    const isThisTemplateCopied = copiedTemplateId === order['Order ID'];
 
                     return (
                         <div 
@@ -99,13 +104,27 @@ const OrdersListTablet: React.FC<OrdersListTabletProps> = ({
                                             onChange={() => onToggleSelect(order['Order ID'])}
                                         />
                                     )}
-                                    <button 
-                                        onClick={() => handleCopy(order['Order ID'])}
-                                        className={`flex items-center gap-2 px-3 py-1.5 rounded-xl border transition-all active:scale-95 ${isThisCopied ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30' : 'bg-black/30 text-gray-400 border-white/5 hover:text-white'}`}
-                                    >
-                                        <span className="text-[10px] font-black uppercase tracking-widest font-mono">#{order['Order ID'].substring(0, 8)}</span>
-                                        {isThisCopied && <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>}
-                                    </button>
+                                    <div className="flex gap-2">
+                                        <button 
+                                            onClick={() => handleCopy(order['Order ID'])}
+                                            className={`flex items-center gap-2 px-3 py-1.5 rounded-xl border transition-all active:scale-95 ${isThisCopied ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30' : 'bg-black/30 text-gray-400 border-white/5 hover:text-white'}`}
+                                        >
+                                            <span className="text-[10px] font-black uppercase tracking-widest font-mono">#{order['Order ID'].substring(0, 8)}</span>
+                                            {isThisCopied && <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>}
+                                        </button>
+                                        
+                                        {/* Copy Template Button */}
+                                        <button 
+                                            onClick={() => handleCopyTemplate(order)}
+                                            className={`flex items-center justify-center w-8 h-8 rounded-xl border transition-all active:scale-95 ${isThisTemplateCopied ? 'bg-indigo-500/20 border-indigo-500/50 text-indigo-400' : 'bg-black/30 border-white/5 text-gray-400 hover:text-white'}`}
+                                        >
+                                            {isThisTemplateCopied ? (
+                                                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7"/></svg>
+                                            ) : (
+                                                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" /></svg>
+                                            )}
+                                        </button>
+                                    </div>
                                 </div>
                                 <span className={`px-2.5 py-1 rounded-lg text-[9px] font-black uppercase tracking-wider border ${order['Payment Status'] === 'Paid' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 'bg-red-500/10 text-red-400 border border-red-500/20'}`}>
                                     {order['Payment Status']}
@@ -164,7 +183,7 @@ const OrdersListTablet: React.FC<OrdersListTabletProps> = ({
 
                                 <div className="flex items-center gap-2">
                                     {onEdit && <button onClick={() => onEdit(order)} className="flex-1 py-2.5 bg-blue-600/10 text-blue-400 hover:bg-blue-600 hover:text-white rounded-xl border border-blue-500/20 font-black text-[10px] uppercase tracking-widest transition-all">Edit</button>}
-                                    <button onClick={() => handlePrint(order)} className="w-10 h-10 flex items-center justify-center bg-gray-800 text-gray-400 hover:text-white rounded-xl border border-white/10 transition-all"><svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" /></svg></button>
+                                    <button onClick={() => handlePrint(order)} className="w-10 h-10 flex items-center justify-center bg-gray-800 text-gray-400 hover:text-white rounded-xl border border-white/10 transition-all"><svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" /></svg></button>
                                     
                                     <div className="relative">
                                         <input type="checkbox" checked={isVerified} onChange={() => toggleOrderVerified(order['Order ID'], isVerified)} className={`w-10 h-10 rounded-xl appearance-none border transition-all cursor-pointer ${isVerified ? 'bg-emerald-500 border-emerald-400' : 'bg-gray-800 border-gray-600'}`} />

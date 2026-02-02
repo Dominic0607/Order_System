@@ -1,80 +1,134 @@
 
-import React, { useMemo } from 'react';
+import React, { useState, useContext, useMemo, useEffect } from 'react';
+import { AppContext } from '../context/AppContext';
+import { useFulfillment } from '../hooks/useFulfillment';
+import Spinner from '../components/common/Spinner';
+import { convertGoogleDriveUrl } from '../utils/fileUtils';
+import { ParsedOrder, FulfillmentStatus } from '../types';
 
-interface StoreStat {
-    name: string;
-    revenue: number;
-    orders: number;
-}
-
-interface FulfillmentStoreTableProps {
-    stats: StoreStat[];
-    onStatClick: (storeName: string) => void;
-}
-
-const FulfillmentStoreTable: React.FC<FulfillmentStoreTableProps> = ({ stats, onStatClick }) => {
-    const grandTotals = useMemo(() => {
-        return stats.reduce((acc, curr) => ({
-            revenue: acc.revenue + curr.revenue,
-            orders: acc.orders + curr.orders
-        }), { revenue: 0, orders: 0 });
-    }, [stats]);
-
+const FulfillmentCard: React.FC<{ 
+    order: ParsedOrder; 
+    onStatusChange: (id: string, status: FulfillmentStatus) => void;
+    isLoading: boolean;
+}> = ({ order, onStatusChange, isLoading }) => {
+    const currentStatus = order.FulfillmentStatus || 'Pending';
+    
     return (
-        <div className="space-y-4">
-            <h3 className="text-lg font-bold text-white flex items-center px-1">
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2 text-orange-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
-                </svg>
-                ឃ្លាំងបញ្ចេញទំនិញ (Stock)
-            </h3>
-            <div className="bg-gray-800/40 backdrop-blur-sm rounded-2xl border border-gray-700/50 overflow-hidden shadow-xl">
-                <div className="overflow-x-auto">
-                    <table className="w-full text-sm text-left">
-                        <thead className="text-[10px] text-gray-500 font-black uppercase tracking-widest bg-gray-900/50 border-b border-gray-700 sticky top-0 z-10">
-                            <tr>
-                                <th className="px-6 py-4">ឈ្មោះឃ្លាំង (Store)</th>
-                                <th className="px-6 py-4 text-center">ចំនួន Orders</th>
-                                <th className="px-6 py-4 text-right">ចំណូល</th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-gray-700/30">
-                            {stats.map((store, idx) => (
-                                <tr key={store.name} className="hover:bg-orange-600/5 transition-colors group cursor-pointer" onClick={() => onStatClick(store.name)}>
-                                    <td className="px-6 py-4 font-bold text-gray-100 flex items-center gap-3">
-                                        <span className="w-6 h-6 rounded-lg bg-gray-700 text-gray-400 flex items-center justify-center text-[10px] border border-gray-600">#{idx + 1}</span>
-                                        <span className="group-hover:text-orange-300 transition-colors">{store.name}</span>
-                                    </td>
-                                    <td className="px-6 py-4 text-center text-blue-400 font-black group-hover:underline">
-                                        {store.orders}
-                                    </td>
-                                    <td className="px-6 py-4 text-right font-black text-green-400 group-hover:text-green-300 transition-colors">
-                                        ${store.revenue.toLocaleString(undefined, { minimumFractionDigits: 2 })}
-                                    </td>
-                                </tr>
-                            ))}
-                            {stats.length === 0 && (
-                                <tr>
-                                    <td colSpan={3} className="px-6 py-12 text-center text-gray-500 italic">មិនទាន់មានទិន្នន័យ</td>
-                                </tr>
-                            )}
-                        </tbody>
-                        {stats.length > 0 && (
-                            <tfoot className="bg-gray-900/80 font-black border-t-2 border-gray-700">
-                                <tr>
-                                    <td className="px-6 py-4 uppercase tracking-widest text-gray-500 text-[10px]">សរុបរួម</td>
-                                    <td className="px-6 py-4 text-center text-blue-300 text-base">{grandTotals.orders}</td>
-                                    <td className="px-6 py-4 text-right text-green-400 text-base">
-                                        ${grandTotals.revenue.toLocaleString(undefined, { minimumFractionDigits: 2 })}
-                                    </td>
-                                </tr>
-                            </tfoot>
-                        )}
-                    </table>
+        <div className="bg-gray-800/40 border border-gray-700 rounded-2xl p-5 space-y-4 hover:border-blue-500/50 transition-all shadow-lg animate-fade-in relative overflow-hidden group">
+            {isLoading && (
+                <div className="absolute inset-0 bg-black/40 backdrop-blur-sm z-10 flex items-center justify-center">
+                    <Spinner size="md" />
                 </div>
+            )}
+            
+            <div className="flex justify-between items-start">
+                <div>
+                    <h4 className="text-white font-black uppercase text-sm tracking-tight">{order['Order ID'].substring(0, 8)}</h4>
+                    <p className="text-[10px] text-gray-500 font-bold uppercase mt-0.5">{order.Page} ({order.Team})</p>
+                </div>
+                <div className="text-right">
+                    <p className="text-xs font-bold text-gray-300">{order['Customer Name']}</p>
+                    <p className="text-[10px] text-gray-500 font-mono">{order['Customer Phone']}</p>
+                </div>
+            </div>
+
+            <div className="bg-black/20 rounded-xl p-3 border border-white/5 space-y-2">
+                {order.Products.map((p, i) => (
+                    <div key={i} className="flex items-center gap-3">
+                        <div className="w-10 h-10 bg-gray-900 rounded-lg border border-gray-700 overflow-hidden flex-shrink-0">
+                            <img src={convertGoogleDriveUrl(p.image)} className="w-full h-full object-cover" alt="" />
+                        </div>
+                        <div className="flex-grow min-w-0">
+                            <p className="text-xs font-bold text-gray-200 truncate leading-tight">{p.name}</p>
+                            <div className="flex justify-between mt-0.5">
+                                <span className="text-[10px] text-blue-400 font-black">Qty: {p.quantity}</span>
+                                {p.colorInfo && <span className="text-[10px] text-purple-400 italic">ពណ៌: {p.colorInfo}</span>}
+                            </div>
+                        </div>
+                    </div>
+                ))}
+            </div>
+
+            <div className="pt-2 flex gap-2">
+                {currentStatus === 'Pending' && (
+                    <button 
+                        onClick={() => onStatusChange(order['Order ID'], 'Packing')}
+                        className="flex-1 btn bg-blue-600 hover:bg-blue-700 text-white text-[10px] font-black uppercase py-2 rounded-xl"
+                    >
+                        ចាប់ផ្តើមវេចខ្ចប់
+                    </button>
+                )}
+                {currentStatus === 'Packing' && (
+                    <button 
+                        onClick={() => onStatusChange(order['Order ID'], 'Shipped')}
+                        className="flex-1 btn bg-emerald-600 hover:bg-emerald-700 text-white text-[10px] font-black uppercase py-2 rounded-xl"
+                    >
+                        ផ្ញើចេញរួចរាល់
+                    </button>
+                )}
+                {currentStatus === 'Shipped' && (
+                    <div className="flex-1 text-center py-2 bg-gray-700/50 rounded-xl text-[10px] font-black text-gray-400 uppercase">
+                        ✅ បានបញ្ចេញទំនិញ
+                    </div>
+                )}
             </div>
         </div>
     );
 };
 
-export default FulfillmentStoreTable;
+const FulfillmentDashboard: React.FC<{ orders: ParsedOrder[] }> = ({ orders }) => {
+    const { refreshData, setMobilePageTitle } = useContext(AppContext);
+    const { ordersByStatus, updateStatus, loadingId } = useFulfillment(orders, refreshData);
+    const [activeTab, setActiveTab] = useState<FulfillmentStatus>('Pending');
+
+    // Update Mobile Header Title
+    useEffect(() => {
+        setMobilePageTitle('Fulfillment Store');
+        return () => setMobilePageTitle(null);
+    }, [setMobilePageTitle]);
+
+    const filteredList = useMemo(() => {
+        if (activeTab === 'Pending') return ordersByStatus.Pending;
+        if (activeTab === 'Packing') return ordersByStatus.Packing;
+        return ordersByStatus.Shipped;
+    }, [activeTab, ordersByStatus]);
+
+    return (
+        <div className="space-y-6 animate-fade-in pb-20">
+            <div className="flex flex-col md:flex-row justify-between items-center gap-4 bg-gray-800/20 p-5 rounded-[2rem] border border-white/5 backdrop-blur-md">
+                <h1 className="hidden sm:block text-2xl font-black text-white uppercase tracking-tighter">Fulfillment Store</h1>
+                <div className="flex bg-black/40 p-1 rounded-xl border border-white/5">
+                    {(['Pending', 'Packing', 'Shipped'] as const).map(status => (
+                        <button 
+                            key={status}
+                            onClick={() => setActiveTab(status)}
+                            className={`px-6 py-2 text-[10px] font-black uppercase rounded-lg transition-all ${activeTab === status ? 'bg-blue-600 text-white shadow-lg' : 'text-gray-500 hover:text-white'}`}
+                        >
+                            {status === 'Pending' ? 'ត្រូវវេចខ្ចប់' : status === 'Packing' ? 'កំពុងវេចខ្ចប់' : 'បានផ្ញើចេញ'}
+                            <span className="ml-2 px-1.5 py-0.5 bg-black/30 rounded-md text-[8px]">{ordersByStatus[status].length}</span>
+                        </button>
+                    ))}
+                </div>
+            </div>
+
+            {filteredList.length === 0 ? (
+                <div className="py-20 text-center bg-gray-800/10 rounded-[3rem] border-2 border-dashed border-gray-700/50">
+                    <p className="text-gray-500 font-black uppercase tracking-[0.2em] text-sm">មិនមានទិន្នន័យក្នុងបញ្ជីនេះទេ</p>
+                </div>
+            ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                    {filteredList.map(order => (
+                        <FulfillmentCard 
+                            key={order['Order ID']} 
+                            order={order} 
+                            onStatusChange={updateStatus}
+                            isLoading={loadingId === order['Order ID']}
+                        />
+                    ))}
+                </div>
+            )}
+        </div>
+    );
+};
+
+export default FulfillmentDashboard;

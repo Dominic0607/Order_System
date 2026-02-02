@@ -1,9 +1,13 @@
 
-import React, { useState, useContext, useEffect } from 'react';
+import React, { useState, useContext, useEffect, useRef } from 'react';
 import { AppContext } from '../context/AppContext';
 import { ParsedOrder, Product, MasterProduct, ShippingMethod } from '../types';
 import { WEB_APP_URL } from '../constants';
 import { convertGoogleDriveUrl } from '../utils/fileUtils';
+
+// Import New Utils & Services
+import { formatForInput, recalculateTotals, generateAuditLog } from '../utils/orderLogic';
+import { logUserActivity, logOrderEdit } from '../services/auditService';
 
 // Import New Sub-Components
 import EditCustomerPanel from '../components/orders/edit/EditCustomerPanel';
@@ -20,6 +24,9 @@ interface EditOrderPageProps {
 const EditOrderPage: React.FC<EditOrderPageProps> = ({ order, onSaveSuccess, onCancel }) => {
     const { appData, currentUser, previewImage, refreshData } = useContext(AppContext);
     
+    // Keep a reference to the original order for Audit comparison
+    const originalOrderRef = useRef<ParsedOrder>(order);
+
     const [formData, setFormData] = useState<ParsedOrder>(order);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
@@ -33,9 +40,20 @@ const EditOrderPage: React.FC<EditOrderPageProps> = ({ order, onSaveSuccess, onC
     const [selectedDistrict, setSelectedDistrict] = useState('');
     const [selectedSangkat, setSelectedSangkat] = useState('');
 
+    // Audit: Log when user opens the page
+    useEffect(() => {
+        if (currentUser) {
+            logUserActivity(
+                currentUser.UserName, 
+                'VIEW_EDIT_PAGE', 
+                `Opened Order #${order['Order ID']} for editing`
+            );
+        }
+    }, []);
+
     useEffect(() => {
         setFormData(order);
-        // Reset district/sangkat selectors when order changes (though rare in edit mode)
+        originalOrderRef.current = order; // Update ref when prop changes
     }, [order]);
 
     useEffect(() => {
@@ -47,50 +65,12 @@ const EditOrderPage: React.FC<EditOrderPageProps> = ({ order, onSaveSuccess, onC
 
     // --- Logic Handlers ---
 
-    const formatForInput = (timestamp: string) => {
-        if (!timestamp) return '';
-        
-        // Handle "YYYY-MM-DD H:mm" or "YYYY-MM-DD HH:mm" specifically
-        const match = timestamp.match(/^(\d{4})-(\d{1,2})-(\d{1,2})\s(\d{1,2}):(\d{2})/);
-        if (match) {
-            const y = match[1];
-            const m = match[2].padStart(2, '0');
-            const d = match[3].padStart(2, '0');
-            const h = match[4].padStart(2, '0');
-            const min = match[5].padStart(2, '0');
-            return `${y}-${m}-${d}T${h}:${min}`;
-        }
-
-        const d = new Date(timestamp);
-        if (isNaN(d.getTime())) return '';
-        const pad = (n: number) => n.toString().padStart(2, '0');
-        return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
-    };
-
     const handleDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         if (!e.target.value) return;
         const d = new Date(e.target.value);
         if (!isNaN(d.getTime())) {
-             // For saving, we can use ISO string as it's standard, 
-             // but if DB requires strict non-ISO, the backend should handle it or we format here.
-             // Assuming Backend accepts ISO or we convert to local string.
-             // Let's use ISO for state consistency.
              setFormData(prev => ({ ...prev, Timestamp: d.toISOString() }));
         }
-    };
-
-    const recalculateTotals = (products: Product[], shippingFee: number): Partial<ParsedOrder> => {
-        const subtotal = products.reduce((sum, p) => sum + (p.total || 0), 0);
-        const grandTotal = subtotal + shippingFee;
-        const totalProductCost = products.reduce((sum, p) => sum + ((p.cost || 0) * (p.quantity || 0)), 0);
-        const totalDiscount = products.reduce((sum, p) => sum + ((p.originalPrice - p.finalPrice) * p.quantity), 0);
-        
-        return { 
-            Subtotal: subtotal, 
-            'Grand Total': grandTotal, 
-            'Total Product Cost ($)': totalProductCost,
-            'Discount ($)': totalDiscount
-        };
     };
 
     const handleAddProduct = () => {
@@ -149,7 +129,6 @@ const EditOrderPage: React.FC<EditOrderPageProps> = ({ order, onSaveSuccess, onC
                         productToUpdate.total = (productToUpdate.quantity) * (Number(productToUpdate.finalPrice) || 0);
                         newProducts[existingIndex] = productToUpdate;
                     }
-                    // If single mode, do nothing (Modal shows warning)
                 } else {
                     // Add new
                     const newProduct: Product = {
@@ -210,22 +189,16 @@ const EditOrderPage: React.FC<EditOrderPageProps> = ({ order, onSaveSuccess, onC
             const productToUpdate = { ...newProducts[index] };
             
             if (field === 'name') {
-                // 1. Set the name explicitly (whether it exists in DB or not)
                 productToUpdate.name = value;
-
                 const masterProduct = appData.products.find((p: MasterProduct) => p.ProductName === value);
                 
                 if (masterProduct) {
-                    // 2a. Found in Database: Use predefined values
                     productToUpdate.originalPrice = masterProduct.Price;
                     productToUpdate.finalPrice = masterProduct.Price;
                     productToUpdate.cost = masterProduct.Cost;
                     productToUpdate.image = masterProduct.ImageURL;
                     productToUpdate.tags = extraTags !== undefined ? extraTags : masterProduct.Tags;
                 } else {
-                    // 2b. Custom Product: Reset to 0/Empty to allow manual entry
-                    // We only reset if it's a "new" name change, otherwise user might lose their custom price if they just edited a char.
-                    // But typically 'name' change means a selection change.
                     productToUpdate.originalPrice = 0;
                     productToUpdate.finalPrice = 0;
                     productToUpdate.cost = 0;
@@ -261,7 +234,6 @@ const EditOrderPage: React.FC<EditOrderPageProps> = ({ order, onSaveSuccess, onC
         if (!window.confirm(`តើអ្នកពិតជាចង់លុបប្រតិបត្តិការណ៍ ID: ${formData['Order ID']} មែនទេ?`)) return;
         if (!currentUser) return;
         
-        // Safe username fallback
         const loggingUser = currentUser.UserName || 'Unknown User';
 
         try {
@@ -271,7 +243,7 @@ const EditOrderPage: React.FC<EditOrderPageProps> = ({ order, onSaveSuccess, onC
                 body: JSON.stringify({ 
                     orderId: formData['Order ID'], 
                     team: formData.Team, 
-                    userName: loggingUser, // Ensure this is populated
+                    userName: loggingUser,
                     telegramMessageId1: formData['Telegram Message ID 1'],
                     telegramMessageId2: formData['Telegram Message ID 2'],
                     telegramChatId: formData.TelegramValue
@@ -279,6 +251,10 @@ const EditOrderPage: React.FC<EditOrderPageProps> = ({ order, onSaveSuccess, onC
             });
             const result = await response.json();
             if (!response.ok || result.status !== 'success') throw new Error(result.message || 'Delete failed');
+            
+            // Audit: Log deletion
+            await logUserActivity(loggingUser, 'DELETE_ORDER', `Deleted Order #${formData['Order ID']}`);
+
             await refreshData();
             onSaveSuccess();
         } catch (err: any) { setError(`លុបមិនបានសម្រេច: ${err.message}`); }
@@ -294,7 +270,6 @@ const EditOrderPage: React.FC<EditOrderPageProps> = ({ order, onSaveSuccess, onC
             return;
         }
 
-        // Validate Driver Selection
         const currentMethod = appData.shippingMethods?.find(m => m.MethodName === formData['Internal Shipping Method']);
         if (currentMethod?.RequireDriverSelection && !formData['Internal Shipping Details']) {
              setError("សូមជ្រើសរើសអ្នកដឹក (Driver) សម្រាប់សេវាកម្មនេះ។");
@@ -328,12 +303,30 @@ const EditOrderPage: React.FC<EditOrderPageProps> = ({ order, onSaveSuccess, onC
             }));
             cleanNewData['Products (JSON)'] = JSON.stringify(productsWithSubtotals);
 
+            // --- AUDIT LOGIC START ---
+            // Updated to support structured logging
+            const changes = generateAuditLog(originalOrderRef.current, cleanNewData as ParsedOrder);
+            if (changes && changes.length > 0) {
+                // Iterate through each change and log it individually
+                // This ensures each field change gets its own row/entry in the database
+                await Promise.all(changes.map(change => 
+                    logOrderEdit(
+                        formData['Order ID'], 
+                        loggingUser, 
+                        change.field, 
+                        change.oldValue, 
+                        change.newValue
+                    )
+                ));
+            }
+            // --- AUDIT LOGIC END ---
+
             const response = await fetch(`${WEB_APP_URL}/api/admin/update-order`, { 
                 method: 'POST', headers: { 'Content-Type': 'application/json' }, 
                 body: JSON.stringify({ 
                     orderId: formData['Order ID'], 
                     team: formData.Team, 
-                    userName: loggingUser, // Ensure this is populated for logs
+                    userName: loggingUser,
                     newData: cleanNewData 
                 }) 
             });

@@ -39,6 +39,9 @@ const App: React.FC = () => {
     // Notification State
     const [notification, setNotification] = useState<{ message: string; type: 'success' | 'info' | 'error' } | null>(null);
     
+    // Header Title State for Mobile
+    const [mobilePageTitle, setMobilePageTitle] = useState<string | null>(null);
+    
     // Initialize unreadCount from localStorage
     const [unreadCount, setUnreadCount] = useState(() => {
         const saved = localStorage.getItem('chatUnreadCount');
@@ -263,7 +266,8 @@ const App: React.FC = () => {
             isSidebarCollapsed, setIsSidebarCollapsed, setIsChatOpen,
             isMobileMenuOpen, setIsMobileMenuOpen,
             language, setLanguage: handleLanguageChange,
-            showNotification
+            showNotification,
+            mobilePageTitle, setMobilePageTitle
         }}>
             <div className="min-h-screen relative z-10">
                 <BackgroundMusic />

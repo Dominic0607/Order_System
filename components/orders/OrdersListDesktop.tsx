@@ -16,7 +16,9 @@ interface OrdersListDesktopProps {
     onEdit?: (order: ParsedOrder) => void;
     handlePrint: (order: ParsedOrder) => void;
     handleCopy: (id: string) => void;
+    handleCopyTemplate: (order: ParsedOrder) => void;
     copiedId: string | null;
+    copiedTemplateId: string | null;
     toggleOrderVerified: (id: string, currentStatus: boolean) => void;
     updatingIds: Set<string>;
 }
@@ -31,7 +33,9 @@ const OrdersListDesktop: React.FC<OrdersListDesktopProps> = ({
     onEdit,
     handlePrint,
     handleCopy,
+    handleCopyTemplate,
     copiedId,
+    copiedTemplateId,
     toggleOrderVerified,
     updatingIds
 }) => {
@@ -159,7 +163,7 @@ const OrdersListDesktop: React.FC<OrdersListDesktopProps> = ({
                             {isVisible('shippingCost') && <th className="px-6 py-6 font-black uppercase tracking-[0.2em] text-left text-gray-500 w-28 text-[clamp(10px,0.8vw,12px)]">Exp. Cost</th>}
                             {isVisible('status') && <th className="px-6 py-6 font-black uppercase tracking-[0.2em] text-left text-gray-500 w-32 text-[clamp(10px,0.8vw,12px)]">Status</th>}
                             {isVisible('date') && <th className="px-4 py-6 font-black uppercase tracking-[0.2em] text-left text-gray-500 w-24 text-[clamp(10px,0.8vw,12px)]">Time</th>}
-                            {isVisible('print') && <th className="px-4 py-6 font-black uppercase tracking-[0.2em] text-center text-gray-500 w-16 text-[clamp(10px,0.8vw,12px)]">P</th>}
+                            {isVisible('print') && <th className="px-4 py-6 font-black uppercase tracking-[0.2em] text-center text-gray-500 w-32 text-[clamp(10px,0.8vw,12px)]">Output</th>}
                             {isVisible('check') && <th className="px-2 py-6 font-normal uppercase tracking-[0.15em] text-center text-emerald-500/80 w-14 text-[9px]">VERIFIED</th>}
                             {isVisible('orderId') && <th className="px-2 py-6 font-black uppercase tracking-[0.2em] text-center text-gray-500 w-16 text-[clamp(10px,0.8vw,12px)]">Node ID</th>}
                         </tr>
@@ -205,7 +209,7 @@ const OrdersListDesktop: React.FC<OrdersListDesktopProps> = ({
                                 {isVisible('shippingCost') && <th className="w-28"></th>}
                                 {isVisible('status') && <th className="w-32"></th>}
                                 {isVisible('date') && <th className="w-24"></th>}
-                                {isVisible('print') && <th className="w-16"></th>}
+                                {isVisible('print') && <th className="w-32"></th>}
                                 {isVisible('check') && <th className="w-14"></th>}
                                 {isVisible('orderId') && <th className="w-16"></th>}
                             </tr>
@@ -217,6 +221,7 @@ const OrdersListDesktop: React.FC<OrdersListDesktopProps> = ({
                                 const displayPhone = formatPhone(order['Customer Phone']);
                                 const carrierLogo = getCarrierLogo(displayPhone);
                                 const isThisCopied = copiedId === order['Order ID'];
+                                const isThisTemplateCopied = copiedTemplateId === order['Order ID'];
                                 const shippingLogo = getShippingLogo(order['Internal Shipping Method']);
                                 const orderId = order['Order ID'];
                                 const isVerified = order.IsVerified === true || String(order.IsVerified).toUpperCase() === 'TRUE';
@@ -339,7 +344,32 @@ const OrdersListDesktop: React.FC<OrdersListDesktopProps> = ({
                                             </td>
                                         )}
                                         
-                                        {isVisible('print') && <td className="px-4 py-5 text-center"><button onClick={() => handlePrint(order)} className="text-emerald-400/60 hover:text-white bg-emerald-400/5 hover:bg-emerald-600 p-2.5 rounded-xl transition-all border border-emerald-400/10 active:scale-90"><svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" /></svg></button></td>}
+                                        {isVisible('print') && (
+                                            <td className="px-4 py-5 text-center">
+                                                <div className="flex items-center justify-center gap-2">
+                                                    {/* Copy Template Button */}
+                                                    <button 
+                                                        onClick={() => handleCopyTemplate(order)} 
+                                                        className={`p-2.5 rounded-xl transition-all border active:scale-90 ${isThisTemplateCopied ? 'bg-indigo-500/20 border-indigo-500/50 text-indigo-400' : 'bg-gray-800 text-gray-400 border-white/10 hover:text-white hover:bg-gray-700'}`}
+                                                        title="Copy Telegram Template"
+                                                    >
+                                                        {isThisTemplateCopied ? (
+                                                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
+                                                        ) : (
+                                                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" /></svg>
+                                                        )}
+                                                    </button>
+
+                                                    <button 
+                                                        onClick={() => handlePrint(order)} 
+                                                        className="text-emerald-400/60 hover:text-white bg-emerald-400/5 hover:bg-emerald-600 p-2.5 rounded-xl transition-all border border-emerald-400/10 active:scale-90"
+                                                        title="Print Label"
+                                                    >
+                                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" /></svg>
+                                                    </button>
+                                                </div>
+                                            </td>
+                                        )}
                                         
                                         {isVisible('check') && <td className="px-2 py-5 text-center"><div className="relative flex items-center justify-center"><input type="checkbox" checked={isVerified} onChange={() => toggleOrderVerified(orderId, isVerified)} className={`h-6 w-6 rounded-lg border-gray-700 bg-gray-950 text-emerald-500 focus:ring-emerald-500/10 transition-all ${isUpdating ? 'opacity-20' : 'hover:scale-110 active:scale-150 cursor-pointer'}`} />{isUpdating && <div className="absolute inset-0 flex items-center justify-center pointer-events-none"><Spinner size="sm" /></div>}</div></td>}
                                         

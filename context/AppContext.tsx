@@ -32,6 +32,8 @@ export interface AppContextType {
     language: Language;
     setLanguage: (lang: Language) => void;
     showNotification: (message: string, type?: 'success' | 'info' | 'error') => void;
+    mobilePageTitle: string | null;
+    setMobilePageTitle: (title: string | null) => void;
 }
 
 export const AppContext = createContext<AppContextType>({} as AppContextType);

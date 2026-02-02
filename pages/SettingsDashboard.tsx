@@ -19,7 +19,7 @@ interface SettingsDashboardProps {
 }
 
 const SettingsDashboard: React.FC<SettingsDashboardProps> = ({ onBack, initialSection }) => {
-    const { appData, refreshData, logout } = useContext(AppContext);
+    const { appData, refreshData, logout, setMobilePageTitle } = useContext(AppContext);
     const [desktopSection, setDesktopSection] = useState<string>(initialSection || 'users');
     const [mobileSection, setMobileSection] = useState<string | null>(initialSection || null);
     const [modal, setModal] = useState<{ isOpen: boolean, sectionId: string, item: any | null }>({ isOpen: false, sectionId: '', item: null });
@@ -32,6 +32,13 @@ const SettingsDashboard: React.FC<SettingsDashboardProps> = ({ onBack, initialSe
 
     const activeId = (window.innerWidth < 768) ? mobileSection : desktopSection;
     const activeSection = configSections.find(s => s.id === activeId);
+
+    // Update Mobile Header Title
+    useEffect(() => {
+        const title = activeSection ? activeSection.title : 'ការកំណត់';
+        setMobilePageTitle(title);
+        return () => setMobilePageTitle(null);
+    }, [activeSection, setMobilePageTitle]);
 
     useEffect(() => {
         if (activeId === 'users') {
@@ -99,7 +106,7 @@ const SettingsDashboard: React.FC<SettingsDashboardProps> = ({ onBack, initialSe
             <div className="p-4 md:hidden animate-fade-in pb-10">
                 <div className="flex justify-between items-center mb-8">
                     <div>
-                        <h1 className="text-2xl font-black text-white">ការកំណត់</h1>
+                        <h1 className="hidden text-2xl font-black text-white">ការកំណត់</h1>
                         <p className="text-xs text-gray-500 font-bold uppercase tracking-widest mt-1">Settings & Management</p>
                     </div>
                     <button onClick={onBack} className="p-2 bg-gray-800 text-gray-400 rounded-xl border border-gray-700 active:scale-95 transition-all"><svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" /></svg></button>
@@ -128,7 +135,7 @@ const SettingsDashboard: React.FC<SettingsDashboardProps> = ({ onBack, initialSe
                 <div className="flex items-center gap-4">
                     <button onClick={() => { if(window.innerWidth < 768) setMobileSection(null); else onBack(); }} className="md:hidden p-2 bg-gray-800 text-white rounded-xl border border-gray-700"><svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M15 19l-7-7 7-7" /></svg></button>
                     <div>
-                        <h1 className="text-2xl lg:text-3xl font-black text-white flex items-center gap-3">
+                        <h1 className="hidden sm:flex text-2xl lg:text-3xl font-black text-white items-center gap-3">
                              <span className="hidden md:inline">{activeSection?.icon}</span>
                              {activeSection?.title}
                         </h1>

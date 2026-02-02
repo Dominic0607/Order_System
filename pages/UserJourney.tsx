@@ -598,13 +598,23 @@ const UserOrdersView: React.FC<{ team: string; onAdd: () => void }> = ({ team, o
 };
 
 const UserJourney: React.FC<{ onBackToRoleSelect: () => void }> = ({ onBackToRoleSelect }) => {
-    const { currentUser, setChatVisibility } = useContext(AppContext);
+    const { currentUser, setChatVisibility, setMobilePageTitle } = useContext(AppContext);
     const [view, setView] = useState<'list' | 'create'>('list');
     const [selectedTeam, setSelectedTeam] = useUrlState<string>('team', '');
     const userTeams = useMemo(() => (currentUser?.Team || '').split(',').map(t => t.trim()).filter(Boolean), [currentUser]);
 
     useEffect(() => { setChatVisibility(view !== 'create'); }, [view, setChatVisibility]);
     useEffect(() => { if (userTeams.length === 1 && !selectedTeam) setSelectedTeam(userTeams[0]); }, [userTeams, selectedTeam, setSelectedTeam]);
+
+    // Update Header Title based on Team Selection
+    useEffect(() => {
+        if (selectedTeam) {
+            setMobilePageTitle('MY ORDERS');
+        } else {
+            setMobilePageTitle(null);
+        }
+        return () => setMobilePageTitle(null);
+    }, [selectedTeam, setMobilePageTitle]);
 
     if (userTeams.length === 0) return (
         <div className="page-card text-center p-12 mt-20 max-w-lg mx-auto bg-gray-900/60 backdrop-blur-xl border border-white/5 rounded-[3rem]">
@@ -674,11 +684,19 @@ const UserJourney: React.FC<{ onBackToRoleSelect: () => void }> = ({ onBackToRol
             {/* Optimized Header for Mobile */}
             <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-8 gap-4 px-2">
                 <div className="space-y-2">
-                    <div className="flex items-center gap-3">
+                    {/* Hidden on mobile, shown on desktop */}
+                    <div className="hidden md:flex items-center gap-3">
                         <h1 className="text-2xl sm:text-4xl font-black text-white italic tracking-tighter leading-none">MY ORDERS</h1>
                         <div className="h-6 w-px bg-white/10"></div>
                         <span className="text-blue-500 font-black text-xs uppercase tracking-widest">{selectedTeam}</span>
                     </div>
+                    {/* Mobile Only: Just the Team Badge */}
+                    <div className="md:hidden flex items-center gap-2">
+                        <span className="text-[10px] bg-blue-900/30 text-blue-400 px-3 py-1 rounded-full border border-blue-500/20 font-black uppercase tracking-widest">
+                            Team: {selectedTeam}
+                        </span>
+                    </div>
+
                     <div className="flex gap-2">
                          {userTeams.length > 1 && (
                             <button onClick={() => setSelectedTeam('')} className="text-[9px] font-black uppercase text-gray-500 hover:text-blue-400 transition-colors flex items-center gap-1.5 bg-gray-800/50 px-3 py-1.5 rounded-lg border border-white/5 active:scale-95">

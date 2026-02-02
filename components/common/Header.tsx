@@ -19,7 +19,8 @@ const Header: React.FC<HeaderProps> = ({ onBackToRoleSelect, appState }) => {
         currentUser, logout, refreshData, originalAdminUser, 
         setIsChatOpen, unreadCount,
         isMobileMenuOpen, setIsMobileMenuOpen,
-        language, setLanguage
+        language, setLanguage,
+        mobilePageTitle // Consuming the new state
     } = useContext(AppContext);
     
     const [dropdownOpen, setDropdownOpen] = useState(false);
@@ -95,25 +96,35 @@ const Header: React.FC<HeaderProps> = ({ onBackToRoleSelect, appState }) => {
                     style={originalAdminUser ? { top: '40px' } : {}}>
                 <div className="w-full max-w-full mx-auto flex justify-between items-center px-2 sm:px-6">
                     
-                    {/* Branding Section */}
+                    {/* Branding Section - Updated for Mobile Title Swap */}
                     <div 
                         className={`flex items-center gap-3 select-none ${isSystemAdmin ? 'cursor-pointer hover:opacity-90 active:scale-95 transition-all transform' : 'cursor-default'}`}
                         onClick={handleHomeClick}
                     >
-                        <div className="w-10 h-10 bg-gray-900 rounded-xl flex items-center justify-center border border-white/10 shadow-xl overflow-hidden flex-shrink-0 relative group">
-                            <img 
-                                src={convertGoogleDriveUrl(APP_LOGO_URL)} 
-                                alt="Logo" 
-                                className="w-full h-full object-contain p-1.5 relative z-10"
-                            />
+                        {/* Custom Mobile Title (If set) */}
+                        <div className={`md:hidden ${mobilePageTitle ? 'block' : 'hidden'}`}>
+                             <h1 className="text-lg font-black text-white leading-tight truncate uppercase tracking-tight italic">
+                                {mobilePageTitle}
+                             </h1>
                         </div>
-                        <div className="min-w-0">
-                            <h1 className="text-sm sm:text-lg font-black text-white leading-tight truncate uppercase tracking-tighter italic">
-                                O-SYSTEM
-                            </h1>
-                            <p className="text-[8px] sm:text-[9px] text-blue-500 font-black uppercase tracking-[0.2em] opacity-80">
-                                CORE ENGINE
-                            </p>
+
+                        {/* Standard Logo (Hidden on mobile if title exists) */}
+                        <div className={`flex items-center gap-3 ${mobilePageTitle ? 'hidden md:flex' : 'flex'}`}>
+                            <div className="w-10 h-10 bg-gray-900 rounded-xl flex items-center justify-center border border-white/10 shadow-xl overflow-hidden flex-shrink-0 relative group">
+                                <img 
+                                    src={convertGoogleDriveUrl(APP_LOGO_URL)} 
+                                    alt="Logo" 
+                                    className="w-full h-full object-contain p-1.5 relative z-10"
+                                />
+                            </div>
+                            <div className="min-w-0">
+                                <h1 className="text-sm sm:text-lg font-black text-white leading-tight truncate uppercase tracking-tighter italic">
+                                    O-SYSTEM
+                                </h1>
+                                <p className="text-[8px] sm:text-[9px] text-blue-500 font-black uppercase tracking-[0.2em] opacity-80">
+                                    CORE ENGINE
+                                </p>
+                            </div>
                         </div>
                     </div>
 
