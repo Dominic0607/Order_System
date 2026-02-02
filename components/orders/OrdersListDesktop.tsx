@@ -155,8 +155,10 @@ const OrdersListDesktop: React.FC<OrdersListDesktopProps> = ({
                             {isVisible('actions') && <th className="px-4 py-6 font-black uppercase tracking-[0.2em] text-center text-gray-500 w-24 text-[clamp(10px,0.8vw,12px)]">Command</th>}
                             {isVisible('customerName') && <th className="px-6 py-6 font-black uppercase tracking-[0.2em] text-left text-gray-500 w-56 text-[clamp(10px,0.8vw,12px)]">Merchant/Client</th>}
                             {isVisible('productInfo') && <th className="px-6 py-6 font-black uppercase tracking-[0.2em] text-left text-gray-500 w-44 text-[clamp(10px,0.8vw,12px)]">Assets</th>}
-                            {isVisible('location') && <th className="px-6 py-6 font-black uppercase tracking-[0.2em] text-left text-gray-500 w-52 text-[clamp(10px,0.8vw,12px)]">Geography</th>}
-                            {isVisible('pageInfo') && <th className="px-6 py-6 font-black uppercase tracking-[0.2em] text-left text-gray-500 w-44 text-[clamp(10px,0.8vw,12px)]">Source Page</th>}
+                            {/* REDUCED WIDTH & PADDING */}
+                            {isVisible('location') && <th className="px-4 py-6 font-black uppercase tracking-[0.2em] text-left text-gray-500 w-40 text-[clamp(10px,0.8vw,12px)]">Geography</th>}
+                            {isVisible('pageInfo') && <th className="px-4 py-6 font-black uppercase tracking-[0.2em] text-left text-gray-500 w-40 text-[clamp(10px,0.8vw,12px)]">Source Page</th>}
+                            
                             {isVisible('fulfillment') && <th className="px-6 py-6 font-black uppercase tracking-[0.2em] text-left text-gray-500 w-32 text-[clamp(10px,0.8vw,12px)]">Fulfillment</th>}
                             {isVisible('total') && <th className="px-6 py-6 font-black uppercase tracking-[0.2em] text-left text-gray-500 w-32 text-[clamp(10px,0.8vw,12px)]">Valuation</th>}
                             {isVisible('shippingService') && <th className="px-6 py-6 font-black uppercase tracking-[0.2em] text-left text-gray-500 w-48 text-[clamp(10px,0.8vw,12px)]">Logistics</th>}
@@ -201,8 +203,10 @@ const OrdersListDesktop: React.FC<OrdersListDesktopProps> = ({
                                 {isVisible('actions') && <th className="w-24"></th>}
                                 {isVisible('customerName') && <th className="w-56"></th>}
                                 {isVisible('productInfo') && <th className="w-44"></th>}
-                                {isVisible('location') && <th className="w-52"></th>}
-                                {isVisible('pageInfo') && <th className="w-44"></th>}
+                                {/* REDUCED WIDTHS */}
+                                {isVisible('location') && <th className="w-40"></th>}
+                                {isVisible('pageInfo') && <th className="w-40"></th>}
+                                
                                 {isVisible('fulfillment') && <th className="w-32"></th>}
                                 {isVisible('total') && <th className="w-32"></th>}
                                 {isVisible('shippingService') && <th className="w-48"></th>}
@@ -304,8 +308,9 @@ const OrdersListDesktop: React.FC<OrdersListDesktopProps> = ({
                                             </td>
                                         )}
 
+                                        {/* REDUCED PADDING */}
                                         {isVisible('location') && (
-                                            <td className="px-6 py-5 relative overflow-visible">
+                                            <td className="px-4 py-5 relative overflow-visible">
                                                 <div className="group/loc cursor-help">
                                                     <div className="font-black text-gray-200 leading-tight truncate text-[clamp(12px,0.9vw,14px)]">{order.Location}</div>
                                                     <div className="font-bold text-gray-600 mt-1 line-clamp-1 text-[clamp(10px,0.7vw,12px)]">{order['Address Details']}</div>
@@ -328,7 +333,9 @@ const OrdersListDesktop: React.FC<OrdersListDesktopProps> = ({
                                             </td>
                                         )}
 
-                                        {isVisible('pageInfo') && <td className="px-6 py-5"><div className="flex items-center gap-3">{logoUrl ? <img src={logoUrl} className="w-8 h-8 rounded-full border border-white/10 shadow-sm object-cover" alt="logo" /> : <div className="w-8 h-8 rounded-full bg-gray-800 border border-white/5 flex items-center justify-center text-[7px] text-gray-600 font-bold uppercase">Null</div>}<div className="min-w-0"><span className="font-black text-gray-300 block truncate leading-none mb-1 text-[clamp(12px,0.9vw,13px)]">{order.Page}</span><span className="text-[9px] text-gray-600 uppercase font-black tracking-widest">{order.Team}</span></div></div></td>}
+                                        {/* REDUCED PADDING */}
+                                        {isVisible('pageInfo') && <td className="px-4 py-5"><div className="flex items-center gap-3">{logoUrl ? <img src={logoUrl} className="w-8 h-8 rounded-full border border-white/10 shadow-sm object-cover" alt="logo" /> : <div className="w-8 h-8 rounded-full bg-gray-800 border border-white/5 flex items-center justify-center text-[7px] text-gray-600 font-bold uppercase">Null</div>}<div className="min-w-0"><span className="font-black text-gray-300 block truncate leading-none mb-1 text-[clamp(12px,0.9vw,13px)]">{order.Page}</span><span className="text-[9px] text-gray-600 uppercase font-black tracking-widest">{order.Team}</span></div></div></td>}
+                                        
                                         {isVisible('fulfillment') && <td className="px-6 py-5"><span className="font-bold text-gray-300 bg-gray-800 px-2 py-1 rounded border border-white/5 text-[clamp(11px,0.8vw,12px)]">{order['Fulfillment Store']}</span></td>}
                                         {isVisible('total') && <td className="px-6 py-5 font-black text-blue-400 tracking-tighter text-[clamp(16px,1.2vw,18px)]">${order['Grand Total'].toFixed(2)}</td>}
                                         {isVisible('shippingService') && <td className="px-6 py-5"><div className="flex items-center gap-2.5">{shippingLogo && <img src={shippingLogo} className="w-5 h-5 rounded-lg object-contain bg-gray-950 p-0.5 border border-white/5" alt="shipping" />}<span className="text-orange-400/80 font-black uppercase truncate tracking-tight text-[clamp(10px,0.8vw,12px)]">{order['Internal Shipping Method'] || '-'}</span></div></td>}

@@ -680,7 +680,7 @@ const UserJourney: React.FC<{ onBackToRoleSelect: () => void }> = ({ onBackToRol
     if (view === 'create') return <CreateOrderPage team={selectedTeam} onSaveSuccess={() => setView('list')} onCancel={() => setView('list')} />;
 
     return (
-        <div className="w-full max-w-[100rem] mx-auto p-2 sm:p-4 animate-fade-in min-h-screen relative overflow-x-hidden">
+        <div className="w-full max-w-full mx-auto p-2 sm:p-4 animate-fade-in min-h-screen relative overflow-x-hidden">
             {/* Optimized Header for Mobile */}
             <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-8 gap-4 px-2">
                 <div className="space-y-2">
