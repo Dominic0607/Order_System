@@ -73,21 +73,25 @@ const OrdersList: React.FC<OrdersListProps> = ({
     };
 
     const generateTelegramTemplate = (order: ParsedOrder) => {
-        const productLines = order.Products.map(p =>
-            `   ▪️ ${p.quantity}x ${p.name} ($${(p.finalPrice || 0).toFixed(2)})`
-        ).join('\n');
+        const productLines = order.Products.map(p => {
+            // Check if price is integer to format as 6$ or 6.50$
+            const unitPrice = parseFloat(String(p.finalPrice || 0));
+            const unitPriceStr = Number.isInteger(unitPrice) ? unitPrice : unitPrice.toFixed(2);
+            
+            const colorPart = p.colorInfo ? `-${p.colorInfo}` : '';
+            return `🛍️ ${p.name}(${unitPriceStr}$)${colorPart} - x${p.quantity} ($${(p.total || 0).toFixed(2)})`;
+        }).join('\n');
 
         const paymentText = order['Payment Status'] === 'Paid'
-            ? '✅ *ទូទាត់រួច*'
-            : '❌ *មិនទាន់ទូទាត់ (COD)*';
+            ? '🟩 Paid'
+            : '🟥 COD (Unpaid)';
 
-        // Date without time
+        // Date format DD/MM/YYYY
         let dateStr = '';
         try {
-             // Handle custom date format if needed or standard ISO
              const d = new Date(order.Timestamp);
              if (!isNaN(d.getTime())) {
-                 dateStr = d.toLocaleDateString('km-KH', { year: 'numeric', month: '2-digit', day: '2-digit' });
+                 dateStr = `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`;
              } else {
                  dateStr = String(order.Timestamp || '').split(' ')[0];
              }
@@ -95,27 +99,30 @@ const OrdersList: React.FC<OrdersListProps> = ({
              dateStr = String(order.Timestamp || '');
         }
 
+        const address = order['Address Details'] || '(មិនបានបញ្ជាក់)';
+
         // Updated Template Format as requested
         return `✅សូមបងពិនិត្យលេខទូរស័ព្ទ និងទីតាំងម្ដងទៀតបង 🙏
-📃 *Page:* ${order.Page}
-👤 *អតិថិជន:* *${order['Customer Name']}*
-📞 *លេខទូរស័ព្ទ:* \`${order['Customer Phone']}\`
-📍 *ទីតាំង:* ${order.Location}
-🏠 *អាសយដ្ឋាន:* ${order['Address Details'] || 'N/A'}
+📃 Page: ${order.Page}
+👤 អតិថិជន: ${order['Customer Name']}
+📞 លេខទូរស័ព្ទ: ${order['Customer Phone']}
+📍 ទីតាំង: ${order.Location}
+🏠 អាសយដ្ឋាន: ${address}
 
- *----------- ផលិតផល -----------*
+ ----------- ផលិតផល -----------
 ${productLines}
+--------------------------------------
 
-💰 *សរុប:*
+💰 សរុប:
   - តម្លៃទំនិញ: $${(order.Subtotal || 0).toFixed(2)}
   - សេវាដឹក: $${(order['Shipping Fee (Customer)'] || 0).toFixed(2)}
-  - *សរុបចុងក្រោយ: $${(order['Grand Total'] || 0).toFixed(2)}*
+  - សរុបចុងក្រោយ: $${(order['Grand Total'] || 0).toFixed(2)}
  ${paymentText}
 
-🚚 *វិធីសាស្រ្តដឹកជញ្ជូន:* ${order['Internal Shipping Method']}
-📅 ${dateStr}
+🚚 វិធីសាស្រ្តដឹកជញ្ជូន: ${order['Internal Shipping Method']}
+${dateStr}
 --------------------------------------
-អរគុណបង🙏🥰 | ID: \`${order['Order ID']}\``;
+អរគុណបង🙏🥰 | ID: ${order['Order ID']}`;
     };
 
     const handleCopyTemplate = (order: ParsedOrder) => {

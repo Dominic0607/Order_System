@@ -176,25 +176,25 @@ const DeliveryListGeneratorModal: React.FC<DeliveryListGeneratorModalProps> = ({
 
     return (
         <Modal isOpen={isOpen} onClose={onClose} maxWidth="max-w-3xl">
-            <div className="bg-[#0f172a] rounded-[2.5rem] overflow-hidden flex flex-col max-h-[90vh] border border-white/10 shadow-2xl">
+            <div className="bg-[#0f172a] rounded-[2rem] sm:rounded-[2.5rem] overflow-hidden flex flex-col h-[85vh] sm:h-auto sm:max-h-[90vh] border border-white/10 shadow-2xl">
                 
                 {/* Header */}
-                <div className="p-6 bg-gray-900/90 backdrop-blur-md border-b border-white/10 flex justify-between items-center sticky top-0 z-20">
-                    <h2 className="text-xl font-black text-white uppercase tracking-tighter flex items-center gap-3">
+                <div className="p-4 sm:p-6 bg-gray-900/90 backdrop-blur-md border-b border-white/10 flex justify-between items-center sticky top-0 z-20">
+                    <h2 className="text-lg sm:text-xl font-black text-white uppercase tracking-tighter flex items-center gap-3">
                         <span className="bg-blue-600 w-8 h-8 rounded-lg flex items-center justify-center text-sm shadow-lg shadow-blue-600/20">{step}</span>
-                        {step === STEPS.FILTER && "កំណត់លក្ខខណ្ឌ (Filter)"}
-                        {step === STEPS.VERIFY && "ផ្ទៀងផ្ទាត់ (Verify)"}
-                        {step === STEPS.PREVIEW && "បង្កើតអត្ថបទ (Preview)"}
+                        {step === STEPS.FILTER && "កំណត់លក្ខខណ្ឌ"}
+                        {step === STEPS.VERIFY && "ផ្ទៀងផ្ទាត់"}
+                        {step === STEPS.PREVIEW && "បង្កើតអត្ថបទ"}
                     </h2>
-                    <button onClick={onClose} className="w-10 h-10 rounded-full bg-gray-800 text-gray-400 hover:text-white flex items-center justify-center transition-all">&times;</button>
+                    <button onClick={onClose} className="w-9 h-9 rounded-full bg-gray-800 text-gray-400 hover:text-white flex items-center justify-center transition-all">&times;</button>
                 </div>
 
                 {/* Body */}
-                <div className="p-6 overflow-y-auto custom-scrollbar flex-grow bg-gradient-to-b from-[#0f172a] to-[#1e293b]">
+                <div className="p-4 sm:p-6 overflow-y-auto custom-scrollbar flex-grow bg-gradient-to-b from-[#0f172a] to-[#1e293b]">
                     
                     {/* STEP 1: FILTER */}
                     {step === STEPS.FILTER && (
-                        <div className="space-y-8 animate-fade-in">
+                        <div className="space-y-6 sm:space-y-8 animate-fade-in">
                             <div className="space-y-3">
                                 <label className="text-xs font-bold text-blue-400 uppercase tracking-widest block ml-1">កាលបរិច្ឆេទ</label>
                                 <input 
@@ -291,11 +291,11 @@ const DeliveryListGeneratorModal: React.FC<DeliveryListGeneratorModalProps> = ({
                 </div>
 
                 {/* Footer Controls */}
-                <div className="p-6 border-t border-white/5 bg-gray-900 sticky bottom-0 z-20 flex justify-between gap-4">
+                <div className="p-4 sm:p-6 border-t border-white/5 bg-gray-900 sticky bottom-0 z-20 flex justify-between gap-4">
                     {step > 1 ? (
                         <button 
                             onClick={() => setStep(step - 1)} 
-                            className="px-8 py-4 rounded-2xl bg-gray-800 text-gray-400 font-black uppercase tracking-widest text-xs hover:bg-gray-700 hover:text-white transition-all active:scale-95"
+                            className="px-6 sm:px-8 py-3.5 sm:py-4 rounded-2xl bg-gray-800 text-gray-400 font-black uppercase tracking-widest text-xs hover:bg-gray-700 hover:text-white transition-all active:scale-95"
                         >
                             Back
                         </button>
@@ -312,17 +312,17 @@ const DeliveryListGeneratorModal: React.FC<DeliveryListGeneratorModalProps> = ({
                                 }
                                 setStep(step + 1);
                             }} 
-                            className="px-10 py-4 rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-black uppercase tracking-widest text-xs hover:shadow-lg hover:shadow-blue-600/30 transition-all active:scale-95 flex items-center gap-2"
+                            className="px-8 sm:px-10 py-3.5 sm:py-4 rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-black uppercase tracking-widest text-xs hover:shadow-lg hover:shadow-blue-600/30 transition-all active:scale-95 flex items-center gap-2"
                         >
                             Next <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M9 5l7 7-7 7" /></svg>
                         </button>
                     ) : (
                         <button 
                             onClick={handleCopy} 
-                            className="px-10 py-4 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-600 text-white font-black uppercase tracking-widest text-xs hover:shadow-lg hover:shadow-emerald-600/30 transition-all active:scale-95 flex items-center gap-2"
+                            className="px-8 sm:px-10 py-3.5 sm:py-4 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-600 text-white font-black uppercase tracking-widest text-xs hover:shadow-lg hover:shadow-emerald-600/30 transition-all active:scale-95 flex items-center gap-2"
                         >
                             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" /></svg>
-                            Copy Text
+                            Copy
                         </button>
                     )}
                 </div>
