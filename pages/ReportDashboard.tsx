@@ -114,7 +114,15 @@ const ReportDashboard: React.FC<ReportDashboardProps> = ({ activeReport, onBack,
             case 'all': return 'All time data stream';
             case 'custom': return `${filters.startDate || '...'} to ${filters.endDate || '...'}`;
         }
-        const formatDate = (d: Date) => d.toISOString().split('T')[0];
+        
+        // Use local date parts to construct string to avoid timezone shifts
+        const formatDate = (d: Date) => {
+            const year = d.getFullYear();
+            const month = String(d.getMonth() + 1).padStart(2, '0');
+            const day = String(d.getDate()).padStart(2, '0');
+            return `${year}-${month}-${day}`;
+        };
+        
         return start ? `${formatDate(start)} to ${formatDate(end)}` : 'All time data stream';
     }, [filters.datePreset, filters.startDate, filters.endDate]);
 
