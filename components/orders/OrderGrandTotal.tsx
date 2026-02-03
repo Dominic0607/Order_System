@@ -64,7 +64,7 @@ export const DesktopGrandTotalRow: React.FC<DesktopGrandTotalRowProps> = ({ tota
             {isVisible('shippingCost') && (
                 <td className="px-6 py-4">
                     <span className="font-black text-orange-400 font-mono text-[clamp(13px,0.9vw,15px)]">
-                        ${totals.internalCost.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                        ${totals.internalCost.toLocaleString(undefined, { minimumFractionDigits: 3, maximumFractionDigits: 3 })}
                     </span>
                 </td>
             )}
@@ -128,7 +128,7 @@ export const MobileGrandTotalCard: React.FC<MobileGrandTotalCardProps> = ({ tota
                 <div className="bg-black/20 p-3 rounded-2xl border border-white/5">
                     <p className="text-[9px] text-gray-500 font-bold uppercase mb-1">Total Cost</p>
                     <p className="text-lg font-black text-orange-400 tracking-tighter">
-                        ${totals.internalCost.toLocaleString()}
+                        ${totals.internalCost.toLocaleString(undefined, { minimumFractionDigits: 3, maximumFractionDigits: 3 })}
                     </p>
                 </div>
             </div>

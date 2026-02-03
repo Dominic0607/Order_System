@@ -389,7 +389,7 @@ const OrdersListMobile: React.FC<OrdersListMobileProps> = ({
                                         </div>
                                         {order['Internal Cost'] > 0 && (
                                             <span className="text-[9px] font-mono text-gray-600 font-bold bg-black/20 px-1.5 py-0.5 rounded">
-                                                -${order['Internal Cost']}
+                                                -${(Number(order['Internal Cost']) || 0).toFixed(3)}
                                             </span>
                                         )}
                                     </div>

@@ -16,6 +16,7 @@ import SearchableProvinceDropdown from '../components/orders/SearchableProvinceD
 import TelegramScheduler from '../components/orders/TelegramScheduler';
 import SetQuantity from '../components/orders/SetQuantity';
 import DriverSelector from '../components/orders/DriverSelector';
+import { logUserActivity } from '../services/auditService';
 
 interface CreateOrderPageProps {
     team: string;
@@ -462,6 +463,13 @@ const CreateOrderPage: React.FC<CreateOrderPageProps> = ({ team, onSaveSuccess, 
                 console.warn("Failed to send system notification", notifyErr);
             }
             // -----------------------------------------------------
+
+            // *** NEW: Explicitly log user activity to avoid "System" user in Audit Logs ***
+            await logUserActivity(
+                currentUser?.UserName || 'Unknown',
+                'CREATE_ORDER',
+                `Created Order ID: ${result.orderId} for ${order.customer.name}`
+            );
 
             localStorage.removeItem(DRAFT_KEY);
             setSubmissionStatus({ type: 'success', message: `ជោគជ័យ! Order ID: ${result.orderId}` });
