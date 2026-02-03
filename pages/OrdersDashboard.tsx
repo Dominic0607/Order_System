@@ -50,6 +50,7 @@ const OrdersDashboard: React.FC<OrdersDashboardProps> = ({ onBack, initialFilter
     const [urlCost, setUrlCost] = useUrlState<string>('costFilter', '');
     const [urlBank, setUrlBank] = useUrlState<string>('bankFilter', '');
     const [urlProduct, setUrlProduct] = useUrlState<string>('productFilter', '');
+    const [urlCustomer, setUrlCustomer] = useUrlState<string>('customerFilter', ''); // New URL State
 
     // Safe initialization for columns
     const [visibleColumns, setVisibleColumns] = useState<Set<string>>(() => {
@@ -100,6 +101,7 @@ const OrdersDashboard: React.FC<OrdersDashboardProps> = ({ onBack, initialFilter
             internalCost: initialFilters?.internalCost || searchParams.get('costFilter') || '',
             bank: initialFilters?.bank || searchParams.get('bankFilter') || '',
             product: initialFilters?.product || searchParams.get('productFilter') || '',
+            customerName: initialFilters?.customerName || searchParams.get('customerFilter') || '',
         };
     });
 
@@ -122,8 +124,9 @@ const OrdersDashboard: React.FC<OrdersDashboardProps> = ({ onBack, initialFilter
         if (filters.internalCost !== urlCost) setUrlCost(filters.internalCost);
         if (filters.bank !== urlBank) setUrlBank(filters.bank);
         if (filters.product !== urlProduct) setUrlProduct(filters.product);
+        if (filters.customerName !== urlCustomer) setUrlCustomer(filters.customerName);
 
-    }, [filters, urlTeam, urlDate, urlLocation, urlStore, urlStart, urlEnd, urlShipping, urlDriver, urlBrand, urlPayment, urlUser, urlPage, urlCost, urlBank, urlProduct]);
+    }, [filters, urlTeam, urlDate, urlLocation, urlStore, urlStart, urlEnd, urlShipping, urlDriver, urlBrand, urlPayment, urlUser, urlPage, urlCost, urlBank, urlProduct, urlCustomer]);
 
     const calculatedRange = useMemo(() => {
         const now = new Date();
@@ -276,34 +279,43 @@ const OrdersDashboard: React.FC<OrdersDashboardProps> = ({ onBack, initialFilter
                 if (end && orderDate > end) return false;
             }
 
-            // 2. Fulfillment Store Filter
-            if (filters.fulfillmentStore) {
-                const orderStore = order['Fulfillment Store'] || 'Unassigned';
-                if (orderStore !== filters.fulfillmentStore) return false;
-            }
+            // Helper for multi-select checking
+            const isMatch = (filterValue: string, orderValue: string) => {
+                if (!filterValue) return true;
+                const selectedValues = filterValue.split(',').map(v => v.trim().toLowerCase());
+                const val = (orderValue || '').trim().toLowerCase();
+                return selectedValues.includes(val);
+            };
 
-            // 3. Store Filter (Brand/Sales)
+            // 2. Fulfillment Store Filter (Multi)
+            if (!isMatch(filters.fulfillmentStore, order['Fulfillment Store'] || 'Unassigned')) return false;
+
+            // 3. Store Filter (Brand/Sales) (Multi)
             if (filters.store) {
                 const pageConfig = appData.pages?.find(p => p.PageName === order.Page);
-                if (!pageConfig || pageConfig.DefaultStore !== filters.store) {
+                const orderStore = pageConfig ? pageConfig.DefaultStore : null;
+                const selectedStores = filters.store.split(',');
+                if (!orderStore || !selectedStores.includes(orderStore)) {
                     return false;
                 }
             }
 
-            // 4. Other Filters
-            if (filters.team && order.Team !== filters.team) return false;
-            if (filters.user && (order.User || '').trim().toLowerCase() !== filters.user.trim().toLowerCase()) return false;
-            if (filters.paymentStatus && order['Payment Status'] !== filters.paymentStatus) return false;
-            
-            // Shipping Filters
-            if (filters.shippingService && order['Internal Shipping Method'] !== filters.shippingService) return false;
-            if (filters.driver && order['Internal Shipping Details'] !== filters.driver) return false;
-            
-            if (filters.bank && order['Payment Info'] !== filters.bank) return false;
+            // 4. Other Filters (Multi where applicable)
+            if (!isMatch(filters.team, order.Team)) return false;
+            if (!isMatch(filters.user, order.User || '')) return false;
+            if (!isMatch(filters.paymentStatus, order['Payment Status'])) return false;
+            if (!isMatch(filters.shippingService, order['Internal Shipping Method'])) return false;
+            if (!isMatch(filters.driver, order['Internal Shipping Details'])) return false;
+            if (!isMatch(filters.bank, order['Payment Info'])) return false;
+            if (!isMatch(filters.page, order.Page)) return false;
+            if (!isMatch(filters.location, order.Location)) return false;
+            if (!isMatch(filters.internalCost, String(order['Internal Cost']))) return false;
+
+            // Customer Name Filter (Multi-Select Logic)
+            if (!isMatch(filters.customerName, order['Customer Name'])) return false;
+
+            // Product Filter (Special logic: "contains")
             if (filters.product && !order.Products.some(p => p.name === filters.product)) return false;
-            if (filters.page && order.Page !== filters.page) return false;
-            if (filters.location && order.Location !== filters.location) return false;
-            if (filters.internalCost && String(order['Internal Cost']) !== filters.internalCost) return false;
 
             if (searchQuery.trim()) {
                 const q = searchQuery.toLowerCase();

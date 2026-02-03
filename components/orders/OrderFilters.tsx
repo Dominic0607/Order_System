@@ -23,6 +23,7 @@ export interface FilterState {
     page: string;
     location: string;
     internalCost: string;
+    customerName: string; // New Field
 }
 
 interface OrderFiltersProps {
@@ -48,6 +49,13 @@ const OrderFilters: React.FC<OrderFiltersProps> = ({
         const banks = new Set<string>();
         const costs = new Set<string>();
         const teams = new Set<string>();
+        
+        // Map to store unique customer Name -> Phone relation
+        // We use Map to handle duplicate names (though filter usually works on value). 
+        // Here we want to present a list. If "Sokha" appears twice with different phones, 
+        // this simple logic might merge them if we only key by Name. 
+        // Ideally, we'd key by Name, but display "Name (Phone)". 
+        const customerMap = new Map<string, string>();
 
         orders.forEach(o => {
             if (o.Page) pages.add(o.Page);
@@ -58,7 +66,21 @@ const OrderFilters: React.FC<OrderFiltersProps> = ({
             if (o['Payment Info']) banks.add(o['Payment Info']);
             if (o['Internal Cost'] !== undefined) costs.add(String(o['Internal Cost']));
             if (o.Team) teams.add(o.Team);
+            
+            if (o['Customer Name']) {
+                // We store the last phone number seen for this name. 
+                // This isn't perfect for duplicate names, but fits the current string-based filter architecture.
+                customerMap.set(o['Customer Name'], o['Customer Phone'] || '');
+            }
         });
+
+        // Convert customer map to options array
+        const customerOptions = Array.from(customerMap.entries())
+            .sort((a, b) => a[0].localeCompare(b[0]))
+            .map(([name, phone]) => ({
+                label: `${name} ${phone ? `(${phone})` : ''}`,
+                value: name
+            }));
 
         return {
             pages: Array.from(pages).sort(),
@@ -68,7 +90,8 @@ const OrderFilters: React.FC<OrderFiltersProps> = ({
             fulfillmentStores: Array.from(fulfillmentStores).sort(),
             banks: Array.from(banks).sort(),
             costs: Array.from(costs).sort((a, b) => Number(a) - Number(b)),
-            teams: Array.from(teams).sort()
+            teams: Array.from(teams).sort(),
+            customerOptions // Use this instead of just names
         };
     }, [orders]);
 
@@ -76,7 +99,8 @@ const OrderFilters: React.FC<OrderFiltersProps> = ({
         setFilters({
             datePreset: 'this_month', startDate: '', endDate: '', team: '', user: '',
             paymentStatus: '', shippingService: '', driver: '', product: '', bank: '',
-            fulfillmentStore: '', store: '', page: '', location: '', internalCost: ''
+            fulfillmentStore: '', store: '', page: '', location: '', internalCost: '',
+            customerName: ''
         });
     };
 
@@ -98,6 +122,17 @@ const OrderFilters: React.FC<OrderFiltersProps> = ({
 
             <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-x-6 gap-y-6 px-1">
                 
+                {/* Customer Name Select Filter (Searchable by Name OR Phone) */}
+                <SelectFilter 
+                    label="Customer Name (ឈ្មោះអតិថិជន)" 
+                    value={filters.customerName} 
+                    onChange={(v) => updateFilter('customerName', v)}
+                    options={uniqueValues.customerOptions}
+                    placeholder="Search by Name or Phone..."
+                    multiple={true}
+                    searchable={true}
+                />
+
                 <SelectFilter 
                     label="Payment Status" 
                     value={filters.paymentStatus} 
@@ -105,6 +140,7 @@ const OrderFilters: React.FC<OrderFiltersProps> = ({
                     options={[{ label: 'Paid (រួចរាល់)', value: 'Paid' }, { label: 'Unpaid (COD)', value: 'Unpaid' }]}
                     placeholder="All Statuses"
                     variant="payment"
+                    multiple={true}
                 />
 
                 <SelectFilter 
@@ -113,6 +149,7 @@ const OrderFilters: React.FC<OrderFiltersProps> = ({
                     onChange={(v) => updateFilter('store', v)}
                     options={appData.stores?.map(s => s.StoreName) || []}
                     placeholder="All Stores (Brands)"
+                    multiple={true}
                 />
 
                 <SelectFilter 
@@ -121,6 +158,7 @@ const OrderFilters: React.FC<OrderFiltersProps> = ({
                     onChange={(v) => updateFilter('team', v)}
                     options={uniqueValues.teams}
                     placeholder="All Operational Teams"
+                    multiple={true}
                 />
 
                 <SelectFilter 
@@ -129,6 +167,7 @@ const OrderFilters: React.FC<OrderFiltersProps> = ({
                     onChange={(v) => updateFilter('page', v)}
                     options={uniqueValues.pages}
                     placeholder="All Pages"
+                    multiple={true}
                 />
 
                 <SelectFilter 
@@ -137,6 +176,7 @@ const OrderFilters: React.FC<OrderFiltersProps> = ({
                     onChange={(v) => updateFilter('fulfillmentStore', v)}
                     options={uniqueValues.fulfillmentStores}
                     placeholder="All Fulfillment Centers"
+                    multiple={true}
                 />
 
                 <SelectFilter 
@@ -145,6 +185,7 @@ const OrderFilters: React.FC<OrderFiltersProps> = ({
                     onChange={(v) => updateFilter('location', v)}
                     options={uniqueValues.locations}
                     placeholder="All Regions"
+                    multiple={true}
                 />
 
                 <SelectFilter 
@@ -153,6 +194,7 @@ const OrderFilters: React.FC<OrderFiltersProps> = ({
                     onChange={(v) => updateFilter('shippingService', v)}
                     options={uniqueValues.shippingMethods}
                     placeholder="All Shipping Methods"
+                    multiple={true}
                 />
 
                 <SelectFilter 
@@ -161,6 +203,7 @@ const OrderFilters: React.FC<OrderFiltersProps> = ({
                     onChange={(v) => updateFilter('driver', v)}
                     options={uniqueValues.drivers}
                     placeholder="All Drivers / Details"
+                    multiple={true}
                 />
 
                 <SelectFilter 
@@ -169,6 +212,7 @@ const OrderFilters: React.FC<OrderFiltersProps> = ({
                     onChange={(v) => updateFilter('user', v)}
                     options={usersList.map(u => ({ label: u.FullName, value: u.UserName }))}
                     placeholder="All Registered Users"
+                    multiple={true}
                 />
 
                 <SelectFilter 
@@ -177,6 +221,7 @@ const OrderFilters: React.FC<OrderFiltersProps> = ({
                     onChange={(v) => updateFilter('internalCost', v)}
                     options={uniqueValues.costs.map(c => ({ label: `$${c}`, value: c }))}
                     placeholder="All Costs"
+                    multiple={true}
                 />
 
                 <SelectFilter 
@@ -185,6 +230,7 @@ const OrderFilters: React.FC<OrderFiltersProps> = ({
                     onChange={(v) => updateFilter('bank', v)}
                     options={uniqueValues.banks}
                     placeholder="All Bank Accounts"
+                    multiple={true}
                 />
 
                 <div className="sm:col-span-2 xl:col-span-3">
