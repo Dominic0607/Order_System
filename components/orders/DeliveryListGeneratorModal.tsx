@@ -42,10 +42,45 @@ const DeliveryListGeneratorModal: React.FC<DeliveryListGeneratorModalProps> = ({
         }
     }, [isOpen, appData.stores]);
 
+    // Helper: Safe ISO Date Extractor (Handles "YYYY-MM-DD H:mm" format for iOS)
+    const getSafeIsoDate = (dateStr: string) => {
+        if (!dateStr) return '';
+        
+        // 1. Handle "YYYY-MM-DD H:mm" or "YYYY-MM-DD HH:mm" specifically (Common in this app)
+        // iOS/Safari fails on "2024-01-01 7:00", so we must parse manually.
+        const match = dateStr.match(/^(\d{4})-(\d{1,2})-(\d{1,2})\s(\d{1,2}):(\d{2})/);
+        if (match) {
+            const d = new Date(
+                parseInt(match[1]),
+                parseInt(match[2]) - 1, // Month is 0-indexed
+                parseInt(match[3]),
+                parseInt(match[4]),
+                parseInt(match[5])
+            );
+            if (!isNaN(d.getTime())) {
+                return d.toISOString().split('T')[0];
+            }
+        }
+
+        // 2. Try Standard Parsing
+        try {
+            const d = new Date(dateStr);
+            if (isNaN(d.getTime())) return ''; // Invalid date
+            return d.toISOString().split('T')[0];
+        } catch (e) {
+            return '';
+        }
+    };
+
     // Filtered Orders Logic
     const filteredOrders = useMemo(() => {
         return orders.filter(o => {
-            const orderDate = new Date(o.Timestamp).toISOString().split('T')[0];
+            if (!o.Timestamp) return false;
+            
+            // Use safe extractor instead of direct new Date() to prevent RangeError on iOS
+            const orderDate = getSafeIsoDate(o.Timestamp); 
+            if (!orderDate) return false;
+
             const isDateMatch = orderDate === selectedDate;
             const isStoreMatch = selectedStore ? o['Fulfillment Store'] === selectedStore : false;
             // Case insensitive check for shipping method just in case
