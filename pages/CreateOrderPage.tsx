@@ -16,6 +16,7 @@ import SearchableProvinceDropdown from '../components/orders/SearchableProvinceD
 import TelegramScheduler from '../components/orders/TelegramScheduler';
 import SetQuantity from '../components/orders/SetQuantity';
 import DriverSelector from '../components/orders/DriverSelector';
+import BankSelector from '../components/orders/BankSelector'; // Import the new component
 import { logUserActivity } from '../services/auditService';
 
 interface CreateOrderPageProps {
@@ -94,7 +95,6 @@ const CreateOrderPage: React.FC<CreateOrderPageProps> = ({ team, onSaveSuccess, 
     const [selectedShippingMethod, setSelectedShippingMethod] = useState<any>(null);
     const [carrierLogo, setCarrierLogo] = useState<string>('');
     const [shippingLogo, setShippingLogo] = useState<string>('');
-    const [bankLogo, setBankLogo] = useState<string>('');
     const [isScannerVisible, setIsScannerVisible] = useState(false);
     const [shippingFeeOption, setShippingFeeOption] = useState<'charge' | 'free'>('charge');
     const [isMapModalOpen, setIsMapModalOpen] = useState(false);
@@ -331,8 +331,6 @@ const CreateOrderPage: React.FC<CreateOrderPageProps> = ({ team, onSaveSuccess, 
     };
 
     const handleBankChange = (bankName: string) => {
-        const b = appData.bankAccounts?.find((b: any) => b.BankName === bankName) || null;
-        setBankLogo(b ? convertGoogleDriveUrl(b.LogoURL) : '');
         setOrder((prev: any) => ({ ...prev, payment: { ...prev.payment, info: bankName } }));
     };
 
@@ -360,7 +358,7 @@ const CreateOrderPage: React.FC<CreateOrderPageProps> = ({ team, onSaveSuccess, 
                 if (!order.shipping.method || (selectedShippingMethod?.RequireDriverSelection && !order.shipping.details) || order.shipping.cost === '' || parseFloat(order.shipping.cost) < 0) { setError('សូមពិនិត្យព័ត៌មានដឹកជញ្ជូន។'); return false; }
                 return true;
             case 4:
-                 if (order.payment.status === 'Paid' && !order.payment.info) { setError('សូមជ្រើសរើសគណនីធនាគារ Tune។'); return false; }
+                 if (order.payment.status === 'Paid' && !order.payment.info) { setError('សូមជ្រើសរើសគណនីធនាគារ។'); return false; }
                  if (order.telegram.schedule && !order.telegram.time) { setError('សូមជ្រើសរើសពេលវេលាផ្ញើសារ។'); return false; }
                 return true;
             default: return true;
@@ -559,7 +557,7 @@ const CreateOrderPage: React.FC<CreateOrderPageProps> = ({ team, onSaveSuccess, 
                                                 }`}
                                             >
                                                 <div className={`w-10 h-10 rounded-xl flex items-center justify-center transition-colors ${isSelected ? 'bg-orange-500 text-white' : 'bg-gray-800 text-gray-500 group-hover:text-gray-300'}`}>
-                                                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" /></svg>
+                                                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" /></svg>
                                                 </div>
                                                 <span className={`text-[11px] font-black uppercase tracking-tight ${isSelected ? 'text-white' : 'text-gray-400'}`}>{s.StoreName}</span>
                                                 {isSelected && (
@@ -735,7 +733,43 @@ const CreateOrderPage: React.FC<CreateOrderPageProps> = ({ team, onSaveSuccess, 
                         <div><h3 className="text-[10px] font-black text-gray-500 uppercase tracking-widest mb-2 sm:mb-3 flex items-center gap-2"><span className="w-1.5 h-1.5 rounded-full bg-orange-500"></span> ព័ត៌មានដឹកជញ្ជូន</h3><div className="bg-gray-900/40 p-3 sm:p-5 rounded-2xl sm:rounded-3xl border border-white/5 shadow-inner grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6"><div className="space-y-1"><p className="text-[9px] text-gray-500 font-bold uppercase">Shipping Method</p><div className="flex items-center gap-2">{shippingLogo && <img src={shippingLogo} className="h-4 sm:h-5 w-auto object-contain" alt="Logo" />}<p className="text-white font-black text-xs sm:text-sm">{order.shipping.method}</p></div></div><div className="space-y-1"><p className="text-[9px] text-gray-500 font-bold uppercase">Driver / Details</p><div className="flex items-center gap-2">{selectedDriver && (<img src={convertGoogleDriveUrl(selectedDriver.ImageURL)} className="h-6 w-6 sm:h-8 sm:w-8 rounded-full object-cover border border-gray-700 cursor-pointer active:scale-95 transition-transform" alt="Driver" onClick={() => previewImage(convertGoogleDriveUrl(selectedDriver.ImageURL))} />)}<p className="text-white font-bold text-xs sm:text-sm">{order.shipping.details || 'N/A'}</p></div></div><div className="space-y-1 sm:text-right"><p className="text-[9px] text-gray-500 font-bold uppercase">Internal Cost ($)</p><p className="text-orange-400 font-black text-base sm:text-lg font-mono">${(Number(order.shipping.cost) || 0).toFixed(2)}</p></div></div></div>
                         <div><h3 className="text-[10px] font-black text-gray-500 uppercase tracking-widest mb-2 sm:mb-3 flex items-center gap-2"><span className="w-1.5 h-1.5 rounded-full bg-blue-500"></span> បញ្ជីទំនិញកុម្ម៉ង់</h3><div className="space-y-2 sm:space-y-3">{order.products.map((p: any) => (<div key={p.id} className="flex items-center gap-3 sm:gap-4 bg-gray-900/40 p-2 sm:p-3 rounded-xl sm:rounded-2xl border border-white/5 group hover:border-blue-500/30 transition-all"><div className="w-12 h-12 sm:w-16 sm:h-16 bg-gray-800 rounded-lg sm:rounded-xl overflow-hidden border border-gray-700 flex-shrink-0 relative"><img src={convertGoogleDriveUrl(p.image)} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" alt={p.name} /></div><div className="flex-grow min-w-0"><div className="flex justify-between items-start mb-0.5 sm:mb-1"><h4 className="text-white font-black text-xs sm:text-sm truncate leading-tight">{p.name}</h4><div className="flex gap-1.5"><span className="bg-blue-600/10 text-blue-400 text-[9px] sm:text-[10px] font-black px-1.5 sm:px-2.5 py-0.5 sm:py-1 rounded-lg border border-blue-500/20">x{p.quantity}</span></div></div><div className="flex items-center gap-2 sm:gap-3">{p.colorInfo && (<span className="text-[9px] bg-purple-500/10 text-purple-400 px-1.5 py-0.5 rounded-md font-bold">{p.colorInfo}</span>)}<p className="text-[9px] text-gray-500 font-bold uppercase tracking-tight"><span>${(p.finalPrice || 0).toFixed(2)}</span> / unit</p></div></div><div className="text-right"><p className="text-white font-black text-sm sm:text-base tracking-tight">${(p.total || 0).toFixed(2)}</p><p className="text-[8px] text-gray-600 font-bold uppercase">Subtotal</p></div></div>))}</div></div>
                         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4"><div className="bg-gray-900/40 p-3 sm:p-4 rounded-xl sm:rounded-2xl border border-white/5 text-center"><p className="text-[8px] sm:text-[9px] text-gray-500 font-black uppercase mb-1">សរុបទំនិញ</p><p className="text-white font-black text-base sm:text-lg">${(order.subtotal || 0).toFixed(2)}</p></div><div className="bg-gray-900/40 p-3 sm:p-4 rounded-xl sm:rounded-2xl border border-white/5 text-center"><p className="text-[8px] sm:text-[9px] text-gray-500 font-black uppercase mb-1">សេវាដឹក</p><p className="text-white font-black text-base sm:text-lg">${(Number(order.customer.shippingFee) || 0).toFixed(2)}</p></div><div className="col-span-2 bg-blue-600/10 p-3 sm:p-4 rounded-xl sm:rounded-2xl border border-blue-500/20 text-center shadow-lg shadow-blue-900/10"><p className="text-[9px] sm:text-[10px] text-blue-400 font-black uppercase mb-1 tracking-widest">សរុបរួម (Grand Total)</p><p className="text-white font-black text-2xl sm:text-3xl tracking-tighter">${(order.grandTotal || 0).toFixed(2)}</p></div></div>
-                        <fieldset className="border border-gray-700 p-4 sm:p-6 rounded-2xl sm:rounded-3xl bg-gray-900/20"><legend className="px-3 text-[10px] sm:text-xs font-black text-blue-400 uppercase tracking-[0.2em]">ស្ថានភាពទូទាត់</legend><div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4"><select value={order.payment.status} onChange={(e) => setOrder({...order, payment: {...order.payment, status: e.target.value, info: ''}})} className="form-select bg-gray-800 text-sm"><option value="Unpaid">មិនទាន់ទូទាត់ (COD)</option><option value="Paid">ទូទាត់រួច (Paid)</option></select>{order.payment.status === 'Paid' && (<div className="flex items-center gap-2 sm:gap-3 animate-fade-in"><select value={order.payment.info} onChange={(e) => handleBankChange(e.target.value)} className="form-select bg-gray-800 flex-grow text-sm"><option value="">ជ្រើសរើសធនាគារ</option>{appData.bankAccounts?.map((b: any) => <option key={b.BankName} value={b.BankName}>{b.BankName}</option>)}</select>{bankLogo && <img src={bankLogo} className="h-8 w-12 sm:h-10 sm:w-16 object-contain bg-white/10 p-1 rounded-lg sm:rounded-xl active:scale-95 transition-transform" alt="bank" />}</div>)}</div></fieldset>
+                        
+                        {/* Improved Payment Section */}
+                        <fieldset className="border border-gray-700 p-4 sm:p-6 rounded-2xl sm:rounded-3xl bg-gray-900/20">
+                            <legend className="px-3 text-[10px] sm:text-xs font-black text-blue-400 uppercase tracking-[0.2em]">ស្ថានភាពទូទាត់</legend>
+                            <div className="space-y-6">
+                                {/* Segmented Control for Payment Status */}
+                                <div className="flex bg-gray-900/80 p-1 rounded-2xl border border-gray-700 max-w-md mx-auto sm:mx-0">
+                                    <button 
+                                        type="button"
+                                        onClick={() => setOrder({...order, payment: {...order.payment, status: 'Unpaid', info: ''}})}
+                                        className={`flex-1 py-3 px-4 rounded-xl text-xs font-black uppercase transition-all flex flex-col items-center gap-1 ${order.payment.status === 'Unpaid' ? 'bg-red-600 text-white shadow-lg' : 'text-gray-500 hover:text-gray-300'}`}
+                                    >
+                                        <span>Unpaid</span>
+                                        <span className="text-[8px] opacity-70 tracking-wider">COD</span>
+                                    </button>
+                                    <button 
+                                        type="button"
+                                        onClick={() => setOrder({...order, payment: {...order.payment, status: 'Paid'}})}
+                                        className={`flex-1 py-3 px-4 rounded-xl text-xs font-black uppercase transition-all flex flex-col items-center gap-1 ${order.payment.status === 'Paid' ? 'bg-emerald-600 text-white shadow-lg' : 'text-gray-500 hover:text-gray-300'}`}
+                                    >
+                                        <span>Paid</span>
+                                        <span className="text-[8px] opacity-70 tracking-wider">Transfer</span>
+                                    </button>
+                                </div>
+
+                                {order.payment.status === 'Paid' && (
+                                    <div className="animate-fade-in-down space-y-3">
+                                        <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-1">ជ្រើសរើសគណនីធនាគារ</p>
+                                        <BankSelector 
+                                            bankAccounts={appData.bankAccounts || []}
+                                            selectedBankName={order.payment.info}
+                                            onSelect={(bankName) => handleBankChange(bankName)}
+                                        />
+                                    </div>
+                                )}
+                            </div>
+                        </fieldset>
                         
                         {/* Telegram Scheduling Component */}
                         <TelegramScheduler 
