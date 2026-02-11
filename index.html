@@ -25,6 +25,10 @@
     <link rel="apple-touch-icon" sizes="180x180" href="https://lh3.googleusercontent.com/d/1vb9IG8wn31LDYtUKLurm6cMow0MI4Tee">
     <link rel="apple-touch-icon" href="https://lh3.googleusercontent.com/d/1vb9IG8wn31LDYtUKLurm6cMow0MI4Tee">
 
+    <!-- MapLibre GL CSS & JS (Global Fallback) -->
+    <link href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" rel="stylesheet" />
+    <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
+
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -36,14 +40,20 @@
     <!-- Global Error Handler: Shows errors on screen instead of blank page -->
     <script>
       window.onerror = function(message, source, lineno, colno, error) {
+        console.error("Global Error:", message, source, lineno, error);
         const root = document.getElementById('root');
-        if (root && root.innerHTML.trim() === '') {
+        // Only show full screen error if app hasn't loaded or looks broken
+        if (!root || root.innerHTML.trim() === '') {
             const errorDiv = document.createElement('div');
             errorDiv.style.cssText = 'position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.9); color:red; padding:20px; z-index:9999; overflow:auto; font-family:monospace;';
             errorDiv.innerHTML = '<h3>Startup Error</h3><p>' + message + '</p><p>' + source + ':' + lineno + '</p>';
             document.body.appendChild(errorDiv);
         }
       };
+
+      window.addEventListener('unhandledrejection', function(event) {
+        console.error('Unhandled rejection:', event.reason);
+      });
       
       (function() {
         window.global = window;

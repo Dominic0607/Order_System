@@ -27,17 +27,30 @@ const SalesByPageDesktop: React.FC<SalesByPageDesktopProps> = ({
     const [isFrozen, setIsFrozen] = useState(false);
     const [showFillColor, setShowFillColor] = useState(true);
     const [isMerged, setIsMerged] = useState(true);
+    const [selectedTeam, setSelectedTeam] = useState<string>('All');
 
-    // FIX: Calculate row spans based on *adjacent* equality in the current sorted list
+    // Extract Unique Teams for Filter
+    const uniqueTeams = useMemo(() => {
+        const teams = new Set(data.map(d => d.teamName));
+        return Array.from(teams).sort();
+    }, [data]);
+
+    // Filter Data based on selected Team
+    const filteredData = useMemo(() => {
+        if (selectedTeam === 'All') return data;
+        return data.filter(d => d.teamName === selectedTeam);
+    }, [data, selectedTeam]);
+
+    // Calculate row spans based on filteredData
     const { rowSpans, displayRow } = useMemo(() => {
-        const spans: number[] = new Array(data.length).fill(0);
-        const display: boolean[] = new Array(data.length).fill(true);
+        const spans: number[] = new Array(filteredData.length).fill(0);
+        const display: boolean[] = new Array(filteredData.length).fill(true);
         
         let i = 0;
-        while (i < data.length) {
-            const currentTeam = data[i].teamName;
+        while (i < filteredData.length) {
+            const currentTeam = filteredData[i].teamName;
             let count = 1;
-            while (i + count < data.length && data[i + count].teamName === currentTeam) {
+            while (i + count < filteredData.length && filteredData[i + count].teamName === currentTeam) {
                 count++;
             }
             spans[i] = count;
@@ -49,7 +62,7 @@ const SalesByPageDesktop: React.FC<SalesByPageDesktopProps> = ({
             i += count;
         }
         return { rowSpans: spans, displayRow: display };
-    }, [data]);
+    }, [filteredData]);
 
     const renderTable = (type: 'Revenue' | 'Profit', prefix: string) => {
         const columns = [
@@ -71,6 +84,19 @@ const SalesByPageDesktop: React.FC<SalesByPageDesktopProps> = ({
                     <div className="flex items-center gap-2">
                         {type === 'Revenue' && (
                              <>
+                                {/* Team Filter Dropdown */}
+                                <div className="relative group mr-1">
+                                    <select
+                                        value={selectedTeam}
+                                        onChange={(e) => setSelectedTeam(e.target.value)}
+                                        className="btn !py-1 !px-3 !pl-8 text-[10px] font-black border transition-all bg-gray-800 border-gray-700 text-gray-400 hover:text-white uppercase appearance-none cursor-pointer focus:border-blue-500 outline-none"
+                                    >
+                                        <option value="All">ALL TEAMS</option>
+                                        {uniqueTeams.map(t => <option key={t} value={t}>{String(t).toUpperCase()}</option>)}
+                                    </select>
+                                    <svg className="w-3.5 h-3.5 text-gray-500 absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none group-hover:text-blue-400 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
+                                </div>
+
                                 <button onClick={() => setShowAllPages(!showAllPages)} className={`btn !py-1 !px-3 text-[10px] font-black border transition-all ${showAllPages ? 'bg-purple-600 border-purple-500 text-white shadow-lg shadow-purple-900/20' : 'bg-gray-800 border-gray-700 text-gray-400'}`}>
                                     {showAllPages ? 'ALL PAGES' : 'ACTIVE ONLY'}
                                 </button>
@@ -115,7 +141,7 @@ const SalesByPageDesktop: React.FC<SalesByPageDesktopProps> = ({
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-white/10">
-                            {data.map((item: any, idx) => {
+                            {filteredData.map((item: any, idx) => {
                                 const shouldDisplayTeam = isMerged ? displayRow[idx] : true;
                                 const currentSpan = isMerged ? rowSpans[idx] : 1;
                                 
