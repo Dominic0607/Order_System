@@ -9,24 +9,33 @@ interface MapTooltipProps {
 
 export const MapTooltip: React.FC<MapTooltipProps> = ({ name, revenue, orders }) => {
     return (
-        <div className="px-4 py-3 text-gray-900 min-w-[180px] bg-white/95 backdrop-blur-xl rounded-2xl shadow-2xl border border-white/20">
-            <h4 className="font-black text-sm uppercase text-gray-800 border-b border-gray-200 pb-2 mb-2 tracking-wide">{name}</h4>
-            <div className="space-y-2">
-                <div className="flex justify-between items-center text-xs">
-                    <span className="text-gray-500 font-bold uppercase tracking-wider">Revenue</span>
-                    <span className="font-black text-blue-600 text-sm">${revenue.toLocaleString()}</span>
+        <div className="px-5 py-4 min-w-[200px] bg-slate-900/95 backdrop-blur-xl rounded-2xl shadow-2xl border border-slate-700/50">
+            <h4 className="font-black text-sm uppercase text-slate-200 border-b border-slate-700 pb-2 mb-3 tracking-wider flex items-center justify-between">
+                {name}
+                {revenue > 0 && (
+                    <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shadow-emerald-500/50 shadow-lg"></span>
+                )}
+            </h4>
+            
+            <div className="space-y-3">
+                <div className="flex justify-between items-end">
+                    <span className="text-slate-400 text-xs font-semibold uppercase tracking-wider">Revenue</span>
+                    <span className="font-black text-xl text-cyan-400 drop-shadow-lg">${revenue.toLocaleString()}</span>
                 </div>
-                <div className="flex justify-between items-center text-xs">
-                    <span className="text-gray-500 font-bold uppercase tracking-wider">Orders</span>
-                    <span className="font-black text-gray-800 text-sm">{orders}</span>
+                
+                {/* Visual Progress Bar */}
+                <div className="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden">
+                    <div 
+                        className="h-full bg-gradient-to-r from-indigo-500 to-cyan-400" 
+                        style={{ width: `${Math.min((revenue / 50000) * 100, 100)}%` }}
+                    ></div>
+                </div>
+
+                <div className="flex justify-between items-center pt-1">
+                    <span className="text-slate-500 text-xs font-semibold uppercase">Orders</span>
+                    <span className="font-bold text-slate-200 bg-slate-800 px-2 py-0.5 rounded-md text-xs border border-slate-700">{orders}</span>
                 </div>
             </div>
-            {revenue > 0 && (
-                <div className="mt-2 pt-2 border-t border-gray-100 flex items-center gap-1">
-                    <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></div>
-                    <span className="text-[9px] font-bold text-emerald-600 uppercase">Active Region</span>
-                </div>
-            )}
         </div>
     );
 };

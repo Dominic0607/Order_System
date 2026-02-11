@@ -1,31 +1,31 @@
 
 export const MAP_COLORS = {
-    base: '#1e293b',
-    highlight: '#fbbf24',
+    base: '#020617', 
+    highlight: '#ffffff', // Pure White for focus
     levels: [
-        '#1f2937', // 0 - Empty
-        '#172554', // 1 - Low
-        '#1e40af', // 2
-        '#2563eb', // 3
-        '#3b82f6', // 4
-        '#60a5fa', // 5 - High
-        '#93c5fd'  // 6 - Very High
+        '#1e293b', // 0 - Empty (Slate 800)
+        '#7f1d1d', // 1 - Dark Red (Low)
+        '#b91c1c', // 2 - Red 700
+        '#ea580c', // 3 - Orange 600
+        '#f59e0b', // 4 - Amber 500
+        '#facc15', // 5 - Yellow 400
+        '#ffffff'  // 6 - Pure White (Highest)
     ]
 };
 
 export const REVENUE_LEVELS = [0, 100, 500, 1000, 5000, 10000];
 
 // 3D Extrusion Height Calculation
-// We use a base height + revenue factor
+// Slightly increased for better 3D definition at closer zoom
 export const EXTRUSION_HEIGHT_EXPRESSION = [
     'interpolate',
     ['linear'],
     ['get', 'revenue'],
-    0, 0,
-    100, 2000,
-    1000, 10000,
-    10000, 30000,
-    50000, 60000 
+    0, 200,
+    100, 1000,
+    1000, 4000,
+    10000, 15000,
+    50000, 35000 
 ];
 
 export const FILL_COLOR_EXPRESSION = [
@@ -41,5 +41,5 @@ export const FILL_COLOR_EXPRESSION = [
         REVENUE_LEVELS[4], MAP_COLORS.levels[4],
         REVENUE_LEVELS[5], MAP_COLORS.levels[5]
     ],
-    'rgba(255,255,255,0.02)' // Default ghost color
+    'rgba(30, 41, 59, 0.6)' // Semi-transparent Slate 800 for empty areas
 ];

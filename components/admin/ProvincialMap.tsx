@@ -4,7 +4,7 @@ import { useCambodiaGeoJSON } from '../../hooks/useCambodiaGeoJSON';
 import { normalizeName } from '../../utils/mapUtils';
 import MapLegend from './map/MapLegend';
 import { useMapEngine } from '../../hooks/useMapEngine';
-import { EXTRUSION_HEIGHT_EXPRESSION, FILL_COLOR_EXPRESSION } from './map/mapStyles';
+import { EXTRUSION_HEIGHT_EXPRESSION, FILL_COLOR_EXPRESSION, MAP_COLORS } from './map/mapStyles';
 
 interface ProvinceStat {
     name: string;
@@ -19,7 +19,9 @@ interface ProvincialMapProps {
 const ProvincialMap: React.FC<ProvincialMapProps> = ({ data }) => {
     const mapContainerRef = useRef<HTMLDivElement>(null);
     const popupRef = useRef<any>(null);
+    const markersRef = useRef<any[]>([]); // Store active markers
     const hoverStateIdRef = useRef<string | number | null>(null);
+    const animationRef = useRef<number | null>(null);
 
     // 1. Data Hook
     const { geoJson: rawGeoJson, loading: geoLoading, error: geoError } = useCambodiaGeoJSON();
@@ -45,13 +47,56 @@ const ProvincialMap: React.FC<ProvincialMapProps> = ({ data }) => {
         return stats;
     }, [data]);
 
-    // 4. Update Map Logic (3D Layers)
+    // Calculate Ranks
+    const topRanks = useMemo(() => {
+        const sorted = Object.values(statsMap).sort((a, b) => b.revenue - a.revenue);
+        const ranks: Record<string, number> = {};
+        sorted.forEach((item, index) => {
+            const key = normalizeName(item.name);
+            if (key) ranks[key] = index + 1;
+        });
+        return ranks;
+    }, [statsMap]);
+
+    // 4. Update Map Logic (3D Layers & Markers)
     useEffect(() => {
         if (!isMapReady || !map || !rawGeoJson) return;
 
         try {
             // @ts-ignore
             const maplibregl = window.maplibregl;
+
+            // --- 1. DRAMATIC ENTRANCE ---
+            // Fly to Cambodia "Command Center" View starting from the engine's default
+            map.flyTo({
+                center: [104.9160, 12.5657],
+                zoom: 7.8, // Zoom out slightly
+                pitch: 45, // Aim closer to top-down
+                bearing: -10,
+                speed: 0.6, // Even smoother
+                curve: 1.2,
+                essential: true
+            });
+
+            // --- 2. DYNAMIC LIGHTING ANIMATION ---
+            // Rotate the light source to create shifting shadows ("Time Lapse" effect)
+            const animateLight = (timestamp: number) => {
+                const phase = timestamp / 4000; // Speed of day/night cycle
+                // Orbit light around the center
+                const x = Math.sin(phase) * 1.5;
+                const y = Math.cos(phase) * 1.5;
+                
+                map.setLight({
+                    anchor: 'viewport',
+                    color: '#ffffff',
+                    intensity: 0.5 + Math.sin(phase) * 0.1, // Pulse intensity slightly
+                    position: [x, y, 80] // Changing position X/Y
+                });
+                
+                animationRef.current = requestAnimationFrame(animateLight);
+            };
+            animationRef.current = requestAnimationFrame(animateLight);
+
 
             // Prepare Source Data with Stats
             const processedFeatures = rawGeoJson.features.map((feature: any) => {
@@ -60,6 +105,7 @@ const ProvincialMap: React.FC<ProvincialMapProps> = ({ data }) => {
                 let revenue = 0;
                 let orders = 0;
                 let displayName = props.name_en || props.shapeName || "Province";
+                let rank = 999;
 
                 for (const n of namesToTry) {
                     if (!n) continue;
@@ -67,11 +113,12 @@ const ProvincialMap: React.FC<ProvincialMapProps> = ({ data }) => {
                     if (statsMap[key]) {
                         revenue = statsMap[key].revenue;
                         orders = statsMap[key].orders;
+                        if (topRanks[key]) rank = topRanks[key];
                         displayName = n; 
                         break;
                     }
                 }
-                return { ...feature, properties: { ...props, revenue, orders, displayName } };
+                return { ...feature, properties: { ...props, revenue, orders, displayName, rank } };
             });
 
             const processedGeoJson = { type: 'FeatureCollection', features: processedFeatures };
@@ -87,7 +134,7 @@ const ProvincialMap: React.FC<ProvincialMapProps> = ({ data }) => {
                     generateId: true
                 });
 
-                // --- 3D EXTRUSION LAYER (NEW TECH) ---
+                // --- 3D EXTRUSION LAYER ---
                 map.addLayer({
                     'id': 'province-3d',
                     'type': 'fill-extrusion',
@@ -101,34 +148,51 @@ const ProvincialMap: React.FC<ProvincialMapProps> = ({ data }) => {
                     }
                 });
 
-                // Line Layer for definition
+                // 2D Base Glow Layer (Shows on Hover)
+                map.addLayer({
+                    'id': 'province-hover-fill',
+                    'type': 'fill',
+                    'source': 'cambodia-3d-source',
+                    'paint': {
+                        'fill-color': '#f59e0b', // Amber 500 Glow
+                        'fill-opacity': [
+                            'case',
+                            ['boolean', ['feature-state', 'hover'], false],
+                            0.5,
+                            0
+                        ]
+                    }
+                }, 'province-3d'); // Place below 3D
+
+                // Glowing Neon Outline
                 map.addLayer({
                     'id': 'province-outlines',
                     'type': 'line',
                     'source': 'cambodia-3d-source',
                     'paint': {
-                        'line-color': '#94a3b8',
-                        'line-width': 1,
-                        'line-opacity': 0.3
+                        'line-color': '#f97316', // Orange 500
+                        'line-width': 2,
+                        'line-opacity': 0.5,
+                        'line-blur': 2 // Glow effect
                     }
                 });
 
-                // Highlight Layer (Interaction)
+                // Highlight Layer (3D Pop on Hover)
                 map.addLayer({
                     'id': 'province-highlight',
                     'type': 'fill-extrusion',
                     'source': 'cambodia-3d-source',
                     'paint': {
-                        'fill-extrusion-color': '#fbbf24',
+                        'fill-extrusion-color': '#ffffff', // Brilliant White Highlight
                         'fill-extrusion-height': [
                             '+', 
                             EXTRUSION_HEIGHT_EXPRESSION, 
-                            5000 // Pop up slightly when hovered
+                            1000 
                         ],
                         'fill-extrusion-opacity': [
                             'case',
                             ['boolean', ['feature-state', 'hover'], false],
-                            1,
+                            0.8,
                             0
                         ]
                     }
@@ -139,7 +203,8 @@ const ProvincialMap: React.FC<ProvincialMapProps> = ({ data }) => {
                     closeButton: false,
                     closeOnClick: false,
                     className: 'custom-map-popup',
-                    offset: 20
+                    offset: 40,
+                    maxWidth: '280px'
                 });
 
                 // Interactions
@@ -154,15 +219,26 @@ const ProvincialMap: React.FC<ProvincialMapProps> = ({ data }) => {
                         hoverStateIdRef.current = feature.id;
                         map.setFeatureState({ source: 'cambodia-3d-source', id: feature.id }, { hover: true });
 
-                        // HTML Popup
+                        // Elegant Popup
                         const { displayName, revenue, orders } = feature.properties;
                         popupRef.current
                             .setLngLat(e.lngLat)
                             .setHTML(`
-                                <div class="px-4 py-3 text-gray-900 min-w-[160px]">
-                                    <h4 class="font-black text-sm uppercase text-gray-800 border-b border-gray-200 pb-1 mb-1">${displayName}</h4>
-                                    <div class="flex justify-between text-xs mb-1"><span class="text-gray-500 font-bold">Revenue:</span><span class="font-black text-blue-600">$${revenue.toLocaleString()}</span></div>
-                                    <div class="flex justify-between text-xs"><span class="text-gray-500 font-bold">Orders:</span><span class="font-black text-gray-800">${orders}</span></div>
+                                <div class="p-4 bg-slate-900/95 backdrop-blur-md rounded-xl border border-slate-700 shadow-2xl min-w-[180px]">
+                                    <div class="flex items-center justify-between mb-3 border-b border-slate-800 pb-2">
+                                        <h4 class="font-bold text-sm text-white tracking-wide">${displayName}</h4>
+                                        ${revenue > 0 ? '<div class="w-2 h-2 rounded-full bg-orange-500 shadow-[0_0_8px_#f97316] animate-pulse"></div>' : ''}
+                                    </div>
+                                    <div class="space-y-2">
+                                        <div class="flex justify-between items-baseline">
+                                            <span class="text-slate-400 text-xs font-medium uppercase tracking-wider">Revenue</span>
+                                            <span class="font-black text-lg text-orange-400">$${Number(revenue).toLocaleString()}</span>
+                                        </div>
+                                        <div class="flex justify-between items-center">
+                                            <span class="text-slate-500 text-xs font-medium uppercase tracking-wider">Orders</span>
+                                            <span class="text-slate-200 text-xs bg-slate-800 px-2 py-0.5 rounded border border-slate-700">${orders}</span>
+                                        </div>
+                                    </div>
                                 </div>
                             `)
                             .addTo(map);
@@ -178,10 +254,69 @@ const ProvincialMap: React.FC<ProvincialMapProps> = ({ data }) => {
                     popupRef.current.remove();
                 });
             }
+
+            // --- REFRESH RANK MARKERS (FLOATING CAPSULES) ---
+            // 1. Remove old markers
+            markersRef.current.forEach(marker => marker.remove());
+            markersRef.current = [];
+
+            // 2. Add new markers for Top 3
+            processedFeatures.forEach((feature: any) => {
+                const { rank, displayName } = feature.properties;
+                if (rank && rank <= 3) {
+                    // Calculate Center
+                    const coords = feature.geometry.type === 'Polygon' 
+                        ? feature.geometry.coordinates[0] 
+                        : feature.geometry.coordinates.flat(1)[0]; 
+                    
+                    if (!coords) return;
+
+                    const bounds = new maplibregl.LngLatBounds(coords[0], coords[0]);
+                    coords.forEach((coord: any) => bounds.extend(coord));
+                    const center = bounds.getCenter();
+
+                    // Minimalist Glass Marker
+                    const el = document.createElement('div');
+                    el.className = 'province-rank-marker';
+                    el.innerHTML = `
+                        <div class="flex flex-col items-center group cursor-pointer animate-float">
+                            <div class="relative">
+                                <div class="absolute inset-0 bg-orange-500/30 blur-lg rounded-full animate-pulse"></div>
+                                <div class="px-4 py-2 bg-slate-900/80 backdrop-blur-md rounded-full shadow-lg border border-orange-400/50 flex items-center gap-3 relative overflow-hidden group-hover:scale-105 transition-transform duration-300">
+                                    <div class="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent translate-x-[-100%] animate-shimmer"></div>
+                                    <span class="font-black text-transparent bg-clip-text bg-gradient-to-br from-amber-300 to-orange-500 text-sm">#${rank}</span>
+                                    <div class="w-px h-3 bg-white/20"></div>
+                                    <span class="text-xs font-bold text-white tracking-wide whitespace-nowrap">${displayName}</span>
+                                </div>
+                            </div>
+                            <div class="w-0.5 h-6 bg-gradient-to-b from-orange-500 to-transparent opacity-50"></div>
+                            <div class="w-3 h-3 border border-orange-500 rounded-full flex items-center justify-center -mt-1 opacity-50">
+                                <div class="w-1 h-1 bg-orange-400 rounded-full"></div>
+                            </div>
+                        </div>
+                    `;
+
+                    // Add to map
+                    const marker = new maplibregl.Marker({
+                        element: el,
+                        anchor: 'bottom',
+                        offset: [0, -10] 
+                    })
+                    .setLngLat(center)
+                    .addTo(map);
+
+                    markersRef.current.push(marker);
+                }
+            });
+
         } catch (e) {
             console.error("Layer Update Error:", e);
         }
-    }, [isMapReady, rawGeoJson, statsMap]);
+
+        return () => {
+            if (animationRef.current) cancelAnimationFrame(animationRef.current);
+        };
+    }, [isMapReady, rawGeoJson, statsMap, topRanks]);
 
     if (geoError || mapError) {
         return (
@@ -192,32 +327,82 @@ const ProvincialMap: React.FC<ProvincialMapProps> = ({ data }) => {
     }
 
     return (
-        <div className="relative w-full h-[500px] lg:h-[600px] bg-[#020617] rounded-[2.5rem] border border-white/5 shadow-2xl overflow-hidden group">
+        <div className="relative w-full h-[600px] xl:h-[700px] bg-[#020617] rounded-[1.5rem] border border-slate-800 shadow-[0_0_40px_rgba(56,189,248,0.1)] overflow-hidden group">
+            
+            {/* Header / Title Overlay with Glass effect */}
+            <div className="absolute top-5 left-6 pointer-events-none z-10">
+                <div className="flex flex-col">
+                    <div className="flex items-center gap-2 mb-1">
+                         <span className="relative flex h-2 w-2">
+                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-sky-400 opacity-75"></span>
+                          <span className="relative inline-flex rounded-full h-2 w-2 bg-sky-500"></span>
+                        </span>
+                        <span className="text-[10px] text-sky-400 font-mono tracking-widest uppercase">Live Data Stream</span>
+                    </div>
+                    <h2 className="text-2xl font-black text-white tracking-tight flex items-center gap-2 drop-shadow-lg">
+                        CAMBODIA <span className="text-transparent bg-clip-text bg-gradient-to-r from-amber-400 to-orange-600">NEXUS</span>
+                    </h2>
+                </div>
+            </div>
+
+            {/* SCANNIG RADAR BEAM */}
+            <div className="absolute inset-0 pointer-events-none overflow-hidden z-0">
+                <div className="w-full h-[2px] bg-gradient-to-r from-transparent via-cyan-400/50 to-transparent absolute top-0 animate-scan blur-[1px]"></div>
+                <div className="w-full h-[20px] bg-gradient-to-b from-cyan-400/10 to-transparent absolute top-0 animate-scan"></div>
+            </div>
+
+            {/* Background Glows */}
+            <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-blue-600/10 blur-[120px] pointer-events-none rounded-full mix-blend-screen transform translate-x-1/2 -translate-y-1/2"></div>
+
             <div ref={mapContainerRef} className="w-full h-full" />
             
             {(!isMapReady || geoLoading) && (
                 <div className="absolute inset-0 flex flex-col items-center justify-center bg-[#020617] z-20">
-                    <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
-                    <p className="mt-4 text-[10px] font-black text-gray-500 uppercase tracking-[0.3em] animate-pulse">Initializing 3D Engine...</p>
+                    <div className="w-16 h-16 border-4 border-slate-800 border-t-cyan-400 rounded-full animate-spin"></div>
+                    <p className="mt-4 text-[10px] font-bold text-cyan-400 uppercase tracking-widest animate-pulse">Initializing System...</p>
                 </div>
             )}
 
             <MapLegend />
             
             <style>{`
-                .maplibregl-popup-content {
-                    background: rgba(255, 255, 255, 0.95) !important;
-                    backdrop-filter: blur(12px) !important;
-                    border-radius: 16px !important;
-                    padding: 0 !important;
-                    box-shadow: 0 20px 40px rgba(0,0,0,0.4) !important;
-                    border: 1px solid rgba(255,255,255,0.5) !important;
-                    overflow: hidden !important;
+                .maplibregl-popup {
+                    z-index: 100;
                 }
-                .maplibregl-popup-tip { border-top-color: rgba(255, 255, 255, 0.95) !important; }
-                .maplibregl-ctrl-group { background: rgba(15, 23, 42, 0.8) !important; border: 1px solid rgba(255, 255, 255, 0.1) !important; backdrop-filter: blur(8px) !important; }
-                .maplibregl-ctrl button { border-bottom: 1px solid rgba(255, 255, 255, 0.1) !important; }
-                .maplibregl-ctrl-icon { filter: invert(1) !important; }
+                .maplibregl-popup-content {
+                    background: transparent !important;
+                    box-shadow: none !important;
+                    padding: 0 !important;
+                    border: none !important;
+                }
+                .maplibregl-popup-tip { display: none !important; }
+                .province-rank-marker { z-index: 5; }
+                
+                @keyframes float {
+                    0%, 100% { transform: translateY(0); }
+                    50% { transform: translateY(-8px); }
+                }
+                .animate-float {
+                    animation: float 4s ease-in-out infinite;
+                }
+                
+                @keyframes shimmer {
+                    0% { transform: translateX(-100%); }
+                    100% { transform: translateX(100%); }
+                }
+                .animate-shimmer {
+                    animation: shimmer 3s infinite;
+                }
+
+                @keyframes scan {
+                    0% { top: -10%; opacity: 0; }
+                    10% { opacity: 1; }
+                    90% { opacity: 1; }
+                    100% { top: 110%; opacity: 0; }
+                }
+                .animate-scan {
+                    animation: scan 8s linear infinite;
+                }
             `}</style>
         </div>
     );

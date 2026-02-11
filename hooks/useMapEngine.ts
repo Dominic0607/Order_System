@@ -55,11 +55,11 @@ export const useMapEngine = (containerRef: MutableRefObject<HTMLDivElement | nul
                         ]
                     },
                     center: [104.9160, 12.5657], // Center of Cambodia
-                    zoom: 5.8,
+                    zoom: 6.6,
                     pitch: 45, // 3D View Angle
                     bearing: -10, // Slight Rotation
                     minZoom: 5,
-                    maxZoom: 9
+                    maxZoom: 12
                 });
 
                 mapInstance.addControl(new maplibregl.NavigationControl({ showCompass: true, visualizePitch: true }), 'top-right');
