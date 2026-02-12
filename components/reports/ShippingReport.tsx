@@ -8,6 +8,7 @@ import { convertGoogleDriveUrl } from '../../utils/fileUtils';
 import { FilterState } from '../orders/OrderFilters';
 import { APP_LOGO_URL } from '../../constants';
 import Spinner from '../common/Spinner';
+import ProvincialMap from '../admin/ProvincialMap';
 
 interface ShippingReportProps {
     orders: ParsedOrder[];
@@ -17,7 +18,7 @@ interface ShippingReportProps {
     endDate?: string;
     onNavigate?: (filters: any) => void;
     contextFilters?: FilterState;
-    onBack?: () => void; // New prop for User Journey navigation
+    onBack?: () => void;
 }
 
 const ShippingReport: React.FC<ShippingReportProps> = ({ orders, appData, dateFilter, startDate, endDate, onNavigate, contextFilters, onBack }) => {
@@ -110,6 +111,21 @@ const ShippingReport: React.FC<ShippingReportProps> = ({ orders, appData, dateFi
             stores: Object.values(stores).sort((a, b) => b.cost - a.cost)
         };
     }, [filteredOrders, appData]);
+
+    const provinceStats = useMemo(() => {
+        const stats: Record<string, { name: string, revenue: number, orders: number }> = {};
+        filteredOrders.forEach(order => {
+            const provinceName = (order.Location || '').split(/[,|\-|/]/)[0].trim();
+            if (!provinceName || provinceName.toUpperCase() === 'N/A') return;
+            
+            if (!stats[provinceName]) stats[provinceName] = { name: provinceName, revenue: 0, orders: 0 };
+            
+            // Map Internal Cost to 'revenue' for visualization logic (showing cost distribution on map)
+            stats[provinceName].revenue += (Number(order['Internal Cost']) || 0);
+            stats[provinceName].orders += 1;
+        });
+        return Object.values(stats).sort((a, b) => b.revenue - a.revenue);
+    }, [filteredOrders]);
 
     const handleAnalyze = async () => {
         setLoadingAnalysis(true);
@@ -209,7 +225,7 @@ const ShippingReport: React.FC<ShippingReportProps> = ({ orders, appData, dateFi
                     <div class="flex gap-3">
                         <button onclick="window.close()" class="px-4 py-2 rounded bg-gray-700 hover:bg-gray-600 transition">Close</button>
                         <button onclick="window.print()" class="px-6 py-2 rounded bg-blue-600 hover:bg-blue-500 font-bold transition shadow-lg flex items-center gap-2">
-                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path></svg>
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2z"></path></svg>
                             Print / Save as PDF
                         </button>
                     </div>
@@ -392,6 +408,11 @@ const ShippingReport: React.FC<ShippingReportProps> = ({ orders, appData, dateFi
                 <StatCard label="ថ្លៃដឹកពីអតិថិជន" value={`$${shippingStats.totalCustomerFee.toLocaleString()}`} icon="💰" colorClass="from-blue-600 to-indigo-500" />
                 <StatCard label="តុល្យភាព (Net)" value={`$${shippingStats.netShipping.toLocaleString()}`} icon="⚖️" colorClass={shippingStats.netShipping >= 0 ? "from-emerald-600 to-teal-500" : "from-red-600 to-pink-500"} />
                 <StatCard label="ចំនួនកញ្ចប់សរុប" value={shippingStats.totalOrders} icon="📦" colorClass="from-purple-600 to-blue-500" />
+            </div>
+
+            {/* MAP VISUALIZATION */}
+            <div className="w-full">
+                <ProvincialMap data={provinceStats} valueLabel="Cost" />
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">

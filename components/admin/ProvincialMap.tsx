@@ -10,7 +10,7 @@ interface ProvinceStat {
     name: string;
     revenue: number;
     orders: number;
-    shippingCost?: number; // Added Shipping Cost
+    shippingCost?: number;
 }
 
 interface ProvincialMapProps {
@@ -21,20 +21,16 @@ const ProvincialMap: React.FC<ProvincialMapProps> = ({ data }) => {
     const mapContainerRef = useRef<HTMLDivElement>(null);
     const popupRef = useRef<any>(null);
     const markersRef = useRef<any[]>([]); 
+    const labelMarkersRef = useRef<any[]>([]); // New ref for label markers
     const hoverStateIdRef = useRef<string | number | null>(null);
     const animationRef = useRef<number | null>(null);
 
-    // UX State - Added 'shipping'
     const [activeMetric, setActiveMetric] = useState<'revenue' | 'orders' | 'shipping'>('revenue');
     const isUserInteracting = useRef(false);
 
-    // 1. Data Hook
     const { geoJson: rawGeoJson, loading: geoLoading, error: geoError } = useCambodiaGeoJSON();
-    
-    // 2. Map Engine Hook
     const { map, isMapReady, mapError } = useMapEngine(mapContainerRef);
 
-    // 3. Process Data
     const statsMap = useMemo(() => {
         const stats: Record<string, ProvinceStat> = {};
         if (!Array.isArray(data)) return stats;
@@ -53,7 +49,6 @@ const ProvincialMap: React.FC<ProvincialMapProps> = ({ data }) => {
         return stats;
     }, [data]);
 
-    // Calculate Ranks (Dynamic based on Metric)
     const topRanks = useMemo(() => {
         const sorted = Object.values(statsMap).sort((a, b) => {
             const valA = a[activeMetric as keyof ProvinceStat] || 0;
@@ -69,26 +64,16 @@ const ProvincialMap: React.FC<ProvincialMapProps> = ({ data }) => {
         return ranks;
     }, [statsMap, activeMetric]);
 
-    // Helper to get color based on metric
+    // Colors - Solid Cyber
     const getMetricColor = () => {
         switch(activeMetric) {
-            case 'revenue': return '#fde047'; // Gold
-            case 'orders': return '#d8b4fe'; // Lavender
-            case 'shipping': return '#34d399'; // Emerald
-            default: return '#fde047';
-        }
-    };
-    
-    const getMetricHighlightColor = () => {
-        switch(activeMetric) {
-            case 'revenue': return '#facc15'; // Gold
-            case 'orders': return '#c084fc'; // Purple
+            case 'revenue': return '#00bcd4'; // Cyan
+            case 'orders': return '#8b5cf6'; // Violet
             case 'shipping': return '#10b981'; // Emerald
-            default: return '#facc15';
+            default: return '#00bcd4';
         }
     };
 
-    // 4. Update Map Logic
     useEffect(() => {
         if (!isMapReady || !map || !rawGeoJson) return;
 
@@ -96,7 +81,6 @@ const ProvincialMap: React.FC<ProvincialMapProps> = ({ data }) => {
             // @ts-ignore
             const maplibregl = window.maplibregl;
 
-            // Setup User Interaction Listeners
             const pauseAnimation = () => { isUserInteracting.current = true; };
             const resumeAnimation = () => { isUserInteracting.current = false; };
             
@@ -109,36 +93,30 @@ const ProvincialMap: React.FC<ProvincialMapProps> = ({ data }) => {
             map.on('zoomstart', pauseAnimation);
             map.on('zoomend', resumeAnimation);
 
-            // --- 1. CINEMATIC CAMERA ENTRY ---
             if (!animationRef.current) { 
                  map.flyTo({
-                    center: [104.9160, 12.7], 
-                    zoom: 7.6, 
-                    pitch: 62, 
-                    bearing: -15,
-                    speed: 0.5,
-                    curve: 1.5,
+                    center: [104.9160, 12.6], 
+                    zoom: 7.2, 
+                    pitch: 50, // Slightly higher for 3D feel
+                    bearing: -5,
+                    speed: 0.8,
+                    curve: 1.2,
                     essential: true
                 });
             }
 
-            // "4D" Drone Hover Effect
             const animateCamera = (timestamp: number) => {
-                const lightPhase = timestamp / 3000;
-                const lx = Math.sin(lightPhase) * 1.5;
-                const ly = Math.cos(lightPhase) * 1.5;
                 map.setLight({
                     anchor: 'map',
-                    color: getMetricColor(),
-                    intensity: 0.6 + Math.sin(lightPhase * 2) * 0.15, 
-                    position: [lx, ly, 90] 
+                    color: '#ffffff',
+                    intensity: 0.6, 
+                    position: [1.5, 1.5, 80] 
                 });
 
                 if (!isUserInteracting.current) {
-                    const phase = timestamp / 15000; 
-                    const newBearing = -15 + Math.sin(phase) * 3; 
-                    const newPitch = 62 + Math.cos(phase * 0.7) * 2; 
-                    map.jumpTo({ bearing: newBearing, pitch: newPitch });
+                    const movePhase = timestamp / 20000;
+                    const newBearing = -5 + Math.sin(movePhase) * 3; 
+                    map.jumpTo({ bearing: newBearing });
                 }
 
                 animationRef.current = requestAnimationFrame(animateCamera);
@@ -146,19 +124,17 @@ const ProvincialMap: React.FC<ProvincialMapProps> = ({ data }) => {
             if (animationRef.current) cancelAnimationFrame(animationRef.current);
             animationRef.current = requestAnimationFrame(animateCamera);
 
-            // --- 2. ATMOSPHERIC FOG ---
             if (map.setFog) {
                 map.setFog({
-                    'range': [1, 12],
-                    'color': '#0f0518',
-                    'horizon-blend': 0.15,
-                    'high-color': activeMetric === 'shipping' ? '#064e3b' : '#7e22ce', // Dark Green or Purple Haze
-                    'space-color': '#0f0518',
-                    'star-intensity': 0.9 
+                    'range': [1, 10],
+                    'color': '#0f172a', // Dark Slate
+                    'horizon-blend': 0.2,
+                    'high-color': '#1e293b',
+                    'space-color': '#0f172a',
+                    'star-intensity': 0
                 });
             }
 
-            // Prepare Source Data
             const processedFeatures = rawGeoJson.features.map((feature: any) => {
                 const props = feature.properties || {};
                 const namesToTry = [props.name_kh, props.Name_KH, props.name_en, props.Name_EN, props.name, props.shapeName];
@@ -174,30 +150,22 @@ const ProvincialMap: React.FC<ProvincialMapProps> = ({ data }) => {
                     if (statsMap[key]) {
                         revenue = statsMap[key].revenue;
                         orders = statsMap[key].orders;
-                        shippingCost = statsMap[key].shippingCost || 0; // Simulated
+                        shippingCost = statsMap[key].shippingCost || 0;
                         if (topRanks[key]) rank = topRanks[key];
                         displayName = n; 
                         break;
                     }
                 }
                 
-                // For visualization purposes, we map the active metric to 'revenue' property if needed,
-                // BUT better to just rely on the mapped values and adjust colors.
-                // Since EXTRUSION_HEIGHT_EXPRESSION uses 'revenue', to visualize shipping or orders height,
-                // we'd need to swap the value.
-                // LET'S SWAP THE VALUE for the visualizer 'revenue' field based on metric.
                 let visualValue = revenue;
-                if (activeMetric === 'orders') visualValue = orders * 50; // Scale up orders for height
-                if (activeMetric === 'shipping') visualValue = shippingCost * 20; // Scale up shipping
+                if (activeMetric === 'orders') visualValue = orders * 80; 
+                if (activeMetric === 'shipping') visualValue = shippingCost * 25;
 
-                // We override 'revenue' just for the map style expression to work without changing style definitions
-                // This is a hack but efficient for this context.
-                // We keep real values in other props.
                 return { 
                     ...feature, 
                     properties: { 
                         ...props, 
-                        revenue: visualValue, // Used for Height
+                        revenue: visualValue, 
                         realRevenue: revenue,
                         orders, 
                         shippingCost,
@@ -220,21 +188,8 @@ const ProvincialMap: React.FC<ProvincialMapProps> = ({ data }) => {
                 });
 
                 // Layers...
-                map.addLayer({
-                    'id': 'province-hover-fill',
-                    'type': 'fill',
-                    'source': 'cambodia-3d-source',
-                    'paint': {
-                        'fill-color': getMetricHighlightColor(),
-                        'fill-opacity': [
-                            'case',
-                            ['boolean', ['feature-state', 'hover'], false],
-                            0.5,
-                            0
-                        ]
-                    }
-                });
-
+                
+                // 1. Solid Base 3D
                 map.addLayer({
                     'id': 'province-3d',
                     'type': 'fill-extrusion',
@@ -243,58 +198,35 @@ const ProvincialMap: React.FC<ProvincialMapProps> = ({ data }) => {
                         'fill-extrusion-color': FILL_COLOR_EXPRESSION,
                         'fill-extrusion-height': EXTRUSION_HEIGHT_EXPRESSION,
                         'fill-extrusion-base': 0,
-                        'fill-extrusion-opacity': 0.95,
+                        'fill-extrusion-opacity': 1, // Solid Opacity for 3D look
                         'fill-extrusion-vertical-gradient': true
                     }
                 });
                 
+                // 2. Glowing Edges
                 map.addLayer({
                     'id': 'province-outlines',
                     'type': 'line',
                     'source': 'cambodia-3d-source',
                     'paint': {
                         'line-color': getMetricColor(),
-                        'line-width': 1,
-                        'line-opacity': 0.4
+                        'line-width': 1.5,
+                        'line-opacity': 0.5
                     }
                 });
 
-                map.addLayer({
-                    'id': 'province-floor-glow',
-                    'type': 'line',
-                    'source': 'cambodia-3d-source',
-                    'paint': {
-                        'line-color': activeMetric === 'shipping' ? '#059669' : '#a855f7', 
-                        'line-width': 4,
-                        'line-opacity': 0.3,
-                        'line-blur': 6
-                    }
-                }, 'province-3d');
-
-                map.addLayer({
-                    'id': 'province-glass-shell',
-                    'type': 'fill-extrusion',
-                    'source': 'cambodia-3d-source',
-                    'paint': {
-                        'fill-extrusion-color': '#ffffff',
-                        'fill-extrusion-height': EXTRUSION_HEIGHT_EXPRESSION,
-                        'fill-extrusion-base': EXTRUSION_HEIGHT_EXPRESSION, 
-                        'fill-extrusion-opacity': 0.1
-                    }
-                });
-
+                // 3. Highlight Top
                 map.addLayer({
                     'id': 'province-highlight',
                     'type': 'fill-extrusion',
                     'source': 'cambodia-3d-source',
                     'paint': {
-                        'fill-extrusion-color': '#ffffff',
-                        'fill-extrusion-height': ['+', EXTRUSION_HEIGHT_EXPRESSION, 2000],
-                        'fill-extrusion-opacity': ['case', ['boolean', ['feature-state', 'hover'], false], 0.9, 0]
+                        'fill-extrusion-color': getMetricColor(),
+                        'fill-extrusion-height': ['+', EXTRUSION_HEIGHT_EXPRESSION, 100], // Slightly higher to pop
+                        'fill-extrusion-opacity': ['case', ['boolean', ['feature-state', 'hover'], false], 0.8, 0]
                     }
                 });
 
-                // Interactions...
                 popupRef.current = new maplibregl.Popup({
                     closeButton: false,
                     closeOnClick: false,
@@ -318,53 +250,19 @@ const ProvincialMap: React.FC<ProvincialMapProps> = ({ data }) => {
                         
                         let mainValue = `$${Number(realRevenue).toLocaleString()}`;
                         let mainLabel = "REVENUE";
-                        let subValue = `${orders} UNITS`;
-                        let subLabel = "ORDERS";
-
-                        if (activeMetric === 'orders') {
-                            mainValue = `${orders}`;
-                            mainLabel = "ORDERS";
-                            subValue = `$${Number(realRevenue).toLocaleString()}`;
-                            subLabel = "REVENUE";
-                        } else if (activeMetric === 'shipping') {
-                             mainValue = `$${Number(shippingCost).toLocaleString()}`;
-                             mainLabel = "SHIPPING";
-                             subValue = `${orders} UNITS`;
-                             subLabel = "ORDERS";
-                        }
+                        if (activeMetric === 'orders') { mainValue = `${orders}`; mainLabel = "ORDERS"; }
+                        else if (activeMetric === 'shipping') { mainValue = `$${Number(shippingCost).toLocaleString()}`; mainLabel = "SHIPPING"; }
 
                         popupRef.current
                             .setLngLat(e.lngLat)
                             .setHTML(`
-                                <div class="relative overflow-hidden bg-[#0f0518]/90 backdrop-blur-xl rounded-lg border border-purple-500/50 shadow-[0_0_30px_rgba(168,85,247,0.3)] min-w-[200px] group">
-                                    <div class="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20"></div>
-                                    <div class="absolute top-0 left-0 w-full h-0.5 bg-gradient-to-r from-transparent via-purple-400 to-transparent"></div>
-                                    
-                                    <div class="p-4 relative z-10">
-                                        <div class="flex items-center justify-between mb-3 pb-2 border-b border-purple-500/30">
-                                            <h4 class="font-mono font-bold text-sm text-purple-100 tracking-widest uppercase">${displayName}</h4>
-                                            <div class="w-2 h-2 rounded-full bg-yellow-400 shadow-[0_0_10px_#facc15] animate-pulse"></div>
-                                        </div>
-                                        
-                                        <div class="space-y-3">
-                                            <div class="flex justify-between items-end">
-                                                <span class="text-purple-300 text-[10px] font-bold uppercase tracking-widest">${mainLabel}</span>
-                                                <span class="font-mono font-black text-xl text-yellow-300 drop-shadow-[0_0_5px_rgba(253,224,71,0.5)]">${mainValue}</span>
-                                            </div>
-                                            
-                                            <div class="w-full h-1 bg-purple-900/50 rounded-full overflow-hidden">
-                                                <div class="h-full bg-gradient-to-r from-purple-600 to-yellow-300 w-[60%] relative">
-                                                    <div class="absolute right-0 top-0 bottom-0 w-1 bg-white shadow-[0_0_10px_white]"></div>
-                                                </div>
-                                            </div>
-
-                                            <div class="flex justify-between items-center">
-                                                <span class="text-purple-300 text-[10px] font-bold uppercase tracking-widest">${subLabel}</span>
-                                                <div class="flex items-center gap-1.5">
-                                                    <span class="text-xs text-purple-200 font-mono">${subValue}</span>
-                                                </div>
-                                            </div>
-                                        </div>
+                                <div class="bg-slate-900 border border-slate-700 p-3 shadow-xl rounded-lg min-w-[160px]">
+                                    <div class="flex items-center justify-between border-b border-slate-800 pb-2 mb-2">
+                                        <h4 class="text-white font-bold text-xs uppercase">${displayName}</h4>
+                                    </div>
+                                    <div class="flex justify-between items-baseline">
+                                        <span class="text-[10px] text-gray-400 uppercase">${mainLabel}</span>
+                                        <span class="text-lg font-bold text-cyan-400">${mainValue}</span>
                                     </div>
                                 </div>
                             `)
@@ -382,20 +280,50 @@ const ProvincialMap: React.FC<ProvincialMapProps> = ({ data }) => {
                 });
             }
             
-            // --- UPDATE LAYER COLORS DYNAMICALLY ---
             if (map.getLayer('province-outlines')) {
                 map.setPaintProperty('province-outlines', 'line-color', getMetricColor());
             }
-             if (map.getLayer('province-hover-fill')) {
-                map.setPaintProperty('province-hover-fill', 'fill-color', getMetricHighlightColor());
+            if (map.getLayer('province-highlight')) {
+                map.setPaintProperty('province-highlight', 'fill-extrusion-color', getMetricColor());
             }
 
-            // --- REFRESH RANK MARKERS ---
+            // --- FIXED LABELS (Using Markers instead of Layer for better 3D positioning) ---
+            // Remove old label markers
+            labelMarkersRef.current.forEach(marker => marker.remove());
+            labelMarkersRef.current = [];
+
+            // Add new label markers for ALL provinces
+            processedFeatures.forEach((feature: any) => {
+                const { displayName } = feature.properties;
+                const coords = feature.geometry.type === 'Polygon' 
+                    ? feature.geometry.coordinates[0] 
+                    : feature.geometry.coordinates.flat(1)[0]; 
+                
+                if (!coords) return;
+                const bounds = new maplibregl.LngLatBounds(coords[0], coords[0]);
+                coords.forEach((coord: any) => bounds.extend(coord));
+                const center = bounds.getCenter();
+
+                const el = document.createElement('div');
+                el.className = 'province-label-marker';
+                el.innerHTML = `<span class="text-[8px] font-bold text-white/50 uppercase tracking-wider drop-shadow-md select-none hover:text-white transition-colors">${displayName}</span>`;
+                
+                // Add marker
+                const marker = new maplibregl.Marker({
+                    element: el,
+                    anchor: 'center',
+                })
+                .setLngLat(center)
+                .addTo(map);
+                
+                labelMarkersRef.current.push(marker);
+            });
+
+            // --- RANK MARKERS (Keep existing) ---
             markersRef.current.forEach(marker => marker.remove());
             markersRef.current = [];
             processedFeatures.forEach((feature: any) => {
                 const { rank, displayName, realRevenue, orders, shippingCost } = feature.properties;
-                // Only show top 3 ranks
                 if (rank && rank <= 3) {
                      const coords = feature.geometry.type === 'Polygon' 
                         ? feature.geometry.coordinates[0] 
@@ -409,37 +337,20 @@ const ProvincialMap: React.FC<ProvincialMapProps> = ({ data }) => {
                     el.className = 'province-rank-marker';
                     
                     let displayValue = `$${(realRevenue/1000).toFixed(1)}k`;
-                    if (activeMetric === 'orders') displayValue = `${orders} Orders`;
-                    if (activeMetric === 'shipping') displayValue = `$${(shippingCost/1000).toFixed(1)}k Ship`;
+                    if (activeMetric === 'orders') displayValue = `${orders}`;
+                    if (activeMetric === 'shipping') displayValue = `$${(shippingCost/1000).toFixed(1)}k`;
 
                     el.innerHTML = `
                         <div class="flex flex-col items-center group cursor-pointer animate-float hover:z-50">
-                            <div class="relative transition-transform duration-300 group-hover:scale-110">
-                                <div class="absolute -inset-4 bg-purple-600/30 blur-xl rounded-full animate-pulse"></div>
-                                <div class="relative bg-[#0f0518]/90 backdrop-blur-xl border border-purple-500/60 rounded-full px-4 py-2 shadow-[0_0_20px_rgba(168,85,247,0.4)] flex items-center gap-3">
-                                    <div class="flex flex-col items-center justify-center w-8 h-8 rounded-full bg-gradient-to-br from-purple-500 to-yellow-400 shadow-inner">
-                                        <span class="font-black text-white text-xs leading-none">#${rank}</span>
-                                    </div>
-                                    <div class="flex flex-col">
-                                        <span class="text-[10px] text-purple-200 font-bold uppercase tracking-wider leading-tight">${displayName}</span>
-                                        <span class="text-[9px] text-yellow-300 font-mono">${displayValue}</span>
-                                    </div>
-                                </div>
+                            <div class="px-3 py-1 bg-slate-900/90 border border-white/20 rounded-lg flex items-center gap-2 shadow-lg mb-1 backdrop-blur-sm">
+                                <span class="text-[10px] font-black text-yellow-400">#${rank}</span>
+                                <span class="text-[9px] font-bold text-white uppercase">${displayName}</span>
                             </div>
-                            
-                            {/* THE POLE / BEAM */}
-                            <div class="w-px h-16 bg-gradient-to-b from-purple-500 via-purple-500/50 to-transparent relative">
-                                <div class="absolute inset-0 bg-purple-400 blur-[2px] opacity-50"></div>
-                            </div>
-                            
-                            {/* BASE EFFECT ON GROUND */}
-                            <div class="w-8 h-8 border border-purple-500/30 rounded-full flex items-center justify-center -mt-2 animate-[spin_8s_linear_infinite]">
-                                <div class="w-6 h-6 border border-dashed border-purple-500/50 rounded-full"></div>
-                                <div class="absolute w-2 h-2 bg-purple-500 blur-sm rounded-full animate-pulse"></div>
-                            </div>
+                            <div class="w-0.5 h-10 bg-white/50"></div>
+                            <div class="w-2 h-2 bg-white rounded-full"></div>
                         </div>
                     `;
-                    const marker = new maplibregl.Marker({ element: el, anchor: 'bottom', offset: [0, -40] }).setLngLat(center).addTo(map);
+                    const marker = new maplibregl.Marker({ element: el, anchor: 'bottom', offset: [0, -10] }).setLngLat(center).addTo(map);
                     markersRef.current.push(marker);
                 }
             });
@@ -459,151 +370,60 @@ const ProvincialMap: React.FC<ProvincialMapProps> = ({ data }) => {
     }
 
     return (
-        <div className="relative w-full h-[650px] xl:h-[750px] bg-[#0f0518] rounded-[2.5rem] border border-purple-500/20 shadow-[0_0_60px_rgba(88,28,135,0.4)] overflow-hidden group">
+        <div className="relative w-full h-[650px] xl:h-[750px] bg-slate-950 rounded-lg border border-slate-800 shadow-2xl overflow-hidden group">
             
-            {/* Header / Title Overlay - Minimalist Centered Pill */}
-            <div className="absolute top-6 left-1/2 -translate-x-1/2 z-10 pointer-events-none">
-                <div className="flex items-center gap-4 bg-[#0f0518]/60 backdrop-blur-md px-6 py-2.5 rounded-full border border-purple-500/30 shadow-2xl">
-                    <div className="flex items-center gap-2">
-                        <div className="w-1.5 h-1.5 rounded-full bg-purple-500 animate-pulse"></div>
-                        <span className="text-[10px] text-purple-300 font-mono uppercase tracking-widest">Live Geo-Data</span>
+            {/* Header */}
+            <div className="absolute top-6 left-6 z-10 pointer-events-none">
+                <div className="flex flex-col">
+                    <div className="flex items-center gap-2 mb-1">
+                        <div className="w-2 h-2 bg-cyan-500 animate-pulse rounded-full"></div>
+                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">3D Visualization</span>
                     </div>
-                    <div className="w-px h-3 bg-white/10"></div>
-                    <h2 className="text-sm font-bold text-white tracking-wide uppercase font-sans">
-                        Cambodia <span className="text-yellow-400">Nexus</span>
-                    </h2>
+                    <h2 className="text-xl font-black text-white uppercase tracking-tight">Cambodia <span className="text-cyan-400">Map</span></h2>
                 </div>
             </div>
 
-            {/* CONTROL PANEL (Floating) */}
-            <div className="absolute bottom-8 right-8 flex flex-col gap-3 z-10">
-                <div className="flex flex-col bg-[#0f0518]/80 backdrop-blur-xl border border-purple-500/30 rounded-2xl p-1.5 shadow-2xl">
+            {/* CONTROL PANEL */}
+            <div className="absolute top-6 right-6 flex flex-col gap-2 z-10">
+                 {[
+                     { id: 'revenue', label: 'Revenue', color: 'bg-cyan-600' },
+                     { id: 'orders', label: 'Orders', color: 'bg-violet-600' },
+                     { id: 'shipping', label: 'Shipping', color: 'bg-emerald-600' }
+                 ].map((item) => (
                      <button 
-                        onClick={() => setActiveMetric('revenue')}
-                        className={`px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-all duration-300 flex items-center justify-between gap-3 ${activeMetric === 'revenue' ? 'bg-purple-600 text-white shadow-lg' : 'text-purple-400 hover:bg-purple-900/50'}`}
+                        key={item.id}
+                        // @ts-ignore
+                        onClick={() => setActiveMetric(item.id)}
+                        className={`px-3 py-1.5 rounded text-[10px] font-bold uppercase tracking-widest transition-all w-24 text-center ${activeMetric === item.id ? `${item.color} text-white shadow-lg` : 'bg-slate-800 text-slate-400 hover:bg-slate-700'}`}
                      >
-                        <span>Revenue</span>
-                        {activeMetric === 'revenue' && <div className="w-1.5 h-1.5 rounded-full bg-yellow-400 animate-pulse"></div>}
+                        {item.label}
                      </button>
-                     <button 
-                        onClick={() => setActiveMetric('orders')}
-                        className={`px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-all duration-300 flex items-center justify-between gap-3 ${activeMetric === 'orders' ? 'bg-fuchsia-600 text-white shadow-lg' : 'text-purple-400 hover:bg-purple-900/50'}`}
-                     >
-                        <span>Orders</span>
-                        {activeMetric === 'orders' && <div className="w-1.5 h-1.5 rounded-full bg-white animate-pulse"></div>}
-                     </button>
-                     <button 
-                        onClick={() => setActiveMetric('shipping')}
-                        className={`px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-all duration-300 flex items-center justify-between gap-3 ${activeMetric === 'shipping' ? 'bg-emerald-600 text-white shadow-lg' : 'text-purple-400 hover:bg-purple-900/50'}`}
-                     >
-                        <span>Shipping</span>
-                        {activeMetric === 'shipping' && <div className="w-1.5 h-1.5 rounded-full bg-emerald-300 animate-pulse"></div>}
-                     </button>
-                </div>
-            </div>
-
-            {/* SCANNIG RADAR BEAM */}
-            <div className="absolute inset-0 pointer-events-none overflow-hidden z-0 opacity-20">
-                <div className="w-full h-[1px] bg-gradient-to-r from-transparent via-purple-400 to-transparent absolute top-0 animate-scan blur-[1px]"></div>
-                <div className="w-full h-[100px] bg-gradient-to-b from-purple-400/5 to-transparent absolute top-0 animate-scan"></div>
-            </div>
-
-            {/* HOLOGRAPHIC GRID OVERLAY */}
-            <div className="absolute inset-0 pointer-events-none z-0 opacity-10" style={{
-                backgroundImage: `
-                    linear-gradient(to right, rgba(168, 85, 247, 0.3) 1px, transparent 1px),
-                    linear-gradient(to bottom, rgba(168, 85, 247, 0.3) 1px, transparent 1px)
-                `,
-                backgroundSize: '40px 40px',
-                maskImage: 'radial-gradient(circle at center, black, transparent 80%)'
-            }}></div>
-
-            {/* DIGITAL PARTICLES */}
-            <div className="absolute inset-0 pointer-events-none overflow-hidden">
-                 {[...Array(20)].map((_, i) => (
-                    <div key={i} className="absolute w-0.5 h-0.5 bg-yellow-300 rounded-full animate-float-particle" style={{
-                        left: `${Math.random() * 100}%`,
-                        top: `${Math.random() * 100}%`,
-                        animationDelay: `${Math.random() * 5}s`,
-                        animationDuration: `${10 + Math.random() * 10}s`,
-                        opacity: Math.random() * 0.5
-                    }}></div>
                  ))}
             </div>
 
-            {/* Ambient Background Glows */}
-            <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-purple-900/10 blur-[120px] pointer-events-none rounded-full mix-blend-screen"></div>
-            <div className="absolute bottom-0 left-0 w-[600px] h-[600px] bg-indigo-900/10 blur-[120px] pointer-events-none rounded-full mix-blend-screen"></div>
-
-            <div ref={mapContainerRef} className="w-full h-full" />
+            <div ref={mapContainerRef} className="w-full h-full relative z-1" />
             
             {(!isMapReady || geoLoading) && (
-                <div className="absolute inset-0 flex flex-col items-center justify-center bg-[#0f0518] z-20">
-                    <div className="w-20 h-20 border-t-2 border-b-2 border-purple-500 rounded-full animate-spin flex items-center justify-center relative">
-                         <div className="w-16 h-16 border-l-2 border-r-2 border-yellow-300 rounded-full animate-reverse-spin"></div>
-                         <div className="absolute inset-0 bg-purple-500/10 blur-xl animate-pulse"></div>
-                    </div>
-                    <p className="mt-6 text-xs font-black text-purple-400 uppercase tracking-[0.3em] animate-pulse">Initializing Neural Link...</p>
+                <div className="absolute inset-0 flex flex-col items-center justify-center bg-slate-950 z-20">
+                    <div className="text-slate-500 font-bold text-xs animate-pulse">LOADING MAP...</div>
                 </div>
             )}
 
             <MapLegend />
             
             <style>{`
-                .maplibregl-popup {
-                    z-index: 100;
-                }
-                .maplibregl-popup-content {
-                    background: transparent !important;
-                    box-shadow: none !important;
-                    padding: 0 !important;
-                    border: none !important;
-                }
+                .maplibregl-popup { z-index: 100; }
+                .maplibregl-popup-content { background: transparent !important; box-shadow: none !important; padding: 0 !important; border: none !important; }
                 .maplibregl-popup-tip { display: none !important; }
-                .province-rank-marker { z-index: 5; }
+                .province-rank-marker { z-index: 10; pointer-events: none; }
+                .province-label-marker { z-index: 5; pointer-events: none; text-shadow: 0 1px 2px rgba(0,0,0,0.8); }
                 
                 @keyframes float {
                     0%, 100% { transform: translateY(0); }
-                    50% { transform: translateY(-8px); }
+                    50% { transform: translateY(-5px); }
                 }
                 .animate-float {
                     animation: float 4s ease-in-out infinite;
-                }
-                
-                @keyframes reverse-spin {
-                    from { transform: rotate(360deg); }
-                    to { transform: rotate(0deg); }
-                }
-                .animate-reverse-spin {
-                    animation: reverse-spin 3s linear infinite;
-                }
-
-                @keyframes float-particle {
-                    0% { transform: translateY(0) translateX(0); opacity: 0; }
-                    10% { opacity: 0.5; }
-                    90% { opacity: 0.5; }
-                    100% { transform: translateY(-100px) translateX(20px); opacity: 0; }
-                }
-                .animate-float-particle {
-                    animation: float-particle linear infinite;
-                }
-                
-                @keyframes shimmer {
-                    0% { transform: translateX(-100%); }
-                    100% { transform: translateX(100%); }
-                }
-                .animate-shimmer {
-                    animation: shimmer 3s infinite;
-                }
-
-                @keyframes scan {
-                    0% { top: -10%; opacity: 0; }
-                    10% { opacity: 1; }
-                    90% { opacity: 1; }
-                    100% { top: 110%; opacity: 0; }
-                }
-                .animate-scan {
-                    animation: scan 8s linear infinite;
                 }
             `}</style>
         </div>
