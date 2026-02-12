@@ -1,3 +1,4 @@
+
 import React, { useEffect, useRef, useState, useMemo } from 'react';
 import { useCambodiaGeoJSON } from '../../hooks/useCambodiaGeoJSON';
 import { normalizeName } from '../../utils/mapUtils';
@@ -9,6 +10,7 @@ interface ProvinceStat {
     name: string;
     revenue: number;
     orders: number;
+    shippingCost?: number; // Added Shipping Cost
 }
 
 interface ProvincialMapProps {
@@ -22,8 +24,9 @@ const ProvincialMap: React.FC<ProvincialMapProps> = ({ data }) => {
     const hoverStateIdRef = useRef<string | number | null>(null);
     const animationRef = useRef<number | null>(null);
 
-    // UX State
-    const [activeMetric, setActiveMetric] = useState<'revenue' | 'orders'>('revenue');
+    // UX State - Added 'shipping'
+    const [activeMetric, setActiveMetric] = useState<'revenue' | 'orders' | 'shipping'>('revenue');
+    const isUserInteracting = useRef(false);
 
     // 1. Data Hook
     const { geoJson: rawGeoJson, loading: geoLoading, error: geoError } = useCambodiaGeoJSON();
@@ -40,10 +43,11 @@ const ProvincialMap: React.FC<ProvincialMapProps> = ({ data }) => {
             const key = normalizeName(item.name);
             if (!key) return;
             if (!stats[key]) {
-                stats[key] = { ...item };
+                stats[key] = { ...item, shippingCost: Number(item.shippingCost) || 0 };
             } else {
                 stats[key].revenue += (Number(item.revenue) || 0);
                 stats[key].orders += (Number(item.orders) || 0);
+                stats[key].shippingCost = (stats[key].shippingCost || 0) + (Number(item.shippingCost) || 0);
             }
         });
         return stats;
@@ -51,7 +55,12 @@ const ProvincialMap: React.FC<ProvincialMapProps> = ({ data }) => {
 
     // Calculate Ranks (Dynamic based on Metric)
     const topRanks = useMemo(() => {
-        const sorted = Object.values(statsMap).sort((a, b) => b[activeMetric] - a[activeMetric]);
+        const sorted = Object.values(statsMap).sort((a, b) => {
+            const valA = a[activeMetric as keyof ProvinceStat] || 0;
+            const valB = b[activeMetric as keyof ProvinceStat] || 0;
+            // @ts-ignore
+            return valB - valA;
+        });
         const ranks: Record<string, number> = {};
         sorted.forEach((item, index) => {
             const key = normalizeName(item.name);
@@ -60,8 +69,24 @@ const ProvincialMap: React.FC<ProvincialMapProps> = ({ data }) => {
         return ranks;
     }, [statsMap, activeMetric]);
 
-    // User Interaction State for Animation Pause
-    const isUserInteracting = useRef(false);
+    // Helper to get color based on metric
+    const getMetricColor = () => {
+        switch(activeMetric) {
+            case 'revenue': return '#fde047'; // Gold
+            case 'orders': return '#d8b4fe'; // Lavender
+            case 'shipping': return '#34d399'; // Emerald
+            default: return '#fde047';
+        }
+    };
+    
+    const getMetricHighlightColor = () => {
+        switch(activeMetric) {
+            case 'revenue': return '#facc15'; // Gold
+            case 'orders': return '#c084fc'; // Purple
+            case 'shipping': return '#10b981'; // Emerald
+            default: return '#facc15';
+        }
+    };
 
     // 4. Update Map Logic
     useEffect(() => {
@@ -71,7 +96,7 @@ const ProvincialMap: React.FC<ProvincialMapProps> = ({ data }) => {
             // @ts-ignore
             const maplibregl = window.maplibregl;
 
-            // Setup User Interaction Listeners to Pause Animation
+            // Setup User Interaction Listeners
             const pauseAnimation = () => { isUserInteracting.current = true; };
             const resumeAnimation = () => { isUserInteracting.current = false; };
             
@@ -81,9 +106,8 @@ const ProvincialMap: React.FC<ProvincialMapProps> = ({ data }) => {
             map.on('mouseup', resumeAnimation);
             map.on('touchend', resumeAnimation);
             map.on('dragend', resumeAnimation);
-            map.on('zoomstart', pauseAnimation); // Also pause on zoom
+            map.on('zoomstart', pauseAnimation);
             map.on('zoomend', resumeAnimation);
-
 
             // --- 1. CINEMATIC CAMERA ENTRY ---
             if (!animationRef.current) { 
@@ -98,45 +122,39 @@ const ProvincialMap: React.FC<ProvincialMapProps> = ({ data }) => {
                 });
             }
 
-            // "4D" Drone Hover Effect - Only when NOT interacting
+            // "4D" Drone Hover Effect
             const animateCamera = (timestamp: number) => {
-                // Light animation always runs
                 const lightPhase = timestamp / 3000;
                 const lx = Math.sin(lightPhase) * 1.5;
                 const ly = Math.cos(lightPhase) * 1.5;
                 map.setLight({
                     anchor: 'map',
-                    color: activeMetric === 'revenue' ? '#fde047' : '#d8b4fe', 
+                    color: getMetricColor(),
                     intensity: 0.6 + Math.sin(lightPhase * 2) * 0.15, 
                     position: [lx, ly, 90] 
                 });
 
-                // Camera movement only if idle
                 if (!isUserInteracting.current) {
                     const phase = timestamp / 15000; 
                     const newBearing = -15 + Math.sin(phase) * 3; 
                     const newPitch = 62 + Math.cos(phase * 0.7) * 2; 
-                    
-                    // Use easeTo for smoother updates than jumpTo if frames drop, 
-                    // but jumpTo is better for continuous animation loop.
                     map.jumpTo({ bearing: newBearing, pitch: newPitch });
                 }
 
                 animationRef.current = requestAnimationFrame(animateCamera);
             };
-            
             if (animationRef.current) cancelAnimationFrame(animationRef.current);
             animationRef.current = requestAnimationFrame(animateCamera);
 
-            // --- 2. ATMOSPHERIC FOG (VOLUMETRIC EFFECT) ---
+            // --- 2. ATMOSPHERIC FOG ---
             if (map.setFog) {
                 map.setFog({
                     'range': [1, 12],
-                    'color': '#0f0518', // Deep Purple Void
+                    'color': '#0f0518',
                     'horizon-blend': 0.15,
-                    'high-color': '#7e22ce', // Purple Haze
+                    'high-color': activeMetric === 'shipping' ? '#064e3b' : '#7e22ce', // Dark Green or Purple Haze
                     'space-color': '#0f0518',
-                    'star-intensity': 0.9 // Bright stars
+                    'star-intensity': 0.9 
                 });
             }
 
@@ -146,6 +164,7 @@ const ProvincialMap: React.FC<ProvincialMapProps> = ({ data }) => {
                 const namesToTry = [props.name_kh, props.Name_KH, props.name_en, props.Name_EN, props.name, props.shapeName];
                 let revenue = 0;
                 let orders = 0;
+                let shippingCost = 0;
                 let displayName = props.name_en || props.shapeName || "Province";
                 let rank = 999;
 
@@ -155,13 +174,37 @@ const ProvincialMap: React.FC<ProvincialMapProps> = ({ data }) => {
                     if (statsMap[key]) {
                         revenue = statsMap[key].revenue;
                         orders = statsMap[key].orders;
+                        shippingCost = statsMap[key].shippingCost || 0; // Simulated
                         if (topRanks[key]) rank = topRanks[key];
                         displayName = n; 
                         break;
                     }
                 }
                 
-                return { ...feature, properties: { ...props, revenue, orders, displayName, rank } };
+                // For visualization purposes, we map the active metric to 'revenue' property if needed,
+                // BUT better to just rely on the mapped values and adjust colors.
+                // Since EXTRUSION_HEIGHT_EXPRESSION uses 'revenue', to visualize shipping or orders height,
+                // we'd need to swap the value.
+                // LET'S SWAP THE VALUE for the visualizer 'revenue' field based on metric.
+                let visualValue = revenue;
+                if (activeMetric === 'orders') visualValue = orders * 50; // Scale up orders for height
+                if (activeMetric === 'shipping') visualValue = shippingCost * 20; // Scale up shipping
+
+                // We override 'revenue' just for the map style expression to work without changing style definitions
+                // This is a hack but efficient for this context.
+                // We keep real values in other props.
+                return { 
+                    ...feature, 
+                    properties: { 
+                        ...props, 
+                        revenue: visualValue, // Used for Height
+                        realRevenue: revenue,
+                        orders, 
+                        shippingCost,
+                        displayName, 
+                        rank 
+                    } 
+                };
             });
 
             const processedGeoJson = { type: 'FeatureCollection', features: processedFeatures };
@@ -177,13 +220,12 @@ const ProvincialMap: React.FC<ProvincialMapProps> = ({ data }) => {
                 });
 
                 // Layers...
-                // 1. Base Glow (Hover State) - 2D Floor Effect
                 map.addLayer({
                     'id': 'province-hover-fill',
                     'type': 'fill',
                     'source': 'cambodia-3d-source',
                     'paint': {
-                        'fill-color': activeMetric === 'revenue' ? '#facc15' : '#c084fc', // Gold or Purple
+                        'fill-color': getMetricHighlightColor(),
                         'fill-opacity': [
                             'case',
                             ['boolean', ['feature-state', 'hover'], false],
@@ -206,13 +248,12 @@ const ProvincialMap: React.FC<ProvincialMapProps> = ({ data }) => {
                     }
                 });
                 
-                // RESTORED: Outlines
                 map.addLayer({
                     'id': 'province-outlines',
                     'type': 'line',
                     'source': 'cambodia-3d-source',
                     'paint': {
-                        'line-color': '#fde047', // Gold Lines
+                        'line-color': getMetricColor(),
                         'line-width': 1,
                         'line-opacity': 0.4
                     }
@@ -223,7 +264,7 @@ const ProvincialMap: React.FC<ProvincialMapProps> = ({ data }) => {
                     'type': 'line',
                     'source': 'cambodia-3d-source',
                     'paint': {
-                        'line-color': '#a855f7', // Purple Glow
+                        'line-color': activeMetric === 'shipping' ? '#059669' : '#a855f7', 
                         'line-width': 4,
                         'line-opacity': 0.3,
                         'line-blur': 6
@@ -247,7 +288,7 @@ const ProvincialMap: React.FC<ProvincialMapProps> = ({ data }) => {
                     'type': 'fill-extrusion',
                     'source': 'cambodia-3d-source',
                     'paint': {
-                        'fill-extrusion-color': '#fef08a', // Yellow-200
+                        'fill-extrusion-color': '#ffffff',
                         'fill-extrusion-height': ['+', EXTRUSION_HEIGHT_EXPRESSION, 2000],
                         'fill-extrusion-opacity': ['case', ['boolean', ['feature-state', 'hover'], false], 0.9, 0]
                     }
@@ -263,7 +304,6 @@ const ProvincialMap: React.FC<ProvincialMapProps> = ({ data }) => {
                 });
 
                 map.on('mousemove', 'province-3d', (e: any) => {
-                     // ... (Keep existing interaction logic)
                      if (e.features.length > 0) {
                         map.getCanvas().style.cursor = 'pointer';
                         const feature = e.features[0];
@@ -274,8 +314,25 @@ const ProvincialMap: React.FC<ProvincialMapProps> = ({ data }) => {
                         hoverStateIdRef.current = feature.id;
                         map.setFeatureState({ source: 'cambodia-3d-source', id: feature.id }, { hover: true });
 
-                        // Sci-Fi Popup
-                        const { displayName, revenue, orders } = feature.properties;
+                        const { displayName, realRevenue, orders, shippingCost } = feature.properties;
+                        
+                        let mainValue = `$${Number(realRevenue).toLocaleString()}`;
+                        let mainLabel = "REVENUE";
+                        let subValue = `${orders} UNITS`;
+                        let subLabel = "ORDERS";
+
+                        if (activeMetric === 'orders') {
+                            mainValue = `${orders}`;
+                            mainLabel = "ORDERS";
+                            subValue = `$${Number(realRevenue).toLocaleString()}`;
+                            subLabel = "REVENUE";
+                        } else if (activeMetric === 'shipping') {
+                             mainValue = `$${Number(shippingCost).toLocaleString()}`;
+                             mainLabel = "SHIPPING";
+                             subValue = `${orders} UNITS`;
+                             subLabel = "ORDERS";
+                        }
+
                         popupRef.current
                             .setLngLat(e.lngLat)
                             .setHTML(`
@@ -286,33 +343,28 @@ const ProvincialMap: React.FC<ProvincialMapProps> = ({ data }) => {
                                     <div class="p-4 relative z-10">
                                         <div class="flex items-center justify-between mb-3 pb-2 border-b border-purple-500/30">
                                             <h4 class="font-mono font-bold text-sm text-purple-100 tracking-widest uppercase">${displayName}</h4>
-                                            ${revenue > 0 ? '<div class="w-2 h-2 rounded-full bg-yellow-400 shadow-[0_0_10px_#facc15] animate-pulse"></div>' : ''}
+                                            <div class="w-2 h-2 rounded-full bg-yellow-400 shadow-[0_0_10px_#facc15] animate-pulse"></div>
                                         </div>
                                         
                                         <div class="space-y-3">
                                             <div class="flex justify-between items-end">
-                                                <span class="text-purple-300 text-[10px] font-bold uppercase tracking-widest">REVENUE</span>
-                                                <span class="font-mono font-black text-xl text-yellow-300 drop-shadow-[0_0_5px_rgba(253,224,71,0.5)]">$${Number(revenue).toLocaleString()}</span>
+                                                <span class="text-purple-300 text-[10px] font-bold uppercase tracking-widest">${mainLabel}</span>
+                                                <span class="font-mono font-black text-xl text-yellow-300 drop-shadow-[0_0_5px_rgba(253,224,71,0.5)]">${mainValue}</span>
                                             </div>
                                             
                                             <div class="w-full h-1 bg-purple-900/50 rounded-full overflow-hidden">
-                                                <div class="h-full bg-gradient-to-r from-purple-600 to-yellow-300 w-[${Math.min((revenue/50000)*100, 100)}%] relative">
+                                                <div class="h-full bg-gradient-to-r from-purple-600 to-yellow-300 w-[60%] relative">
                                                     <div class="absolute right-0 top-0 bottom-0 w-1 bg-white shadow-[0_0_10px_white]"></div>
                                                 </div>
                                             </div>
 
                                             <div class="flex justify-between items-center">
-                                                <span class="text-purple-300 text-[10px] font-bold uppercase tracking-widest">ORDERS</span>
+                                                <span class="text-purple-300 text-[10px] font-bold uppercase tracking-widest">${subLabel}</span>
                                                 <div class="flex items-center gap-1.5">
-                                                    <span class="text-xs text-purple-200 font-mono">${orders}</span>
-                                                    <span class="text-[9px] text-purple-500">UNITS</span>
+                                                    <span class="text-xs text-purple-200 font-mono">${subValue}</span>
                                                 </div>
                                             </div>
                                         </div>
-                                    </div>
-                                    
-                                    <div class="absolute bottom-0 right-0 p-1">
-                                        <div class="w-2 h-2 border-r border-b border-purple-500/50"></div>
                                     </div>
                                 </div>
                             `)
@@ -330,16 +382,19 @@ const ProvincialMap: React.FC<ProvincialMapProps> = ({ data }) => {
                 });
             }
             
-            // --- DYNAMIC EXPRESSION UPDATE FOR METRIC SWITCHING ---
-            // (Same as before)
-            if (map.getLayer('province-3d')) {
+            // --- UPDATE LAYER COLORS DYNAMICALLY ---
+            if (map.getLayer('province-outlines')) {
+                map.setPaintProperty('province-outlines', 'line-color', getMetricColor());
+            }
+             if (map.getLayer('province-hover-fill')) {
+                map.setPaintProperty('province-hover-fill', 'fill-color', getMetricHighlightColor());
             }
 
             // --- REFRESH RANK MARKERS ---
             markersRef.current.forEach(marker => marker.remove());
             markersRef.current = [];
             processedFeatures.forEach((feature: any) => {
-                const { rank, displayName, revenue, orders } = feature.properties;
+                const { rank, displayName, realRevenue, orders, shippingCost } = feature.properties;
                 // Only show top 3 ranks
                 if (rank && rank <= 3) {
                      const coords = feature.geometry.type === 'Polygon' 
@@ -352,10 +407,11 @@ const ProvincialMap: React.FC<ProvincialMapProps> = ({ data }) => {
 
                     const el = document.createElement('div');
                     el.className = 'province-rank-marker';
-                    const displayValue = activeMetric === 'revenue' 
-                        ? `$${(revenue/1000).toFixed(1)}k` 
-                        : `${orders} Orders`;
-                        
+                    
+                    let displayValue = `$${(realRevenue/1000).toFixed(1)}k`;
+                    if (activeMetric === 'orders') displayValue = `${orders} Orders`;
+                    if (activeMetric === 'shipping') displayValue = `$${(shippingCost/1000).toFixed(1)}k Ship`;
+
                     el.innerHTML = `
                         <div class="flex flex-col items-center group cursor-pointer animate-float hover:z-50">
                             <div class="relative transition-transform duration-300 group-hover:scale-110">
@@ -392,7 +448,7 @@ const ProvincialMap: React.FC<ProvincialMapProps> = ({ data }) => {
             console.error("Layer Update Error:", e);
         }
         return () => { if (animationRef.current) cancelAnimationFrame(animationRef.current); };
-    }, [isMapReady, rawGeoJson, statsMap, topRanks, activeMetric]); // Re-run when metric changes
+    }, [isMapReady, rawGeoJson, statsMap, topRanks, activeMetric]); 
 
     if (geoError || mapError) {
         return (
@@ -419,7 +475,7 @@ const ProvincialMap: React.FC<ProvincialMapProps> = ({ data }) => {
                 </div>
             </div>
 
-            {/* TOP RIGHT STATUS BOX */}
+            {/* CONTROL PANEL (Floating) */}
             <div className="absolute bottom-8 right-8 flex flex-col gap-3 z-10">
                 <div className="flex flex-col bg-[#0f0518]/80 backdrop-blur-xl border border-purple-500/30 rounded-2xl p-1.5 shadow-2xl">
                      <button 
@@ -436,10 +492,17 @@ const ProvincialMap: React.FC<ProvincialMapProps> = ({ data }) => {
                         <span>Orders</span>
                         {activeMetric === 'orders' && <div className="w-1.5 h-1.5 rounded-full bg-white animate-pulse"></div>}
                      </button>
+                     <button 
+                        onClick={() => setActiveMetric('shipping')}
+                        className={`px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-all duration-300 flex items-center justify-between gap-3 ${activeMetric === 'shipping' ? 'bg-emerald-600 text-white shadow-lg' : 'text-purple-400 hover:bg-purple-900/50'}`}
+                     >
+                        <span>Shipping</span>
+                        {activeMetric === 'shipping' && <div className="w-1.5 h-1.5 rounded-full bg-emerald-300 animate-pulse"></div>}
+                     </button>
                 </div>
             </div>
 
-            {/* SCANNIG RADAR BEAM - Refined */}
+            {/* SCANNIG RADAR BEAM */}
             <div className="absolute inset-0 pointer-events-none overflow-hidden z-0 opacity-20">
                 <div className="w-full h-[1px] bg-gradient-to-r from-transparent via-purple-400 to-transparent absolute top-0 animate-scan blur-[1px]"></div>
                 <div className="w-full h-[100px] bg-gradient-to-b from-purple-400/5 to-transparent absolute top-0 animate-scan"></div>
@@ -455,7 +518,7 @@ const ProvincialMap: React.FC<ProvincialMapProps> = ({ data }) => {
                 maskImage: 'radial-gradient(circle at center, black, transparent 80%)'
             }}></div>
 
-            {/* DIGITAL PARTICLES (CSS) */}
+            {/* DIGITAL PARTICLES */}
             <div className="absolute inset-0 pointer-events-none overflow-hidden">
                  {[...Array(20)].map((_, i) => (
                     <div key={i} className="absolute w-0.5 h-0.5 bg-yellow-300 rounded-full animate-float-particle" style={{
