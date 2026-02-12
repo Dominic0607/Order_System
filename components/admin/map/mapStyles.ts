@@ -1,31 +1,30 @@
 
 export const MAP_COLORS = {
-    base: '#020617', 
-    highlight: '#ffffff', // Pure White for focus
+    base: '#0f0518', // Deep Purple Void
+    highlight: '#ffd700', // Gold
     levels: [
-        '#1e293b', // 0 - Empty (Slate 800)
-        '#7f1d1d', // 1 - Dark Red (Low)
-        '#b91c1c', // 2 - Red 700
-        '#ea580c', // 3 - Orange 600
-        '#f59e0b', // 4 - Amber 500
+        '#2e1065', // 0 - Deep Purple 900
+        '#581c87', // 1 - Purple 800
+        '#7e22ce', // 2 - Purple 700
+        '#a855f7', // 3 - Purple 500
+        '#d8b4fe', // 4 - Lavender
         '#facc15', // 5 - Yellow 400
-        '#ffffff'  // 6 - Pure White (Highest)
+        '#fde047'  // 6 - Yellow 300 (Highest)
     ]
 };
 
-export const REVENUE_LEVELS = [0, 100, 500, 1000, 5000, 10000];
+export const REVENUE_LEVELS = [0, 500, 2000, 5000, 10000, 25000];
 
 // 3D Extrusion Height Calculation
-// Slightly increased for better 3D definition at closer zoom
 export const EXTRUSION_HEIGHT_EXPRESSION = [
     'interpolate',
     ['linear'],
     ['get', 'revenue'],
     0, 200,
-    100, 1000,
-    1000, 4000,
-    10000, 15000,
-    50000, 35000 
+    500, 1500,
+    5000, 8000,
+    10000, 20000,
+    50000, 45000 
 ];
 
 export const FILL_COLOR_EXPRESSION = [
@@ -41,5 +40,5 @@ export const FILL_COLOR_EXPRESSION = [
         REVENUE_LEVELS[4], MAP_COLORS.levels[4],
         REVENUE_LEVELS[5], MAP_COLORS.levels[5]
     ],
-    'rgba(30, 41, 59, 0.6)' // Semi-transparent Slate 800 for empty areas
+    'rgba(46, 16, 101, 0.5)' // Semi-transparent Deep Purple
 ];

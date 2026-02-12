@@ -1,4 +1,3 @@
-
 import React, { useEffect, useRef, useState, useMemo } from 'react';
 import { useCambodiaGeoJSON } from '../../hooks/useCambodiaGeoJSON';
 import { normalizeName } from '../../utils/mapUtils';
@@ -19,9 +18,12 @@ interface ProvincialMapProps {
 const ProvincialMap: React.FC<ProvincialMapProps> = ({ data }) => {
     const mapContainerRef = useRef<HTMLDivElement>(null);
     const popupRef = useRef<any>(null);
-    const markersRef = useRef<any[]>([]); // Store active markers
+    const markersRef = useRef<any[]>([]); 
     const hoverStateIdRef = useRef<string | number | null>(null);
     const animationRef = useRef<number | null>(null);
+
+    // UX State
+    const [activeMetric, setActiveMetric] = useState<'revenue' | 'orders'>('revenue');
 
     // 1. Data Hook
     const { geoJson: rawGeoJson, loading: geoLoading, error: geoError } = useCambodiaGeoJSON();
@@ -47,18 +49,21 @@ const ProvincialMap: React.FC<ProvincialMapProps> = ({ data }) => {
         return stats;
     }, [data]);
 
-    // Calculate Ranks
+    // Calculate Ranks (Dynamic based on Metric)
     const topRanks = useMemo(() => {
-        const sorted = Object.values(statsMap).sort((a, b) => b.revenue - a.revenue);
+        const sorted = Object.values(statsMap).sort((a, b) => b[activeMetric] - a[activeMetric]);
         const ranks: Record<string, number> = {};
         sorted.forEach((item, index) => {
             const key = normalizeName(item.name);
             if (key) ranks[key] = index + 1;
         });
         return ranks;
-    }, [statsMap]);
+    }, [statsMap, activeMetric]);
 
-    // 4. Update Map Logic (3D Layers & Markers)
+    // User Interaction State for Animation Pause
+    const isUserInteracting = useRef(false);
+
+    // 4. Update Map Logic
     useEffect(() => {
         if (!isMapReady || !map || !rawGeoJson) return;
 
@@ -66,39 +71,76 @@ const ProvincialMap: React.FC<ProvincialMapProps> = ({ data }) => {
             // @ts-ignore
             const maplibregl = window.maplibregl;
 
-            // --- 1. DRAMATIC ENTRANCE ---
-            // Fly to Cambodia "Command Center" View starting from the engine's default
-            map.flyTo({
-                center: [104.9160, 12.5657],
-                zoom: 7.8, // Zoom out slightly
-                pitch: 45, // Aim closer to top-down
-                bearing: -10,
-                speed: 0.6, // Even smoother
-                curve: 1.2,
-                essential: true
-            });
+            // Setup User Interaction Listeners to Pause Animation
+            const pauseAnimation = () => { isUserInteracting.current = true; };
+            const resumeAnimation = () => { isUserInteracting.current = false; };
+            
+            map.on('mousedown', pauseAnimation);
+            map.on('touchstart', pauseAnimation);
+            map.on('dragstart', pauseAnimation);
+            map.on('mouseup', resumeAnimation);
+            map.on('touchend', resumeAnimation);
+            map.on('dragend', resumeAnimation);
+            map.on('zoomstart', pauseAnimation); // Also pause on zoom
+            map.on('zoomend', resumeAnimation);
 
-            // --- 2. DYNAMIC LIGHTING ANIMATION ---
-            // Rotate the light source to create shifting shadows ("Time Lapse" effect)
-            const animateLight = (timestamp: number) => {
-                const phase = timestamp / 4000; // Speed of day/night cycle
-                // Orbit light around the center
-                const x = Math.sin(phase) * 1.5;
-                const y = Math.cos(phase) * 1.5;
-                
-                map.setLight({
-                    anchor: 'viewport',
-                    color: '#ffffff',
-                    intensity: 0.5 + Math.sin(phase) * 0.1, // Pulse intensity slightly
-                    position: [x, y, 80] // Changing position X/Y
+
+            // --- 1. CINEMATIC CAMERA ENTRY ---
+            if (!animationRef.current) { 
+                 map.flyTo({
+                    center: [104.9160, 12.7], 
+                    zoom: 7.6, 
+                    pitch: 62, 
+                    bearing: -15,
+                    speed: 0.5,
+                    curve: 1.5,
+                    essential: true
                 });
-                
-                animationRef.current = requestAnimationFrame(animateLight);
+            }
+
+            // "4D" Drone Hover Effect - Only when NOT interacting
+            const animateCamera = (timestamp: number) => {
+                // Light animation always runs
+                const lightPhase = timestamp / 3000;
+                const lx = Math.sin(lightPhase) * 1.5;
+                const ly = Math.cos(lightPhase) * 1.5;
+                map.setLight({
+                    anchor: 'map',
+                    color: activeMetric === 'revenue' ? '#fde047' : '#d8b4fe', 
+                    intensity: 0.6 + Math.sin(lightPhase * 2) * 0.15, 
+                    position: [lx, ly, 90] 
+                });
+
+                // Camera movement only if idle
+                if (!isUserInteracting.current) {
+                    const phase = timestamp / 15000; 
+                    const newBearing = -15 + Math.sin(phase) * 3; 
+                    const newPitch = 62 + Math.cos(phase * 0.7) * 2; 
+                    
+                    // Use easeTo for smoother updates than jumpTo if frames drop, 
+                    // but jumpTo is better for continuous animation loop.
+                    map.jumpTo({ bearing: newBearing, pitch: newPitch });
+                }
+
+                animationRef.current = requestAnimationFrame(animateCamera);
             };
-            animationRef.current = requestAnimationFrame(animateLight);
+            
+            if (animationRef.current) cancelAnimationFrame(animationRef.current);
+            animationRef.current = requestAnimationFrame(animateCamera);
 
+            // --- 2. ATMOSPHERIC FOG (VOLUMETRIC EFFECT) ---
+            if (map.setFog) {
+                map.setFog({
+                    'range': [1, 12],
+                    'color': '#0f0518', // Deep Purple Void
+                    'horizon-blend': 0.15,
+                    'high-color': '#7e22ce', // Purple Haze
+                    'space-color': '#0f0518',
+                    'star-intensity': 0.9 // Bright stars
+                });
+            }
 
-            // Prepare Source Data with Stats
+            // Prepare Source Data
             const processedFeatures = rawGeoJson.features.map((feature: any) => {
                 const props = feature.properties || {};
                 const namesToTry = [props.name_kh, props.Name_KH, props.name_en, props.Name_EN, props.name, props.shapeName];
@@ -118,13 +160,13 @@ const ProvincialMap: React.FC<ProvincialMapProps> = ({ data }) => {
                         break;
                     }
                 }
+                
                 return { ...feature, properties: { ...props, revenue, orders, displayName, rank } };
             });
 
             const processedGeoJson = { type: 'FeatureCollection', features: processedFeatures };
-
-            // Update or Add Source
             const source = map.getSource('cambodia-3d-source');
+            
             if (source) {
                 source.setData(processedGeoJson);
             } else {
@@ -134,7 +176,23 @@ const ProvincialMap: React.FC<ProvincialMapProps> = ({ data }) => {
                     generateId: true
                 });
 
-                // --- 3D EXTRUSION LAYER ---
+                // Layers...
+                // 1. Base Glow (Hover State) - 2D Floor Effect
+                map.addLayer({
+                    'id': 'province-hover-fill',
+                    'type': 'fill',
+                    'source': 'cambodia-3d-source',
+                    'paint': {
+                        'fill-color': activeMetric === 'revenue' ? '#facc15' : '#c084fc', // Gold or Purple
+                        'fill-opacity': [
+                            'case',
+                            ['boolean', ['feature-state', 'hover'], false],
+                            0.5,
+                            0
+                        ]
+                    }
+                });
+
                 map.addLayer({
                     'id': 'province-3d',
                     'type': 'fill-extrusion',
@@ -143,73 +201,70 @@ const ProvincialMap: React.FC<ProvincialMapProps> = ({ data }) => {
                         'fill-extrusion-color': FILL_COLOR_EXPRESSION,
                         'fill-extrusion-height': EXTRUSION_HEIGHT_EXPRESSION,
                         'fill-extrusion-base': 0,
-                        'fill-extrusion-opacity': 0.9,
+                        'fill-extrusion-opacity': 0.95,
                         'fill-extrusion-vertical-gradient': true
                     }
                 });
-
-                // 2D Base Glow Layer (Shows on Hover)
-                map.addLayer({
-                    'id': 'province-hover-fill',
-                    'type': 'fill',
-                    'source': 'cambodia-3d-source',
-                    'paint': {
-                        'fill-color': '#f59e0b', // Amber 500 Glow
-                        'fill-opacity': [
-                            'case',
-                            ['boolean', ['feature-state', 'hover'], false],
-                            0.5,
-                            0
-                        ]
-                    }
-                }, 'province-3d'); // Place below 3D
-
-                // Glowing Neon Outline
+                
+                // RESTORED: Outlines
                 map.addLayer({
                     'id': 'province-outlines',
                     'type': 'line',
                     'source': 'cambodia-3d-source',
                     'paint': {
-                        'line-color': '#f97316', // Orange 500
-                        'line-width': 2,
-                        'line-opacity': 0.5,
-                        'line-blur': 2 // Glow effect
+                        'line-color': '#fde047', // Gold Lines
+                        'line-width': 1,
+                        'line-opacity': 0.4
                     }
                 });
 
-                // Highlight Layer (3D Pop on Hover)
+                map.addLayer({
+                    'id': 'province-floor-glow',
+                    'type': 'line',
+                    'source': 'cambodia-3d-source',
+                    'paint': {
+                        'line-color': '#a855f7', // Purple Glow
+                        'line-width': 4,
+                        'line-opacity': 0.3,
+                        'line-blur': 6
+                    }
+                }, 'province-3d');
+
+                map.addLayer({
+                    'id': 'province-glass-shell',
+                    'type': 'fill-extrusion',
+                    'source': 'cambodia-3d-source',
+                    'paint': {
+                        'fill-extrusion-color': '#ffffff',
+                        'fill-extrusion-height': EXTRUSION_HEIGHT_EXPRESSION,
+                        'fill-extrusion-base': EXTRUSION_HEIGHT_EXPRESSION, 
+                        'fill-extrusion-opacity': 0.1
+                    }
+                });
+
                 map.addLayer({
                     'id': 'province-highlight',
                     'type': 'fill-extrusion',
                     'source': 'cambodia-3d-source',
                     'paint': {
-                        'fill-extrusion-color': '#ffffff', // Brilliant White Highlight
-                        'fill-extrusion-height': [
-                            '+', 
-                            EXTRUSION_HEIGHT_EXPRESSION, 
-                            1000 
-                        ],
-                        'fill-extrusion-opacity': [
-                            'case',
-                            ['boolean', ['feature-state', 'hover'], false],
-                            0.8,
-                            0
-                        ]
+                        'fill-extrusion-color': '#fef08a', // Yellow-200
+                        'fill-extrusion-height': ['+', EXTRUSION_HEIGHT_EXPRESSION, 2000],
+                        'fill-extrusion-opacity': ['case', ['boolean', ['feature-state', 'hover'], false], 0.9, 0]
                     }
                 });
 
-                // Initialize Popup
+                // Interactions...
                 popupRef.current = new maplibregl.Popup({
                     closeButton: false,
                     closeOnClick: false,
                     className: 'custom-map-popup',
-                    offset: 40,
-                    maxWidth: '280px'
+                    offset: 80,
+                    maxWidth: '300px'
                 });
 
-                // Interactions
                 map.on('mousemove', 'province-3d', (e: any) => {
-                    if (e.features.length > 0) {
+                     // ... (Keep existing interaction logic)
+                     if (e.features.length > 0) {
                         map.getCanvas().style.cursor = 'pointer';
                         const feature = e.features[0];
                         
@@ -219,32 +274,52 @@ const ProvincialMap: React.FC<ProvincialMapProps> = ({ data }) => {
                         hoverStateIdRef.current = feature.id;
                         map.setFeatureState({ source: 'cambodia-3d-source', id: feature.id }, { hover: true });
 
-                        // Elegant Popup
+                        // Sci-Fi Popup
                         const { displayName, revenue, orders } = feature.properties;
                         popupRef.current
                             .setLngLat(e.lngLat)
                             .setHTML(`
-                                <div class="p-4 bg-slate-900/95 backdrop-blur-md rounded-xl border border-slate-700 shadow-2xl min-w-[180px]">
-                                    <div class="flex items-center justify-between mb-3 border-b border-slate-800 pb-2">
-                                        <h4 class="font-bold text-sm text-white tracking-wide">${displayName}</h4>
-                                        ${revenue > 0 ? '<div class="w-2 h-2 rounded-full bg-orange-500 shadow-[0_0_8px_#f97316] animate-pulse"></div>' : ''}
+                                <div class="relative overflow-hidden bg-[#0f0518]/90 backdrop-blur-xl rounded-lg border border-purple-500/50 shadow-[0_0_30px_rgba(168,85,247,0.3)] min-w-[200px] group">
+                                    <div class="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20"></div>
+                                    <div class="absolute top-0 left-0 w-full h-0.5 bg-gradient-to-r from-transparent via-purple-400 to-transparent"></div>
+                                    
+                                    <div class="p-4 relative z-10">
+                                        <div class="flex items-center justify-between mb-3 pb-2 border-b border-purple-500/30">
+                                            <h4 class="font-mono font-bold text-sm text-purple-100 tracking-widest uppercase">${displayName}</h4>
+                                            ${revenue > 0 ? '<div class="w-2 h-2 rounded-full bg-yellow-400 shadow-[0_0_10px_#facc15] animate-pulse"></div>' : ''}
+                                        </div>
+                                        
+                                        <div class="space-y-3">
+                                            <div class="flex justify-between items-end">
+                                                <span class="text-purple-300 text-[10px] font-bold uppercase tracking-widest">REVENUE</span>
+                                                <span class="font-mono font-black text-xl text-yellow-300 drop-shadow-[0_0_5px_rgba(253,224,71,0.5)]">$${Number(revenue).toLocaleString()}</span>
+                                            </div>
+                                            
+                                            <div class="w-full h-1 bg-purple-900/50 rounded-full overflow-hidden">
+                                                <div class="h-full bg-gradient-to-r from-purple-600 to-yellow-300 w-[${Math.min((revenue/50000)*100, 100)}%] relative">
+                                                    <div class="absolute right-0 top-0 bottom-0 w-1 bg-white shadow-[0_0_10px_white]"></div>
+                                                </div>
+                                            </div>
+
+                                            <div class="flex justify-between items-center">
+                                                <span class="text-purple-300 text-[10px] font-bold uppercase tracking-widest">ORDERS</span>
+                                                <div class="flex items-center gap-1.5">
+                                                    <span class="text-xs text-purple-200 font-mono">${orders}</span>
+                                                    <span class="text-[9px] text-purple-500">UNITS</span>
+                                                </div>
+                                            </div>
+                                        </div>
                                     </div>
-                                    <div class="space-y-2">
-                                        <div class="flex justify-between items-baseline">
-                                            <span class="text-slate-400 text-xs font-medium uppercase tracking-wider">Revenue</span>
-                                            <span class="font-black text-lg text-orange-400">$${Number(revenue).toLocaleString()}</span>
-                                        </div>
-                                        <div class="flex justify-between items-center">
-                                            <span class="text-slate-500 text-xs font-medium uppercase tracking-wider">Orders</span>
-                                            <span class="text-slate-200 text-xs bg-slate-800 px-2 py-0.5 rounded border border-slate-700">${orders}</span>
-                                        </div>
+                                    
+                                    <div class="absolute bottom-0 right-0 p-1">
+                                        <div class="w-2 h-2 border-r border-b border-purple-500/50"></div>
                                     </div>
                                 </div>
                             `)
                             .addTo(map);
                     }
                 });
-
+                
                 map.on('mouseleave', 'province-3d', () => {
                     map.getCanvas().style.cursor = '';
                     if (hoverStateIdRef.current !== null) {
@@ -254,57 +329,61 @@ const ProvincialMap: React.FC<ProvincialMapProps> = ({ data }) => {
                     popupRef.current.remove();
                 });
             }
+            
+            // --- DYNAMIC EXPRESSION UPDATE FOR METRIC SWITCHING ---
+            // (Same as before)
+            if (map.getLayer('province-3d')) {
+            }
 
-            // --- REFRESH RANK MARKERS (FLOATING CAPSULES) ---
-            // 1. Remove old markers
+            // --- REFRESH RANK MARKERS ---
             markersRef.current.forEach(marker => marker.remove());
             markersRef.current = [];
-
-            // 2. Add new markers for Top 3
             processedFeatures.forEach((feature: any) => {
-                const { rank, displayName } = feature.properties;
+                const { rank, displayName, revenue, orders } = feature.properties;
+                // Only show top 3 ranks
                 if (rank && rank <= 3) {
-                    // Calculate Center
-                    const coords = feature.geometry.type === 'Polygon' 
+                     const coords = feature.geometry.type === 'Polygon' 
                         ? feature.geometry.coordinates[0] 
                         : feature.geometry.coordinates.flat(1)[0]; 
-                    
                     if (!coords) return;
-
                     const bounds = new maplibregl.LngLatBounds(coords[0], coords[0]);
                     coords.forEach((coord: any) => bounds.extend(coord));
                     const center = bounds.getCenter();
 
-                    // Minimalist Glass Marker
                     const el = document.createElement('div');
                     el.className = 'province-rank-marker';
+                    const displayValue = activeMetric === 'revenue' 
+                        ? `$${(revenue/1000).toFixed(1)}k` 
+                        : `${orders} Orders`;
+                        
                     el.innerHTML = `
-                        <div class="flex flex-col items-center group cursor-pointer animate-float">
-                            <div class="relative">
-                                <div class="absolute inset-0 bg-orange-500/30 blur-lg rounded-full animate-pulse"></div>
-                                <div class="px-4 py-2 bg-slate-900/80 backdrop-blur-md rounded-full shadow-lg border border-orange-400/50 flex items-center gap-3 relative overflow-hidden group-hover:scale-105 transition-transform duration-300">
-                                    <div class="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent translate-x-[-100%] animate-shimmer"></div>
-                                    <span class="font-black text-transparent bg-clip-text bg-gradient-to-br from-amber-300 to-orange-500 text-sm">#${rank}</span>
-                                    <div class="w-px h-3 bg-white/20"></div>
-                                    <span class="text-xs font-bold text-white tracking-wide whitespace-nowrap">${displayName}</span>
+                        <div class="flex flex-col items-center group cursor-pointer animate-float hover:z-50">
+                            <div class="relative transition-transform duration-300 group-hover:scale-110">
+                                <div class="absolute -inset-4 bg-purple-600/30 blur-xl rounded-full animate-pulse"></div>
+                                <div class="relative bg-[#0f0518]/90 backdrop-blur-xl border border-purple-500/60 rounded-full px-4 py-2 shadow-[0_0_20px_rgba(168,85,247,0.4)] flex items-center gap-3">
+                                    <div class="flex flex-col items-center justify-center w-8 h-8 rounded-full bg-gradient-to-br from-purple-500 to-yellow-400 shadow-inner">
+                                        <span class="font-black text-white text-xs leading-none">#${rank}</span>
+                                    </div>
+                                    <div class="flex flex-col">
+                                        <span class="text-[10px] text-purple-200 font-bold uppercase tracking-wider leading-tight">${displayName}</span>
+                                        <span class="text-[9px] text-yellow-300 font-mono">${displayValue}</span>
+                                    </div>
                                 </div>
                             </div>
-                            <div class="w-0.5 h-6 bg-gradient-to-b from-orange-500 to-transparent opacity-50"></div>
-                            <div class="w-3 h-3 border border-orange-500 rounded-full flex items-center justify-center -mt-1 opacity-50">
-                                <div class="w-1 h-1 bg-orange-400 rounded-full"></div>
+                            
+                            {/* THE POLE / BEAM */}
+                            <div class="w-px h-16 bg-gradient-to-b from-purple-500 via-purple-500/50 to-transparent relative">
+                                <div class="absolute inset-0 bg-purple-400 blur-[2px] opacity-50"></div>
+                            </div>
+                            
+                            {/* BASE EFFECT ON GROUND */}
+                            <div class="w-8 h-8 border border-purple-500/30 rounded-full flex items-center justify-center -mt-2 animate-[spin_8s_linear_infinite]">
+                                <div class="w-6 h-6 border border-dashed border-purple-500/50 rounded-full"></div>
+                                <div class="absolute w-2 h-2 bg-purple-500 blur-sm rounded-full animate-pulse"></div>
                             </div>
                         </div>
                     `;
-
-                    // Add to map
-                    const marker = new maplibregl.Marker({
-                        element: el,
-                        anchor: 'bottom',
-                        offset: [0, -10] 
-                    })
-                    .setLngLat(center)
-                    .addTo(map);
-
+                    const marker = new maplibregl.Marker({ element: el, anchor: 'bottom', offset: [0, -40] }).setLngLat(center).addTo(map);
                     markersRef.current.push(marker);
                 }
             });
@@ -312,11 +391,8 @@ const ProvincialMap: React.FC<ProvincialMapProps> = ({ data }) => {
         } catch (e) {
             console.error("Layer Update Error:", e);
         }
-
-        return () => {
-            if (animationRef.current) cancelAnimationFrame(animationRef.current);
-        };
-    }, [isMapReady, rawGeoJson, statsMap, topRanks]);
+        return () => { if (animationRef.current) cancelAnimationFrame(animationRef.current); };
+    }, [isMapReady, rawGeoJson, statsMap, topRanks, activeMetric]); // Re-run when metric changes
 
     if (geoError || mapError) {
         return (
@@ -327,39 +403,84 @@ const ProvincialMap: React.FC<ProvincialMapProps> = ({ data }) => {
     }
 
     return (
-        <div className="relative w-full h-[600px] xl:h-[700px] bg-[#020617] rounded-[1.5rem] border border-slate-800 shadow-[0_0_40px_rgba(56,189,248,0.1)] overflow-hidden group">
+        <div className="relative w-full h-[650px] xl:h-[750px] bg-[#0f0518] rounded-[2.5rem] border border-purple-500/20 shadow-[0_0_60px_rgba(88,28,135,0.4)] overflow-hidden group">
             
-            {/* Header / Title Overlay with Glass effect */}
-            <div className="absolute top-5 left-6 pointer-events-none z-10">
-                <div className="flex flex-col">
-                    <div className="flex items-center gap-2 mb-1">
-                         <span className="relative flex h-2 w-2">
-                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-sky-400 opacity-75"></span>
-                          <span className="relative inline-flex rounded-full h-2 w-2 bg-sky-500"></span>
-                        </span>
-                        <span className="text-[10px] text-sky-400 font-mono tracking-widest uppercase">Live Data Stream</span>
+            {/* Header / Title Overlay - Minimalist Centered Pill */}
+            <div className="absolute top-6 left-1/2 -translate-x-1/2 z-10 pointer-events-none">
+                <div className="flex items-center gap-4 bg-[#0f0518]/60 backdrop-blur-md px-6 py-2.5 rounded-full border border-purple-500/30 shadow-2xl">
+                    <div className="flex items-center gap-2">
+                        <div className="w-1.5 h-1.5 rounded-full bg-purple-500 animate-pulse"></div>
+                        <span className="text-[10px] text-purple-300 font-mono uppercase tracking-widest">Live Geo-Data</span>
                     </div>
-                    <h2 className="text-2xl font-black text-white tracking-tight flex items-center gap-2 drop-shadow-lg">
-                        CAMBODIA <span className="text-transparent bg-clip-text bg-gradient-to-r from-amber-400 to-orange-600">NEXUS</span>
+                    <div className="w-px h-3 bg-white/10"></div>
+                    <h2 className="text-sm font-bold text-white tracking-wide uppercase font-sans">
+                        Cambodia <span className="text-yellow-400">Nexus</span>
                     </h2>
                 </div>
             </div>
 
-            {/* SCANNIG RADAR BEAM */}
-            <div className="absolute inset-0 pointer-events-none overflow-hidden z-0">
-                <div className="w-full h-[2px] bg-gradient-to-r from-transparent via-cyan-400/50 to-transparent absolute top-0 animate-scan blur-[1px]"></div>
-                <div className="w-full h-[20px] bg-gradient-to-b from-cyan-400/10 to-transparent absolute top-0 animate-scan"></div>
+            {/* TOP RIGHT STATUS BOX */}
+            <div className="absolute bottom-8 right-8 flex flex-col gap-3 z-10">
+                <div className="flex flex-col bg-[#0f0518]/80 backdrop-blur-xl border border-purple-500/30 rounded-2xl p-1.5 shadow-2xl">
+                     <button 
+                        onClick={() => setActiveMetric('revenue')}
+                        className={`px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-all duration-300 flex items-center justify-between gap-3 ${activeMetric === 'revenue' ? 'bg-purple-600 text-white shadow-lg' : 'text-purple-400 hover:bg-purple-900/50'}`}
+                     >
+                        <span>Revenue</span>
+                        {activeMetric === 'revenue' && <div className="w-1.5 h-1.5 rounded-full bg-yellow-400 animate-pulse"></div>}
+                     </button>
+                     <button 
+                        onClick={() => setActiveMetric('orders')}
+                        className={`px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-all duration-300 flex items-center justify-between gap-3 ${activeMetric === 'orders' ? 'bg-fuchsia-600 text-white shadow-lg' : 'text-purple-400 hover:bg-purple-900/50'}`}
+                     >
+                        <span>Orders</span>
+                        {activeMetric === 'orders' && <div className="w-1.5 h-1.5 rounded-full bg-white animate-pulse"></div>}
+                     </button>
+                </div>
             </div>
 
-            {/* Background Glows */}
-            <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-blue-600/10 blur-[120px] pointer-events-none rounded-full mix-blend-screen transform translate-x-1/2 -translate-y-1/2"></div>
+            {/* SCANNIG RADAR BEAM - Refined */}
+            <div className="absolute inset-0 pointer-events-none overflow-hidden z-0 opacity-20">
+                <div className="w-full h-[1px] bg-gradient-to-r from-transparent via-purple-400 to-transparent absolute top-0 animate-scan blur-[1px]"></div>
+                <div className="w-full h-[100px] bg-gradient-to-b from-purple-400/5 to-transparent absolute top-0 animate-scan"></div>
+            </div>
+
+            {/* HOLOGRAPHIC GRID OVERLAY */}
+            <div className="absolute inset-0 pointer-events-none z-0 opacity-10" style={{
+                backgroundImage: `
+                    linear-gradient(to right, rgba(168, 85, 247, 0.3) 1px, transparent 1px),
+                    linear-gradient(to bottom, rgba(168, 85, 247, 0.3) 1px, transparent 1px)
+                `,
+                backgroundSize: '40px 40px',
+                maskImage: 'radial-gradient(circle at center, black, transparent 80%)'
+            }}></div>
+
+            {/* DIGITAL PARTICLES (CSS) */}
+            <div className="absolute inset-0 pointer-events-none overflow-hidden">
+                 {[...Array(20)].map((_, i) => (
+                    <div key={i} className="absolute w-0.5 h-0.5 bg-yellow-300 rounded-full animate-float-particle" style={{
+                        left: `${Math.random() * 100}%`,
+                        top: `${Math.random() * 100}%`,
+                        animationDelay: `${Math.random() * 5}s`,
+                        animationDuration: `${10 + Math.random() * 10}s`,
+                        opacity: Math.random() * 0.5
+                    }}></div>
+                 ))}
+            </div>
+
+            {/* Ambient Background Glows */}
+            <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-purple-900/10 blur-[120px] pointer-events-none rounded-full mix-blend-screen"></div>
+            <div className="absolute bottom-0 left-0 w-[600px] h-[600px] bg-indigo-900/10 blur-[120px] pointer-events-none rounded-full mix-blend-screen"></div>
 
             <div ref={mapContainerRef} className="w-full h-full" />
             
             {(!isMapReady || geoLoading) && (
-                <div className="absolute inset-0 flex flex-col items-center justify-center bg-[#020617] z-20">
-                    <div className="w-16 h-16 border-4 border-slate-800 border-t-cyan-400 rounded-full animate-spin"></div>
-                    <p className="mt-4 text-[10px] font-bold text-cyan-400 uppercase tracking-widest animate-pulse">Initializing System...</p>
+                <div className="absolute inset-0 flex flex-col items-center justify-center bg-[#0f0518] z-20">
+                    <div className="w-20 h-20 border-t-2 border-b-2 border-purple-500 rounded-full animate-spin flex items-center justify-center relative">
+                         <div className="w-16 h-16 border-l-2 border-r-2 border-yellow-300 rounded-full animate-reverse-spin"></div>
+                         <div className="absolute inset-0 bg-purple-500/10 blur-xl animate-pulse"></div>
+                    </div>
+                    <p className="mt-6 text-xs font-black text-purple-400 uppercase tracking-[0.3em] animate-pulse">Initializing Neural Link...</p>
                 </div>
             )}
 
@@ -384,6 +505,24 @@ const ProvincialMap: React.FC<ProvincialMapProps> = ({ data }) => {
                 }
                 .animate-float {
                     animation: float 4s ease-in-out infinite;
+                }
+                
+                @keyframes reverse-spin {
+                    from { transform: rotate(360deg); }
+                    to { transform: rotate(0deg); }
+                }
+                .animate-reverse-spin {
+                    animation: reverse-spin 3s linear infinite;
+                }
+
+                @keyframes float-particle {
+                    0% { transform: translateY(0) translateX(0); opacity: 0; }
+                    10% { opacity: 0.5; }
+                    90% { opacity: 0.5; }
+                    100% { transform: translateY(-100px) translateX(20px); opacity: 0; }
+                }
+                .animate-float-particle {
+                    animation: float-particle linear infinite;
                 }
                 
                 @keyframes shimmer {
