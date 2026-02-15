@@ -38,7 +38,7 @@ const OrdersListMobile: React.FC<OrdersListMobileProps> = ({
     toggleOrderVerified,
     updatingIds
 }) => {
-    const { appData, previewImage } = useContext(AppContext);
+    const { appData, previewImage, currentUser } = useContext(AppContext);
     
     // View Mode State - Default to 'table'
     const [viewMode, setViewMode] = useState<'card' | 'table'>(() => {
@@ -73,6 +73,47 @@ const OrdersListMobile: React.FC<OrdersListMobileProps> = ({
     const isCheckVisible = !visibleColumns || visibleColumns.has('check');
     const isFulfillmentVisible = !visibleColumns || visibleColumns.has('fulfillment');
 
+    // Helper for robust date parsing
+    const getSafeDateObj = (dateStr: string) => {
+        if (!dateStr) return new Date();
+        
+        // Handle "YYYY-MM-DD H:mm" format (Legacy/Manual)
+        const manualMatch = dateStr.match(/^(\d{4})-(\d{1,2})-(\d{1,2})\s(\d{1,2}):(\d{2})/);
+        if (manualMatch) {
+            return new Date(
+                parseInt(manualMatch[1]),
+                parseInt(manualMatch[2]) - 1, // Month is 0-indexed
+                parseInt(manualMatch[3]),
+                parseInt(manualMatch[4]),
+                parseInt(manualMatch[5])
+            );
+        }
+
+        // Handle ISO-like format with Z (e.g., "2026-01-04T06:31:21Z")
+        if (dateStr.endsWith('Z')) {
+            const cleanDate = dateStr.slice(0, -1); // Remove Z
+            return new Date(cleanDate);
+        }
+
+        const d = new Date(dateStr);
+        return isNaN(d.getTime()) ? new Date() : d;
+    };
+
+    // Helper to check edit permission
+    const canEditOrder = (order: ParsedOrder) => {
+        if (!currentUser) return false;
+        if (currentUser.IsSystemAdmin) return true;
+
+        // Check Team Ownership
+        const userTeams = (currentUser.Team || '').split(',').map(t => t.trim());
+        if (!userTeams.includes(order.Team)) return false;
+
+        // Check Time Window (12 Hours = 43200000 ms)
+        const orderTime = getSafeDateObj(order.Timestamp).getTime();
+        const timeDiff = Date.now() - orderTime;
+        return timeDiff < 43200000;
+    };
+
     const getCarrierLogo = (phoneNumber: string) => {
         if (!phoneNumber || !appData.phoneCarriers) return null;
         const cleanPhone = phoneNumber.replace(/\s/g, '');
@@ -95,28 +136,8 @@ const OrdersListMobile: React.FC<OrdersListMobileProps> = ({
 
     // Safe Date Parsing for iOS & custom DB Format (YYYY-MM-DD H:mm)
     const getSafeDateString = (dateStr: string) => {
-        if (!dateStr) return '';
-
-        // Handle format: "2026-01-30 7:00"
-        const match = dateStr.match(/^(\d{4})-(\d{1,2})-(\d{1,2})\s(\d{1,2}):(\d{2})/);
-        if (match) {
-            const date = new Date(
-                parseInt(match[1]),
-                parseInt(match[2]) - 1, // Month is 0-indexed
-                parseInt(match[3]),
-                parseInt(match[4]),
-                parseInt(match[5])
-            );
-            return date.toLocaleDateString('km-KH');
-        }
-
-        try {
-            const date = new Date(dateStr);
-            if (isNaN(date.getTime())) return dateStr; 
-            return date.toLocaleDateString('km-KH');
-        } catch (e) {
-            return dateStr;
-        }
+        const date = getSafeDateObj(dateStr);
+        return date.toLocaleDateString('km-KH');
     };
 
     return (
@@ -130,19 +151,23 @@ const OrdersListMobile: React.FC<OrdersListMobileProps> = ({
                 <div className="flex bg-gray-800 p-1 rounded-xl border border-white/10">
                     <button 
                         onClick={() => handleViewChange('card')}
-                        className={`p-2 rounded-lg transition-all ${viewMode === 'card' ? 'bg-blue-600 text-white shadow-md' : 'text-gray-400 hover:text-gray-200'}`}
+                        className={`p-2 rounded-lg transition-all ${viewMode === 'card' ? 'bg-blue-600 text-white shadow-lg' : 'text-gray-500 hover:text-gray-300 bg-gray-900/50'}`}
                         title="Card View"
                     >
-                        {/* New Grid/Card Icon */}
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 5a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM14 5a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1V5zM4 15a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1H5a1 1 0 01-1-1v-4zM14 15a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1H5a1 1 0 01-1-1v-4z" /></svg>
+                        {/* Modern Grid Icon */}
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M4 4h6v6H4V4zm10 0h6v6h-6V4zM4 14h6v6H4v-6zm10 0h6v6h-6v-6z" />
+                        </svg>
                     </button>
                     <button 
                         onClick={() => handleViewChange('table')}
-                        className={`p-2 rounded-lg transition-all ${viewMode === 'table' ? 'bg-blue-600 text-white shadow-md' : 'text-gray-400 hover:text-gray-200'}`}
+                        className={`p-2 rounded-lg transition-all ${viewMode === 'table' ? 'bg-blue-600 text-white shadow-lg' : 'text-gray-500 hover:text-gray-300 bg-gray-900/50'}`}
                         title="Table View"
                     >
-                        {/* List/Table Icon */}
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 10h16M4 14h16M4 18h16" /></svg>
+                        {/* Modern List Icon */}
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M3 6h18M3 12h18M3 18h18" />
+                        </svg>
                     </button>
                 </div>
             </div>
@@ -171,6 +196,7 @@ const OrdersListMobile: React.FC<OrdersListMobileProps> = ({
                                     const isSelected = selectedIds.has(order['Order ID']);
                                     const isVerified = order.IsVerified === true || String(order.IsVerified).toUpperCase() === 'TRUE';
                                     const isThisTemplateCopied = copiedTemplateId === order['Order ID'];
+                                    const allowEdit = canEditOrder(order);
                                     
                                     return (
                                         <tr key={order['Order ID']} className={`${isSelected ? 'bg-blue-900/20' : isVerified ? 'bg-emerald-900/5' : 'hover:bg-white/5'} transition-colors`}>
@@ -201,10 +227,26 @@ const OrdersListMobile: React.FC<OrdersListMobileProps> = ({
                                                     >
                                                         {isThisTemplateCopied ? <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7"/></svg> : <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" /></svg>}
                                                     </button>
-                                                    {onEdit && (
+                                                    
+                                                    {isPrintVisible && (
+                                                        <button 
+                                                            onClick={() => handlePrint(order)}
+                                                            className="text-emerald-400 hover:text-white transition-all active:scale-90"
+                                                        >
+                                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5}>
+                                                                <path strokeLinecap="round" strokeLinejoin="round" d="M6 9V2h12v7M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2m-2 4H8v-4h8v4z" />
+                                                            </svg>
+                                                        </button>
+                                                    )}
+
+                                                    {onEdit && allowEdit ? (
                                                         <button onClick={() => onEdit(order)} className="text-gray-400 hover:text-white">
                                                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
                                                         </button>
+                                                    ) : (
+                                                        <span className="text-gray-600" title="Locked">
+                                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
+                                                        </span>
                                                     )}
                                                 </div>
                                             </td>
@@ -231,6 +273,7 @@ const OrdersListMobile: React.FC<OrdersListMobileProps> = ({
                     const shippingLogo = getShippingLogo(order['Internal Shipping Method']);
                     const isThisCopied = copiedId === order['Order ID'];
                     const isThisTemplateCopied = copiedTemplateId === order['Order ID'];
+                    const allowEdit = canEditOrder(order);
 
                     return (
                         <div 
@@ -399,12 +442,21 @@ const OrdersListMobile: React.FC<OrdersListMobileProps> = ({
                             {/* Action Bar */}
                             <div className="flex items-center gap-3 pt-4 border-t border-white/5">
                                 {isActionsVisible && (
-                                    <button 
-                                        onClick={() => onEdit && onEdit(order)} 
-                                        className="flex-1 py-3 bg-blue-600/10 text-blue-400 rounded-xl border border-blue-500/20 font-black text-[10px] uppercase tracking-widest hover:bg-blue-600 hover:text-white transition-all active:scale-95"
-                                    >
-                                        Edit
-                                    </button>
+                                    allowEdit ? (
+                                        <button 
+                                            onClick={() => onEdit && onEdit(order)} 
+                                            className="flex-1 py-3 bg-blue-600/10 text-blue-400 rounded-xl border border-blue-500/20 font-black text-[10px] uppercase tracking-widest hover:bg-blue-600 hover:text-white transition-all active:scale-95"
+                                        >
+                                            Edit
+                                        </button>
+                                    ) : (
+                                        <button 
+                                            disabled
+                                            className="flex-1 py-3 bg-gray-800 text-gray-600 rounded-xl border border-white/5 font-black text-[10px] uppercase tracking-widest cursor-not-allowed"
+                                        >
+                                            Locked
+                                        </button>
+                                    )
                                 )}
                                 
                                 {isPrintVisible && (
@@ -412,7 +464,9 @@ const OrdersListMobile: React.FC<OrdersListMobileProps> = ({
                                         onClick={() => handlePrint(order)} 
                                         className="w-12 h-12 flex items-center justify-center bg-gray-800 text-gray-400 rounded-xl border border-white/10 hover:text-white active:scale-90 transition-all"
                                     >
-                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" /></svg>
+                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5}>
+                                            <path strokeLinecap="round" strokeLinejoin="round" d="M6 9V2h12v7M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2m-2 4H8v-4h8v4z" />
+                                        </svg>
                                     </button>
                                 )}
 

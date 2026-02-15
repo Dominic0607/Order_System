@@ -43,6 +43,28 @@ const EditOrderPage: React.FC<EditOrderPageProps> = ({ order, onSaveSuccess, onC
     // Audit: Log when user opens the page
     useEffect(() => {
         if (currentUser) {
+            // Security Check: Standard User Restrictions
+            if (!currentUser.IsSystemAdmin) {
+                // 1. Team Check
+                const userTeams = (currentUser.Team || '').split(',').map(t => t.trim());
+                if (!userTeams.includes(order.Team)) {
+                    alert("អ្នកមិនមានសិទ្ធិកែប្រែការបញ្ជាទិញរបស់ក្រុមផ្សេងទេ (You cannot edit orders from other teams).");
+                    onCancel();
+                    return;
+                }
+
+                // 2. Time Check (12 Hours)
+                const orderTime = new Date(order.Timestamp).getTime();
+                const timeDiff = Date.now() - orderTime;
+                const twelveHoursMs = 12 * 60 * 60 * 1000;
+                
+                if (timeDiff > twelveHoursMs) {
+                    alert("ការបញ្ជាទិញនេះលើសពី 12 ម៉ោងហើយ អ្នកមិនអាចកែប្រែបានទេ (Order is older than 12 hours).");
+                    onCancel();
+                    return;
+                }
+            }
+
             logUserActivity(
                 currentUser.UserName, 
                 'VIEW_EDIT_PAGE', 
@@ -67,10 +89,13 @@ const EditOrderPage: React.FC<EditOrderPageProps> = ({ order, onSaveSuccess, onC
 
     const handleDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         if (!e.target.value) return;
-        const d = new Date(e.target.value);
-        if (!isNaN(d.getTime())) {
-             setFormData(prev => ({ ...prev, Timestamp: d.toISOString() }));
-        }
+        
+        // e.target.value is "YYYY-MM-DDTHH:mm" (Local Time from Input)
+        // We simply append ":00" to make it compatible with our backend expectation
+        // DO NOT use toISOString() as it converts to UTC (Z) which shifts the time.
+        const localIsoString = `${e.target.value}:00`;
+        
+        setFormData(prev => ({ ...prev, Timestamp: localIsoString }));
     };
 
     const handleAddProduct = () => {
@@ -333,6 +358,14 @@ const EditOrderPage: React.FC<EditOrderPageProps> = ({ order, onSaveSuccess, onC
             
             const result = await response.json();
             if (!response.ok || result.status !== 'success') throw new Error(result.message || 'Update failed');
+            
+            // *** NEW: Explicit Activity Log for Updates to avoid 'System' user in generic activity logs ***
+            await logUserActivity(
+                loggingUser,
+                'UPDATE_ORDER',
+                `Updated Order #${formData['Order ID']}`
+            );
+
             await refreshData();
             onSaveSuccess();
         } catch (err: any) { setError(`រក្សាទុកមិនបានសម្រេច: ${err.message}`); } finally { setLoading(false); }
@@ -371,7 +404,8 @@ const EditOrderPage: React.FC<EditOrderPageProps> = ({ order, onSaveSuccess, onC
                                 type="datetime-local"
                                 value={formatForInput(formData.Timestamp)}
                                 onChange={handleDateChange}
-                                className="bg-transparent border-none text-[10px] font-bold text-blue-400 p-0 focus:ring-0 h-4"
+                                disabled={!currentUser?.IsSystemAdmin}
+                                className={`bg-transparent border-none text-[10px] font-bold text-blue-400 p-0 focus:ring-0 h-4 ${!currentUser?.IsSystemAdmin ? 'opacity-50 cursor-not-allowed' : ''}`}
                                 style={{ colorScheme: 'dark' }}
                             />
                         </div>

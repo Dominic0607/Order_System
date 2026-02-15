@@ -37,7 +37,48 @@ const OrdersListTablet: React.FC<OrdersListTabletProps> = ({
     toggleOrderVerified,
     updatingIds
 }) => {
-    const { appData, previewImage } = useContext(AppContext);
+    const { appData, previewImage, currentUser } = useContext(AppContext);
+
+    // Helper for robust date parsing
+    const getSafeDateObj = (dateStr: string) => {
+        if (!dateStr) return new Date();
+        
+        // Handle "YYYY-MM-DD H:mm" format (Legacy/Manual)
+        const manualMatch = dateStr.match(/^(\d{4})-(\d{1,2})-(\d{1,2})\s(\d{1,2}):(\d{2})/);
+        if (manualMatch) {
+            return new Date(
+                parseInt(manualMatch[1]),
+                parseInt(manualMatch[2]) - 1, // Month is 0-indexed
+                parseInt(manualMatch[3]),
+                parseInt(manualMatch[4]),
+                parseInt(manualMatch[5])
+            );
+        }
+
+        // Handle ISO-like format with Z (e.g., "2026-01-04T06:31:21Z")
+        if (dateStr.endsWith('Z')) {
+            const cleanDate = dateStr.slice(0, -1); // Remove Z
+            return new Date(cleanDate);
+        }
+
+        const d = new Date(dateStr);
+        return isNaN(d.getTime()) ? new Date() : d;
+    };
+
+    // Helper to check edit permission
+    const canEditOrder = (order: ParsedOrder) => {
+        if (!currentUser) return false;
+        if (currentUser.IsSystemAdmin) return true;
+
+        // Check Team Ownership
+        const userTeams = (currentUser.Team || '').split(',').map(t => t.trim());
+        if (!userTeams.includes(order.Team)) return false;
+
+        // Check Time Window (12 Hours = 43200000 ms)
+        const orderTime = getSafeDateObj(order.Timestamp).getTime();
+        const timeDiff = Date.now() - orderTime;
+        return timeDiff < 43200000;
+    };
 
     const getCarrierLogo = (phoneNumber: string) => {
         if (!phoneNumber || !appData.phoneCarriers) return null;
@@ -57,6 +98,12 @@ const OrdersListTablet: React.FC<OrdersListTabletProps> = ({
         let phone = (val || '').replace(/[^0-9]/g, '');
         if (phone.length > 0) phone = '0' + phone.replace(/^0+/, '');
         return phone;
+    };
+
+    // Safe Date Parsing for iOS & custom DB Format (YYYY-MM-DD H:mm)
+    const getSafeDateString = (dateStr: string) => {
+        const date = getSafeDateObj(dateStr);
+        return date.toLocaleDateString('km-KH');
     };
 
     return (
@@ -79,6 +126,7 @@ const OrdersListTablet: React.FC<OrdersListTabletProps> = ({
                     const shippingLogo = getShippingLogo(order['Internal Shipping Method']);
                     const isThisCopied = copiedId === order['Order ID'];
                     const isThisTemplateCopied = copiedTemplateId === order['Order ID'];
+                    const allowEdit = canEditOrder(order);
 
                     return (
                         <div 
@@ -182,7 +230,13 @@ const OrdersListTablet: React.FC<OrdersListTabletProps> = ({
                                 </div>
 
                                 <div className="flex items-center gap-2">
-                                    {onEdit && <button onClick={() => onEdit(order)} className="flex-1 py-2.5 bg-blue-600/10 text-blue-400 hover:bg-blue-600 hover:text-white rounded-xl border border-blue-500/20 font-black text-[10px] uppercase tracking-widest transition-all">Edit</button>}
+                                    {onEdit && (
+                                        allowEdit ? (
+                                            <button onClick={() => onEdit(order)} className="flex-1 py-2.5 bg-blue-600/10 text-blue-400 hover:bg-blue-600 hover:text-white rounded-xl border border-blue-500/20 font-black text-[10px] uppercase tracking-widest transition-all">Edit</button>
+                                        ) : (
+                                            <button disabled className="flex-1 py-2.5 bg-gray-800 text-gray-600 rounded-xl border border-white/5 font-black text-[10px] uppercase tracking-widest cursor-not-allowed">Locked</button>
+                                        )
+                                    )}
                                     <button onClick={() => handlePrint(order)} className="w-10 h-10 flex items-center justify-center bg-gray-800 text-gray-400 hover:text-white rounded-xl border border-white/10 transition-all"><svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" /></svg></button>
                                     
                                     <div className="relative">

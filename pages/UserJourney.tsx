@@ -64,7 +64,7 @@ const UserOrdersView: React.FC<{ team: string; onAdd: () => void }> = ({ team, o
     const isSystemAdmin = !!currentUser?.IsSystemAdmin;
 
     const userVisibleColumns = useMemo(() => new Set([
-        'index', 'orderId', 'customerName', 'productInfo', 'location', 'pageInfo', 'total', 'shippingService', 'status', 'date', 'print', ...(isSystemAdmin ? ['actions'] : [])
+        'index', 'orderId', 'customerName', 'productInfo', 'location', 'pageInfo', 'total', 'shippingService', 'status', 'date', 'print', 'actions'
     ]), [isSystemAdmin]);
 
     const getDateBounds = (preset: DateRangePreset, cStart?: string, cEnd?: string) => {
@@ -381,9 +381,9 @@ const UserOrdersView: React.FC<{ team: string; onAdd: () => void }> = ({ team, o
                 ) : (
                     <OrdersList 
                         orders={filteredOrders} 
-                        showActions={isSystemAdmin} 
+                        showActions={true} 
                         visibleColumns={userVisibleColumns}
-                        onEdit={isSystemAdmin ? setEditingOrder : undefined}
+                        onEdit={setEditingOrder}
                     />
                 )}
             </div>
@@ -559,9 +559,9 @@ const UserOrdersView: React.FC<{ team: string; onAdd: () => void }> = ({ team, o
                     <div className="animate-fade-in-up">
                         <OrdersList 
                             orders={filteredOrders} 
-                            showActions={isSystemAdmin} 
+                            showActions={true} 
                             visibleColumns={userVisibleColumns} 
-                            onEdit={isSystemAdmin ? setEditingOrder : undefined}
+                            onEdit={setEditingOrder}
                         />
                     </div>
                 )}
