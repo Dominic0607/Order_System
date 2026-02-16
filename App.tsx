@@ -243,7 +243,7 @@ const App: React.FC = () => {
         }
     };
 
-    const shouldShowHeader = useMemo(() => appState !== 'admin_dashboard' || isMobile, [appState, isMobile]);
+    const shouldShowHeader = useMemo(() => appState !== 'admin_dashboard', [appState]);
 
     const containerClass = useMemo(() => 
         (appState === 'admin_dashboard' || appState === 'role_selection') ? 'w-full' : 'w-full px-2 sm:px-6', 

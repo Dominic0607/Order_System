@@ -36,7 +36,14 @@ const AdminDashboard: React.FC = () => {
     const [editProfileModalOpen, setEditProfileModalOpen] = useState(false);
     
     // Responsive State
-    const [screenSize, setScreenSize] = useState<'mobile' | 'tablet' | 'desktop'>('desktop');
+    const [screenSize, setScreenSize] = useState<'mobile' | 'tablet' | 'desktop'>(() => {
+        if (typeof window !== 'undefined') {
+             const width = window.innerWidth;
+             if (width < 768) return 'mobile';
+             if (width < 1280) return 'tablet';
+        }
+        return 'desktop';
+    });
     
     const [parsedOrders, setParsedOrders] = useState<ParsedOrder[]>([]);
     
