@@ -285,6 +285,7 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ isOpen, onClose }) => {
                         // *** Global Notification Trigger ***
                         if (backendMsg.Content && backendMsg.Content.includes('📢 SYSTEM_ALERT:')) {
                             const alertMsg = backendMsg.Content.replace('📢 SYSTEM_ALERT:', '').trim();
+                            console.log("🔔 SYSTEM ALERT RECEIVED via WS:", alertMsg);
                             
                             // 1. App Toast (In-App)
                             showNotification(alertMsg, 'success');
@@ -292,7 +293,7 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ isOpen, onClose }) => {
                             // 2. Play Sound
                             if (!isMutedRef.current) {
                                 const audio = new Audio(SOUND_URLS.NOTIFICATION);
-                                audio.play().catch(() => {});
+                                audio.play().catch(e => console.warn("Audio play failed", e));
                             }
 
                             // 3. System Native Notification (Phone/Desktop) using separate utility
@@ -340,12 +341,22 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ isOpen, onClose }) => {
         const container = chatBodyRef.current;
         if (container) {
             const { scrollTop, scrollHeight, clientHeight } = container;
+            // If we are near bottom, or history just finished loading (scrollTop is 0), or it's our message
             const isAtBottom = scrollHeight - scrollTop - clientHeight < 250;
             const lastMessage = messages[messages.length - 1];
             const isMe = lastMessage?.user === currentUser?.UserName;
-            if (isMe || lastMessage?.isOptimistic || isAtBottom) scrollToBottom('smooth');
+            
+            // Scroll to bottom if:
+            // 1. We just opened the chat (scrollTop is 0 and we have messages)
+            // 2. We sent the message
+            // 3. We are already at the bottom
+            if (isMe || lastMessage?.isOptimistic || isAtBottom || scrollTop === 0) {
+                // Use 'auto' for initial jump to bottom, 'smooth' for new messages
+                const behavior = (scrollTop === 0 && !isMe) ? 'auto' : 'smooth';
+                scrollToBottom(behavior);
+            }
         } else {
-            scrollToBottom('smooth');
+            scrollToBottom('auto');
         }
     }, [messages, isOpen, activeTab, isHistoryLoading]);
 
@@ -442,6 +453,11 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ isOpen, onClose }) => {
                         const newMuted = !isMuted;
                         setIsMuted(newMuted);
                         localStorage.setItem('chatMuted', String(newMuted));
+                        if (!newMuted) {
+                            requestNotificationPermission().then(granted => {
+                                if (granted) console.log("Notification permission granted via toggle");
+                            });
+                        }
                     }} className="p-2 hover:bg-white/10 rounded-full transition-colors text-gray-400 hover:text-white">
                         {isMuted ? '🔇' : '🔔'}
                     </button>

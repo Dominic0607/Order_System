@@ -36,11 +36,17 @@ export const requestNotificationPermission = async (): Promise<boolean> => {
 export const sendSystemNotification = async (title: string, body: string) => {
     if (!('Notification' in window)) return;
 
+    if (Notification.permission === 'default') {
+        await requestNotificationPermission();
+    }
+
     if (Notification.permission !== 'granted') {
+        console.warn("Notification permission not granted. Cannot send notification.");
         return;
     }
 
     // Use a static, safe icon URL because Google Drive redirects can be blocked by Chrome notifications
+    // Fallback to a reliable CDN icon if APP_LOGO_URL conversion fails or is slow
     const safeIcon = "https://cdn-icons-png.flaticon.com/512/1827/1827404.png"; 
 
     const uniqueTag = 'osystem-alert-' + Date.now();
