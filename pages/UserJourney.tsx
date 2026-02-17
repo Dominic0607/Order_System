@@ -58,6 +58,7 @@ const UserOrdersView: React.FC<{ team: string; onAdd: () => void }> = ({ team, o
 
     // REF to hold ALL raw data.
     const allRawOrdersRef = useRef<FullOrder[]>([]);
+    const allParsedOrdersRef = useRef<ParsedOrder[]>([]); // New Ref to hold PRE-PARSED orders
     const isDataFetchedRef = useRef(false);
 
     // Permission Check
@@ -148,6 +149,19 @@ const UserOrdersView: React.FC<{ team: string; onAdd: () => void }> = ({ team, o
                 if (result.status === 'success') {
                     const rawData = Array.isArray(result.data) ? result.data.filter((o: any) => o !== null) : [];
                     allRawOrdersRef.current = rawData;
+                    
+                    // Pre-parse all orders ONCE to avoid lag on filter changes
+                    allParsedOrdersRef.current = rawData.map((o: any) => {
+                        let products = [];
+                        try { if (o['Products (JSON)']) products = JSON.parse(o['Products (JSON)']); } catch(e) {}
+                        return { 
+                            ...o, 
+                            Products: products, 
+                            IsVerified: String(o.IsVerified).toUpperCase() === 'TRUE',
+                            FulfillmentStatus: o.FulfillmentStatus as any 
+                        };
+                    });
+
                     isDataFetchedRef.current = true;
                     processDataForRange('today'); 
                 }
@@ -165,11 +179,12 @@ const UserOrdersView: React.FC<{ team: string; onAdd: () => void }> = ({ team, o
         if (!isDataFetchedRef.current) return;
         
         setProcessing(true);
+        // Use requestAnimationFrame or small timeout to allow UI to update
         setTimeout(() => {
             const { start, end } = getDateBounds(range, customStart, customEnd);
             
-            // Filter Raw Data first
-            const rawFiltered = allRawOrdersRef.current.filter(o => {
+            // Filter PRE-PARSED Data
+            const parsedChunk = allParsedOrdersRef.current.filter(o => {
                 // Filter out Opening Balance
                 if (o['Order ID'] === 'Opening_Balance' || o['Order ID'] === 'Opening Balance') return false;
 
@@ -182,22 +197,13 @@ const UserOrdersView: React.FC<{ team: string; onAdd: () => void }> = ({ team, o
                 return true;
             });
 
-            const parsedChunk = rawFiltered.map(o => {
-                let products = [];
-                try { if (o['Products (JSON)']) products = JSON.parse(o['Products (JSON)']); } catch(e) {}
-                return { 
-                    ...o, 
-                    Products: products, 
-                    IsVerified: String(o.IsVerified).toUpperCase() === 'TRUE',
-                    FulfillmentStatus: o.FulfillmentStatus as any 
-                };
-            });
-
             // globalOrders contains orders from ALL teams within the selected date range
             setGlobalOrders(parsedChunk);
             
             // orders contains orders ONLY for the current user's team
             const teamOnly = parsedChunk.filter(o => (o.Team || '').trim() === (team || '').trim());
+            
+            // Sorting is still needed but it's on a smaller subset
             setOrders(teamOnly.sort((a, b) => {
                 const dA = getSafeDate(a.Timestamp);
                 const dB = getSafeDate(b.Timestamp);
