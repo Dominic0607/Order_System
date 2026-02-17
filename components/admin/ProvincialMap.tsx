@@ -249,10 +249,8 @@ const ProvincialMap: React.FC<ProvincialMapProps> = ({ data }) => {
                         const { displayName, realRevenue, orders, shippingCost } = feature.properties;
                         
                         let mainValue = `$${Number(realRevenue).toLocaleString()}`;
-                        let mainLabel = "REVENUE";
-                        if (activeMetric === 'orders') { mainValue = `${orders}`; mainLabel = "ORDERS"; }
-                        else if (activeMetric === 'shipping') { mainValue = `$${Number(shippingCost).toLocaleString()}`; mainLabel = "SHIPPING"; }
-
+                        let ordersValue = `${orders}`;
+                        
                         popupRef.current
                             .setLngLat(e.lngLat)
                             .setHTML(`
@@ -260,9 +258,15 @@ const ProvincialMap: React.FC<ProvincialMapProps> = ({ data }) => {
                                     <div class="flex items-center justify-between border-b border-slate-800 pb-2 mb-2">
                                         <h4 class="text-white font-bold text-xs uppercase">${displayName}</h4>
                                     </div>
-                                    <div class="flex justify-between items-baseline">
-                                        <span class="text-[10px] text-gray-400 uppercase">${mainLabel}</span>
-                                        <span class="text-lg font-bold text-cyan-400">${mainValue}</span>
+                                    <div class="flex flex-col gap-2">
+                                        <div class="flex justify-between items-center">
+                                            <span class="text-[10px] text-gray-400 uppercase">ORDERS</span>
+                                            <span class="text-sm font-bold text-violet-400">${ordersValue}</span>
+                                        </div>
+                                        <div class="flex justify-between items-center">
+                                            <span class="text-[10px] text-gray-400 uppercase">REVENUE</span>
+                                            <span class="text-sm font-bold text-cyan-400">${mainValue}</span>
+                                        </div>
                                     </div>
                                 </div>
                             `)

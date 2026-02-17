@@ -153,6 +153,21 @@ ${dateStr}
         window.open(`${LABEL_PRINTER_URL_BASE}?${queryParams.toString()}`, '_blank');
     };
 
+    const [viewType, setViewType] = useState<'mobile' | 'tablet' | 'desktop'>('desktop');
+
+    useEffect(() => {
+        const handleResize = () => {
+            const width = window.innerWidth;
+            if (width < 768) setViewType('mobile');
+            else if (width < 1280) setViewType('tablet');
+            else setViewType('desktop');
+        };
+        
+        handleResize(); // Initial check
+        window.addEventListener('resize', handleResize);
+        return () => window.removeEventListener('resize', handleResize);
+    }, []);
+
     const sharedProps = {
         orders: localOrders,
         totals,
@@ -172,27 +187,24 @@ ${dateStr}
     return (
         <div className="w-full flex flex-col">
             <div className="flex-grow space-y-4">
-                {/* Desktop View (Large Screens >= 1280px) */}
-                <div className="hidden xl:block">
+                {viewType === 'desktop' && (
                     <OrdersListDesktop 
                         {...sharedProps}
                         onToggleSelectAll={onToggleSelectAll}
                     />
-                </div>
+                )}
 
-                {/* Tablet View (Medium Screens >= 768px and < 1280px) */}
-                <div className="hidden md:block xl:hidden">
+                {viewType === 'tablet' && (
                     <OrdersListTablet 
                         {...sharedProps}
                     />
-                </div>
+                )}
 
-                {/* Mobile View (Small Screens < 768px) */}
-                <div className="md:hidden">
+                {viewType === 'mobile' && (
                     <OrdersListMobile 
                         {...sharedProps}
                     />
-                </div>
+                )}
             </div>
 
             {/* Aesthetic Spacer */}

@@ -67,7 +67,7 @@ const Header: React.FC<HeaderProps> = ({ onBackToRoleSelect, appState }) => {
 
     const handleTestNotification = async () => {
         await requestNotificationPermission();
-        sendSystemNotification("Test Notification 🔔", "សួស្តី! ប្រព័ន្ធ Notification របស់អ្នកដំណើរការហើយ។");
+        await sendSystemNotification(t.test_notification, t.test_notification_body);
         setDropdownOpen(false);
     };
 

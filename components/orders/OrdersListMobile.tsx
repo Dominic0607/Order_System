@@ -284,7 +284,7 @@ const OrdersListMobile: React.FC<OrdersListMobileProps> = ({
                                     ? 'bg-blue-900/20 border-2 border-blue-500/50 shadow-blue-900/30' 
                                     : isVerified 
                                         ? 'bg-emerald-900/10 border border-emerald-500/20 shadow-emerald-900/10' 
-                                        : 'bg-[#1e293b]/70 border border-white/5 shadow-black/40 backdrop-blur-xl'
+                                        : 'bg-[#1e293b]/90 border border-white/5 shadow-black/40'
                                 }
                             `}
                         >

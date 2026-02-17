@@ -148,7 +148,9 @@ export const translations = {
     impersonating: "កំពុងមើលក្នុងនាម",
     return_to_admin: "ត្រឡប់ទៅគណនី Admin",
     chat_system: "ប្រព័ន្ធជជែកកំសាន្ត",
-    write_message: "វាយសារ..."
+    write_message: "វាយសារ...",
+    test_notification: "តេស្តការជូនដំណឹង (Test Notification)",
+    test_notification_body: "សួស្តី! ប្រព័ន្ធ Notification របស់អ្នកដំណើរការហើយ។"
   },
   en: {
     // Auth & General
@@ -298,6 +300,8 @@ export const translations = {
     impersonating: "Viewing as",
     return_to_admin: "Return to Admin",
     chat_system: "Chat System",
-    write_message: "Write message..."
+    write_message: "Write message...",
+    test_notification: "Test Notification",
+    test_notification_body: "Hello! Your notification system is working."
   }
 };
