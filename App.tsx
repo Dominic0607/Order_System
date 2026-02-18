@@ -84,11 +84,15 @@ const App: React.FC = () => {
     const fetchData = useCallback(async (force = false) => {
         // 1. Optimistic Cache Load (Stale-While-Revalidate)
         if (!force) {
-            const cachedData = CacheService.get<AppData>(CACHE_KEYS.APP_DATA);
-            if (cachedData) {
-                console.log("Loaded app data from cache");
-                setAppData(cachedData);
-                setIsGlobalLoading(false); // Unblock UI immediately if cache exists
+            try {
+                const cachedData = await CacheService.get<AppData>(CACHE_KEYS.APP_DATA);
+                if (cachedData) {
+                    console.log("Loaded app data from cache");
+                    setAppData(cachedData);
+                    setIsGlobalLoading(false); // Unblock UI immediately if cache exists
+                }
+            } catch (err) {
+                console.warn("Cache retrieval error:", err);
             }
         }
 
@@ -135,30 +139,39 @@ const App: React.FC = () => {
 
     useEffect(() => {
         // Use CacheService for Session Management
-        const session = CacheService.get<{ user: User, timestamp: number }>(CACHE_KEYS.SESSION);
-        
-        if (session && session.user) {
-            setCurrentUser(session.user);
-            fetchData();
-            if (appState === 'login') determineAppState(session.user);
-        } else {
-            // Session expired or doesn't exist
-            setIsGlobalLoading(false);
-        }
+        const initSession = async () => {
+            try {
+                const session = await CacheService.get<{ user: User, timestamp: number }>(CACHE_KEYS.SESSION);
+                
+                if (session && session.user) {
+                    setCurrentUser(session.user);
+                    fetchData(); // This is async but we don't await it here to avoid blocking
+                    if (appState === 'login') determineAppState(session.user);
+                } else {
+                    // Session expired or doesn't exist
+                    setIsGlobalLoading(false);
+                }
+            } catch (e) {
+                console.warn("Session init error:", e);
+                setIsGlobalLoading(false);
+            }
+        };
+
+        initSession();
     }, [fetchData]);
 
-    const login = (user: User) => {
+    const login = async (user: User) => {
         setCurrentUser(user);
         // Save session using CacheService (48h default)
-        CacheService.set(CACHE_KEYS.SESSION, { user, timestamp: Date.now() });
+        await CacheService.set(CACHE_KEYS.SESSION, { user, timestamp: Date.now() });
         fetchData(true); // Force fetch on login
         determineAppState(user);
     };
 
-    const logout = () => {
+    const logout = async () => {
         setCurrentUser(null);
         setAppState('login');
-        CacheService.remove(CACHE_KEYS.SESSION);
+        await CacheService.remove(CACHE_KEYS.SESSION);
         // Note: We keep APP_DATA cache to make next login faster
     };
 
@@ -234,12 +247,12 @@ const App: React.FC = () => {
         }
     }, [appData.settings, currentUser]);
 
-    const updateCurrentUser = (updatedData: Partial<User>) => {
+    const updateCurrentUser = async (updatedData: Partial<User>) => {
         if (currentUser) {
             const newUser = { ...currentUser, ...updatedData };
             setCurrentUser(newUser);
             // Update session in cache
-            CacheService.set(CACHE_KEYS.SESSION, { user: newUser, timestamp: Date.now() });
+            await CacheService.set(CACHE_KEYS.SESSION, { user: newUser, timestamp: Date.now() });
         }
     };
 
