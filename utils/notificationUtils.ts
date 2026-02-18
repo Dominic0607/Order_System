@@ -66,18 +66,20 @@ export const sendSystemNotification = async (title: string, body: string) => {
         silent: false
     };
 
+    let sent = false;
+
     // 1. Preferred Method: Service Worker Registration (Required for Android/Mobile Chrome)
     if ('serviceWorker' in navigator) {
         try {
-            // Wait for the service worker to be ready
-            const registration = await navigator.serviceWorker.ready;
+            // Use getRegistration() to avoid hanging indefinitely if no SW is active (unlike .ready)
+            const registration = await navigator.serviceWorker.getRegistration();
             
             if (registration && registration.active) {
                 await registration.showNotification(title, options);
                 console.log("Notification sent via Service Worker");
-                return;
+                sent = true;
             } else {
-                console.warn("Service Worker ready but not active/found.");
+                console.warn("Service Worker not active or not found. Falling back...");
             }
         } catch (e) {
             console.warn("Service Worker notification failed, falling back to legacy API...", e);
@@ -85,14 +87,16 @@ export const sendSystemNotification = async (title: string, body: string) => {
     }
 
     // 2. Fallback Method: Classic Web API (Works for Safari/Desktop Firefox if SW fails)
-    try {
-        const notification = new Notification(title, options);
-        notification.onclick = function() {
-            window.focus();
-            notification.close();
-        };
-        console.log("Notification sent via Legacy Web API");
-    } catch (e) {
-        console.error("All notification methods failed:", e);
+    if (!sent) {
+        try {
+            const notification = new Notification(title, options);
+            notification.onclick = function() {
+                window.focus();
+                notification.close();
+            };
+            console.log("Notification sent via Legacy Web API");
+        } catch (e) {
+            console.error("All notification methods failed:", e);
+        }
     }
 };
