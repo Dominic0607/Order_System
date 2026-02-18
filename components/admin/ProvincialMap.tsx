@@ -15,9 +15,10 @@ interface ProvinceStat {
 
 interface ProvincialMapProps {
     data: ProvinceStat[];
+    onProvinceClick?: (provinceName: string) => void;
 }
 
-const ProvincialMap: React.FC<ProvincialMapProps> = ({ data }) => {
+const ProvincialMap: React.FC<ProvincialMapProps> = ({ data, onProvinceClick }) => {
     const mapContainerRef = useRef<HTMLDivElement>(null);
     const popupRef = useRef<any>(null);
     const markersRef = useRef<any[]>([]); 
@@ -267,10 +268,23 @@ const ProvincialMap: React.FC<ProvincialMapProps> = ({ data }) => {
                                             <span class="text-[10px] text-gray-400 uppercase">REVENUE</span>
                                             <span class="text-sm font-bold text-cyan-400">${mainValue}</span>
                                         </div>
+                                        <div class="pt-1 mt-1 border-t border-slate-800 text-[10px] text-center text-cyan-500 font-bold uppercase cursor-pointer">
+                                            Click to view details
+                                        </div>
                                     </div>
                                 </div>
                             `)
                             .addTo(map);
+                    }
+                });
+
+                map.on('click', 'province-3d', (e: any) => {
+                    if (e.features.length > 0) {
+                        const feature = e.features[0];
+                        const { displayName } = feature.properties;
+                        if (onProvinceClick) {
+                            onProvinceClick(displayName);
+                        }
                     }
                 });
                 
@@ -363,7 +377,7 @@ const ProvincialMap: React.FC<ProvincialMapProps> = ({ data }) => {
             console.error("Layer Update Error:", e);
         }
         return () => { if (animationRef.current) cancelAnimationFrame(animationRef.current); };
-    }, [isMapReady, rawGeoJson, statsMap, topRanks, activeMetric]); 
+    }, [isMapReady, rawGeoJson, statsMap, topRanks, activeMetric, onProvinceClick]); 
 
     if (geoError || mapError) {
         return (

@@ -283,8 +283,14 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ isOpen, onClose }) => {
                         const backendMsg = data.payload;
                         
                         // *** Global Notification Trigger ***
-                        if (backendMsg.Content && backendMsg.Content.includes('📢 SYSTEM_ALERT:')) {
-                            const alertMsg = backendMsg.Content.replace('📢 SYSTEM_ALERT:', '').trim();
+                        const isNewOrder = backendMsg.Content && backendMsg.Content.includes('📢 NEW ORDER:');
+                        const isSystemAlert = backendMsg.Content && backendMsg.Content.includes('📢 SYSTEM_ALERT:');
+
+                        if (isNewOrder || isSystemAlert) {
+                            let alertMsg = backendMsg.Content;
+                            if (isNewOrder) alertMsg = backendMsg.Content.replace('📢 NEW ORDER:', '').trim();
+                            else if (isSystemAlert) alertMsg = backendMsg.Content.replace('📢 SYSTEM_ALERT:', '').trim();
+                            
                             console.log("🔔 SYSTEM ALERT RECEIVED via WS:", alertMsg);
                             
                             // 1. App Toast (In-App)
@@ -494,14 +500,14 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ isOpen, onClose }) => {
                                 const isMe = msg.user === currentUser?.UserName;
                                 const user = allUsers.find(u => u.UserName === msg.user);
                                 const showAvatar = index === 0 || messages[index - 1].user !== msg.user;
-                                const isSystemAlert = msg.content.includes('SYSTEM_ALERT');
+                                const isSystemAlert = msg.content.includes('SYSTEM_ALERT') || msg.content.includes('NEW ORDER');
                                 
                                 return (
                                     <div key={msg.id + index} className={`flex flex-col ${isMe ? 'items-end' : 'items-start'} animate-fade-in-up`}>
                                         {isSystemAlert ? (
                                             <div className="w-full flex justify-center my-2">
                                                 <div className="bg-blue-900/40 border border-blue-500/30 rounded-xl px-4 py-2 text-[10px] font-bold text-blue-300 text-center shadow-lg">
-                                                    {msg.content.replace('📢 SYSTEM_ALERT:', '').trim()}
+                                                    {msg.content.replace('📢 SYSTEM_ALERT:', '').replace('📢 NEW ORDER:', '').trim()}
                                                 </div>
                                             </div>
                                         ) : (

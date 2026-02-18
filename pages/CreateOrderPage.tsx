@@ -447,7 +447,9 @@ const CreateOrderPage: React.FC<CreateOrderPageProps> = ({ team, onSaveSuccess, 
 
             // *** NEW: Send Global Notification via Chat System ***
             try {
-                const notificationMessage = `📢 SYSTEM_ALERT: New Order from ${team} ($${payload.grandTotal})`;
+                const productNames = order.products.map((p: any) => p.name).join(', ');
+                const notificationMessage = `📢 NEW ORDER: ${team} | ${order.page} | 👤 ${currentUser?.FullName} | 💰 $${payload.grandTotal} | 📍 ${order.customer.province} | 📦 ${productNames}`;
+                
                 await fetch(`${WEB_APP_URL}/api/chat/send`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },

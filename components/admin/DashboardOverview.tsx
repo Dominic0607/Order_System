@@ -112,7 +112,7 @@ const DashboardOverview: React.FC<DashboardOverviewProps> = ({
                 </div>
                 
                 <div className="xl:col-span-8">
-                    <ProvincialMap data={provinceStats} />
+                    <ProvincialMap data={provinceStats} onProvinceClick={onProvinceClick} />
                 </div>
                 <div className="xl:col-span-4">
                     <ProvincialSummaryList stats={provinceStats} onProvinceClick={onProvinceClick} />
