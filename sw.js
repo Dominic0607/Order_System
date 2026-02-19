@@ -52,19 +52,36 @@ self.addEventListener('fetch', (event) => {
 // Handle Notification Clicks
 self.addEventListener('notificationclick', function(event) {
   event.notification.close();
+  const urlToOpen = event.notification.data?.url || '/';
+
   // Focus the window if open, otherwise open new
   event.waitUntil(
     clients.matchAll({ type: 'window', includeUncontrolled: true }).then(function(clientList) {
-      if (clientList.length > 0) {
-        let client = clientList[0];
-        // Focus existing window
-        if (client.focus) {
-            return client.focus();
+      // Check if there's already a tab open with this URL
+      for (const client of clientList) {
+        if (client.url === urlToOpen && 'focus' in client) {
+          return client.focus();
         }
       }
       if (clients.openWindow) {
-        return clients.openWindow('/');
+        return clients.openWindow(urlToOpen);
       }
     })
   );
+});
+
+// Placeholder for Push Event (Requires Backend + VAPID)
+self.addEventListener('push', function(event) {
+  if (event.data) {
+    const data = event.data.json();
+    const options = {
+      body: data.body,
+      icon: data.icon || '/icon.png',
+      badge: data.badge || '/badge.png',
+      data: { url: data.url || '/' }
+    };
+    event.waitUntil(
+      self.registration.showNotification(data.title, options)
+    );
+  }
 });
