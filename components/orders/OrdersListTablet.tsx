@@ -120,7 +120,7 @@ const OrdersListTablet: React.FC<OrdersListTabletProps> = ({
                     const logoUrl = pageInfo ? convertGoogleDriveUrl(pageInfo.PageLogoURL) : '';
                     const displayPhone = formatPhone(order['Customer Phone']);
                     const carrierLogo = getCarrierLogo(displayPhone);
-                    const isVerified = order.IsVerified === true || String(order.IsVerified).toUpperCase() === 'TRUE';
+                    const isVerified = order.IsVerified === true || String(order.IsVerified).toUpperCase() === 'TRUE' || order.IsVerified === 'A';
                     const isUpdating = updatingIds.has(order['Order ID']);
                     const isSelected = selectedIds.has(order['Order ID']);
                     const shippingLogo = getShippingLogo(order['Internal Shipping Method']);

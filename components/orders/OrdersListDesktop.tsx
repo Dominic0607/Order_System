@@ -178,8 +178,8 @@ const OrdersListDesktop: React.FC<OrdersListDesktopProps> = ({
                                 const shippingLogo = getShippingLogo(order['Internal Shipping Method']);
                                 const orderId = order['Order ID'];
                                 
-                                // *** STRICT CHECK FOR 'A' ***
-                                const isVerified = order.IsVerified === 'A';
+                                // *** STRICT CHECK FOR 'A' or TRUE ***
+                                const isVerified = order.IsVerified === true || String(order.IsVerified).toUpperCase() === 'TRUE' || order.IsVerified === 'A';
                                 
                                 const isUpdating = updatingIds.has(orderId);
                                 const isSelected = selectedIds.has(orderId);

@@ -194,7 +194,7 @@ const OrdersListMobile: React.FC<OrdersListMobileProps> = ({
                             <tbody className="divide-y divide-white/5 text-xs">
                                 {visibleOrders.map((order) => {
                                     const isSelected = selectedIds.has(order['Order ID']);
-                                    const isVerified = order.IsVerified === true || String(order.IsVerified).toUpperCase() === 'TRUE';
+                                    const isVerified = order.IsVerified === true || String(order.IsVerified).toUpperCase() === 'TRUE' || order.IsVerified === 'A';
                                     const isThisTemplateCopied = copiedTemplateId === order['Order ID'];
                                     const allowEdit = canEditOrder(order);
                                     
@@ -267,7 +267,7 @@ const OrdersListMobile: React.FC<OrdersListMobileProps> = ({
                     const logoUrl = pageInfo ? convertGoogleDriveUrl(pageInfo.PageLogoURL) : '';
                     const displayPhone = formatPhone(order['Customer Phone']);
                     const carrierLogo = getCarrierLogo(displayPhone);
-                    const isVerified = order.IsVerified === true || String(order.IsVerified).toUpperCase() === 'TRUE';
+                    const isVerified = order.IsVerified === true || String(order.IsVerified).toUpperCase() === 'TRUE' || order.IsVerified === 'A';
                     const isUpdating = updatingIds.has(order['Order ID']);
                     const isSelected = selectedIds.has(order['Order ID']);
                     const shippingLogo = getShippingLogo(order['Internal Shipping Method']);
