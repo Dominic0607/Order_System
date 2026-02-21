@@ -27,10 +27,40 @@ const ProvincialMap: React.FC<ProvincialMapProps> = ({ data, onProvinceClick }) 
     const animationRef = useRef<number | null>(null);
 
     const [activeMetric, setActiveMetric] = useState<'revenue' | 'orders' | 'shipping'>('revenue');
+    const [language, setLanguage] = useState<'en' | 'km'>('km'); // Default to Khmer
     const isUserInteracting = useRef(false);
 
     const { geoJson: rawGeoJson, loading: geoLoading, error: geoError } = useCambodiaGeoJSON();
     const { map, isMapReady, mapError } = useMapEngine(mapContainerRef);
+
+    // Khmer Name Mapping
+    const PROVINCE_NAME_MAP: Record<string, string> = {
+        'phnompenh': 'រាជធានីភ្នំពេញ',
+        'kandal': 'ខេត្ដកណ្តាល',
+        'kampongcham': 'ខេត្ដកំពង់ចាម',
+        'kampongchhnang': 'ខេត្ដកំពង់ឆ្នាំង',
+        'kampongthom': 'ខេត្ដកំពង់ធំ',
+        'kampongspeu': 'ខេត្ដកំពង់ស្ពឺ',
+        'kampot': 'ខេត្ដកំពត',
+        'kep': 'ខេត្ដកែប',
+        'kohkong': 'ខេត្ដកោះកុង',
+        'kratie': 'ខេត្ដក្រចេះ',
+        'takeo': 'ខេត្ដតាកែវ',
+        'tbongkhmum': 'ខេត្ដត្បូងឃ្មុំ',
+        'banteymeanchey': 'ខេត្ដបន្ទាយមានជ័យ',
+        'battambang': 'ខេត្ដបាត់ដំបង',
+        'pailin': 'ខេត្ដប៉ៃលិន',
+        'pursat': 'ខេត្ដពោធិ៍សាត់',
+        'preyveng': 'ខេត្ដព្រៃវែង',
+        'preahvihear': 'ខេត្ដព្រះវិហារ',
+        'preahsihanouk': 'ខេត្ដព្រះសីហនុ',
+        'mondulkiri': 'ខេត្ដមណ្ឌលគិរី',
+        'ratanakiri': 'ខេត្ដរតនគិរី',
+        'siemreap': 'ខេត្ដសៀមរាប',
+        'stungtreng': 'ខេត្ដស្ទឹងត្រែង',
+        'svayrieng': 'ខេត្ដស្វាយរៀង',
+        'oddarmeanchey': 'ខេត្ដឧត្តរមានជ័យ'
+    };
 
     const statsMap = useMemo(() => {
         const stats: Record<string, ProvinceStat> = {};
@@ -142,22 +172,37 @@ const ProvincialMap: React.FC<ProvincialMapProps> = ({ data, onProvinceClick }) 
                 let revenue = 0;
                 let orders = 0;
                 let shippingCost = 0;
-                let displayName = props.name_en || props.shapeName || "Province";
                 let rank = 999;
+                let key = '';
 
+                // First Pass: Identify the province key from available names
                 for (const n of namesToTry) {
                     if (!n) continue;
-                    const key = normalizeName(String(n));
-                    if (statsMap[key]) {
+                    const normalized = normalizeName(String(n));
+                    if (statsMap[normalized]) {
+                        key = normalized;
                         revenue = statsMap[key].revenue;
                         orders = statsMap[key].orders;
                         shippingCost = statsMap[key].shippingCost || 0;
                         if (topRanks[key]) rank = topRanks[key];
-                        displayName = n; 
                         break;
+                    } else if (PROVINCE_NAME_MAP[normalized]) {
+                         // Even if no stats, we might recognize the name
+                         key = normalized;
                     }
                 }
                 
+                // Fallback key if not found in stats
+                if (!key && props.shapeName) key = normalizeName(props.shapeName);
+
+                // Determine Display Name based on Language
+                let displayName = props.name_en || props.shapeName || "Province";
+                if (language === 'km' && key && PROVINCE_NAME_MAP[key]) {
+                    displayName = PROVINCE_NAME_MAP[key];
+                } else if (language === 'en' && props.shapeName) {
+                    displayName = props.shapeName;
+                }
+
                 let visualValue = revenue;
                 if (activeMetric === 'orders') visualValue = orders * 80; 
                 if (activeMetric === 'shipping') visualValue = shippingCost * 25;
@@ -377,7 +422,7 @@ const ProvincialMap: React.FC<ProvincialMapProps> = ({ data, onProvinceClick }) 
             console.error("Layer Update Error:", e);
         }
         return () => { if (animationRef.current) cancelAnimationFrame(animationRef.current); };
-    }, [isMapReady, rawGeoJson, statsMap, topRanks, activeMetric, onProvinceClick]); 
+    }, [isMapReady, rawGeoJson, statsMap, topRanks, activeMetric, language, onProvinceClick]); 
 
     if (geoError || mapError) {
         return (
@@ -417,6 +462,16 @@ const ProvincialMap: React.FC<ProvincialMapProps> = ({ data, onProvinceClick }) 
                         {item.label}
                      </button>
                  ))}
+
+                 {/* Language Toggle */}
+                 <div className="mt-2 pt-2 border-t border-slate-700 flex flex-col gap-1">
+                    <button 
+                        onClick={() => setLanguage(l => l === 'km' ? 'en' : 'km')}
+                        className="px-3 py-1.5 rounded text-[10px] font-bold uppercase tracking-widest transition-all w-24 text-center bg-slate-800 text-slate-400 hover:bg-slate-700 hover:text-white border border-slate-700 hover:border-slate-600"
+                    >
+                        {language === 'km' ? '🇰🇭 KHM' : '🇺🇸 ENG'}
+                    </button>
+                 </div>
             </div>
 
             <div ref={mapContainerRef} className="w-full h-full relative z-1" />

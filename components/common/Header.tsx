@@ -2,6 +2,7 @@
 import React, { useState, useContext, useRef, useEffect } from 'react';
 import { AppContext } from '../../context/AppContext';
 import EditProfileModal from './EditProfileModal';
+import AdvancedSettingsModal from './AdvancedSettingsModal';
 import { convertGoogleDriveUrl } from '../../utils/fileUtils';
 import UserAvatar from './UserAvatar';
 import { APP_LOGO_URL } from '../../constants';
@@ -20,12 +21,14 @@ const Header: React.FC<HeaderProps> = ({ onBackToRoleSelect, appState }) => {
         setIsChatOpen, unreadCount,
         isMobileMenuOpen, setIsMobileMenuOpen,
         language, setLanguage,
-        mobilePageTitle // Consuming the new state
+        mobilePageTitle, // Consuming the new state
+        advancedSettings
     } = useContext(AppContext);
     
     const [dropdownOpen, setDropdownOpen] = useState(false);
     const [isRefreshing, setIsRefreshing] = useState(false);
     const [editProfileModalOpen, setEditProfileModalOpen] = useState(false);
+    const [advancedSettingsOpen, setAdvancedSettingsOpen] = useState(false);
     
     // FIX: Safely initialize notification permission to prevent crash on browsers without Notification support
     const [notificationPermission, setNotificationPermission] = useState(() => {
@@ -130,7 +133,11 @@ const Header: React.FC<HeaderProps> = ({ onBackToRoleSelect, appState }) => {
 
                     <div className="flex items-center space-x-2 sm:space-x-3">
                         <div className="hidden md:block text-right mr-1">
-                            <p className="font-black text-white text-sm truncate leading-none mb-1">{currentUser.FullName}</p>
+                            <p className="font-black text-white text-sm truncate leading-none mb-1">
+                                {advancedSettings?.enablePrivacyMode 
+                                    ? 'User ****' 
+                                    : currentUser.FullName}
+                            </p>
                             <p className="text-[9px] font-black text-blue-400 uppercase tracking-widest opacity-70">{currentUser.Role}</p>
                         </div>
                         
@@ -163,7 +170,11 @@ const Header: React.FC<HeaderProps> = ({ onBackToRoleSelect, appState }) => {
                             {dropdownOpen && (
                                 <div className="absolute right-0 mt-4 w-64 bg-[#1a2235] border border-white/10 rounded-[1.8rem] shadow-[0_30px_70px_rgba(0,0,0,0.7)] py-3 z-50 animate-fade-in-scale backdrop-blur-3xl overflow-hidden">
                                     <div className="px-5 py-3 border-b border-white/5 mb-2">
-                                        <p className="font-black text-white text-sm truncate">{currentUser.FullName}</p>
+                                        <p className="font-black text-white text-sm truncate">
+                                            {advancedSettings?.enablePrivacyMode 
+                                                ? 'User ****' 
+                                                : currentUser.FullName}
+                                        </p>
                                         <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">{currentUser.Role}</p>
                                     </div>
                                     
@@ -171,6 +182,12 @@ const Header: React.FC<HeaderProps> = ({ onBackToRoleSelect, appState }) => {
                                     <button onClick={() => { setEditProfileModalOpen(true); setDropdownOpen(false); }} className="w-full text-left px-5 py-3 text-sm font-bold text-gray-200 hover:bg-blue-600 transition-colors flex items-center gap-3">
                                         <svg className="w-4 h-4 opacity-60" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
                                         {t.edit_profile}
+                                    </button>
+
+                                    {/* Advanced Settings */}
+                                    <button onClick={() => { setAdvancedSettingsOpen(true); setDropdownOpen(false); }} className="w-full text-left px-5 py-3 text-sm font-bold text-gray-200 hover:bg-blue-600 transition-colors flex items-center gap-3">
+                                        <svg className="w-4 h-4 opacity-60" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                                        Advance Setting
                                     </button>
 
                                     {/* Test Notification */}
@@ -263,6 +280,7 @@ const Header: React.FC<HeaderProps> = ({ onBackToRoleSelect, appState }) => {
                 </div>
             </header>
             {editProfileModalOpen && <EditProfileModal onClose={() => setEditProfileModalOpen(false)} />}
+            {advancedSettingsOpen && <AdvancedSettingsModal onClose={() => setAdvancedSettingsOpen(false)} />}
         </>
     );
 };

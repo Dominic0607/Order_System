@@ -5,7 +5,7 @@ import { WEB_APP_URL } from './constants';
 import { useUrlState } from './hooks/useUrlState';
 import Spinner from './components/common/Spinner';
 import Modal from './components/common/Modal';
-import { AppContext, Language } from './context/AppContext';
+import { AppContext, Language, AdvancedSettings } from './context/AppContext';
 import BackgroundMusic from './components/common/BackgroundMusic';
 import { CacheService, CACHE_KEYS } from './services/cacheService';
 import Toast from './components/common/Toast';
@@ -41,6 +41,17 @@ const App: React.FC = () => {
     
     // Header Title State for Mobile
     const [mobilePageTitle, setMobilePageTitle] = useState<string | null>(null);
+
+    // Advanced Settings State
+    const [advancedSettings, setAdvancedSettings] = useState<AdvancedSettings>(() => {
+        const saved = localStorage.getItem('advancedSettings');
+        return saved ? JSON.parse(saved) : { enableFloatingAlerts: true };
+    });
+    
+    // Sync Advanced Settings to localStorage
+    useEffect(() => {
+        localStorage.setItem('advancedSettings', JSON.stringify(advancedSettings));
+    }, [advancedSettings]);
     
     // Initialize unreadCount from localStorage
     const [unreadCount, setUnreadCount] = useState(() => {
@@ -280,7 +291,8 @@ const App: React.FC = () => {
             isMobileMenuOpen, setIsMobileMenuOpen,
             language, setLanguage: handleLanguageChange,
             showNotification,
-            mobilePageTitle, setMobilePageTitle
+            mobilePageTitle, setMobilePageTitle,
+            advancedSettings, setAdvancedSettings
         }}>
             <div className="min-h-screen relative z-10">
                 <BackgroundMusic />

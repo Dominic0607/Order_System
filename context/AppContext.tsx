@@ -4,6 +4,12 @@ import { User, AppData, MasterProduct } from '../types';
 
 export type Language = 'en' | 'km';
 
+export interface AdvancedSettings {
+    enableFloatingAlerts: boolean;
+    enablePrivacyMode?: boolean;
+    securityLevel?: 'standard' | 'high';
+}
+
 export interface AppContextType {
     currentUser: User | null;
     appData: AppData;
@@ -34,6 +40,8 @@ export interface AppContextType {
     showNotification: (message: string, type?: 'success' | 'info' | 'error') => void;
     mobilePageTitle: string | null;
     setMobilePageTitle: (title: string | null) => void;
+    advancedSettings: AdvancedSettings;
+    setAdvancedSettings: React.Dispatch<React.SetStateAction<AdvancedSettings>>;
 }
 
 export const AppContext = createContext<AppContextType>({} as AppContextType);
