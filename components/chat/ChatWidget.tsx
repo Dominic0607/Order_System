@@ -566,8 +566,42 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ isOpen, onClose }) => {
         try {
             const compressed = await compressImage(file);
             const base64 = await fileToBase64(compressed);
-            await handleSendMessage(base64, 'image'); 
-        } finally { setIsUploading(false); }
+            
+            // Upload first
+            const uploadResponse = await fetch(`${WEB_APP_URL}/api/upload-image`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    fileData: base64,
+                    fileName: `img_${Date.now()}.jpg`,
+                    mimeType: 'image/jpeg',
+                    userName: currentUser?.UserName || 'unknown'
+                })
+            });
+
+            const uploadResult = await uploadResponse.json();
+            if (!uploadResponse.ok || uploadResult.status !== 'success') {
+                throw new Error(uploadResult.message || 'Image upload failed');
+            }
+
+            // Extract FileID
+            let fileId = uploadResult.fileId || uploadResult.id;
+            if (!fileId && uploadResult.url) {
+                const match = uploadResult.url.match(/(?:d\/|id=)([^/?&]+)/);
+                if (match && match[1]) fileId = match[1];
+            }
+
+            if (!fileId) throw new Error("Failed to get File ID");
+
+            // Send Message with FileID
+            await handleSendMessage(uploadResult.url, 'image', fileId); 
+
+        } catch (e) {
+            console.error("Image Upload Error:", e);
+            alert("ការបញ្ជូនរូបភាពបរាជ័យ (Failed to upload image).");
+        } finally { 
+            setIsUploading(false); 
+        }
     };
 
     // --- Mention Handling ---
