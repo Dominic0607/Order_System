@@ -11,7 +11,7 @@ import { fileToBase64, convertGoogleDriveUrl } from '../../utils/fileUtils';
 import UserAvatar from '../common/UserAvatar';
 import ChatMembers from './ChatMembers';
 import { requestNotificationPermission, sendSystemNotification } from '../../utils/notificationUtils';
-import { getTimestamp } from '../../utils/dateUtils';
+import { getTimestamp, formatChatDate } from '../../utils/dateUtils';
 
 interface ChatWidgetProps {
     isOpen: boolean;
@@ -899,8 +899,21 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ isOpen, onClose }) => {
                                 const showAvatar = index === 0 || messages[index - 1].user !== msg.user;
                                 const isSystemAlert = msg.content.includes('SYSTEM_ALERT') || msg.content.includes('NEW ORDER');
                                 
+                                // Date Separator Logic
+                                const currentDate = formatChatDate(msg.timestamp);
+                                const previousDate = index > 0 ? formatChatDate(messages[index - 1].timestamp) : null;
+                                const showDateSeparator = currentDate !== previousDate;
+
                                 return (
-                                    <div key={msg.id + index} id={`msg-${msg.id}`} className={`flex flex-col ${isMe ? 'items-end' : 'items-start'} animate-fade-in-up group/msg relative`}>
+                                    <React.Fragment key={msg.id + index}>
+                                        {showDateSeparator && (
+                                            <div className="flex justify-center my-6">
+                                                <div className="bg-gray-800/50 border border-gray-700/50 px-4 py-1 rounded-full text-[10px] font-black uppercase tracking-[0.2em] text-gray-500 shadow-sm">
+                                                    {currentDate}
+                                                </div>
+                                            </div>
+                                        )}
+                                        <div id={`msg-${msg.id}`} className={`flex flex-col ${isMe ? 'items-end' : 'items-start'} animate-fade-in-up group/msg relative`}>
                                         {isSystemAlert ? (
                                             <div className="w-full flex justify-center my-2">
                                                 <div className="bg-blue-900/40 border border-blue-500/30 rounded-xl px-4 py-2 text-[10px] font-bold text-blue-300 text-center shadow-lg">
@@ -983,15 +996,16 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ isOpen, onClose }) => {
                                             </div>
                                         )}
                                     </div>
-                                );
-                            })
-                        )}
-                        <div ref={messagesEndRef} />
-                    </div>
-                ) : (
-                    <ChatMembers users={allUsers} loading={isUsersLoading} onRefresh={syncUsers} />
-                )}
-            </div>
+                                </React.Fragment>
+                            );
+                        })
+                    )}
+                    <div ref={messagesEndRef} />
+                </div>
+            ) : (
+                <ChatMembers users={allUsers} loading={isUsersLoading} onRefresh={syncUsers} />
+            )}
+        </div>
 
             {activeTab === 'chat' && showScrollBottom && (
                 <button 

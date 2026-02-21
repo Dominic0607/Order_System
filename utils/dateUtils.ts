@@ -48,3 +48,27 @@ export const getTimestamp = (dateStr: string | null | undefined): number => {
     const d = safeParseDate(dateStr);
     return d ? d.getTime() : 0;
 };
+
+/**
+ * Formats a date for chat separators (Today, Yesterday, or Date string)
+ */
+export const formatChatDate = (dateStr: string): string => {
+    const date = safeParseDate(dateStr);
+    if (!date) return '';
+
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
+
+    const checkDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+
+    if (checkDate.getTime() === today.getTime()) return 'ថ្ងៃនេះ';
+    if (checkDate.getTime() === yesterday.getTime()) return 'ម្សិលមិញ';
+    
+    return date.toLocaleDateString('km-KH', {
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric'
+    });
+};
