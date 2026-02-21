@@ -10,15 +10,18 @@ import Spinner from '../common/Spinner';
 interface DeliveryListGeneratorModalProps {
     isOpen: boolean;
     onClose: () => void;
-    orders: ParsedOrder[]; // This receives GLOBAL orders
+    orders: ParsedOrder[];
     appData: AppData;
-    team?: string; // Optional team prop if needed for context
+    team?: string;
 }
 
 const STEPS = {
     FILTER: 1,
-    VERIFY: 2 // Stage 2: Confirm & Pay
+    PROMPT: 1.5, // Intermediate step for Resume/Discard
+    VERIFY: 2
 };
+
+const SESSION_KEY = 'delivery_list_session';
 
 const DeliveryListGeneratorModal: React.FC<DeliveryListGeneratorModalProps> = ({ 
     isOpen, onClose, orders, appData
@@ -30,6 +33,8 @@ const DeliveryListGeneratorModal: React.FC<DeliveryListGeneratorModalProps> = ({
     const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
     const [selectedStore, setSelectedStore] = useState('');
     const [selectedShipping, setSelectedShipping] = useState('ACC Delivery Agent');
+    const [previewText, setPreviewText] = useState('');
+    const [isPreviewing, setIsPreviewing] = useState(false);
 
     // Step 2: Verification & Adjustment
     const [pendingOrders, setPendingOrders] = useState<ParsedOrder[]>([]);
@@ -41,24 +46,6 @@ const DeliveryListGeneratorModal: React.FC<DeliveryListGeneratorModalProps> = ({
     const [selectedBank, setSelectedBank] = useState('');
     const [password, setPassword] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
-
-    // Reset state on open
-    useEffect(() => {
-        if (isOpen) {
-            setStep(STEPS.FILTER);
-            setPendingOrders([]);
-            setVerifiedIds(new Set());
-            setShippingAdjustments({});
-            setShowPaymentModal(false);
-            setPassword('');
-            setSelectedBank('');
-            
-            // Set default store if only one exists
-            if (appData.stores && appData.stores.length === 1) {
-                setSelectedStore(appData.stores[0].StoreName);
-            }
-        }
-    }, [isOpen, appData.stores]);
 
     // Helper: Safe ISO Date Extractor
     const getSafeIsoDate = (dateStr: string) => {
@@ -88,24 +75,61 @@ const DeliveryListGeneratorModal: React.FC<DeliveryListGeneratorModalProps> = ({
         });
     }, [orders, selectedDate, selectedStore, selectedShipping]);
 
-    // Toggle Verification (Stage 2)
-    const toggleVerify = (id: string) => {
-        setVerifiedIds(prev => {
-            const next = new Set(prev);
-            if (next.has(id)) next.delete(id);
-            else next.add(id);
-            return next;
-        });
+    // Initialize / Restore Session
+    useEffect(() => {
+        if (isOpen) {
+            const savedSession = localStorage.getItem(SESSION_KEY);
+            if (savedSession) {
+                try {
+                    const session = JSON.parse(savedSession);
+                    // Validate session data roughly
+                    if (session.pendingOrders && session.pendingOrders.length > 0) {
+                        setPendingOrders(session.pendingOrders);
+                        setVerifiedIds(new Set(session.verifiedIds));
+                        setShippingAdjustments(session.shippingAdjustments);
+                        setStep(STEPS.PROMPT);
+                    } else {
+                        // Invalid session, reset
+                        localStorage.removeItem(SESSION_KEY);
+                        resetToFilter();
+                    }
+                } catch (e) {
+                    localStorage.removeItem(SESSION_KEY);
+                    resetToFilter();
+                }
+            } else {
+                resetToFilter();
+            }
+        }
+    }, [isOpen]);
+
+    const resetToFilter = () => {
+        setStep(STEPS.FILTER);
+        setPreviewText('');
+        setIsPreviewing(false);
+        setPendingOrders([]);
+        setVerifiedIds(new Set());
+        setShippingAdjustments({});
+        setShowPaymentModal(false);
+        setPassword('');
+        setSelectedBank('');
+        // Set default store
+        if (appData.stores && appData.stores.length === 1) {
+            setSelectedStore(appData.stores[0].StoreName);
+        }
     };
 
-    // Generate Text & Transition to Stage 2
-    const handleCopyAndProceed = async () => {
+    const handleDiscardSession = () => {
+        localStorage.removeItem(SESSION_KEY);
+        resetToFilter();
+    };
+
+    const handleGeneratePreview = () => {
         if (filteredOrders.length === 0) {
-            alert("No orders to copy!");
+            alert("No orders found to generate!");
             return;
         }
 
-        // Generate Text Logic (Same as before)
         const dateObj = new Date(selectedDate);
         const formattedDate = `${String(dateObj.getDate()).padStart(2, '0')}/${String(dateObj.getMonth() + 1).padStart(2, '0')}/${dateObj.getFullYear()}`;
         
@@ -124,7 +148,6 @@ const DeliveryListGeneratorModal: React.FC<DeliveryListGeneratorModalProps> = ({
             const paymentStatusText = isPaid ? 'Paid' : 'COD';
             const statusIcon = isPaid ? '🟢' : '🔴';
             
-            // Location
             const location = o.Location || '';
             const details = o['Address Details'] || '';
             let fullAddress = (location === 'រាជធានីភ្នំពេញ' && details) ? details : [location, details].filter(Boolean).join(', ');
@@ -141,25 +164,59 @@ const DeliveryListGeneratorModal: React.FC<DeliveryListGeneratorModalProps> = ({
         text += `📦 **ចំនួនកញ្ចប់សរុប:** ${filteredOrders.length} កញ្ចប់\n`;
         text += `💰 **សរុបទឹកប្រាក់:** $${totalUSD.toFixed(2)}\n`;
 
+        setPreviewText(text);
+        setIsPreviewing(true);
+    };
+
+    const handleCopyAndSaveSession = async () => {
         try {
-            await navigator.clipboard.writeText(text);
-            showNotification("Copied! Please verify success deliveries.", "success");
-            
-            // Initialize Stage 2 Data
-            setPendingOrders([...filteredOrders]);
-            setVerifiedIds(new Set(filteredOrders.map(o => o['Order ID']))); // Default all to checked
-            
-            // Initialize shipping adjustments
+            await navigator.clipboard.writeText(previewText);
+            showNotification("Copied! Saving session...", "success");
+
+            // Prepare Data for Verification Stage
+            const currentOrders = [...filteredOrders];
             const initialAdjustments: Record<string, number> = {};
-            filteredOrders.forEach(o => {
+            currentOrders.forEach(o => {
                 initialAdjustments[o['Order ID']] = o['Internal Cost'] || 0;
             });
+            const allIds = currentOrders.map(o => o['Order ID']);
+
+            // Save to State
+            setPendingOrders(currentOrders);
+            setVerifiedIds(new Set(allIds));
             setShippingAdjustments(initialAdjustments);
 
-            setStep(STEPS.VERIFY);
+            // Persist Session
+            const sessionData = {
+                pendingOrders: currentOrders,
+                verifiedIds: allIds, // Set converts to array for JSON
+                shippingAdjustments: initialAdjustments,
+                timestamp: Date.now()
+            };
+            localStorage.setItem(SESSION_KEY, JSON.stringify(sessionData));
+
+            setStep(STEPS.PROMPT);
         } catch (err) {
             console.error(err);
             alert("Copy failed.");
+        }
+    };
+
+    // Toggle Verification
+    const toggleVerify = (id: string) => {
+        setVerifiedIds(prev => {
+            const next = new Set(prev);
+            if (next.has(id)) next.delete(id);
+            else next.add(id);
+            return next;
+        });
+    };
+
+    const handleSelectAll = () => {
+        if (verifiedIds.size === pendingOrders.length) {
+            setVerifiedIds(new Set());
+        } else {
+            setVerifiedIds(new Set(pendingOrders.map(o => o['Order ID'])));
         }
     };
 
@@ -171,7 +228,6 @@ const DeliveryListGeneratorModal: React.FC<DeliveryListGeneratorModalProps> = ({
         }));
     };
 
-    // Check if we need to ask for a bank (only if any checked order is Unpaid)
     const hasCheckedUnpaidOrders = useMemo(() => {
         return pendingOrders.some(o => verifiedIds.has(o['Order ID']) && o['Payment Status'] !== 'Paid');
     }, [pendingOrders, verifiedIds]);
@@ -197,7 +253,6 @@ const DeliveryListGeneratorModal: React.FC<DeliveryListGeneratorModalProps> = ({
         setIsSubmitting(true);
 
         try {
-            // 1. Verify Password
             const loginRes = await fetch(`${WEB_APP_URL}/api/login`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -212,25 +267,19 @@ const DeliveryListGeneratorModal: React.FC<DeliveryListGeneratorModalProps> = ({
                 throw new Error("Incorrect Password");
             }
 
-            // 2. Process Updates
             const updates = [];
-            
             for (const order of pendingOrders) {
-                // Skip if unchecked (Failed Delivery)
                 if (!verifiedIds.has(order['Order ID'])) continue;
 
                 const newShippingCost = shippingAdjustments[order['Order ID']];
                 const isUnpaid = order['Payment Status'] !== 'Paid';
                 
-                const newData: any = {
-                    'Internal Cost': newShippingCost
-                };
+                const newData: any = { 'Internal Cost': newShippingCost };
 
-                // Only update Payment Status & Bank if it was Unpaid
                 if (isUnpaid) {
                     newData['Payment Status'] = 'Paid';
                     newData['Payment Info'] = selectedBank;
-                    newData['Delivery Paid'] = order['Grand Total']; // Assuming full payment upon delivery
+                    newData['Delivery Paid'] = order['Grand Total'];
                     newData['Delivery Unpaid'] = 0;
                 }
 
@@ -247,8 +296,10 @@ const DeliveryListGeneratorModal: React.FC<DeliveryListGeneratorModalProps> = ({
 
             await Promise.all(updates);
             
+            // Clear Session
+            localStorage.removeItem(SESSION_KEY);
             await refreshData();
-            showNotification("Delivery verified and updated successfully!", "success");
+            showNotification("Delivery verified successfully!", "success");
             onClose();
 
         } catch (err: any) {
@@ -268,8 +319,10 @@ const DeliveryListGeneratorModal: React.FC<DeliveryListGeneratorModalProps> = ({
                 {/* Header */}
                 <div className="p-6 bg-gray-900/90 backdrop-blur-md border-b border-white/10 flex justify-between items-center sticky top-0 z-20">
                     <h2 className="text-xl font-black text-white uppercase tracking-tighter flex items-center gap-3">
-                        <span className={`w-8 h-8 rounded-lg flex items-center justify-center text-sm shadow-lg ${step === STEPS.FILTER ? 'bg-blue-600' : 'bg-emerald-600'}`}>{step}</span>
-                        {step === STEPS.FILTER ? "បង្កើតបញ្ជី (Generate)" : "បញ្ជាក់ការដឹក (Confirm Success)"}
+                        <span className={`w-8 h-8 rounded-lg flex items-center justify-center text-sm shadow-lg ${step === STEPS.FILTER ? 'bg-blue-600' : 'bg-emerald-600'}`}>
+                            {step === STEPS.PROMPT ? '!' : Math.floor(step)}
+                        </span>
+                        {step === STEPS.FILTER ? "បង្កើតបញ្ជី (Generate)" : step === STEPS.PROMPT ? "បន្តសកម្មភាព (Resume)" : "បញ្ជាក់ការដឹក (Confirm Success)"}
                     </h2>
                     <button onClick={onClose} className="w-9 h-9 rounded-full bg-gray-800 text-gray-400 hover:text-white flex items-center justify-center transition-all">&times;</button>
                 </div>
@@ -277,52 +330,77 @@ const DeliveryListGeneratorModal: React.FC<DeliveryListGeneratorModalProps> = ({
                 {/* Body */}
                 <div className="p-6 overflow-y-auto custom-scrollbar flex-grow bg-gradient-to-b from-[#0f172a] to-[#1e293b]">
                     
-                    {/* --- STEP 1: FILTER & COPY --- */}
+                    {/* --- STEP 1: FILTER & EDIT PREVIEW --- */}
                     {step === STEPS.FILTER && (
-                        <div className="space-y-8 animate-fade-in max-w-2xl mx-auto">
-                            <div className="space-y-3">
-                                <label className="text-xs font-bold text-blue-400 uppercase tracking-widest block ml-1">កាលបរិច្ឆេទ</label>
-                                <input 
-                                    type="date" 
-                                    value={selectedDate} 
-                                    onChange={(e) => setSelectedDate(e.target.value)} 
-                                    className="form-input bg-gray-900 border-gray-700 rounded-2xl text-white font-bold w-full py-4 px-5 focus:border-blue-500 shadow-inner"
-                                />
-                            </div>
-                            
-                            <div className="space-y-3">
-                                <label className="text-xs font-bold text-orange-400 uppercase tracking-widest block ml-1">ឃ្លាំងបញ្ចេញទំនិញ (Store) <span className="text-red-500">*</span></label>
-                                <div className="grid grid-cols-2 gap-3">
-                                    {appData.stores?.map((s) => (
-                                        <button
-                                            key={s.StoreName}
-                                            onClick={() => setSelectedStore(s.StoreName)}
-                                            className={`p-4 rounded-2xl border-2 font-bold text-sm transition-all shadow-lg flex flex-col items-center gap-2 ${selectedStore === s.StoreName ? 'border-orange-500 bg-orange-500/10 text-white shadow-orange-500/20' : 'border-gray-700 bg-gray-800 text-gray-400 hover:bg-gray-700'}`}
-                                        >
-                                            <span className="text-2xl">🏭</span>
-                                            {s.StoreName}
-                                        </button>
-                                    ))}
+                        <div className="space-y-6 animate-fade-in max-w-3xl mx-auto h-full flex flex-col">
+                            {/* Filter Controls (Hide when previewing to save space, or keep top) */}
+                            <div className={`grid grid-cols-1 sm:grid-cols-3 gap-4 transition-all ${isPreviewing ? 'opacity-50 pointer-events-none hidden sm:grid' : ''}`}>
+                                <div className="space-y-2">
+                                    <label className="text-[10px] font-bold text-blue-400 uppercase tracking-widest block ml-1">កាលបរិច្ឆេទ</label>
+                                    <input type="date" value={selectedDate} onChange={(e) => setSelectedDate(e.target.value)} className="form-input bg-gray-900 border-gray-700 rounded-xl text-white font-bold w-full py-3 px-4 focus:border-blue-500 shadow-inner text-sm" />
+                                </div>
+                                <div className="space-y-2">
+                                    <label className="text-[10px] font-bold text-purple-400 uppercase tracking-widest block ml-1">សេវាដឹក</label>
+                                    <select value={selectedShipping} onChange={(e) => setSelectedShipping(e.target.value)} className="form-select bg-gray-900 border-gray-700 rounded-xl text-white font-bold w-full py-3 px-4 focus:border-purple-500 shadow-inner text-sm">
+                                        {appData.shippingMethods?.map(m => <option key={m.MethodName} value={m.MethodName}>{m.MethodName}</option>)}
+                                    </select>
+                                </div>
+                                <div className="space-y-2">
+                                    <label className="text-[10px] font-bold text-orange-400 uppercase tracking-widest block ml-1">ឃ្លាំង</label>
+                                    <select value={selectedStore} onChange={(e) => setSelectedStore(e.target.value)} className="form-select bg-gray-900 border-gray-700 rounded-xl text-white font-bold w-full py-3 px-4 focus:border-orange-500 shadow-inner text-sm">
+                                        {appData.stores?.map(s => <option key={s.StoreName} value={s.StoreName}>{s.StoreName}</option>)}
+                                    </select>
                                 </div>
                             </div>
 
-                            <div className="space-y-3">
-                                <label className="text-xs font-bold text-purple-400 uppercase tracking-widest block ml-1">សេវាដឹក (Shipping Method)</label>
-                                <select 
-                                    value={selectedShipping} 
-                                    onChange={(e) => setSelectedShipping(e.target.value)}
-                                    className="form-select bg-gray-900 border-gray-700 rounded-2xl text-white font-bold w-full py-4 px-5 focus:border-purple-500 shadow-inner"
-                                >
-                                    {appData.shippingMethods?.map(m => (
-                                        <option key={m.MethodName} value={m.MethodName}>{m.MethodName}</option>
-                                    ))}
-                                </select>
-                            </div>
+                            {/* Action Button for Generate */}
+                            {!isPreviewing && (
+                                <div className="flex justify-center pt-10">
+                                    <button onClick={handleGeneratePreview} className="btn btn-primary px-10 py-4 shadow-xl shadow-blue-600/30 text-base">
+                                        <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" /></svg>
+                                        បង្កើតបញ្ជី (Generate Preview)
+                                    </button>
+                                </div>
+                            )}
 
-                            {/* Preview Stats */}
-                            <div className="bg-blue-900/20 border border-blue-500/30 p-4 rounded-2xl flex justify-between items-center">
-                                <span className="text-blue-300 font-bold text-sm">Found Orders:</span>
-                                <span className="text-2xl font-black text-white">{filteredOrders.length}</span>
+                            {/* Editable Preview Area */}
+                            {isPreviewing && (
+                                <div className="flex-grow flex flex-col animate-fade-in-up">
+                                    <div className="flex justify-between items-end mb-2">
+                                        <label className="text-xs font-black text-gray-400 uppercase tracking-widest">Preview & Edit</label>
+                                        <button onClick={() => setIsPreviewing(false)} className="text-xs text-red-400 hover:text-red-300 underline">Reset Filters</button>
+                                    </div>
+                                    <textarea 
+                                        value={previewText}
+                                        onChange={(e) => setPreviewText(e.target.value)}
+                                        className="w-full flex-grow bg-black/40 border border-gray-700 rounded-2xl p-4 font-mono text-sm text-gray-300 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 resize-none shadow-inner"
+                                        placeholder="Generated text will appear here..."
+                                    />
+                                </div>
+                            )}
+                        </div>
+                    )}
+
+                    {/* --- STEP 1.5: PROMPT (RESUME SESSION) --- */}
+                    {step === STEPS.PROMPT && (
+                        <div className="h-full flex flex-col items-center justify-center space-y-8 animate-fade-in text-center max-w-lg mx-auto">
+                            <div className="w-24 h-24 bg-blue-600/10 rounded-full flex items-center justify-center border-2 border-blue-500/20 shadow-[0_0_30px_rgba(37,99,235,0.1)]">
+                                <svg className="w-10 h-10 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                            </div>
+                            <div>
+                                <h3 className="text-2xl font-black text-white uppercase tracking-tight">មានប្រតិបត្តិការដែលមិនទាន់បានបញ្ចប់</h3>
+                                <p className="text-gray-400 mt-2 text-sm leading-relaxed">
+                                    ប្រព័ន្ធបានរក្សាទុកទិន្នន័យពីលើកមុន។ <br/>
+                                    តើអ្នកចង់បន្តទៅដំណាក់កាល **បញ្ជាក់ការដឹក (Verify)** ឬចាប់ផ្តើមថ្មី?
+                                </p>
+                            </div>
+                            <div className="grid grid-cols-2 gap-4 w-full">
+                                <button onClick={handleDiscardSession} className="py-4 rounded-xl bg-gray-800 text-gray-400 font-bold border border-gray-700 hover:bg-red-900/20 hover:border-red-500/30 hover:text-red-400 transition-all">
+                                    ចាប់ផ្តើមថ្មី (Discard)
+                                </button>
+                                <button onClick={() => setStep(STEPS.VERIFY)} className="py-4 rounded-xl bg-blue-600 text-white font-bold shadow-lg shadow-blue-600/20 hover:bg-blue-500 hover:scale-105 transition-all">
+                                    បន្ត (Resume)
+                                </button>
                             </div>
                         </div>
                     )}
@@ -413,27 +491,33 @@ const DeliveryListGeneratorModal: React.FC<DeliveryListGeneratorModalProps> = ({
                 <div className="p-6 border-t border-white/5 bg-gray-900 sticky bottom-0 z-20 flex justify-between gap-4">
                     {step === STEPS.VERIFY && (
                         <button 
-                            onClick={() => setStep(STEPS.FILTER)} 
+                            onClick={() => setStep(STEPS.PROMPT)} 
                             className="px-8 py-4 rounded-2xl bg-gray-800 text-gray-400 font-black uppercase tracking-widest text-xs hover:bg-gray-700 hover:text-white transition-all active:scale-95"
                         >
                             Back
                         </button>
                     )}
 
-                    {step === STEPS.FILTER ? (
-                        <button 
-                            onClick={() => {
-                                if (!selectedStore) {
-                                    alert("សូមជ្រើសរើសឃ្លាំង (Store) ជាមុនសិន!");
-                                    return;
-                                }
-                                handleCopyAndProceed();
-                            }} 
-                            className="w-full sm:w-auto ml-auto px-10 py-4 rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-black uppercase tracking-widest text-xs hover:shadow-lg hover:shadow-blue-600/30 transition-all active:scale-95 flex items-center justify-center gap-3"
-                        >
-                            Copy & Proceed <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M13 5l7 7-7 7M5 5l7 7-7 7" /></svg>
-                        </button>
-                    ) : (
+                    {/* Step 1 Footer */}
+                    {step === STEPS.FILTER && isPreviewing && (
+                        <div className="flex gap-4 w-full justify-end">
+                             <button 
+                                onClick={() => setIsPreviewing(false)} 
+                                className="px-8 py-4 rounded-2xl bg-gray-800 text-gray-400 font-black uppercase tracking-widest text-xs hover:bg-gray-700 transition-all"
+                            >
+                                Back to Filters
+                            </button>
+                            <button 
+                                onClick={handleCopyAndSaveSession} 
+                                className="px-10 py-4 rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-black uppercase tracking-widest text-xs hover:shadow-lg hover:shadow-blue-600/30 transition-all active:scale-95 flex items-center justify-center gap-3"
+                            >
+                                Copy & Next <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M13 5l7 7-7 7M5 5l7 7-7 7" /></svg>
+                            </button>
+                        </div>
+                    )}
+
+                    {/* Step 2 Footer */}
+                    {step === STEPS.VERIFY && (
                         <button 
                             onClick={handleSubmitClick} 
                             className="w-full sm:w-auto ml-auto px-10 py-4 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-600 text-white font-black uppercase tracking-widest text-xs hover:shadow-lg hover:shadow-emerald-600/30 transition-all active:scale-95 flex items-center justify-center gap-3"

@@ -11,6 +11,7 @@ import { fileToBase64, convertGoogleDriveUrl } from '../../utils/fileUtils';
 import UserAvatar from '../common/UserAvatar';
 import ChatMembers from './ChatMembers';
 import { requestNotificationPermission, sendSystemNotification } from '../../utils/notificationUtils';
+import { getTimestamp } from '../../utils/dateUtils';
 
 interface ChatWidgetProps {
     isOpen: boolean;
@@ -99,7 +100,7 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ isOpen, onClose }) => {
     useEffect(() => {
         if (messages.length > 0 && !lastNotifiedMessageIdRef.current) {
             // Sort to ensure we get the latest
-            const sorted = [...messages].sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+            const sorted = [...messages].sort((a, b) => getTimestamp(a.timestamp) - getTimestamp(b.timestamp));
             lastNotifiedMessageIdRef.current = sorted[sorted.length - 1].id;
         }
     }, []); // Run once on mount to set initial baseline
@@ -351,7 +352,7 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ isOpen, onClose }) => {
             const result = await res.json();
             if (result.status === 'success') {
                 const history = result.data.map(transformBackendMessage);
-                const sortedHistory = history.sort((a: ChatMessage, b: ChatMessage) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+                const sortedHistory = history.sort((a: ChatMessage, b: ChatMessage) => getTimestamp(a.timestamp) - getTimestamp(b.timestamp));
                 
                 // Process Notifications
                 processNotifications(sortedHistory);

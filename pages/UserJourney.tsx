@@ -13,6 +13,7 @@ import UserSalesPageReport from './UserSalesPageReport';
 import DeliveryListGeneratorModal from '../components/orders/DeliveryListGeneratorModal';
 import ShippingReport from '../components/reports/ShippingReport';
 import { sendSystemNotification, requestNotificationPermission } from '../utils/notificationUtils';
+import { safeParseDate, getValidDate, getTimestamp } from '../utils/dateUtils';
 
 type DateRangePreset = 'today' | 'yesterday' | 'this_week' | 'this_month' | 'last_month' | 'this_year' | 'last_year' | 'all' | 'custom';
 
@@ -114,32 +115,11 @@ const UserOrdersView: React.FC<{ team: string; onAdd: () => void }> = ({ team, o
                 end = new Date(now.getFullYear() - 1, 11, 31, 23, 59, 59, 999);
                 break;
             case 'custom': 
-                if (cStart) start = new Date(cStart + 'T00:00:00');
-                if (cEnd) end = new Date(cEnd + 'T23:59:59');
+                if (cStart) start = getValidDate(cStart + 'T00:00:00');
+                if (cEnd) end = getValidDate(cEnd + 'T23:59:59');
                 break;
         }
         return { start, end };
-    };
-
-    // Helper for safe date parsing with custom format support
-    const getSafeDate = (dateStr: string) => {
-        if (!dateStr) return new Date();
-        
-        // Handle "YYYY-MM-DD H:mm" format (e.g. 2026-01-30 7:00)
-        const match = dateStr.match(/^(\d{4})-(\d{1,2})-(\d{1,2})\s(\d{1,2}):(\d{2})/);
-        if (match) {
-            return new Date(
-                parseInt(match[1]),
-                parseInt(match[2]) - 1,
-                parseInt(match[3]),
-                parseInt(match[4]),
-                parseInt(match[5])
-            );
-        }
-
-        const d = new Date(dateStr);
-        if (isNaN(d.getTime())) return new Date();
-        return d;
     };
 
     // 1. Initial Data Fetch (Runs once)
@@ -192,8 +172,8 @@ const UserOrdersView: React.FC<{ team: string; onAdd: () => void }> = ({ team, o
                 if (o['Order ID'] === 'Opening_Balance' || o['Order ID'] === 'Opening Balance') return false;
 
                 if (!o.Timestamp) return false;
-                const orderDate = getSafeDate(o.Timestamp);
-                if (isNaN(orderDate.getTime())) return false;
+                const orderDate = safeParseDate(o.Timestamp);
+                if (!orderDate) return false;
 
                 if (start && orderDate < start) return false;
                 if (end && orderDate > end) return false;
@@ -208,9 +188,9 @@ const UserOrdersView: React.FC<{ team: string; onAdd: () => void }> = ({ team, o
             
             // Sorting is still needed but it's on a smaller subset
             setOrders(teamOnly.sort((a, b) => {
-                const dA = getSafeDate(a.Timestamp);
-                const dB = getSafeDate(b.Timestamp);
-                return (isNaN(dB.getTime()) ? 0 : dB.getTime()) - (isNaN(dA.getTime()) ? 0 : dA.getTime());
+                const tA = getTimestamp(a.Timestamp);
+                const tB = getTimestamp(b.Timestamp);
+                return tB - tA;
             }));
             setProcessing(false);
         }, 10);
@@ -236,11 +216,11 @@ const UserOrdersView: React.FC<{ team: string; onAdd: () => void }> = ({ team, o
 
                 if (drilldownFilters.isMonthlyDrilldown) {
                     // Exact dates passed from report
-                    if (drilldownFilters.customStart) start = new Date(drilldownFilters.customStart + 'T00:00:00');
-                    if (drilldownFilters.customEnd) end = new Date(drilldownFilters.customEnd + 'T23:59:59');
+                    if (drilldownFilters.customStart) start = getValidDate(drilldownFilters.customStart + 'T00:00:00');
+                    if (drilldownFilters.customEnd) end = getValidDate(drilldownFilters.customEnd + 'T23:59:59');
                 } else if (drilldownFilters.datePreset === 'custom') {
-                    if (drilldownFilters.customStart) start = new Date(drilldownFilters.customStart + 'T00:00:00');
-                    if (drilldownFilters.customEnd) end = new Date(drilldownFilters.customEnd + 'T23:59:59');
+                    if (drilldownFilters.customStart) start = getValidDate(drilldownFilters.customStart + 'T00:00:00');
+                    if (drilldownFilters.customEnd) end = getValidDate(drilldownFilters.customEnd + 'T23:59:59');
                 } else if (drilldownFilters.datePreset) {
                     const bounds = getDateBounds(drilldownFilters.datePreset);
                     start = bounds.start;
@@ -254,8 +234,8 @@ const UserOrdersView: React.FC<{ team: string; onAdd: () => void }> = ({ team, o
                     // Date Check
                     if (start || end) {
                         if (!o.Timestamp) return false;
-                        const d = getSafeDate(o.Timestamp);
-                        if (isNaN(d.getTime())) return false;
+                        const d = safeParseDate(o.Timestamp);
+                        if (!d) return false;
                         if (start && d < start) return false;
                         if (end && d > end) return false;
                     }
@@ -283,9 +263,9 @@ const UserOrdersView: React.FC<{ team: string; onAdd: () => void }> = ({ team, o
                 });
 
                 setDrilldownData(parsed.sort((a, b) => {
-                    const dA = getSafeDate(a.Timestamp);
-                    const dB = getSafeDate(b.Timestamp);
-                    return (isNaN(dB.getTime()) ? 0 : dB.getTime()) - (isNaN(dA.getTime()) ? 0 : dA.getTime());
+                    const tA = getTimestamp(a.Timestamp);
+                    const tB = getTimestamp(b.Timestamp);
+                    return tB - tA;
                 }));
                 setProcessing(false);
             }, 10);

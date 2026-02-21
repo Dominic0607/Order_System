@@ -1,22 +1,12 @@
 
 import { Product, ParsedOrder } from '../types';
+import { safeParseDate } from './dateUtils';
 
 // Format timestamp for datetime-local input
 export const formatForInput = (timestamp: string): string => {
     if (!timestamp) return '';
-    // Handle "YYYY-MM-DD H:mm" or "YYYY-MM-DD HH:mm" specifically
-    const match = timestamp.match(/^(\d{4})-(\d{1,2})-(\d{1,2})\s(\d{1,2}):(\d{2})/);
-    if (match) {
-        const y = match[1];
-        const m = match[2].padStart(2, '0');
-        const d = match[3].padStart(2, '0');
-        const h = match[4].padStart(2, '0');
-        const min = match[5].padStart(2, '0');
-        return `${y}-${m}-${d}T${h}:${min}`;
-    }
-
-    const d = new Date(timestamp);
-    if (isNaN(d.getTime())) return '';
+    const d = safeParseDate(timestamp);
+    if (!d || isNaN(d.getTime())) return '';
     const pad = (n: number) => n.toString().padStart(2, '0');
     return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 };
