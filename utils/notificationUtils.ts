@@ -7,8 +7,9 @@ import { convertGoogleDriveUrl } from './fileUtils';
  * Returns true if granted.
  */
 export const requestNotificationPermission = async (): Promise<boolean> => {
+    // ឆែកមើលថាតើ Browser គាំទ្រ Notification ដែរឬទេ
     if (!('Notification' in window)) {
-        console.warn("This browser does not support desktop notification");
+        console.warn("Browser នេះមិនគាំទ្រប្រព័ន្ធ Notification ទេ។");
         return false;
     }
 
@@ -16,10 +17,14 @@ export const requestNotificationPermission = async (): Promise<boolean> => {
         return true;
     }
 
+    // បើសិនជាមិនទាន់បានអនុញ្ញាត (Granted) ទេ យើងនឹងស្នើសុំ
     if (Notification.permission !== 'denied') {
         try {
             const permission = await Notification.requestPermission();
-            return permission === 'granted';
+            if (permission === 'granted') {
+                console.log("ទទួលបានការអនុញ្ញាត (Permission Granted) ជោគជ័យ!");
+                return true;
+            }
         } catch (e) {
             console.error("Permission request failed", e);
             return false;
