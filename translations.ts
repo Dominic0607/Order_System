@@ -150,7 +150,19 @@ export const translations = {
     chat_system: "ប្រព័ន្ធជជែកកំសាន្ត",
     write_message: "វាយសារ...",
     test_notification: "តេស្តការជូនដំណឹង (Test Notification)",
-    test_notification_body: "សួស្តី! ប្រព័ន្ធ Notification របស់អ្នកដំណើរការហើយ។"
+    test_notification_body: "សួស្តី! ប្រព័ន្ធ Notification របស់អ្នកដំណើរការហើយ។",
+    advanced_settings: "ការកំណត់កម្រិតខ្ពស់",
+    general_settings: "ការកំណត់ទូទៅ",
+    privacy_security: "ឯកជនភាព និងសុវត្ថិភាព",
+    floating_alerts: "ការជូនដំណឹងអណ្តែត",
+    floating_alerts_desc: "បង្ហាញការជូនដំណឹងប្រព័ន្ធក្នុងកម្មវិធី",
+    notification_sound: "សំឡេងជូនដំណឹង",
+    alert_volume: "កម្រិតសំឡេង",
+    privacy_mode: "របៀបឯកជនភាព",
+    privacy_mode_desc: "លាក់ព័ត៌មានអតិថិជនដែលងាយរងគ្រោះ",
+    high_security: "សុវត្ថិភាពខ្ពស់",
+    high_security_desc: "តម្រូវឱ្យផ្ទៀងផ្ទាត់ម្តងទៀតសម្រាប់សកម្មភាពសំខាន់ៗ",
+    verify_alerts: "ផ្ទៀងផ្ទាត់ការជូនដំណឹង"
   },
   en: {
     // Auth & General
@@ -302,6 +314,18 @@ export const translations = {
     chat_system: "Chat System",
     write_message: "Write message...",
     test_notification: "Test Notification",
-    test_notification_body: "Hello! Your notification system is working."
+    test_notification_body: "Hello! Your notification system is working.",
+    advanced_settings: "Advanced Settings",
+    general_settings: "General Settings",
+    privacy_security: "Privacy & Security",
+    floating_alerts: "Floating Alerts",
+    floating_alerts_desc: "Show system toast notifications",
+    notification_sound: "Notification Alert Sound",
+    alert_volume: "Alert Volume",
+    privacy_mode: "Privacy Mode",
+    privacy_mode_desc: "Mask sensitive customer data",
+    high_security: "High Security",
+    high_security_desc: "Require re-authentication for critical actions",
+    verify_alerts: "Verify system & In-app alerts"
   }
 };

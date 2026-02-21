@@ -56,203 +56,219 @@ const AdvancedSettingsModal: React.FC<AdvancedSettingsModalProps> = ({ onClose }
 
     return (
         <Modal isOpen={true} onClose={onClose} maxWidth="max-w-2xl">
-            <div className="flex flex-col md:flex-row h-[80vh] md:h-[500px] text-white">
+            <div className="flex flex-col md:flex-row h-[85vh] md:h-[550px] text-white overflow-hidden rounded-[2rem]">
                 {/* Sidebar / Top Tab Bar */}
-                <div className="w-full md:w-1/3 border-b md:border-b-0 md:border-r border-white/10 bg-gray-900/50 p-2 md:p-4 flex flex-row md:flex-col gap-2 overflow-x-auto flex-shrink-0">
-                    <h2 className="hidden md:block text-xl font-black text-white uppercase tracking-tight italic mb-6 px-2">Advance Settings</h2>
+                <div className="w-full md:w-[220px] border-b md:border-b-0 md:border-r border-white/10 bg-gray-900/80 md:bg-gray-900/50 p-3 md:p-6 flex flex-row md:flex-col gap-2 flex-shrink-0 relative z-20">
+                    <h2 className="hidden md:block text-2xl font-black text-white uppercase tracking-tighter italic mb-8 px-2">
+                        {t.advanced_settings}
+                    </h2>
                     
                     <button 
                         onClick={() => setActiveTab('general')}
-                        className={`flex-shrink-0 md:w-full text-left px-4 py-2 md:py-3 rounded-xl text-xs md:text-sm font-bold transition-all flex items-center gap-2 md:gap-3 ${activeTab === 'general' ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/20' : 'text-gray-400 hover:bg-white/5 hover:text-gray-200'}`}
+                        className={`flex-1 md:flex-none text-center md:text-left px-4 py-3 md:py-4 rounded-2xl text-xs md:text-sm font-black uppercase tracking-widest transition-all flex items-center justify-center md:justify-start gap-2 md:gap-3 ${activeTab === 'general' ? 'bg-blue-600 text-white shadow-xl shadow-blue-600/20' : 'text-gray-500 hover:bg-white/5 hover:text-gray-300'}`}
                     >
-                        <svg className="w-4 h-4 md:w-5 md:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" /></svg>
-                        General
+                        <svg className="w-4 h-4 md:w-5 md:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" /></svg>
+                        <span className="truncate">{t.general_settings}</span>
                     </button>
 
                     <button 
                         onClick={() => setActiveTab('privacy')}
-                        className={`flex-shrink-0 md:w-full text-left px-4 py-2 md:py-3 rounded-xl text-xs md:text-sm font-bold transition-all flex items-center gap-2 md:gap-3 ${activeTab === 'privacy' ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/20' : 'text-gray-400 hover:bg-white/5 hover:text-gray-200'}`}
+                        className={`flex-1 md:flex-none text-center md:text-left px-4 py-3 md:py-4 rounded-2xl text-xs md:text-sm font-black uppercase tracking-widest transition-all flex items-center justify-center md:justify-start gap-2 md:gap-3 ${activeTab === 'privacy' ? 'bg-blue-600 text-white shadow-xl shadow-blue-600/20' : 'text-gray-500 hover:bg-white/5 hover:text-gray-300'}`}
                     >
-                        <svg className="w-4 h-4 md:w-5 md:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
-                        Privacy
+                        <svg className="w-4 h-4 md:w-5 md:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
+                        <span className="truncate">{t.privacy_security}</span>
                     </button>
                 </div>
 
                 {/* Content Area */}
-                <div className="w-full md:w-2/3 p-4 md:p-6 overflow-y-auto bg-[#0f172a] flex-grow custom-scrollbar">
-                    <div className="flex justify-between items-center mb-6 sticky top-0 bg-[#0f172a] z-10 py-2 md:py-0 border-b md:border-none border-white/5">
-                        <h3 className="text-lg font-black uppercase tracking-widest text-gray-400">
-                            {activeTab === 'general' ? 'General Settings' : 'Privacy & Security'}
+                <div className="w-full md:w-2/3 flex flex-col overflow-hidden bg-[#0f172a]">
+                    <div className="flex justify-between items-center p-4 md:p-6 sticky top-0 bg-[#0f172a]/95 backdrop-blur-md z-10 border-b border-white/5 shadow-sm">
+                        <div className="md:hidden">
+                            <h3 className="text-xs font-black uppercase tracking-[0.2em] text-blue-500 mb-0.5">{t.advanced_settings}</h3>
+                            <h2 className="text-lg font-black text-white uppercase tracking-tight">
+                                {activeTab === 'general' ? t.general_settings : t.privacy_security}
+                            </h2>
+                        </div>
+                        <h3 className="hidden md:block text-xl font-black uppercase tracking-tighter italic text-gray-400">
+                            {activeTab === 'general' ? t.general_settings : t.privacy_security}
                         </h3>
-                        <button onClick={onClose} className="p-2 hover:bg-white/10 rounded-lg text-gray-400 hover:text-white transition-all">
-                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                        <button onClick={onClose} className="p-2.5 bg-white/5 hover:bg-red-500/20 rounded-xl text-gray-400 hover:text-red-400 transition-all active:scale-90">
+                            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
                         </button>
                     </div>
 
-                    {activeTab === 'general' && (
-                        <div className="space-y-4 animate-fade-in-up">
-                            <div className="flex items-center justify-between bg-gray-800/50 p-4 rounded-2xl border border-white/5 hover:border-blue-500/30 transition-colors group">
-                                <div className="flex items-center gap-3">
-                                     <div className="w-10 h-10 rounded-xl bg-blue-500/10 flex items-center justify-center text-blue-400 group-hover:text-blue-300 group-hover:scale-110 transition-all">
-                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" /></svg>
-                                     </div>
-                                     <div>
-                                        <h3 className="text-sm font-black text-white">Floating Alerts</h3>
-                                        <p className="text-[10px] text-gray-500 font-bold uppercase tracking-wide">Show system toast notifications</p>
-                                     </div>
-                                </div>
-                                
-                                <button 
-                                    onClick={toggleFloatingAlerts}
-                                    className={`w-12 h-6 rounded-full p-1 transition-all duration-300 ${advancedSettings.enableFloatingAlerts ? 'bg-blue-600 shadow-lg shadow-blue-600/40' : 'bg-gray-700'}`}
-                                >
-                                    <div className={`w-4 h-4 rounded-full bg-white shadow-sm transform transition-transform duration-300 ${advancedSettings.enableFloatingAlerts ? 'translate-x-6' : 'translate-x-0'}`} />
-                                </button>
-                            </div>
-
-                            {/* Notification Sound Selection */}
-                            <div className="p-4 bg-gray-800/30 rounded-2xl border border-white/5">
-                                <div className="flex items-center gap-2 mb-4">
-                                    <div className="w-8 h-8 rounded-lg bg-yellow-500/10 flex items-center justify-center text-yellow-400">
-                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" /></svg>
-                                    </div>
-                                    <h4 className="text-[10px] font-black uppercase tracking-widest text-gray-500">Notification Alert Sound</h4>
-                                </div>
-                                <div className="grid grid-cols-2 gap-2 max-h-60 overflow-y-auto custom-scrollbar pr-1">
-                                    {NOTIFICATION_SOUNDS.map(sound => (
-                                        <button
-                                            key={sound.id}
-                                            onClick={() => {
-                                                setAdvancedSettings(prev => ({ ...prev, notificationSound: sound.id }));
-                                                const audio = new Audio(sound.url);
-                                                audio.volume = advancedSettings.notificationVolume ?? 1;
-                                                audio.play().catch(() => {});
-                                            }}
-                                            className={`p-3 rounded-xl border text-left transition-all flex items-center justify-between group ${
-                                                advancedSettings.notificationSound === sound.id 
-                                                ? 'bg-blue-600/20 border-blue-500/50 text-blue-100' 
-                                                : 'bg-gray-800/50 border-white/5 text-gray-400 hover:bg-gray-800 hover:border-white/10'
-                                            }`}
-                                        >
-                                            <span className="text-xs font-bold">{sound.name}</span>
-                                            {advancedSettings.notificationSound === sound.id ? (
-                                                <div className="w-2 h-2 rounded-full bg-blue-500 shadow-[0_0_8px_#3b82f6] animate-pulse" />
-                                            ) : (
-                                                <svg className="w-3 h-3 opacity-0 group-hover:opacity-40 transition-opacity" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                                            )}
-                                        </button>
-                                    ))}
-                                </div>
-
-                                {/* Volume Slider */}
-                                <div className="mt-4 border-t border-white/5 pt-3">
-                                    <div className="flex items-center justify-between mb-2">
-                                        <div className="flex items-center gap-2">
-                                            <div className="w-6 h-6 rounded-md bg-blue-500/10 flex items-center justify-center text-blue-400">
-                                                {advancedSettings.notificationVolume === 0 ? (
-                                                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2" /></svg>
-                                                ) : (
-                                                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" /></svg>
-                                                )}
-                                            </div>
-                                            <h4 className="text-[10px] font-black uppercase tracking-widest text-gray-500">Alert Volume</h4>
-                                        </div>
-                                        <span className="text-xs font-bold text-blue-400">{Math.round((advancedSettings.notificationVolume || 1) * 100)}%</span>
+                    <div className="p-4 md:p-8 overflow-y-auto flex-grow custom-scrollbar space-y-8 pb-20 md:pb-8">
+                        {activeTab === 'general' && (
+                            <div className="space-y-6 animate-fade-in-up">
+                                <div className="flex items-center justify-between bg-gray-800/40 p-5 rounded-3xl border border-white/5 hover:border-blue-500/20 transition-all group">
+                                    <div className="flex items-center gap-4">
+                                         <div className="w-12 h-12 rounded-2xl bg-blue-500/10 flex items-center justify-center text-blue-400 group-hover:scale-110 transition-all border border-blue-500/20 shadow-inner">
+                                            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" /></svg>
+                                         </div>
+                                         <div>
+                                            <h3 className="text-sm font-black text-white uppercase tracking-tight">{t.floating_alerts}</h3>
+                                            <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest mt-0.5">{t.floating_alerts_desc}</p>
+                                         </div>
                                     </div>
                                     
-                                    <input 
-                                        type="range" 
-                                        min="0" 
-                                        max="1" 
-                                        step="0.05" 
-                                        value={advancedSettings.notificationVolume ?? 1} 
-                                        onChange={(e) => {
-                                            const newVolume = parseFloat(e.target.value);
-                                            setAdvancedSettings(prev => ({ ...prev, notificationVolume: newVolume }));
-                                            // Play a test sound with new volume (debounced slightly by user action speed naturally)
-                                            // Ideally we debounce this but for simplicity direct play is okay if not too spammy
-                                        }}
-                                        onMouseUp={() => {
-                                             // Play sample on release to avoid spamming
-                                             const soundId = advancedSettings.notificationSound || 'default';
-                                             const soundObj = NOTIFICATION_SOUNDS.find(s => s.id === soundId) || NOTIFICATION_SOUNDS[0];
-                                             const audio = new Audio(soundObj.url);
-                                             audio.volume = advancedSettings.notificationVolume ?? 1;
-                                             audio.play().catch(() => {});
-                                        }}
-                                        className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-blue-600"
-                                    />
+                                    <button 
+                                        onClick={toggleFloatingAlerts}
+                                        className={`w-14 h-7 rounded-full p-1.5 transition-all duration-500 ${advancedSettings.enableFloatingAlerts ? 'bg-blue-600 shadow-lg shadow-blue-600/40' : 'bg-gray-700'}`}
+                                    >
+                                        <div className={`w-4 h-4 rounded-full bg-white shadow-md transform transition-transform duration-500 ${advancedSettings.enableFloatingAlerts ? 'translate-x-7' : 'translate-x-0'}`} />
+                                    </button>
+                                </div>
+
+                                {/* Notification Sound Selection */}
+                                <div className="p-5 bg-gray-800/20 rounded-[2rem] border border-white/5 shadow-inner">
+                                    <div className="flex items-center gap-3 mb-6">
+                                        <div className="w-10 h-10 rounded-xl bg-yellow-500/10 flex items-center justify-center text-yellow-500 border border-yellow-500/20 shadow-inner">
+                                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" /></svg>
+                                        </div>
+                                        <h4 className="text-[11px] font-black uppercase tracking-[0.2em] text-gray-500">{t.notification_sound}</h4>
+                                    </div>
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 max-h-64 overflow-y-auto custom-scrollbar pr-2 pb-2">
+                                        {NOTIFICATION_SOUNDS.map(sound => (
+                                            <button
+                                                key={sound.id}
+                                                onClick={() => {
+                                                    setAdvancedSettings(prev => ({ ...prev, notificationSound: sound.id }));
+                                                    const audio = new Audio(sound.url);
+                                                    audio.volume = advancedSettings.notificationVolume ?? 1;
+                                                    audio.play().catch(() => {});
+                                                }}
+                                                className={`p-4 rounded-2xl border text-left transition-all flex items-center justify-between group active:scale-[0.98] ${
+                                                    advancedSettings.notificationSound === sound.id 
+                                                    ? 'bg-blue-600/20 border-blue-500/50 text-blue-100 shadow-lg shadow-blue-900/20' 
+                                                    : 'bg-gray-900/40 border-white/5 text-gray-500 hover:bg-gray-800 hover:border-white/10'
+                                                }`}
+                                            >
+                                                <span className="text-xs font-black uppercase tracking-widest">{sound.name}</span>
+                                                {advancedSettings.notificationSound === sound.id ? (
+                                                    <div className="w-2.5 h-2.5 rounded-full bg-blue-500 shadow-[0_0_12px_#3b82f6] animate-pulse" />
+                                                ) : (
+                                                    <div className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                                        <svg className="w-4 h-4 text-blue-400" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z" /></svg>
+                                                    </div>
+                                                )}
+                                            </button>
+                                        ))}
+                                    </div>
+
+                                    {/* Volume Slider */}
+                                    <div className="mt-8 border-t border-white/5 pt-6">
+                                        <div className="flex items-center justify-between mb-4">
+                                            <div className="flex items-center gap-3">
+                                                <div className="w-8 h-8 rounded-lg bg-blue-500/10 flex items-center justify-center text-blue-400 border border-blue-500/20">
+                                                    {advancedSettings.notificationVolume === 0 ? (
+                                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" /><path strokeLinecap="round" strokeLinejoin="round" d="M17 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2" /></svg>
+                                                    ) : (
+                                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" /></svg>
+                                                    )}
+                                                </div>
+                                                <h4 className="text-[11px] font-black uppercase tracking-[0.2em] text-gray-500">{t.alert_volume}</h4>
+                                            </div>
+                                            <span className="text-sm font-black text-blue-400 font-mono">{Math.round((advancedSettings.notificationVolume || 1) * 100)}%</span>
+                                        </div>
+                                        
+                                        <input 
+                                            type="range" 
+                                            min="0" 
+                                            max="1" 
+                                            step="0.01" 
+                                            value={advancedSettings.notificationVolume ?? 1} 
+                                            onChange={(e) => {
+                                                const newVolume = parseFloat(e.target.value);
+                                                setAdvancedSettings(prev => ({ ...prev, notificationVolume: newVolume }));
+                                            }}
+                                            onMouseUp={() => {
+                                                 const soundId = advancedSettings.notificationSound || 'default';
+                                                 const soundObj = NOTIFICATION_SOUNDS.find(s => s.id === soundId) || NOTIFICATION_SOUNDS[0];
+                                                 const audio = new Audio(soundObj.url);
+                                                 audio.volume = advancedSettings.notificationVolume ?? 1;
+                                                 audio.play().catch(() => {});
+                                            }}
+                                            onTouchEnd={() => {
+                                                 const soundId = advancedSettings.notificationSound || 'default';
+                                                 const soundObj = NOTIFICATION_SOUNDS.find(s => s.id === soundId) || NOTIFICATION_SOUNDS[0];
+                                                 const audio = new Audio(soundObj.url);
+                                                 audio.volume = advancedSettings.notificationVolume ?? 1;
+                                                 audio.play().catch(() => {});
+                                            }}
+                                            className="w-full h-2.5 bg-gray-700 rounded-full appearance-none cursor-pointer accent-blue-600 transition-all hover:bg-gray-600"
+                                        />
+                                    </div>
+                                </div>
+
+                                {/* Test Button Section */}
+                                <div className="pt-4 border-t border-white/5">
+                                    <button 
+                                        onClick={handleTestNotification}
+                                        disabled={isTesting}
+                                        className={`w-full py-5 rounded-[1.8rem] font-black uppercase text-xs tracking-[0.2em] transition-all flex items-center justify-center gap-4 active:scale-95 shadow-xl border border-white/5
+                                            ${isTesting ? 'bg-gray-800 text-gray-500 cursor-not-allowed' : 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white hover:shadow-blue-600/30'}`}
+                                    >
+                                        {isTesting ? (
+                                            <>
+                                                <div className="w-5 h-5 border-3 border-white/20 border-t-white rounded-full animate-spin"></div>
+                                                <span>Testing...</span>
+                                            </>
+                                        ) : (
+                                            <>
+                                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" /></svg>
+                                                <span>{t.test_notification}</span>
+                                            </>
+                                        )}
+                                    </button>
+                                    <p className="text-[10px] text-gray-600 font-black uppercase tracking-[0.2em] mt-4 text-center">{t.verify_alerts}</p>
                                 </div>
                             </div>
+                        )}
 
-                            {/* Test Button Section */}
-                            <div className="pt-4 border-t border-white/5">
-                                <button 
-                                    onClick={handleTestNotification}
-                                    disabled={isTesting}
-                                    className={`w-full py-4 rounded-2xl font-black uppercase text-xs tracking-widest transition-all flex items-center justify-center gap-3 active:scale-95 shadow-lg
-                                        ${isTesting ? 'bg-gray-800 text-gray-500 cursor-not-allowed' : 'bg-gradient-to-r from-blue-600 to-blue-500 text-white hover:shadow-blue-600/30'}`}
-                                >
-                                    {isTesting ? (
-                                        <>
-                                            <div className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin"></div>
-                                            Testing...
-                                        </>
-                                    ) : (
-                                        <>
-                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" /></svg>
-                                            {t.test_notification}
-                                        </>
-                                    )}
-                                </button>
-                                <p className="text-[10px] text-gray-600 font-bold uppercase tracking-widest mt-3 text-center">Verify system & In-app alerts</p>
-                            </div>
-                        </div>
-                    )}
-
-                    {activeTab === 'privacy' && (
-                        <div className="space-y-4 animate-fade-in-up">
-                            {/* Privacy Mode Toggle */}
-                            <div className="flex items-center justify-between bg-gray-800/50 p-4 rounded-2xl border border-white/5 hover:border-purple-500/30 transition-colors group">
-                                <div className="flex items-center gap-3">
-                                     <div className="w-10 h-10 rounded-xl bg-purple-500/10 flex items-center justify-center text-purple-400 group-hover:text-purple-300 group-hover:scale-110 transition-all">
-                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" /></svg>
-                                     </div>
-                                     <div>
-                                        <h3 className="text-sm font-black text-white">Privacy Mode</h3>
-                                        <p className="text-[10px] text-gray-500 font-bold uppercase tracking-wide">Mask sensitive customer data</p>
-                                     </div>
+                        {activeTab === 'privacy' && (
+                            <div className="space-y-6 animate-fade-in-up">
+                                {/* Privacy Mode Toggle */}
+                                <div className="flex items-center justify-between bg-gray-800/40 p-5 rounded-3xl border border-white/5 hover:border-purple-500/20 transition-all group">
+                                    <div className="flex items-center gap-4">
+                                         <div className="w-12 h-12 rounded-2xl bg-purple-500/10 flex items-center justify-center text-purple-400 group-hover:scale-110 transition-all border border-purple-500/20 shadow-inner">
+                                            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943-9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" /></svg>
+                                         </div>
+                                         <div>
+                                            <h3 className="text-sm font-black text-white uppercase tracking-tight">{t.privacy_mode}</h3>
+                                            <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest mt-0.5">{t.privacy_mode_desc}</p>
+                                         </div>
+                                    </div>
+                                    
+                                    <button 
+                                        onClick={togglePrivacyMode}
+                                        className={`w-14 h-7 rounded-full p-1.5 transition-all duration-500 ${advancedSettings.enablePrivacyMode ? 'bg-purple-600 shadow-lg shadow-purple-600/40' : 'bg-gray-700'}`}
+                                    >
+                                        <div className={`w-4 h-4 rounded-full bg-white shadow-md transform transition-transform duration-500 ${advancedSettings.enablePrivacyMode ? 'translate-x-7' : 'translate-x-0'}`} />
+                                    </button>
                                 </div>
-                                
-                                <button 
-                                    onClick={togglePrivacyMode}
-                                    className={`w-12 h-6 rounded-full p-1 transition-all duration-300 ${advancedSettings.enablePrivacyMode ? 'bg-purple-600 shadow-lg shadow-purple-600/40' : 'bg-gray-700'}`}
-                                >
-                                    <div className={`w-4 h-4 rounded-full bg-white shadow-sm transform transition-transform duration-300 ${advancedSettings.enablePrivacyMode ? 'translate-x-6' : 'translate-x-0'}`} />
-                                </button>
-                            </div>
 
-                            {/* Security Level Toggle */}
-                            <div className="flex items-center justify-between bg-gray-800/50 p-4 rounded-2xl border border-white/5 hover:border-green-500/30 transition-colors group">
-                                <div className="flex items-center gap-3">
-                                     <div className="w-10 h-10 rounded-xl bg-green-500/10 flex items-center justify-center text-green-400 group-hover:text-green-300 group-hover:scale-110 transition-all">
-                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" /></svg>
-                                     </div>
-                                     <div>
-                                        <h3 className="text-sm font-black text-white">High Security</h3>
-                                        <p className="text-[10px] text-gray-500 font-bold uppercase tracking-wide">Require re-authentication for critical actions</p>
-                                     </div>
+                                {/* Security Level Toggle */}
+                                <div className="flex items-center justify-between bg-gray-800/40 p-5 rounded-3xl border border-white/5 hover:border-green-500/20 transition-all group">
+                                    <div className="flex items-center gap-4">
+                                         <div className="w-12 h-12 rounded-2xl bg-green-500/10 flex items-center justify-center text-green-400 group-hover:scale-110 transition-all border border-green-500/20 shadow-inner">
+                                            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" /></svg>
+                                         </div>
+                                         <div>
+                                            <h3 className="text-sm font-black text-white uppercase tracking-tight">{t.high_security}</h3>
+                                            <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest mt-0.5">{t.high_security_desc}</p>
+                                         </div>
+                                    </div>
+                                    
+                                    <button 
+                                        onClick={toggleSecurityLevel}
+                                        className={`w-14 h-7 rounded-full p-1.5 transition-all duration-500 ${advancedSettings.securityLevel === 'high' ? 'bg-green-600 shadow-lg shadow-green-600/40' : 'bg-gray-700'}`}
+                                    >
+                                        <div className={`w-4 h-4 rounded-full bg-white shadow-md transform transition-transform duration-500 ${advancedSettings.securityLevel === 'high' ? 'translate-x-7' : 'translate-x-0'}`} />
+                                    </button>
                                 </div>
-                                
-                                <button 
-                                    onClick={toggleSecurityLevel}
-                                    className={`w-12 h-6 rounded-full p-1 transition-all duration-300 ${advancedSettings.securityLevel === 'high' ? 'bg-green-600 shadow-lg shadow-green-600/40' : 'bg-gray-700'}`}
-                                >
-                                    <div className={`w-4 h-4 rounded-full bg-white shadow-sm transform transition-transform duration-300 ${advancedSettings.securityLevel === 'high' ? 'translate-x-6' : 'translate-x-0'}`} />
-                                </button>
                             </div>
-                        </div>
-                    )}
+                        )}
+                    </div>
                 </div>
             </div>
         </Modal>
