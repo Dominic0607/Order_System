@@ -68,16 +68,19 @@ const UserSalesPageReport: React.FC<UserSalesPageReportProps> = ({
         } else {
             setIsLoadingData(true);
             try {
-                const response = await fetch(`${WEB_APP_URL}/api/admin/all-orders`);
+                // Hint backend to only return last 30 days to prevent iOS memory crash
+                const response = await fetch(`${WEB_APP_URL}/api/admin/all-orders?days=30`);
                 const result = await response.json();
                 
                 if (result.status === 'success') {
-                    const rawData = Array.isArray(result.data) ? result.data.filter((o: any) => o !== null) : [];
-                    const parsed = rawData.map((o: any) => {
-                        let products = [];
-                        try { if (o['Products (JSON)']) products = JSON.parse(o['Products (JSON)']); } catch(e) {}
-                        return { ...o, Products: products };
-                    });
+                    const rawData = Array.isArray(result.data) ? result.data : [];
+                    const parsed = rawData
+                        .filter((o: any) => o !== null)
+                        .map((o: any) => {
+                            let products = [];
+                            try { if (o['Products (JSON)']) products = JSON.parse(o['Products (JSON)']); } catch(e) {}
+                            return { ...o, Products: products };
+                        });
                     
                     setFullOrders(parsed);
                     CacheService.set(CACHE_KEY, parsed, CACHE_DURATION);

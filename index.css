@@ -9,9 +9,19 @@
 
 /* Reduce backdrop-blur impact on mobile */
 @media (max-width: 768px) {
-  .backdrop-blur-xl, .backdrop-blur-lg, .backdrop-blur-md {
-    -webkit-backdrop-filter: blur(10px);
-    backdrop-filter: blur(10px); /* Cap blur radius */
+  .backdrop-blur-xl, .backdrop-blur-lg, .backdrop-blur-md, .backdrop-blur-2xl, .backdrop-blur-3xl {
+    -webkit-backdrop-filter: blur(4px) !important;
+    backdrop-filter: blur(4px) !important; /* Cap blur radius strictly on mobile */
+  }
+  
+  .shadow-2xl, .shadow-xl {
+    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3) !important; /* Reduce shadow depth */
+  }
+
+  /* Hint HW acceleration for scroll containers */
+  .overflow-y-auto, .overflow-x-auto {
+    will-change: transform;
+    -webkit-overflow-scrolling: touch;
   }
 }
 

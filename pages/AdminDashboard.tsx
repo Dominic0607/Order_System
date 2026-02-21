@@ -46,6 +46,7 @@ const AdminDashboard: React.FC = () => {
     });
     
     const [parsedOrders, setParsedOrders] = useState<ParsedOrder[]>([]);
+    const hasFullHistoryRef = useRef(false); // Track if full data is loaded
     
     // New Date Filter State Object (Local)
     const [dateFilter, setDateFilter] = useState({
@@ -90,31 +91,33 @@ const AdminDashboard: React.FC = () => {
         return () => window.removeEventListener('resize', handleResize);
     }, []);
 
-    const fetchOrders = async () => {
-        if (parsedOrders.length === 0) setLoading(true);
+    const fetchOrders = async (forceFull = false) => {
+        if (forceFull && hasFullHistoryRef.current) return;
+        
+        if (parsedOrders.length === 0 || forceFull) setLoading(true);
         try {
-            const response = await fetch(`${WEB_APP_URL}/api/admin/all-orders`);
+            // Initial fetch uses 30-day hint, forceFull fetches everything
+            const url = forceFull ? `${WEB_APP_URL}/api/admin/all-orders` : `${WEB_APP_URL}/api/admin/all-orders?days=30`;
+            const response = await fetch(url);
             if (response.ok) {
                 const result = await response.json();
                 if (result.status === 'success') {
-                    // Filter out Opening Balance
-                    const rawOrders: FullOrder[] = Array.isArray(result.data) ? result.data.filter((o: any) => 
-                        o !== null && 
-                        o['Order ID'] !== 'Opening_Balance' && 
-                        o['Order ID'] !== 'Opening Balance'
-                    ) : [];
-                    
-                    const parsed = rawOrders.map(o => {
-                        let products = [];
-                        try { if (o['Products (JSON)']) products = JSON.parse(o['Products (JSON)']); } catch(e) {}
-                        return { 
-                            ...o, 
-                            Products: products, 
-                            IsVerified: String(o.IsVerified).toUpperCase() === 'TRUE',
-                            FulfillmentStatus: o.FulfillmentStatus as any
-                        };
-                    });
+                    // Filter out Opening Balance and parse immediately
+                    const rawData = Array.isArray(result.data) ? result.data : [];
+                    const parsed = rawData
+                        .filter((o: any) => o !== null && o['Order ID'] !== 'Opening_Balance' && o['Order ID'] !== 'Opening Balance')
+                        .map(o => {
+                            let products = [];
+                            try { if (o['Products (JSON)']) products = JSON.parse(o['Products (JSON)']); } catch(e) {}
+                            return { 
+                                ...o, 
+                                Products: products, 
+                                IsVerified: String(o.IsVerified).toUpperCase() === 'TRUE',
+                                FulfillmentStatus: o.FulfillmentStatus as any
+                            };
+                        });
                     setParsedOrders(parsed);
+                    if (forceFull) hasFullHistoryRef.current = true;
                 }
             }
         } catch (e) { console.error(e); } finally { setLoading(false); }
@@ -127,6 +130,13 @@ const AdminDashboard: React.FC = () => {
         const now = new Date();
         const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
         
+        // Trigger full fetch if range requires old data
+        const needsFullHistory = ['this_year', 'last_year', 'all'].includes(dateFilter.preset);
+        if (needsFullHistory && !hasFullHistoryRef.current) {
+            fetchOrders(true);
+            return [];
+        }
+
         return parsedOrders.filter(order => {
             if (!order.Timestamp) return false;
             const d = new Date(order.Timestamp);

@@ -64,6 +64,7 @@ const UserOrdersView: React.FC<{ team: string; onAdd: () => void }> = ({ team, o
     const allRawOrdersRef = useRef<FullOrder[]>([]);
     const allParsedOrdersRef = useRef<ParsedOrder[]>([]); // New Ref to hold PRE-PARSED orders
     const isDataFetchedRef = useRef(false);
+    const hasFullHistoryRef = useRef(false); // New: Track if full history was fetched
 
     // Permission Check
     const isSystemAdmin = !!currentUser?.IsSystemAdmin;
@@ -114,6 +115,10 @@ const UserOrdersView: React.FC<{ team: string; onAdd: () => void }> = ({ team, o
                 start = new Date(now.getFullYear() - 1, 0, 1);
                 end = new Date(now.getFullYear() - 1, 11, 31, 23, 59, 59, 999);
                 break;
+            case 'all': 
+                start = null; 
+                end = null; 
+                break;
             case 'custom': 
                 if (cStart) start = getValidDate(cStart + 'T00:00:00');
                 if (cEnd) end = getValidDate(cEnd + 'T23:59:59');
@@ -123,43 +128,60 @@ const UserOrdersView: React.FC<{ team: string; onAdd: () => void }> = ({ team, o
     };
 
     // 1. Initial Data Fetch (Runs once)
-    useEffect(() => {
-        const fetchOrders = async () => {
-            setLoading(true);
-            try {
-                const response = await fetch(`${WEB_APP_URL}/api/admin/all-orders`);
-                const result = await response.json();
-                if (result.status === 'success') {
-                    const rawData = Array.isArray(result.data) ? result.data.filter((o: any) => o !== null) : [];
-                    allRawOrdersRef.current = rawData;
-                    
-                    // Pre-parse all orders ONCE to avoid lag on filter changes
-                    allParsedOrdersRef.current = rawData.map((o: any) => {
-                        let products = [];
-                        try { if (o['Products (JSON)']) products = JSON.parse(o['Products (JSON)']); } catch(e) {}
-                        return { 
-                            ...o, 
-                            Products: products, 
-                            IsVerified: String(o.IsVerified).toUpperCase() === 'TRUE',
-                            FulfillmentStatus: o.FulfillmentStatus as any 
-                        };
-                    });
+    const fetchOrders = async (forceFull = false) => {
+        if (forceFull && hasFullHistoryRef.current) return;
+        
+        setLoading(true);
+        try {
+            // Initial fetch uses 30-day hint, forceFull fetches everything
+            const url = forceFull ? `${WEB_APP_URL}/api/admin/all-orders` : `${WEB_APP_URL}/api/admin/all-orders?days=30`;
+            const response = await fetch(url);
+            const result = await response.json();
+            
+            if (result.status === 'success') {
+                const rawData = Array.isArray(result.data) ? result.data.filter((o: any) => o !== null) : [];
+                
+                // Pre-parse and filter immediately to save memory
+                const parsed = rawData.map((o: any) => {
+                    let products = [];
+                    try { if (o['Products (JSON)']) products = JSON.parse(o['Products (JSON)']); } catch(e) {}
+                    return { 
+                        ...o, 
+                        Products: products, 
+                        IsVerified: String(o.IsVerified).toUpperCase() === 'TRUE',
+                        FulfillmentStatus: o.FulfillmentStatus as any 
+                    };
+                });
 
-                    isDataFetchedRef.current = true;
-                    processDataForRange('today'); 
-                }
-            } catch (err: any) { 
-                console.error(err); 
-            } finally { 
-                setLoading(false); 
+                allParsedOrdersRef.current = parsed;
+                allRawOrdersRef.current = []; // Clear raw data immediately to free memory
+                
+                isDataFetchedRef.current = true;
+                if (forceFull) hasFullHistoryRef.current = true;
+                
+                processDataForRange(dateRange); 
             }
-        };
+        } catch (err: any) { 
+            console.error(err); 
+        } finally { 
+            setLoading(false); 
+        }
+    };
+
+    useEffect(() => {
         fetchOrders();
     }, []);
 
     // 2. Process Data for Dashboard View
     const processDataForRange = (range: DateRangePreset) => {
         if (!isDataFetchedRef.current) return;
+
+        // Check if we need to fetch full history
+        const needsFullHistory = ['this_year', 'last_year', 'last_month', 'all'].includes(range);
+        if (needsFullHistory && !hasFullHistoryRef.current) {
+            fetchOrders(true);
+            return;
+        }
         
         setProcessing(true);
         // Use requestAnimationFrame or small timeout to allow UI to update
@@ -438,7 +460,7 @@ const UserOrdersView: React.FC<{ team: string; onAdd: () => void }> = ({ team, o
                         <div className="text-gray-500 text-xs p-4 italic">មិនមានទិន្នន័យសម្រាប់ {periodLabel}</div>
                     ) : (
                         topTeams.map((t, i) => (
-                            <div key={t.name} className="flex-shrink-0 w-[240px] sm:w-[300px] snap-center bg-gray-900/60 backdrop-blur-xl border border-white/5 p-5 rounded-[2rem] flex items-center gap-4 relative overflow-hidden">
+                            <div key={t.name} className="flex-shrink-0 w-[240px] sm:w-[300px] snap-center bg-gray-900 border border-white/5 p-5 rounded-3xl flex items-center gap-4 relative overflow-hidden shadow-lg">
                                 <div className={`w-12 h-12 rounded-xl flex items-center justify-center text-2xl border ${
                                     i === 0 ? 'bg-yellow-500/20 text-yellow-500 border-yellow-500/30' : 
                                     i === 1 ? 'bg-gray-400/20 text-gray-300 border-gray-400/30' : 
@@ -460,7 +482,7 @@ const UserOrdersView: React.FC<{ team: string; onAdd: () => void }> = ({ team, o
             </div>
 
             {/* Compact Dashboard Filters & Actions */}
-            <div className="bg-gray-900/60 backdrop-blur-3xl p-4 rounded-[2rem] border border-white/5 space-y-4 shadow-2xl mx-1">
+            <div className="bg-[#111827] p-4 rounded-[2rem] border border-white/5 space-y-4 shadow-xl mx-1">
                 <div className="flex flex-col gap-4">
                     <div className="flex items-center gap-1 overflow-x-auto hide-scrollbar bg-black/40 p-1 rounded-xl border border-white/5">
                         {(['today', 'this_week', 'this_month', 'custom'] as const).map(p => (

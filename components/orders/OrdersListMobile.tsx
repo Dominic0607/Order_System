@@ -279,12 +279,12 @@ const OrdersListMobile: React.FC<OrdersListMobileProps> = ({
                         <div 
                             key={order['Order ID']} 
                             className={`
-                                relative rounded-[2.5rem] p-5 shadow-2xl transition-all duration-300 overflow-hidden group
+                                relative rounded-3xl p-5 shadow-lg transition-all duration-300 overflow-hidden group
                                 ${isSelected 
-                                    ? 'bg-blue-900/20 border-2 border-blue-500/50 shadow-blue-900/30' 
+                                    ? 'bg-blue-900/30 border-2 border-blue-500/50 shadow-blue-900/20' 
                                     : isVerified 
-                                        ? 'bg-emerald-900/10 border border-emerald-500/20 shadow-emerald-900/10' 
-                                        : 'bg-[#1e293b]/90 border border-white/5 shadow-black/40'
+                                        ? 'bg-emerald-950/40 border border-emerald-500/20 shadow-none' 
+                                        : 'bg-slate-900 border border-white/5 shadow-md'
                                 }
                             `}
                         >
