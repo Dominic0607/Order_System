@@ -113,7 +113,7 @@ export interface Target {
 export interface BackendChatMessage {
     UserName: string;
     Timestamp: string;
-    MessageType: 'text' | 'image' | 'audio';
+    MessageType: 'text' | 'image' | 'audio' | 'video';
     Content: string;
     FileID?: string;
     IsDeleted?: boolean;
@@ -134,7 +134,7 @@ export interface ChatMessage {
     avatar: string;
     content: string;
     timestamp: string;
-    type: 'text' | 'image' | 'audio';
+    type: 'text' | 'image' | 'audio' | 'video';
     fileID?: string;
     isOptimistic?: boolean; // New field for optimistic UI
     isDeleted?: boolean;

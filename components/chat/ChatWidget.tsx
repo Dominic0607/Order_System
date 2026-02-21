@@ -252,9 +252,9 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ isOpen, onClose }) => {
         const normalizedType = (msg.MessageType || 'text').toLowerCase();
         
         let contentUrl = msg.Content;
-        // Construct URL if it's audio and has FileID
-        if (normalizedType === 'audio' && msg.FileID) {
-             contentUrl = `${WEB_APP_URL}/api/chat/audio/${msg.FileID}`;
+        // Construct URL if it's audio/video and has FileID
+        if ((normalizedType === 'audio' || normalizedType === 'video') && msg.FileID) {
+             contentUrl = `${WEB_APP_URL}/api/chat/${normalizedType}/${msg.FileID}`;
         } else if (normalizedType === 'image') {
              contentUrl = convertGoogleDriveUrl(msg.Content);
         }
@@ -266,7 +266,7 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ isOpen, onClose }) => {
             avatar: user?.ProfilePictureURL || '',
             content: contentUrl,
             timestamp: msg.Timestamp,
-            type: normalizedType as 'text' | 'image' | 'audio',
+            type: normalizedType as 'text' | 'image' | 'audio' | 'video',
             fileID: msg.FileID,
             isOptimistic: false,
             isDeleted: msg.IsDeleted,
@@ -367,19 +367,79 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ isOpen, onClose }) => {
             const result = await res.json();
             if (result.status === 'success') {
                 const history = result.data.map(transformBackendMessage);
+                // Sort by timestamp ASC
                 const sortedHistory = history.sort((a: ChatMessage, b: ChatMessage) => getTimestamp(a.timestamp) - getTimestamp(b.timestamp));
                 
-                // Process Notifications
+                // Process Notifications (always process all new ones)
                 processNotifications(sortedHistory);
 
-                setAndCacheMessages(prev => {
-                    // Optimization: Only update if length changed or last message different
-                    if (prev.length === sortedHistory.length && prev.length > 0) {
-                         const prevLast = prev[prev.length - 1];
-                         const newLast = sortedHistory[sortedHistory.length - 1];
-                         if (prevLast.id === newLast.id) return prev;
+                // --- 2-Day Cutoff Logic ---
+                const cutoff = new Date();
+                cutoff.setDate(cutoff.getDate() - 2);
+                const cutoffTime = cutoff.getTime();
+
+                const recentMessages: ChatMessage[] = [];
+                const olderMessages: ChatMessage[] = [];
+
+                sortedHistory.forEach((msg: ChatMessage) => {
+                    if (getTimestamp(msg.timestamp) >= cutoffTime) {
+                        recentMessages.push(msg);
+                    } else {
+                        olderMessages.push(msg);
                     }
-                    return sortedHistory;
+                });
+
+                // Ensure at least 20 messages are shown if recent is small
+                if (recentMessages.length < 20 && olderMessages.length > 0) {
+                    const needed = 20 - recentMessages.length;
+                    const extra = olderMessages.splice(olderMessages.length - needed, needed);
+                    recentMessages.unshift(...extra);
+                }
+
+                // Store older messages for "Load More"
+                archivedMessagesRef.current = olderMessages;
+
+                setAndCacheMessages(prev => {
+                    // If we have optimistics that are NOT in the fetched list (yet), keep them
+                    const optimistics = prev.filter(m => m.isOptimistic);
+                    
+                    // Merge: Recent Fetched + Optimistics
+                    // Note: This replaces the previous 'messages' state with the filtered list.
+                    // If the user had already loaded older messages, this poll might reset them.
+                    // To prevent that, we should check if we are already displaying older messages.
+                    
+                    // If the current 'messages' state has a message OLDER than the first 'recentMessage',
+                    // it means the user has scrolled up. We should respect that and NOT truncate.
+                    
+                    const currentOldest = prev.length > 0 && !prev[0].isOptimistic ? prev[0] : null;
+                    const fetchedOldest = recentMessages.length > 0 ? recentMessages[0] : null;
+
+                    if (currentOldest && fetchedOldest && getTimestamp(currentOldest.timestamp) < getTimestamp(fetchedOldest.timestamp)) {
+                        // User has loaded older messages. We should try to merge 'recentMessages' with existing 'prev'.
+                        // But 'sortedHistory' contains everything.
+                        // A simpler way: If user has scrolled, don't enforce the 2-day cut on *updates*, only on *initial load*.
+                        
+                        // However, since this runs on polling, we need to be careful.
+                        // Let's just merge 'sortedHistory' with 'prev' intelligence?
+                        // No, the requirement is "System will not download... unless user scrolls up".
+                        // Since we fetch ALL every time (API limitation), we just handle the *Display*.
+                        
+                        // If 'prev' has more items than 'recentMessages' (excluding optimistics), keep them.
+                        // Actually, let's just stick to: Update 'archived' and 'recent'. 
+                        // If 'prev' includes items that are in 'olderMessages', include them in the new state.
+                        
+                        const prevIds = new Set(prev.map(m => m.id));
+                        const missingFromRecent = olderMessages.filter(m => prevIds.has(m.id));
+                        
+                        // Re-add them to recentMessages (at the start)
+                        if (missingFromRecent.length > 0) {
+                            recentMessages.unshift(...missingFromRecent);
+                            // Remove from archive to avoid dupes
+                            archivedMessagesRef.current = olderMessages.filter(m => !prevIds.has(m.id));
+                        }
+                    }
+
+                    return [...recentMessages, ...optimistics];
                 });
             }
         } catch (e) { 
@@ -480,7 +540,38 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ isOpen, onClose }) => {
         return () => clearInterval(interval);
     }, [fetchHistory]);
 
-    // Auto-Scroll Logic
+    // Auto-Scroll & Load More Logic
+    const handleScroll = () => {
+        if (!chatBodyRef.current) return;
+        
+        const { scrollTop, scrollHeight, clientHeight } = chatBodyRef.current;
+        
+        // 1. Show/Hide "Scroll to Bottom" button
+        const isNearBottom = scrollHeight - scrollTop - clientHeight < 200;
+        setShowScrollBottom(!isNearBottom);
+
+        // 2. Load More Messages (Scroll to Top)
+        if (scrollTop === 0 && archivedMessagesRef.current.length > 0) {
+            // Take last 20 from archive (most recent of the old ones)
+            const chunk = archivedMessagesRef.current.splice(-20); // Removes and returns last 20
+            if (chunk.length > 0) {
+                // Capture current scroll height before adding items
+                const oldHeight = scrollHeight;
+                
+                setMessages(prev => [...chunk, ...prev]);
+                
+                // Adjust scroll position after render to maintain view
+                // We need to wait for DOM update. requestAnimationFrame works well.
+                requestAnimationFrame(() => {
+                    if (chatBodyRef.current) {
+                        const newHeight = chatBodyRef.current.scrollHeight;
+                        chatBodyRef.current.scrollTop = newHeight - oldHeight;
+                    }
+                });
+            }
+        }
+    };
+
     useEffect(() => {
         if (!isOpen || activeTab !== 'chat' || isHistoryLoading) return;
         const container = chatBodyRef.current;
@@ -495,8 +586,16 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ isOpen, onClose }) => {
             // 1. We just opened the chat (scrollTop is 0 and we have messages)
             // 2. We sent the message
             // 3. We are already at the bottom
-            if (isMe || lastMessage?.isOptimistic || isAtBottom || scrollTop === 0) {
-                // Use 'auto' for initial jump to bottom, 'smooth' for new messages
+            // 4. BUT NOT if we just loaded older messages (which usually happens at scrollTop 0)
+            
+            // Note: handleScroll handles the 'Load More' logic which preserves position.
+            // This Effect handles NEW incoming messages or Initial Load.
+            
+            // Check if we are loading old messages (messages length increased significantly at top)
+            // A simple check: if scrollTop is 0 and we have many messages, don't force bottom unless it's initial load.
+            // Actually, `isAtBottom` check covers most cases. 
+            
+            if (isMe || lastMessage?.isOptimistic || isAtBottom) {
                 const behavior = (scrollTop === 0 && !isMe) ? 'auto' : 'smooth';
                 scrollToBottom(behavior);
             }
@@ -504,8 +603,6 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ isOpen, onClose }) => {
             scrollToBottom('auto');
         }
     }, [messages, isOpen, activeTab, isHistoryLoading]);
-
-    // Send Message Handler
     const handleSendMessage = async (content: string, type: 'text' | 'image' | 'audio', fileId?: string) => {
         if (!content && type === 'text') return;
 
@@ -727,14 +824,6 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ isOpen, onClose }) => {
         });
     };
 
-    const handleScroll = () => {
-        if (chatBodyRef.current) {
-            const { scrollTop, scrollHeight, clientHeight } = chatBodyRef.current;
-            const isNearBottom = scrollHeight - scrollTop - clientHeight < 200;
-            setShowScrollBottom(!isNearBottom);
-        }
-    };
-
     return (
         <div className={`chat-widget-container ${!isOpen ? 'closed' : ''}`}>
             <div className="chat-header">
@@ -845,6 +934,12 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ isOpen, onClose }) => {
                                                             {msg.type === 'text' && <p className="leading-relaxed text-sm whitespace-pre-wrap">{renderMessageContent(msg.content)}</p>}
                                                             {msg.type === 'image' && <img src={msg.content} className="rounded-xl max-w-full cursor-pointer hover:opacity-90 transition-opacity border border-black/20" onClick={() => previewImage(msg.content)} alt="attachment" />}
                                                             {msg.type === 'audio' && <MemoizedAudioPlayer src={msg.content} isMe={isMe} />}
+                                                            {msg.type === 'video' && (
+                                                                <video controls className="rounded-xl max-w-full border border-black/20" style={{maxHeight: '200px'}}>
+                                                                    <source src={msg.content} type="video/mp4" />
+                                                                    Your browser does not support the video tag.
+                                                                </video>
+                                                            )}
                                                         </>
                                                     )}
                                                     
@@ -867,8 +962,8 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ isOpen, onClose }) => {
                                                                 <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 24 24"><path d="M16 12V4h1V2H7v2h1v8l-2 2v2h5v6l1 1 1-1v-6h5v-2l-2-2z"/></svg>
                                                             </button>
 
-                                                            {msg.type === 'image' && (
-                                                                <button onClick={() => handleDownload(msg.content, `image_${msg.id}.jpg`)} className="p-1.5 bg-gray-800 text-gray-400 hover:text-white rounded-full shadow border border-gray-700" title="Download">
+                                                            {(msg.type === 'image' || msg.type === 'video') && (
+                                                                <button onClick={() => handleDownload(msg.content, `${msg.type}_${msg.id}.${msg.type === 'video' ? 'mp4' : 'jpg'}`)} className="p-1.5 bg-gray-800 text-gray-400 hover:text-white rounded-full shadow border border-gray-700" title="Download">
                                                                     <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
                                                                 </button>
                                                             )}
@@ -905,7 +1000,7 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ isOpen, onClose }) => {
             )}
 
             {activeTab === 'chat' && (
-                <div className="p-3 bg-gray-900 border-t border-gray-800 relative z-20">
+                <div className="chat-input-area p-3 bg-gray-900 border-t border-gray-800 relative z-20">
                     {/* Mention Suggestions Popup */}
                     {showMentionList && (
                         <div className="absolute bottom-full left-4 mb-2 bg-gray-800 border border-gray-700 rounded-xl shadow-xl w-64 max-h-60 overflow-y-auto custom-scrollbar z-50 animate-fade-in-up flex flex-col">
