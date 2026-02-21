@@ -84,6 +84,7 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ isOpen, onClose }) => {
     const hasAttemptedFullLoadRef = useRef(false); // Track if full history was ever requested
     const abortControllerRef = useRef<AbortController | null>(null);
     const fetchInProgressRef = useRef(false);
+    const hasScrolledToBottomRef = useRef(false); // Track initial scroll to bottom
 
     // Derived Pinned Messages
     const pinnedMessages = useMemo(() => messages.filter(m => m.isPinned && !m.isDeleted), [messages]);
@@ -143,7 +144,11 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ isOpen, onClose }) => {
 
     // Reset Unread Count
     useEffect(() => {
-        if (isOpen) setUnreadCount(0);
+        if (isOpen) {
+            setUnreadCount(0);
+        } else {
+            hasScrolledToBottomRef.current = false; // Reset on close
+        }
     }, [isOpen, setUnreadCount]);
 
     // Request Permission for System Notifications on Mount
@@ -604,27 +609,25 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ isOpen, onClose }) => {
         const container = chatBodyRef.current;
         if (container) {
             const { scrollTop, scrollHeight, clientHeight } = container;
-            // If we are near bottom, or history just finished loading (scrollTop is 0), or it's our message
+            // If we are near bottom, or it's initial load (hasn't scrolled yet), or it's our message
             const isAtBottom = scrollHeight - scrollTop - clientHeight < 250;
             const lastMessage = messages[messages.length - 1];
             const isMe = lastMessage?.user === currentUser?.UserName;
             
-            // Scroll to bottom if:
-            // 1. We just opened the chat (scrollTop is 0 and we have messages)
-            // 2. We sent the message
-            // 3. We are already at the bottom
-            // 4. BUT NOT if we just loaded older messages (which usually happens at scrollTop 0)
+            // Scroll to bottom logic:
+            // 1. Mandatory on initial load (!hasScrolledToBottomRef.current)
+            // 2. When I send a message (isMe)
+            // 3. When an optimistic message appears
+            // 4. When we are already looking at the bottom (isAtBottom)
             
-            // Note: handleScroll handles the 'Load More' logic which preserves position.
-            // This Effect handles NEW incoming messages or Initial Load.
-            
-            // Check if we are loading old messages (messages length increased significantly at top)
-            // A simple check: if scrollTop is 0 and we have many messages, don't force bottom unless it's initial load.
-            // Actually, `isAtBottom` check covers most cases. 
-            
-            if (isMe || lastMessage?.isOptimistic || isAtBottom) {
-                const behavior = (scrollTop === 0 && !isMe) ? 'auto' : 'smooth';
+            if (isMe || lastMessage?.isOptimistic || isAtBottom || !hasScrolledToBottomRef.current) {
+                const behavior = (!hasScrolledToBottomRef.current) ? 'auto' : 'smooth';
                 scrollToBottom(behavior);
+                
+                // Mark initial scroll as done
+                if (messages.length > 0) {
+                    hasScrolledToBottomRef.current = true;
+                }
             }
         } else {
             scrollToBottom('auto');
