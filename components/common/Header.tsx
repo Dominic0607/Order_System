@@ -22,7 +22,8 @@ const Header: React.FC<HeaderProps> = ({ onBackToRoleSelect, appState }) => {
         isMobileMenuOpen, setIsMobileMenuOpen,
         language, setLanguage,
         mobilePageTitle, // Consuming the new state
-        advancedSettings
+        advancedSettings,
+        showNotification
     } = useContext(AppContext);
     
     const [dropdownOpen, setDropdownOpen] = useState(false);
@@ -71,6 +72,7 @@ const Header: React.FC<HeaderProps> = ({ onBackToRoleSelect, appState }) => {
     const handleTestNotification = async () => {
         await requestNotificationPermission();
         await sendSystemNotification(t.test_notification, t.test_notification_body);
+        showNotification(t.test_notification_body, 'success');
         setDropdownOpen(false);
     };
 

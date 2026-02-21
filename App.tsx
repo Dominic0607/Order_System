@@ -314,7 +314,7 @@ const App: React.FC = () => {
                 </Suspense>
                 
                 {/* Global Notification Toast */}
-                {notification && (
+                {notification && advancedSettings.enableFloatingAlerts && (
                     <Toast 
                         message={notification.message} 
                         type={notification.type} 

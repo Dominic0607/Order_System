@@ -1,6 +1,8 @@
 import React, { useContext, useState } from 'react';
 import { AppContext } from '../../context/AppContext';
 import Modal from './Modal';
+import { requestNotificationPermission, sendSystemNotification } from '../../utils/notificationUtils';
+import { translations } from '../../translations';
 
 interface AdvancedSettingsModalProps {
     onClose: () => void;
@@ -9,10 +11,26 @@ interface AdvancedSettingsModalProps {
 type SettingsTab = 'general' | 'privacy';
 
 const AdvancedSettingsModal: React.FC<AdvancedSettingsModalProps> = ({ onClose }) => {
-    const { advancedSettings, setAdvancedSettings } = useContext(AppContext);
+    const { advancedSettings, setAdvancedSettings, language, showNotification } = useContext(AppContext);
     const [activeTab, setActiveTab] = useState<SettingsTab>('general');
+    const [isTesting, setIsTesting] = useState(false);
+
+    const t = translations[language || 'en'];
 
     if (!advancedSettings || !setAdvancedSettings) return null;
+
+    const handleTestNotification = async () => {
+        setIsTesting(true);
+        try {
+            await requestNotificationPermission();
+            await sendSystemNotification(t.test_notification, t.test_notification_body);
+            showNotification(t.test_notification_body, 'success');
+        } catch (err) {
+            console.error("Test notification failed", err);
+        } finally {
+            setTimeout(() => setIsTesting(false), 1000);
+        }
+    };
 
     const toggleFloatingAlerts = () => {
         setAdvancedSettings(prev => ({
@@ -89,6 +107,29 @@ const AdvancedSettingsModal: React.FC<AdvancedSettingsModalProps> = ({ onClose }
                                 >
                                     <div className={`w-4 h-4 rounded-full bg-white shadow-sm transform transition-transform duration-300 ${advancedSettings.enableFloatingAlerts ? 'translate-x-6' : 'translate-x-0'}`} />
                                 </button>
+                            </div>
+
+                            {/* Test Button Section */}
+                            <div className="pt-4 border-t border-white/5">
+                                <button 
+                                    onClick={handleTestNotification}
+                                    disabled={isTesting}
+                                    className={`w-full py-4 rounded-2xl font-black uppercase text-xs tracking-widest transition-all flex items-center justify-center gap-3 active:scale-95 shadow-lg
+                                        ${isTesting ? 'bg-gray-800 text-gray-500 cursor-not-allowed' : 'bg-gradient-to-r from-blue-600 to-blue-500 text-white hover:shadow-blue-600/30'}`}
+                                >
+                                    {isTesting ? (
+                                        <>
+                                            <div className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin"></div>
+                                            Testing...
+                                        </>
+                                    ) : (
+                                        <>
+                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" /></svg>
+                                            {t.test_notification}
+                                        </>
+                                    )}
+                                </button>
+                                <p className="text-[10px] text-gray-600 font-bold uppercase tracking-widest mt-3 text-center">Verify system & In-app alerts</p>
                             </div>
                         </div>
                     )}

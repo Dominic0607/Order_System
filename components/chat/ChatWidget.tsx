@@ -281,11 +281,13 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ isOpen, onClose }) => {
                     const data = JSON.parse(e.data);
                     if (data.action === 'new_message') {
                         const backendMsg = data.payload;
+                        const isMe = backendMsg.UserName === currentUserRef.current?.UserName;
                         
                         // *** Global Notification Trigger ***
                         const isNewOrder = backendMsg.Content && backendMsg.Content.includes('📢 NEW ORDER:');
                         const isSystemAlert = backendMsg.Content && backendMsg.Content.includes('📢 SYSTEM_ALERT:');
 
+                        // 1. Handle Special System Alerts
                         if (isNewOrder || isSystemAlert) {
                             let alertMsg = backendMsg.Content;
                             if (isNewOrder) alertMsg = backendMsg.Content.replace('📢 NEW ORDER:', '').trim();
@@ -293,17 +295,29 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ isOpen, onClose }) => {
                             
                             console.log("🔔 SYSTEM ALERT RECEIVED via WS:", alertMsg);
                             
-                            // 1. App Toast (In-App)
                             showNotification(alertMsg, 'success');
                             
-                            // 2. Play Sound
                             if (!isMutedRef.current) {
                                 const audio = new Audio(SOUND_URLS.NOTIFICATION);
                                 audio.play().catch(e => console.warn("Audio play failed", e));
                             }
-
-                            // 3. System Native Notification (Phone/Desktop) using separate utility
                             sendSystemNotification("ការកម្មង់ថ្មី 📦", alertMsg);
+                        } 
+                        // 2. Handle Standard User Messages (New Requirement)
+                        else if (!isMe) {
+                             const senderName = backendMsg.FullName || backendMsg.UserName;
+                             let contentPreview = backendMsg.Content;
+                             
+                             if (backendMsg.MessageType === 'Image') contentPreview = '📷 Sent an image';
+                             else if (backendMsg.MessageType === 'Audio') contentPreview = '🎤 Sent a voice message';
+                             
+                             // Show floating alert for ALL user messages
+                             showNotification(`${senderName}: ${contentPreview}`, 'info');
+                             
+                             // Also send system notification if app is in background
+                             if (document.hidden) {
+                                 sendSystemNotification(senderName, contentPreview);
+                             }
                         }
 
                         const msg = transformBackendMessage(backendMsg);
@@ -322,7 +336,7 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ isOpen, onClose }) => {
                             return [...prev, msg];
                         });
                         setTimeout(() => scrollToBottom('smooth'), 100);
-                        if (msg.user !== currentUserRef.current?.UserName) {
+                        if (!isMe) {
                             if (!isOpenRef.current) setUnreadCount(p => p + 1);
                             if (!isMutedRef.current && !backendMsg.Content.includes('SYSTEM_ALERT')) {
                                 soundNotification.current.currentTime = 0;
