@@ -10,13 +10,41 @@ import BackgroundMusic from './components/common/BackgroundMusic';
 import { CacheService, CACHE_KEYS } from './services/cacheService';
 import Toast from './components/common/Toast';
 
-const LoginPage = React.lazy(() => import('./pages/LoginPage'));
-const RoleSelectionPage = React.lazy(() => import('./pages/RoleSelectionPage'));
-const AdminDashboard = React.lazy(() => import('./pages/AdminDashboard'));
-const UserJourney = React.lazy(() => import('./pages/UserJourney'));
-const Header = React.lazy(() => import('./components/common/Header'));
-const ImpersonationBanner = React.lazy(() => import('./components/common/ImpersonationBanner'));
-const ChatWidget = React.lazy(() => import('./components/chat/ChatWidget'));
+// Retry helper for lazy loading components to handle version mismatches or network errors
+const lazyRetry = <T extends React.ComponentType<any>>(
+  importFn: () => Promise<{ default: T }>,
+  name: string
+): React.LazyExoticComponent<T> => {
+  return React.lazy(async () => {
+    try {
+      return await importFn();
+    } catch (error: any) {
+      console.error(`Failed to load ${name}:`, error);
+      // Check if it's a dynamic import error (chunk load failure)
+      if (error.message?.includes('dynamically imported module') || error.message?.includes('Importing a module script failed')) {
+        const storageKey = `retry_load_${name}`;
+        const hasRetried = sessionStorage.getItem(storageKey);
+        
+        if (!hasRetried) {
+          sessionStorage.setItem(storageKey, 'true');
+          console.log(`Reloading page to recover from version mismatch for ${name}...`);
+          window.location.reload();
+          // Return a never-resolving promise to keep the suspense fallback active while reloading
+          return new Promise(() => {});
+        }
+      }
+      throw error;
+    }
+  });
+};
+
+const LoginPage = lazyRetry(() => import('./pages/LoginPage'), 'LoginPage');
+const RoleSelectionPage = lazyRetry(() => import('./pages/RoleSelectionPage'), 'RoleSelectionPage');
+const AdminDashboard = lazyRetry(() => import('./pages/AdminDashboard'), 'AdminDashboard');
+const UserJourney = lazyRetry(() => import('./pages/UserJourney'), 'UserJourney');
+const Header = lazyRetry(() => import('./components/common/Header'), 'Header');
+const ImpersonationBanner = lazyRetry(() => import('./components/common/ImpersonationBanner'), 'ImpersonationBanner');
+const ChatWidget = lazyRetry(() => import('./components/chat/ChatWidget'), 'ChatWidget');
 
 const initialAppData: AppData = {
     users: [], products: [], pages: [], locations: [],
