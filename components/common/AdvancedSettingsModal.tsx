@@ -56,31 +56,31 @@ const AdvancedSettingsModal: React.FC<AdvancedSettingsModalProps> = ({ onClose }
 
     return (
         <Modal isOpen={true} onClose={onClose} maxWidth="max-w-2xl">
-            <div className="flex h-[500px] text-white">
-                {/* Sidebar */}
-                <div className="w-1/3 border-r border-white/10 bg-gray-900/50 p-4 flex flex-col gap-2">
-                    <h2 className="text-xl font-black text-white uppercase tracking-tight italic mb-6 px-2">Advance Settings</h2>
+            <div className="flex flex-col md:flex-row h-[80vh] md:h-[500px] text-white">
+                {/* Sidebar / Top Tab Bar */}
+                <div className="w-full md:w-1/3 border-b md:border-b-0 md:border-r border-white/10 bg-gray-900/50 p-2 md:p-4 flex flex-row md:flex-col gap-2 overflow-x-auto flex-shrink-0">
+                    <h2 className="hidden md:block text-xl font-black text-white uppercase tracking-tight italic mb-6 px-2">Advance Settings</h2>
                     
                     <button 
                         onClick={() => setActiveTab('general')}
-                        className={`w-full text-left px-4 py-3 rounded-xl text-sm font-bold transition-all flex items-center gap-3 ${activeTab === 'general' ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/20' : 'text-gray-400 hover:bg-white/5 hover:text-gray-200'}`}
+                        className={`flex-shrink-0 md:w-full text-left px-4 py-2 md:py-3 rounded-xl text-xs md:text-sm font-bold transition-all flex items-center gap-2 md:gap-3 ${activeTab === 'general' ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/20' : 'text-gray-400 hover:bg-white/5 hover:text-gray-200'}`}
                     >
-                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" /></svg>
+                        <svg className="w-4 h-4 md:w-5 md:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" /></svg>
                         General
                     </button>
 
                     <button 
                         onClick={() => setActiveTab('privacy')}
-                        className={`w-full text-left px-4 py-3 rounded-xl text-sm font-bold transition-all flex items-center gap-3 ${activeTab === 'privacy' ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/20' : 'text-gray-400 hover:bg-white/5 hover:text-gray-200'}`}
+                        className={`flex-shrink-0 md:w-full text-left px-4 py-2 md:py-3 rounded-xl text-xs md:text-sm font-bold transition-all flex items-center gap-2 md:gap-3 ${activeTab === 'privacy' ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/20' : 'text-gray-400 hover:bg-white/5 hover:text-gray-200'}`}
                     >
-                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
-                        Privacy & Security
+                        <svg className="w-4 h-4 md:w-5 md:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
+                        Privacy
                     </button>
                 </div>
 
                 {/* Content Area */}
-                <div className="w-2/3 p-6 overflow-y-auto bg-[#0f172a]">
-                    <div className="flex justify-between items-center mb-6">
+                <div className="w-full md:w-2/3 p-4 md:p-6 overflow-y-auto bg-[#0f172a] flex-grow custom-scrollbar">
+                    <div className="flex justify-between items-center mb-6 sticky top-0 bg-[#0f172a] z-10 py-2 md:py-0 border-b md:border-none border-white/5">
                         <h3 className="text-lg font-black uppercase tracking-widest text-gray-400">
                             {activeTab === 'general' ? 'General Settings' : 'Privacy & Security'}
                         </h3>
