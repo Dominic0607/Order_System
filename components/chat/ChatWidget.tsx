@@ -66,6 +66,9 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ isOpen, onClose }) => {
     const [mentionQuery, setMentionQuery] = useState('');
     const [showMentionList, setShowMentionList] = useState(false);
 
+    // Reply & Pin State
+    const [replyingTo, setReplyingTo] = useState<ChatMessage | null>(null);
+
     const fileInputRef = useRef<HTMLInputElement>(null);
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const chatBodyRef = useRef<HTMLDivElement>(null);
@@ -76,6 +79,10 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ isOpen, onClose }) => {
     const currentUserRef = useRef(currentUser);
     const isMutedRef = useRef(isMuted);
     const lastNotifiedMessageIdRef = useRef<string | null>(null);
+    const archivedMessagesRef = useRef<ChatMessage[]>([]); // Store older messages here
+
+    // Derived Pinned Messages
+    const pinnedMessages = useMemo(() => messages.filter(m => m.isPinned && !m.isDeleted), [messages]);
 
     useEffect(() => {
         const soundId = advancedSettings?.notificationSound || 'default';
@@ -261,7 +268,15 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ isOpen, onClose }) => {
             timestamp: msg.Timestamp,
             type: normalizedType as 'text' | 'image' | 'audio',
             fileID: msg.FileID,
-            isOptimistic: false
+            isOptimistic: false,
+            isDeleted: msg.IsDeleted,
+            isPinned: msg.IsPinned,
+            replyTo: msg.ReplyTo ? {
+                id: msg.ReplyTo.ID,
+                user: msg.ReplyTo.User,
+                content: msg.ReplyTo.Content,
+                type: msg.ReplyTo.Type
+            } : undefined
         };
     }, []); 
 
@@ -516,11 +531,18 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ isOpen, onClose }) => {
             timestamp: new Date().toISOString(),
             type: type,
             fileID: fileId,
-            isOptimistic: true
+            isOptimistic: true,
+            replyTo: replyingTo ? {
+                id: replyingTo.id,
+                user: replyingTo.fullName || replyingTo.user,
+                content: replyingTo.content,
+                type: replyingTo.type
+            } : undefined
         };
 
         setMessages(prev => [...prev, optimisticMsg]);
         if (type === 'text') setNewMessage('');
+        setReplyingTo(null); // Clear reply state
 
         const messageType = type.charAt(0).toUpperCase() + type.slice(1);
 
@@ -537,6 +559,15 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ isOpen, onClose }) => {
             if (fileId) {
                 payload.FileID = fileId;
                 payload.fileId = fileId;
+            }
+
+            if (optimisticMsg.replyTo) {
+                payload.ReplyTo = {
+                    ID: optimisticMsg.replyTo.id,
+                    User: optimisticMsg.replyTo.user,
+                    Content: optimisticMsg.replyTo.content,
+                    Type: optimisticMsg.replyTo.type
+                };
             }
 
             const response = await fetch(`${WEB_APP_URL}/api/chat/send`, {
@@ -603,6 +634,44 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ isOpen, onClose }) => {
         } finally { 
             setIsUploading(false); 
         }
+    };
+
+    // --- Message Actions ---
+    const handleDeleteMessage = async (msgId: string) => {
+        if (!confirm("Are you sure you want to delete this message?")) return;
+        
+        // Optimistic Update
+        setMessages(prev => prev.map(m => m.id === msgId ? { ...m, isDeleted: true } : m));
+
+        try {
+            await fetch(`${WEB_APP_URL}/api/chat/delete`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ messageId: msgId, userName: currentUser?.UserName })
+            });
+        } catch (e) { console.error("Delete failed", e); }
+    };
+
+    const handlePinMessage = async (msgId: string, isPinned: boolean) => {
+        // Optimistic Update
+        setMessages(prev => prev.map(m => m.id === msgId ? { ...m, isPinned: !isPinned } : m));
+
+        try {
+            await fetch(`${WEB_APP_URL}/api/chat/pin`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ messageId: msgId, isPinned: !isPinned, userName: currentUser?.UserName })
+            });
+        } catch (e) { console.error("Pin failed", e); }
+    };
+
+    const handleDownload = (url: string, filename: string) => {
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = filename;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
     };
 
     // --- Mention Handling ---
@@ -697,6 +766,21 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ isOpen, onClose }) => {
                 <button onClick={() => setActiveTab('users')} className={`text-xs font-bold uppercase tracking-wider transition-all ${activeTab === 'users' ? 'active bg-blue-600 text-white shadow-lg' : 'text-gray-500 hover:text-gray-300'}`}>Members</button>
             </div>
 
+            {/* Pinned Messages Header */}
+            {activeTab === 'chat' && pinnedMessages.length > 0 && (
+                <div className="bg-gray-900/80 border-b border-gray-800 p-2 flex gap-2 overflow-x-auto custom-scrollbar">
+                    <div className="flex-shrink-0 flex items-center justify-center w-6 h-6 bg-yellow-500/20 rounded-full">
+                        <svg className="w-3 h-3 text-yellow-500" fill="currentColor" viewBox="0 0 24 24"><path d="M16 12V4h1V2H7v2h1v8l-2 2v2h5v6l1 1 1-1v-6h5v-2l-2-2z"/></svg>
+                    </div>
+                    {pinnedMessages.map(msg => (
+                        <div key={msg.id} className="flex-shrink-0 max-w-[200px] bg-gray-800 rounded-lg p-2 text-[10px] border border-gray-700 cursor-pointer hover:bg-gray-700" onClick={() => document.getElementById(`msg-${msg.id}`)?.scrollIntoView({behavior: 'smooth', block: 'center'})}>
+                            <p className="font-bold text-gray-400 truncate">{msg.fullName}</p>
+                            <p className="text-gray-300 truncate">{msg.type === 'text' ? msg.content : `[${msg.type}]`}</p>
+                        </div>
+                    ))}
+                </div>
+            )}
+
             <div 
                 className="chat-body custom-scrollbar bg-[#0f172a] relative"
                 ref={chatBodyRef}
@@ -723,7 +807,7 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ isOpen, onClose }) => {
                                 const isSystemAlert = msg.content.includes('SYSTEM_ALERT') || msg.content.includes('NEW ORDER');
                                 
                                 return (
-                                    <div key={msg.id + index} className={`flex flex-col ${isMe ? 'items-end' : 'items-start'} animate-fade-in-up`}>
+                                    <div key={msg.id + index} id={`msg-${msg.id}`} className={`flex flex-col ${isMe ? 'items-end' : 'items-start'} animate-fade-in-up group/msg relative`}>
                                         {isSystemAlert ? (
                                             <div className="w-full flex justify-center my-2">
                                                 <div className="bg-blue-900/40 border border-blue-500/30 rounded-xl px-4 py-2 text-[10px] font-bold text-blue-300 text-center shadow-lg">
@@ -738,23 +822,64 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ isOpen, onClose }) => {
                                                     ) : <div className="w-8"></div>}
                                                 </div>
                                                 
-                                                <div className={`relative px-4 py-3 shadow-lg ${
+                                                <div className={`relative px-4 py-3 shadow-lg transition-all ${
                                                     isMe 
                                                     ? 'bg-blue-600 text-white rounded-2xl rounded-tr-sm' 
                                                     : 'bg-gray-800 text-gray-200 rounded-2xl rounded-tl-sm border border-white/5'
-                                                } ${msg.isOptimistic ? 'opacity-70' : ''}`}>
+                                                } ${msg.isOptimistic ? 'opacity-70' : ''} ${msg.isDeleted ? 'italic opacity-60 border-dashed border-gray-600' : ''}`}>
+                                                    
+                                                    {/* Quoted Reply */}
+                                                    {msg.replyTo && !msg.isDeleted && (
+                                                        <div className={`mb-2 p-2 rounded-lg border-l-4 text-xs ${isMe ? 'bg-blue-700/50 border-blue-300' : 'bg-gray-900/50 border-gray-600'}`}>
+                                                            <p className="font-bold opacity-80">{msg.replyTo.user}</p>
+                                                            <p className="truncate opacity-70">{msg.replyTo.type === 'text' ? msg.replyTo.content : `[${msg.replyTo.type}]`}</p>
+                                                        </div>
+                                                    )}
+
                                                     {!isMe && showAvatar && <p className="text-[10px] font-black text-blue-400 mb-1 uppercase tracking-wider">{user?.FullName || msg.fullName}</p>}
                                                     
-                                                    {msg.type === 'text' && <p className="leading-relaxed text-sm whitespace-pre-wrap">{renderMessageContent(msg.content)}</p>}
-                                                    {msg.type === 'image' && <img src={msg.content} className="rounded-xl max-w-full cursor-pointer hover:opacity-90 transition-opacity border border-black/20" onClick={() => previewImage(msg.content)} alt="attachment" />}
-                                                    {msg.type === 'audio' && <MemoizedAudioPlayer src={msg.content} isMe={isMe} />}
+                                                    {msg.isDeleted ? (
+                                                        <p className="text-sm text-gray-400">🚫 This message was deleted</p>
+                                                    ) : (
+                                                        <>
+                                                            {msg.type === 'text' && <p className="leading-relaxed text-sm whitespace-pre-wrap">{renderMessageContent(msg.content)}</p>}
+                                                            {msg.type === 'image' && <img src={msg.content} className="rounded-xl max-w-full cursor-pointer hover:opacity-90 transition-opacity border border-black/20" onClick={() => previewImage(msg.content)} alt="attachment" />}
+                                                            {msg.type === 'audio' && <MemoizedAudioPlayer src={msg.content} isMe={isMe} />}
+                                                        </>
+                                                    )}
                                                     
                                                     <div className="flex items-center justify-end gap-1 mt-1.5">
+                                                        {msg.isPinned && <svg className="w-3 h-3 text-yellow-500" fill="currentColor" viewBox="0 0 24 24"><path d="M16 12V4h1V2H7v2h1v8l-2 2v2h5v6l1 1 1-1v-6h5v-2l-2-2z"/></svg>}
                                                         <p className={`text-[9px] font-medium ${isMe ? 'text-blue-200' : 'text-gray-500'}`}>
                                                             {new Date(msg.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
                                                         </p>
                                                         {msg.isOptimistic && <svg className="w-3 h-3 text-white/50 animate-spin" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>}
                                                     </div>
+
+                                                    {/* Message Actions (Hover) */}
+                                                    {!msg.isDeleted && !msg.isOptimistic && (
+                                                        <div className={`absolute top-0 ${isMe ? '-left-10' : '-right-10'} opacity-0 group-hover/msg:opacity-100 transition-opacity flex flex-col gap-1 p-1`}>
+                                                            <button onClick={() => setReplyingTo(msg)} className="p-1.5 bg-gray-800 text-gray-400 hover:text-white rounded-full shadow border border-gray-700" title="Reply">
+                                                                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"/></svg>
+                                                            </button>
+                                                            
+                                                            <button onClick={() => handlePinMessage(msg.id, !!msg.isPinned)} className={`p-1.5 bg-gray-800 rounded-full shadow border border-gray-700 ${msg.isPinned ? 'text-yellow-500' : 'text-gray-400 hover:text-white'}`} title={msg.isPinned ? "Unpin" : "Pin"}>
+                                                                <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 24 24"><path d="M16 12V4h1V2H7v2h1v8l-2 2v2h5v6l1 1 1-1v-6h5v-2l-2-2z"/></svg>
+                                                            </button>
+
+                                                            {msg.type === 'image' && (
+                                                                <button onClick={() => handleDownload(msg.content, `image_${msg.id}.jpg`)} className="p-1.5 bg-gray-800 text-gray-400 hover:text-white rounded-full shadow border border-gray-700" title="Download">
+                                                                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+                                                                </button>
+                                                            )}
+
+                                                            {isMe && (
+                                                                <button onClick={() => handleDeleteMessage(msg.id)} className="p-1.5 bg-gray-800 text-red-400 hover:bg-red-900/20 rounded-full shadow border border-gray-700" title="Delete">
+                                                                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                                                                </button>
+                                                            )}
+                                                        </div>
+                                                    )}
                                                 </div>
                                             </div>
                                         )}
@@ -811,6 +936,19 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ isOpen, onClose }) => {
                             {allUsers.filter(u => u.FullName?.toLowerCase().includes(mentionQuery.toLowerCase()) || u.UserName?.toLowerCase().includes(mentionQuery.toLowerCase())).length === 0 && (
                                 <div className="p-4 text-center text-gray-500 text-[10px] uppercase tracking-wider">No matching members</div>
                             )}
+                        </div>
+                    )}
+
+                    {/* Reply Preview */}
+                    {replyingTo && (
+                        <div className="flex items-center justify-between bg-gray-800/80 border-l-4 border-blue-500 p-2 mb-2 rounded-r-lg animate-fade-in-up">
+                            <div className="flex flex-col text-xs overflow-hidden">
+                                <span className="font-bold text-blue-400">Replying to {replyingTo.fullName || replyingTo.user}</span>
+                                <span className="text-gray-400 truncate">{replyingTo.type === 'text' ? replyingTo.content : `[${replyingTo.type}]`}</span>
+                            </div>
+                            <button onClick={() => setReplyingTo(null)} className="p-1 hover:bg-gray-700 rounded-full text-gray-500 hover:text-white">
+                                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                            </button>
                         </div>
                     )}
 

@@ -116,6 +116,14 @@ export interface BackendChatMessage {
     MessageType: 'text' | 'image' | 'audio';
     Content: string;
     FileID?: string;
+    IsDeleted?: boolean;
+    IsPinned?: boolean;
+    ReplyTo?: {
+        ID: string;
+        User: string;
+        Content: string;
+        Type: string;
+    };
 }
 
 // Added ChatMessage interface to fix missing member error in ChatWidget
@@ -129,6 +137,14 @@ export interface ChatMessage {
     type: 'text' | 'image' | 'audio';
     fileID?: string;
     isOptimistic?: boolean; // New field for optimistic UI
+    isDeleted?: boolean;
+    isPinned?: boolean;
+    replyTo?: {
+        id: string;
+        user: string;
+        content: string;
+        type: string;
+    };
 }
 
 export interface AppData {
