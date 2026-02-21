@@ -14,10 +14,20 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ src, isMe = false }) => {
     const [isReady, setIsReady] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
+    // Clean up event listeners on unmount
     useEffect(() => {
-        const audio = audioRef.current;
-        if (!audio) return;
+        return () => {
+            const audio = audioRef.current;
+            if (audio) {
+                audio.pause();
+                audio.removeAttribute('src'); // Detach source
+                audio.load(); // Force reset
+            }
+        };
+    }, []);
 
+    // Setup listeners only once audio element is ready/interacted with
+    const attachListeners = (audio: HTMLAudioElement) => {
         const onReady = () => {
             if (audio.duration && isFinite(audio.duration)) {
                 setDuration(audio.duration);
@@ -34,38 +44,48 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ src, isMe = false }) => {
             setIsReady(false);
         };
 
-        audio.addEventListener('loadedmetadata', onReady);
-        audio.addEventListener('canplay', onReady);
-        audio.addEventListener('timeupdate', onTimeUpdate);
-        audio.addEventListener('ended', onEnded);
-        audio.addEventListener('error', onError);
-
-        // Reset state on src change
-        setIsPlaying(false);
-        setIsReady(false);
-        setCurrentTime(0);
-        audio.load();
-
-        return () => {
-            audio.removeEventListener('loadedmetadata', onReady);
-            audio.removeEventListener('canplay', onReady);
-            audio.removeEventListener('timeupdate', onTimeUpdate);
-            audio.removeEventListener('ended', onEnded);
-            audio.removeEventListener('error', onError);
-        };
-    }, [src]);
+        // Attach listeners
+        audio.onloadedmetadata = onReady;
+        audio.oncanplay = onReady;
+        audio.ontimeupdate = onTimeUpdate;
+        audio.onended = onEnded;
+        audio.onerror = onError;
+    };
 
     const togglePlayPause = () => {
-        if (!isReady || !audioRef.current) return;
+        const audio = audioRef.current;
+        if (!audio) return;
+
+        // If not ready and not playing (first click), load and play
+        if (!isReady && !isPlaying && !error) {
+            attachListeners(audio);
+            // audio.src is already set in JSX, but we need to trigger load explicitly if needed
+            // or just play. Safari handles play() well.
+            
+            // Pause all other audios
+            document.querySelectorAll('audio').forEach(el => {
+                if (el !== audio) el.pause();
+            });
+
+            audio.play().then(() => {
+                setIsPlaying(true);
+                setIsReady(true); // Assume ready if playing starts
+            }).catch(e => {
+                console.error("Play failed", e);
+                setError("Unavailable");
+            });
+            return;
+        }
+
         if (isPlaying) {
-            audioRef.current.pause();
+            audio.pause();
             setIsPlaying(false);
         } else {
             // Pause all other audios to prevent overlap
             document.querySelectorAll('audio').forEach(el => {
-                if (el !== audioRef.current) el.pause();
+                if (el !== audio) el.pause();
             });
-            audioRef.current.play().catch(e => console.error("Play failed", e));
+            audio.play().catch(e => console.error("Play failed", e));
             setIsPlaying(true);
         }
     };

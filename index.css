@@ -1,3 +1,19 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* iOS Safari Crash Fixes & Performance */
+.fixed, .absolute, .sticky {
+  -webkit-transform: translate3d(0, 0, 0); /* Trigger HW Acceleration */
+}
+
+/* Reduce backdrop-blur impact on mobile */
+@media (max-width: 768px) {
+  .backdrop-blur-xl, .backdrop-blur-lg, .backdrop-blur-md {
+    -webkit-backdrop-filter: blur(10px);
+    backdrop-filter: blur(10px); /* Cap blur radius */
+  }
+}
 
 @import url('https://fonts.googleapis.com/css2?family=Kantumruy+Pro:ital,wght@0,100..700;1,100..700&display=swap');
 

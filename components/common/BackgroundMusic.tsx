@@ -67,6 +67,15 @@ const BackgroundMusic: React.FC = () => {
         // Try to play immediately when component mounts
         attemptPlay();
 
+        // Cleanup on unmount or source change
+        return () => {
+            if (audio) {
+                audio.pause();
+                audio.removeAttribute('src'); // Detach source to free memory
+                audio.load();
+            }
+        };
+
     }, [musicSource]);
 
     const handleAudioError = (e: any) => {
