@@ -61,6 +61,7 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ isOpen, onClose }) => {
     const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>('disconnected');
     const [activeTab, setActiveTab] = useState<ActiveTab>('chat');
     const [showScrollBottom, setShowScrollBottom] = useState(false);
+    const [isLoadingOlder, setIsLoadingOlder] = useState(false); // State for loading older messages
     
     // Mention State
     const [mentionQuery, setMentionQuery] = useState('');
@@ -406,65 +407,51 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ isOpen, onClose }) => {
                 // Process Notifications
                 processNotifications(sortedHistory);
 
-                // --- 2-Day Cutoff Logic ---
-                const cutoff = new Date();
-                cutoff.setDate(cutoff.getDate() - 2);
-                const cutoffTime = cutoff.getTime();
-
-                const recentMessages: ChatMessage[] = [];
-                const olderMessages: ChatMessage[] = [];
-
-                sortedHistory.forEach((msg: ChatMessage) => {
-                    if (getTimestamp(msg.timestamp) >= cutoffTime) {
-                        recentMessages.push(msg);
-                    } else {
-                        olderMessages.push(msg);
-                    }
-                });
-
-                // Ensure at least 20 messages are shown if recent is small
-                if (recentMessages.length < 20 && olderMessages.length > 0) {
-                    const needed = 20 - recentMessages.length;
-                    const extra = olderMessages.splice(olderMessages.length - needed, needed);
-                    recentMessages.unshift(...extra);
-                }
+                // --- Chunked Loading Logic (Initial 20 messages) ---
+                const historyLen = sortedHistory.length;
+                const recentChunk = sortedHistory.slice(Math.max(0, historyLen - 20));
+                const olderThanRecent = sortedHistory.slice(0, Math.max(0, historyLen - 20));
 
                 setAndCacheMessages(prev => {
                     const prevOptimistics = prev.filter(m => m.isOptimistic);
                     const prevNonOptimistic = prev.filter(m => !m.isOptimistic);
                     
-                    // Identify all messages currently in view that are NOT in recentMessages
-                    const recentIds = new Set(recentMessages.map(m => m.id));
-                    const alreadyLoadedArchive = prevNonOptimistic.filter(m => !recentIds.has(m.id));
+                    // Deduplicate with incoming latest chunk
+                    const recentIds = new Set(recentChunk.map(m => m.id));
+                    const existingNonOverlapping = prevNonOptimistic.filter(m => !recentIds.has(m.id));
                     
-                    // Final Recent List: All archived messages + new window
-                    const finalRecent = [...alreadyLoadedArchive, ...recentMessages].sort((a, b) => getTimestamp(a.timestamp) - getTimestamp(b.timestamp));
+                    // Final messages in view
+                    const finalInView = [...existingNonOverlapping, ...recentChunk].sort((a, b) => getTimestamp(a.timestamp) - getTimestamp(b.timestamp));
 
                     // --- OPTIMISTIC RESOLUTION ---
-                    // Remove optimistic messages that now exist in the real data from server
                     const unresolvedOptimistics = prevOptimistics.filter(opt => {
-                        const isResolved = finalRecent.some(real => 
+                        const isResolved = finalInView.some(real => 
                             real.user === opt.user && 
                             real.type === opt.type && 
-                            // Match by content for text or close timestamp for media (within 15s)
                             (real.content === opt.content || Math.abs(getTimestamp(real.timestamp) - getTimestamp(opt.timestamp)) < 15000)
                         );
-                        
-                        // Also auto-clear stuck messages after 30 seconds
                         const isExpired = (Date.now() - getTimestamp(opt.timestamp)) > 30000;
-                        
                         return !isResolved && !isExpired;
                     });
 
-                    // Update Archived Messages Ref
-                    if (isFullFetch) {
-                        const finalIds = new Set(finalRecent.map(m => m.id));
-                        archivedMessagesRef.current = olderMessages.filter(m => !finalIds.has(m.id));
+                    // --- ARCHIVE MANAGEMENT ---
+                    // Only overwrite archive on full fetch or if it's the very first load
+                    // This prevents periodic polls (which only get 2 days) from clearing the full archive
+                    if (isFullFetch || archivedMessagesRef.current.length === 0) {
+                        const inViewIds = new Set(finalInView.map(m => m.id));
+                        archivedMessagesRef.current = olderThanRecent.filter(m => !inViewIds.has(m.id));
+                        
+                        // If this was a scroll-triggered full fetch, automatically pop one chunk
+                        // to show the user that more messages were found.
+                        if (isFullFetch && archivedMessagesRef.current.length > 0) {
+                            const extraChunk = archivedMessagesRef.current.splice(-20);
+                            return [...extraChunk, ...finalInView, ...unresolvedOptimistics].sort((a, b) => getTimestamp(a.timestamp) - getTimestamp(b.timestamp));
+                        }
                     }
 
-                    // Deduplicate and combine
+                    // Standard update (poll or first 2-day load)
                     const seenIds = new Set();
-                    return [...finalRecent, ...unresolvedOptimistics].filter(m => {
+                    return [...finalInView, ...unresolvedOptimistics].filter(m => {
                         if (seenIds.has(m.id)) return false;
                         seenIds.add(m.id);
                         return true;
@@ -592,24 +579,19 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ isOpen, onClose }) => {
         setShowScrollBottom(!isNearBottom);
 
         // 2. Load More Messages (Scroll to Top)
-        if (scrollTop === 0) {
+        if (scrollTop === 0 && !isLoadingOlder) {
             if (archivedMessagesRef.current.length > 0) {
-                // Take last 20 from archive (most recent of the old ones)
-                const chunk = archivedMessagesRef.current.splice(-20); // Removes and returns last 20
-                if (chunk.length > 0) {
-                    // Capture current scroll height before adding items
-                    const oldHeight = scrollHeight;
-                    
-                    setMessages(prev => [...chunk, ...prev]);
-                    
-                    // Adjust scroll position after render to maintain view
-                    requestAnimationFrame(() => {
-                        if (chatBodyRef.current) {
-                            const newHeight = chatBodyRef.current.scrollHeight;
-                            chatBodyRef.current.scrollTop = newHeight - oldHeight;
-                        }
-                    });
-                }
+                setIsLoadingOlder(true);
+                
+                // Small delay to show "Loading..." indicator for UX
+                setTimeout(() => {
+                    // Take last 20 from archive (most recent of the old ones)
+                    const chunk = archivedMessagesRef.current.splice(-20);
+                    if (chunk.length > 0) {
+                        setMessages(prev => [...chunk, ...prev]);
+                    }
+                    setIsLoadingOlder(false);
+                }, 400);
             } else if (!hasAttemptedFullLoadRef.current && !isHistoryLoading) {
                 // Archive is empty and we haven't tried full load yet - fetch full history
                 fetchHistory(true);
@@ -927,6 +909,14 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ isOpen, onClose }) => {
             >
                 {activeTab === 'chat' ? (
                     <div className="chat-messages p-4 space-y-6 min-h-full pb-20">
+                        {isLoadingOlder && (
+                            <div className="flex justify-center py-2 animate-fade-in">
+                                <div className="bg-gray-800/80 border border-white/5 px-4 py-1.5 rounded-full flex items-center gap-2 shadow-lg">
+                                    <div className="w-3 h-3 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+                                    <span className="text-[10px] font-black uppercase tracking-widest text-gray-400">Loading messages...</span>
+                                </div>
+                            </div>
+                        )}
                         {isHistoryLoading ? (
                             <div className="flex flex-col items-center justify-center py-10 space-y-3">
                                 <Spinner size="md" />
