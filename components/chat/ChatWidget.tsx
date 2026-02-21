@@ -287,8 +287,12 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ isOpen, onClose }) => {
         const lastId = lastNotifiedMessageIdRef.current;
         let newMessages: ChatMessage[] = [];
 
+        // Current time for recency check (avoid spamming old messages)
+        const now = Date.now();
+        const recencyThreshold = 2 * 60 * 1000; // 2 minutes
+
         if (!lastId) {
-             // If first load, don't notify everything, just mark the last one
+             // If first load, just mark the last one and return
              lastNotifiedMessageIdRef.current = sortedMessages[sortedMessages.length - 1].id;
              return;
         }
@@ -312,6 +316,11 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ isOpen, onClose }) => {
             // Skip own messages
             if (isMe) return;
 
+            // RECENCY CHECK: Only notify if the message is recent (within 2 minutes)
+            // This prevents spamming notifications for old messages on startup
+            const msgTime = getTimestamp(msg.timestamp);
+            if (now - msgTime > recencyThreshold) return;
+
             // Global Notification Trigger
             const isNewOrder = msg.content && msg.content.includes('📢 NEW ORDER:');
             const isSystemAlert = msg.content && msg.content.includes('📢 SYSTEM_ALERT:');
@@ -323,7 +332,7 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ isOpen, onClose }) => {
                 
                 showNotification(alertMsg, 'success');
                 
-                if (!isMutedRef.current) {
+                if (!isMutedRef.current && soundNotification.current) {
                     soundNotification.current.currentTime = 0;
                     soundNotification.current.play().catch(e => console.warn("Audio play failed", e));
                 }
@@ -343,7 +352,7 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ isOpen, onClose }) => {
                     if (!isOpenRef.current) setUnreadCount(p => p + 1);
                 }
 
-                if (!isMutedRef.current) {
+                if (!isMutedRef.current && soundNotification.current) {
                     soundNotification.current.currentTime = 0;
                     soundNotification.current.play().catch(() => {});
                 }
@@ -357,9 +366,11 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ isOpen, onClose }) => {
     }, [showNotification, setUnreadCount]);
 
     const fetchHistory = useCallback(async () => {
-        // if (!isOpenRef.current) return; // Allow fetching in background for notifications
+        // Use a flag to avoid concurrent fetches if polling and initial fetch collide
+        if (isHistoryLoading) return;
         
-        if (messages.length === 0 && isOpenRef.current) setIsHistoryLoading(true);
+        const isInitialLoad = messages.length === 0;
+        if (isInitialLoad && isOpenRef.current) setIsHistoryLoading(true);
         
         try {
             const res = await fetch(`${WEB_APP_URL}/api/chat/messages`);
@@ -370,7 +381,7 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ isOpen, onClose }) => {
                 // Sort by timestamp ASC
                 const sortedHistory = history.sort((a: ChatMessage, b: ChatMessage) => getTimestamp(a.timestamp) - getTimestamp(b.timestamp));
                 
-                // Process Notifications (always process all new ones)
+                // Process Notifications
                 processNotifications(sortedHistory);
 
                 // --- 2-Day Cutoff Logic ---
@@ -396,50 +407,28 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ isOpen, onClose }) => {
                     recentMessages.unshift(...extra);
                 }
 
-                // Store older messages for "Load More"
-                archivedMessagesRef.current = olderMessages;
-
                 setAndCacheMessages(prev => {
-                    // If we have optimistics that are NOT in the fetched list (yet), keep them
                     const optimistics = prev.filter(m => m.isOptimistic);
+                    const prevNonOptimistic = prev.filter(m => !m.isOptimistic);
                     
-                    // Merge: Recent Fetched + Optimistics
-                    // Note: This replaces the previous 'messages' state with the filtered list.
-                    // If the user had already loaded older messages, this poll might reset them.
-                    // To prevent that, we should check if we are already displaying older messages.
+                    // Identify all messages currently in view that are NOT in recentMessages
+                    const recentIds = new Set(recentMessages.map(m => m.id));
+                    const alreadyLoadedArchive = prevNonOptimistic.filter(m => !recentIds.has(m.id));
                     
-                    // If the current 'messages' state has a message OLDER than the first 'recentMessage',
-                    // it means the user has scrolled up. We should respect that and NOT truncate.
-                    
-                    const currentOldest = prev.length > 0 && !prev[0].isOptimistic ? prev[0] : null;
-                    const fetchedOldest = recentMessages.length > 0 ? recentMessages[0] : null;
+                    // Final Recent List: All archived messages the user has loaded + the new 2-day window
+                    const finalRecent = [...alreadyLoadedArchive, ...recentMessages].sort((a, b) => getTimestamp(a.timestamp) - getTimestamp(b.timestamp));
 
-                    if (currentOldest && fetchedOldest && getTimestamp(currentOldest.timestamp) < getTimestamp(fetchedOldest.timestamp)) {
-                        // User has loaded older messages. We should try to merge 'recentMessages' with existing 'prev'.
-                        // But 'sortedHistory' contains everything.
-                        // A simpler way: If user has scrolled, don't enforce the 2-day cut on *updates*, only on *initial load*.
-                        
-                        // However, since this runs on polling, we need to be careful.
-                        // Let's just merge 'sortedHistory' with 'prev' intelligence?
-                        // No, the requirement is "System will not download... unless user scrolls up".
-                        // Since we fetch ALL every time (API limitation), we just handle the *Display*.
-                        
-                        // If 'prev' has more items than 'recentMessages' (excluding optimistics), keep them.
-                        // Actually, let's just stick to: Update 'archived' and 'recent'. 
-                        // If 'prev' includes items that are in 'olderMessages', include them in the new state.
-                        
-                        const prevIds = new Set(prev.map(m => m.id));
-                        const missingFromRecent = olderMessages.filter(m => prevIds.has(m.id));
-                        
-                        // Re-add them to recentMessages (at the start)
-                        if (missingFromRecent.length > 0) {
-                            recentMessages.unshift(...missingFromRecent);
-                            // Remove from archive to avoid dupes
-                            archivedMessagesRef.current = olderMessages.filter(m => !prevIds.has(m.id));
-                        }
-                    }
+                    // Update Archived Messages Ref: Everything in olderMessages that is NOT in finalRecent
+                    const finalIds = new Set(finalRecent.map(m => m.id));
+                    archivedMessagesRef.current = olderMessages.filter(m => !finalIds.has(m.id));
 
-                    return [...recentMessages, ...optimistics];
+                    // Deduplicate results
+                    const seenIds = new Set();
+                    return [...finalRecent, ...optimistics].filter(m => {
+                        if (seenIds.has(m.id)) return false;
+                        seenIds.add(m.id);
+                        return true;
+                    });
                 });
             }
         } catch (e) { 
@@ -447,7 +436,7 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ isOpen, onClose }) => {
         } finally { 
             setIsHistoryLoading(false); 
         }
-    }, [transformBackendMessage, setAndCacheMessages, messages.length, processNotifications]);
+    }, [transformBackendMessage, setAndCacheMessages, processNotifications, isHistoryLoading, messages.length]);
 
     const scrollToBottom = (behavior: ScrollBehavior = 'smooth') => {
         if (messagesEndRef.current) {
