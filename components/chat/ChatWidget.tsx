@@ -81,6 +81,8 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ isOpen, onClose }) => {
     const lastNotifiedMessageIdRef = useRef<string | null>(null);
     const archivedMessagesRef = useRef<ChatMessage[]>([]); // Store older messages here
     const hasAttemptedFullLoadRef = useRef(false); // Track if full history was ever requested
+    const abortControllerRef = useRef<AbortController | null>(null);
+    const fetchInProgressRef = useRef(false);
 
     // Derived Pinned Messages
     const pinnedMessages = useMemo(() => messages.filter(m => m.isPinned && !m.isDeleted), [messages]);
@@ -368,10 +370,18 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ isOpen, onClose }) => {
 
     const fetchHistory = useCallback(async (forceFull = false) => {
         // Use a flag to avoid concurrent fetches if polling and initial fetch collide
-        if (isHistoryLoading) return;
+        if (fetchInProgressRef.current) return;
         
         const isInitialLoad = messages.length === 0;
         if (isInitialLoad && isOpenRef.current) setIsHistoryLoading(true);
+        fetchInProgressRef.current = true;
+
+        // Abort previous request if still running (iOS Standard for cleaner network)
+        if (abortControllerRef.current) {
+            abortControllerRef.current.abort();
+        }
+        abortControllerRef.current = new AbortController();
+        const signal = abortControllerRef.current.signal;
         
         try {
             // Determine if we should fetch full history or just the last 2 days
@@ -381,7 +391,7 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ isOpen, onClose }) => {
             
             if (isFullFetch) hasAttemptedFullLoadRef.current = true;
 
-            const res = await fetch(url);
+            const res = await fetch(url, { signal });
             if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
             const result = await res.json();
             if (result.status === 'success') {
@@ -442,12 +452,15 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ isOpen, onClose }) => {
                     });
                 });
             }
-        } catch (e) { 
-            console.warn("Chat history service unavailable"); 
+        } catch (e: any) { 
+            if (e.name !== 'AbortError') {
+                console.warn("Chat history service unavailable"); 
+            }
         } finally { 
             setIsHistoryLoading(false); 
+            fetchInProgressRef.current = false;
         }
-    }, [transformBackendMessage, setAndCacheMessages, processNotifications, isHistoryLoading, messages.length]);
+    }, [transformBackendMessage, setAndCacheMessages, processNotifications, isOpenRef, messages.length]);
 
     const scrollToBottom = (behavior: ScrollBehavior = 'smooth') => {
         if (messagesEndRef.current) {
@@ -534,10 +547,17 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ isOpen, onClose }) => {
     // Polling mechanism (Runs always now to ensure background notifications)
     useEffect(() => {
         const interval = setInterval(() => {
-             fetchHistory();
+             // iOS Optimization: Only fetch when tab is active to save resources
+             // Background notifications still work via WS or when user returns
+             if (document.visibilityState === 'visible') {
+                 fetchHistory();
+             }
         }, 3000);
 
-        return () => clearInterval(interval);
+        return () => {
+            clearInterval(interval);
+            if (abortControllerRef.current) abortControllerRef.current.abort();
+        };
     }, [fetchHistory]);
 
     // Auto-Scroll & Load More Logic
@@ -949,7 +969,7 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ isOpen, onClose }) => {
                                                     ) : (
                                                         <>
                                                             {msg.type === 'text' && <p className="leading-relaxed text-sm whitespace-pre-wrap">{renderMessageContent(msg.content)}</p>}
-                                                            {msg.type === 'image' && <img src={msg.content} className="rounded-xl max-w-full cursor-pointer hover:opacity-90 transition-opacity border border-black/20" onClick={() => previewImage(msg.content)} alt="attachment" />}
+                                                            {msg.type === 'image' && <img src={msg.content} loading="lazy" className="rounded-xl max-w-full cursor-pointer hover:opacity-90 transition-opacity border border-black/20" onClick={() => previewImage(msg.content)} alt="attachment" />}
                                                             {msg.type === 'audio' && <MemoizedAudioPlayer src={msg.content} isMe={isMe} />}
                                                             {msg.type === 'video' && (
                                                                 <video controls className="rounded-xl max-w-full border border-black/20" style={{maxHeight: '200px'}}>
