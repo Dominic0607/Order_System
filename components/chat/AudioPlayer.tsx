@@ -3,16 +3,30 @@ import Spinner from '../common/Spinner';
 
 interface AudioPlayerProps {
     src: string;
+    duration?: string; // External duration string (e.g. "0:05")
     isMe?: boolean;
 }
 
-const AudioPlayer: React.FC<AudioPlayerProps> = ({ src, isMe = false }) => {
+const AudioPlayer: React.FC<AudioPlayerProps> = ({ src, duration: externalDuration, isMe = false }) => {
     const audioRef = useRef<HTMLAudioElement>(null);
     const [isPlaying, setIsPlaying] = useState(false);
     const [duration, setDuration] = useState(0);
     const [currentTime, setCurrentTime] = useState(0);
     const [isReady, setIsReady] = useState(false);
     const [error, setError] = useState<string | null>(null);
+
+    // Convert "MM:SS" string to seconds
+    const parseDuration = (dStr?: string): number => {
+        if (!dStr) return 0;
+        const parts = dStr.split(':');
+        if (parts.length !== 2) return 0;
+        return (parseInt(parts[0]) * 60) + parseInt(parts[1]);
+    };
+
+    const displayDuration = useMemo(() => {
+        if (duration > 0) return duration;
+        return parseDuration(externalDuration);
+    }, [duration, externalDuration]);
 
     // Clean up event listeners on unmount
     useEffect(() => {
@@ -113,14 +127,14 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ src, isMe = false }) => {
             
             <button 
                 onClick={togglePlayPause} 
-                disabled={!isReady}
+                disabled={!isReady && !externalDuration}
                 className={`w-9 h-9 flex items-center justify-center rounded-full shadow-md transition-all active:scale-95 flex-shrink-0 ${
                     isMe 
                         ? 'bg-white text-blue-600 hover:bg-gray-100' 
                         : 'bg-blue-600 text-white hover:bg-blue-500'
                 }`}
             >
-                {!isReady ? <Spinner size="sm" /> : isPlaying ? (
+                {!isReady && !externalDuration ? <Spinner size="sm" /> : isPlaying ? (
                     <svg className="w-3.5 h-3.5 fill-current" viewBox="0 0 24 24"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
                 ) : (
                     <svg className="w-3.5 h-3.5 fill-current ml-0.5" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
@@ -131,7 +145,7 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ src, isMe = false }) => {
                  <input
                     type="range"
                     min="0"
-                    max={duration || 100}
+                    max={displayDuration || 100}
                     value={currentTime}
                     onChange={handleSeek}
                     className={`w-full h-1.5 rounded-lg appearance-none cursor-pointer focus:outline-none focus:ring-0 ${
@@ -142,7 +156,7 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ src, isMe = false }) => {
                 />
                 <div className="flex justify-between w-full text-[10px] font-mono font-medium opacity-90 px-0.5">
                     <span>{formatTime(currentTime)}</span>
-                    <span>{formatTime(duration)}</span>
+                    <span>{formatTime(displayDuration)}</span>
                 </div>
             </div>
         </div>

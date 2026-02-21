@@ -136,6 +136,7 @@ export interface ChatMessage {
     timestamp: string;
     type: 'text' | 'image' | 'audio' | 'video';
     fileID?: string;
+    duration?: string; // New field for audio/video duration
     isOptimistic?: boolean; // New field for optimistic UI
     isDeleted?: boolean;
     isPinned?: boolean;

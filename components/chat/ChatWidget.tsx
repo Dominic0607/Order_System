@@ -255,9 +255,12 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ isOpen, onClose }) => {
         const normalizedType = (msg.MessageType || 'text').toLowerCase();
         
         let contentUrl = msg.Content;
+        let duration = undefined;
+
         // Construct URL if it's audio/video and has FileID
         if ((normalizedType === 'audio' || normalizedType === 'video') && msg.FileID) {
              contentUrl = `${WEB_APP_URL}/api/chat/${normalizedType}/${msg.FileID}`;
+             duration = msg.Content; // The raw content from backend is the duration
         } else if (normalizedType === 'image') {
              contentUrl = convertGoogleDriveUrl(msg.Content);
         }
@@ -271,6 +274,7 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ isOpen, onClose }) => {
             timestamp: msg.Timestamp,
             type: normalizedType as 'text' | 'image' | 'audio' | 'video',
             fileID: msg.FileID,
+            duration: duration,
             isOptimistic: false,
             isDeleted: msg.IsDeleted,
             isPinned: msg.IsPinned,
@@ -426,26 +430,41 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ isOpen, onClose }) => {
                 }
 
                 setAndCacheMessages(prev => {
-                    const optimistics = prev.filter(m => m.isOptimistic);
+                    const prevOptimistics = prev.filter(m => m.isOptimistic);
                     const prevNonOptimistic = prev.filter(m => !m.isOptimistic);
                     
                     // Identify all messages currently in view that are NOT in recentMessages
                     const recentIds = new Set(recentMessages.map(m => m.id));
                     const alreadyLoadedArchive = prevNonOptimistic.filter(m => !recentIds.has(m.id));
                     
-                    // Final Recent List: All archived messages the user has loaded + the new 2-day window
+                    // Final Recent List: All archived messages + new window
                     const finalRecent = [...alreadyLoadedArchive, ...recentMessages].sort((a, b) => getTimestamp(a.timestamp) - getTimestamp(b.timestamp));
 
-                    // IMPORTANT: Only update Archived Messages Ref if we actually fetched the full history
-                    // If we just fetched the last 2 days, we should NOT clear the existing archive.
+                    // --- OPTIMISTIC RESOLUTION ---
+                    // Remove optimistic messages that now exist in the real data from server
+                    const unresolvedOptimistics = prevOptimistics.filter(opt => {
+                        const isResolved = finalRecent.some(real => 
+                            real.user === opt.user && 
+                            real.type === opt.type && 
+                            // Match by content for text or close timestamp for media (within 15s)
+                            (real.content === opt.content || Math.abs(getTimestamp(real.timestamp) - getTimestamp(opt.timestamp)) < 15000)
+                        );
+                        
+                        // Also auto-clear stuck messages after 30 seconds
+                        const isExpired = (Date.now() - getTimestamp(opt.timestamp)) > 30000;
+                        
+                        return !isResolved && !isExpired;
+                    });
+
+                    // Update Archived Messages Ref
                     if (isFullFetch) {
                         const finalIds = new Set(finalRecent.map(m => m.id));
                         archivedMessagesRef.current = olderMessages.filter(m => !finalIds.has(m.id));
                     }
 
-                    // Deduplicate results
+                    // Deduplicate and combine
                     const seenIds = new Set();
-                    return [...finalRecent, ...optimistics].filter(m => {
+                    return [...finalRecent, ...unresolvedOptimistics].filter(m => {
                         if (seenIds.has(m.id)) return false;
                         seenIds.add(m.id);
                         return true;
@@ -515,12 +534,14 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ isOpen, onClose }) => {
                         setAndCacheMessages(prev => {
                             if (prev.some(m => m.id === msg.id)) return prev;
                             
-                            // Optimistic update handling
+                            // Precise Optimistic Replacement
                             const optimisticIndex = prev.findIndex(m => 
                                 m.isOptimistic && 
                                 m.user === msg.user && 
-                                m.type === msg.type
+                                m.type === msg.type &&
+                                (m.type === 'text' ? m.content === msg.content : true)
                             );
+                            
                             if (optimisticIndex !== -1) {
                                 const newArr = [...prev];
                                 newArr[optimisticIndex] = msg;
@@ -638,9 +659,13 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ isOpen, onClose }) => {
 
         const tempId = Date.now().toString();
         let displayContent = content;
+        let msgDuration = undefined;
         
         if (type === 'image' && !content.startsWith('http') && !content.startsWith('data:')) {
             displayContent = `data:image/jpeg;base64,${content}`;
+        } else if (type === 'audio' && fileId) {
+            displayContent = `${WEB_APP_URL}/api/chat/audio/${fileId}`;
+            msgDuration = content; // Recording duration string (e.g. "0:05")
         }
         
         const optimisticMsg: ChatMessage = {
@@ -652,6 +677,7 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ isOpen, onClose }) => {
             timestamp: new Date().toISOString(),
             type: type,
             fileID: fileId,
+            duration: msgDuration,
             isOptimistic: true,
             replyTo: replyingTo ? {
                 id: replyingTo.id,
@@ -970,7 +996,7 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ isOpen, onClose }) => {
                                                         <>
                                                             {msg.type === 'text' && <p className="leading-relaxed text-sm whitespace-pre-wrap">{renderMessageContent(msg.content)}</p>}
                                                             {msg.type === 'image' && <img src={msg.content} loading="lazy" className="rounded-xl max-w-full cursor-pointer hover:opacity-90 transition-opacity border border-black/20" onClick={() => previewImage(msg.content)} alt="attachment" />}
-                                                            {msg.type === 'audio' && <MemoizedAudioPlayer src={msg.content} isMe={isMe} />}
+                                                            {msg.type === 'audio' && <MemoizedAudioPlayer src={msg.content} duration={msg.duration} isMe={isMe} />}
                                                             {msg.type === 'video' && (
                                                                 <video controls className="rounded-xl max-w-full border border-black/20" style={{maxHeight: '200px'}}>
                                                                     <source src={msg.content} type="video/mp4" />
