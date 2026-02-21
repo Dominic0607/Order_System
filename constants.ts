@@ -25,3 +25,26 @@ export const SOUND_URLS = {
     NOTIFICATION: 'https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3', // Ding/Chime
     SENT: 'https://assets.mixkit.co/active_storage/sfx/2571/2571-preview.mp3' // Pop/Click
 };
+
+export const NOTIFICATION_SOUNDS = [
+    { id: 'default', name: 'Default Ding', url: 'https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3' },
+    { id: 'professional_1', name: 'Office Chime', url: 'https://assets.mixkit.co/active_storage/sfx/2860/2860-preview.mp3' },
+    { id: 'professional_2', name: 'Corporate Bell', url: 'https://assets.mixkit.co/active_storage/sfx/2864/2864-preview.mp3' },
+    { id: 'professional_3', name: 'Soft Ping', url: 'https://assets.mixkit.co/active_storage/sfx/2568/2568-preview.mp3' },
+    { id: 'professional_4', name: 'Elegant Tone', url: 'https://assets.mixkit.co/active_storage/sfx/2861/2861-preview.mp3' },
+    { id: 'bell', name: 'Classic Bell', url: 'https://assets.mixkit.co/active_storage/sfx/2210/2210-preview.mp3' },
+    { id: 'digital', name: 'Digital Alert', url: 'https://assets.mixkit.co/active_storage/sfx/1017/1017-preview.mp3' },
+    { id: 'futuristic', name: 'Futuristic Blip', url: 'https://assets.mixkit.co/active_storage/sfx/2574/2574-preview.mp3' },
+    { id: 'chime', name: 'Crystal Chime', url: 'https://assets.mixkit.co/active_storage/sfx/2019/2019-preview.mp3' },
+    { id: 'glass', name: 'Glass Tap', url: 'https://assets.mixkit.co/active_storage/sfx/2870/2870-preview.mp3' },
+    { id: 'bubble', name: 'Water Bubble', url: 'https://assets.mixkit.co/active_storage/sfx/1115/1115-preview.mp3' },
+    { id: 'pop', name: 'Message Pop', url: 'https://assets.mixkit.co/active_storage/sfx/2354/2354-preview.mp3' },
+    { id: 'happy', name: 'Happy Bells', url: 'https://assets.mixkit.co/active_storage/sfx/937/937-preview.mp3' },
+    { id: 'success', name: 'Success Sparkle', url: 'https://assets.mixkit.co/active_storage/sfx/1114/1114-preview.mp3' },
+    { id: 'click', name: 'Modern Click', url: 'https://assets.mixkit.co/active_storage/sfx/2571/2571-preview.mp3' },
+    { id: 'arcade', name: 'Arcade Point', url: 'https://assets.mixkit.co/active_storage/sfx/2044/2044-preview.mp3' },
+    { id: 'retro', name: 'Retro Beep', url: 'https://assets.mixkit.co/active_storage/sfx/212/212-preview.mp3' },
+    { id: 'alert', name: 'System Alert', url: 'https://assets.mixkit.co/active_storage/sfx/2866/2866-preview.mp3' },
+    { id: 'notify', name: 'Simple Notify', url: 'https://assets.mixkit.co/active_storage/sfx/933/933-preview.mp3' },
+    { id: 'positive', name: 'Positive Note', url: 'https://assets.mixkit.co/active_storage/sfx/221/221-preview.mp3' }
+];

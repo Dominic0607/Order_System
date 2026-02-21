@@ -1,10 +1,9 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import Spinner from '../common/Spinner';
 
 interface AudioPlayerProps {
     src: string;
-    isMe?: boolean; // To style based on sender
+    isMe?: boolean;
 }
 
 const AudioPlayer: React.FC<AudioPlayerProps> = ({ src, isMe = false }) => {
@@ -14,9 +13,6 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ src, isMe = false }) => {
     const [currentTime, setCurrentTime] = useState(0);
     const [isReady, setIsReady] = useState(false);
     const [error, setError] = useState<string | null>(null);
-
-    // Simulated waveform bars
-    const [bars] = useState(() => Array.from({ length: 20 }, () => Math.random() * 0.5 + 0.3));
 
     useEffect(() => {
         const audio = audioRef.current;
@@ -34,12 +30,12 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ src, isMe = false }) => {
         const onEnded = () => { setIsPlaying(false); setCurrentTime(0); };
         const onError = () => {
             console.error("Audio Error", audio.error);
-            setError("Error playing audio");
+            setError("Unavailable");
             setIsReady(false);
         };
 
         audio.addEventListener('loadedmetadata', onReady);
-        audio.addEventListener('canplay', onReady); // Fallback if metadata loads fast
+        audio.addEventListener('canplay', onReady);
         audio.addEventListener('timeupdate', onTimeUpdate);
         audio.addEventListener('ended', onEnded);
         audio.addEventListener('error', onError);
@@ -65,16 +61,20 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ src, isMe = false }) => {
             audioRef.current.pause();
             setIsPlaying(false);
         } else {
-            // Pause all other audios
+            // Pause all other audios to prevent overlap
             document.querySelectorAll('audio').forEach(el => {
-                if (el !== audioRef.current) {
-                    el.pause();
-                    // We can't easily update other components' state from here without a context, 
-                    // but standard HTML audio behavior handles single source well.
-                }
+                if (el !== audioRef.current) el.pause();
             });
             audioRef.current.play().catch(e => console.error("Play failed", e));
             setIsPlaying(true);
+        }
+    };
+
+    const handleSeek = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const time = parseFloat(e.target.value);
+        if (audioRef.current) {
+            audioRef.current.currentTime = time;
+            setCurrentTime(time);
         }
     };
 
@@ -88,40 +88,41 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ src, isMe = false }) => {
     if (error) return <div className="text-[10px] text-red-300 bg-red-900/20 px-2 py-1 rounded">Audio Unavailable</div>;
 
     return (
-        <div className={`flex items-center gap-3 p-1 rounded-full min-w-[200px] transition-all ${isMe ? 'text-white' : 'text-gray-800 dark:text-white'}`}>
+        <div className={`flex items-center gap-3 pr-4 pl-1 py-1 rounded-full min-w-[220px] transition-all ${isMe ? 'text-blue-100' : 'text-gray-600 dark:text-gray-300'}`}>
             <audio ref={audioRef} src={src} preload="metadata" />
             
             <button 
                 onClick={togglePlayPause} 
                 disabled={!isReady}
-                className={`w-8 h-8 flex items-center justify-center rounded-full shadow-md transition-all active:scale-90 flex-shrink-0 ${isMe ? 'bg-white text-blue-600 hover:bg-gray-100' : 'bg-blue-600 text-white hover:bg-blue-500'}`}
+                className={`w-9 h-9 flex items-center justify-center rounded-full shadow-md transition-all active:scale-95 flex-shrink-0 ${
+                    isMe 
+                        ? 'bg-white text-blue-600 hover:bg-gray-100' 
+                        : 'bg-blue-600 text-white hover:bg-blue-500'
+                }`}
             >
                 {!isReady ? <Spinner size="sm" /> : isPlaying ? (
-                    <svg className="w-3 h-3 fill-current" viewBox="0 0 24 24"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
+                    <svg className="w-3.5 h-3.5 fill-current" viewBox="0 0 24 24"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
                 ) : (
-                    <svg className="w-3 h-3 fill-current ml-0.5" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+                    <svg className="w-3.5 h-3.5 fill-current ml-0.5" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
                 )}
             </button>
 
-            <div className="flex flex-col flex-grow min-w-0 gap-1">
-                {/* Visual Waveform */}
-                <div className="flex items-center gap-[2px] h-4 w-full">
-                    {bars.map((height, i) => {
-                        const active = (i / bars.length) < (currentTime / (duration || 1));
-                        return (
-                            <div 
-                                key={i} 
-                                className={`w-1 rounded-full transition-all duration-100 ${active ? (isMe ? 'bg-blue-200' : 'bg-blue-500') : (isMe ? 'bg-blue-800' : 'bg-gray-600')}`}
-                                style={{ 
-                                    height: isPlaying ? `${Math.max(20, height * 100 * (Math.random() * 0.5 + 0.8))}%` : `${height * 100}%`,
-                                    opacity: active ? 1 : 0.5 
-                                }}
-                            />
-                        );
-                    })}
-                </div>
-                <div className={`text-[9px] font-mono font-bold text-right ${isMe ? 'text-blue-100' : 'text-gray-400'}`}>
-                    {isPlaying ? formatTime(currentTime) : formatTime(duration)}
+            <div className="flex flex-col flex-grow justify-center gap-1 min-w-[120px]">
+                 <input
+                    type="range"
+                    min="0"
+                    max={duration || 100}
+                    value={currentTime}
+                    onChange={handleSeek}
+                    className={`w-full h-1.5 rounded-lg appearance-none cursor-pointer focus:outline-none focus:ring-0 ${
+                        isMe 
+                            ? 'bg-blue-800/30 accent-white' 
+                            : 'bg-gray-300 dark:bg-gray-600 accent-blue-600'
+                    }`}
+                />
+                <div className="flex justify-between w-full text-[10px] font-mono font-medium opacity-90 px-0.5">
+                    <span>{formatTime(currentTime)}</span>
+                    <span>{formatTime(duration)}</span>
                 </div>
             </div>
         </div>

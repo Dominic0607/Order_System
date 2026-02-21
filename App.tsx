@@ -73,7 +73,15 @@ const App: React.FC = () => {
     // Advanced Settings State
     const [advancedSettings, setAdvancedSettings] = useState<AdvancedSettings>(() => {
         const saved = localStorage.getItem('advancedSettings');
-        return saved ? JSON.parse(saved) : { enableFloatingAlerts: true };
+        const defaultSettings: AdvancedSettings = { enableFloatingAlerts: true, notificationSound: 'default' };
+        if (saved) {
+            try {
+                return { ...defaultSettings, ...JSON.parse(saved) };
+            } catch (e) {
+                return defaultSettings;
+            }
+        }
+        return defaultSettings;
     });
     
     // Sync Advanced Settings to localStorage

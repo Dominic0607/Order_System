@@ -5,7 +5,7 @@ import { ChatMessage, User, BackendChatMessage } from '../../types';
 import Spinner from '../common/Spinner';
 import { useAudioRecorder } from '../../hooks/useAudioRecorder';
 import { compressImage } from '../../utils/imageCompressor';
-import { WEB_APP_URL, SOUND_URLS } from '../../constants';
+import { WEB_APP_URL, SOUND_URLS, NOTIFICATION_SOUNDS } from '../../constants';
 import AudioPlayer from './AudioPlayer';
 import { fileToBase64, convertGoogleDriveUrl } from '../../utils/fileUtils';
 import UserAvatar from '../common/UserAvatar';
@@ -23,7 +23,7 @@ type ActiveTab = 'chat' | 'users';
 const MemoizedAudioPlayer = React.memo(AudioPlayer);
 
 const ChatWidget: React.FC<ChatWidgetProps> = ({ isOpen, onClose }) => {
-    const { currentUser, appData, previewImage, setUnreadCount, showNotification } = useContext(AppContext);
+    const { currentUser, appData, previewImage, setUnreadCount, showNotification, advancedSettings } = useContext(AppContext);
     const CACHE_KEY = useMemo(() => currentUser ? `chatHistoryCache_${currentUser.UserName}` : null, [currentUser]);
 
     // Audio Recorder Hook
@@ -53,6 +53,7 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ isOpen, onClose }) => {
     const [isHistoryLoading, setIsHistoryLoading] = useState(false); 
     const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>('disconnected');
     const [activeTab, setActiveTab] = useState<ActiveTab>('chat');
+    const [showScrollBottom, setShowScrollBottom] = useState(false);
     
     const fileInputRef = useRef<HTMLInputElement>(null);
     const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -64,6 +65,14 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ isOpen, onClose }) => {
     const currentUserRef = useRef(currentUser);
     const isMutedRef = useRef(isMuted);
     const lastNotifiedMessageIdRef = useRef<string | null>(null);
+
+    useEffect(() => {
+        const soundId = advancedSettings?.notificationSound || 'default';
+        const soundObj = NOTIFICATION_SOUNDS.find(s => s.id === soundId) || NOTIFICATION_SOUNDS[0];
+        if (soundNotification.current) {
+            soundNotification.current.src = soundObj.url;
+        }
+    }, [advancedSettings?.notificationSound]);
 
     useEffect(() => { allUsersRef.current = allUsers; }, [allUsers]);
     useEffect(() => { currentUserRef.current = currentUser; }, [currentUser]);
@@ -283,8 +292,8 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ isOpen, onClose }) => {
                 showNotification(alertMsg, 'success');
                 
                 if (!isMutedRef.current) {
-                    const audio = new Audio(SOUND_URLS.NOTIFICATION);
-                    audio.play().catch(e => console.warn("Audio play failed", e));
+                    soundNotification.current.currentTime = 0;
+                    soundNotification.current.play().catch(e => console.warn("Audio play failed", e));
                 }
                 sendSystemNotification("ការកម្មង់ថ្មី 📦", alertMsg);
             } else {
@@ -545,6 +554,14 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ isOpen, onClose }) => {
         } finally { setIsUploading(false); }
     };
 
+    const handleScroll = () => {
+        if (chatBodyRef.current) {
+            const { scrollTop, scrollHeight, clientHeight } = chatBodyRef.current;
+            const isNearBottom = scrollHeight - scrollTop - clientHeight < 200;
+            setShowScrollBottom(!isNearBottom);
+        }
+    };
+
     return (
         <div className={`chat-widget-container ${!isOpen ? 'closed' : ''}`}>
             <div className="chat-header">
@@ -579,9 +596,10 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ isOpen, onClose }) => {
             <div 
                 className="chat-body custom-scrollbar bg-[#0f172a] relative"
                 ref={chatBodyRef}
+                onScroll={handleScroll}
             >
                 {activeTab === 'chat' ? (
-                    <div className="chat-messages p-4 space-y-6 min-h-full">
+                    <div className="chat-messages p-4 space-y-6 min-h-full pb-20">
                         {isHistoryLoading ? (
                             <div className="flex flex-col items-center justify-center py-10 space-y-3">
                                 <Spinner size="md" />
@@ -647,35 +665,68 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ isOpen, onClose }) => {
                 )}
             </div>
 
+            {activeTab === 'chat' && showScrollBottom && (
+                <button 
+                    onClick={() => scrollToBottom('smooth')} 
+                    className="absolute bottom-24 right-6 p-3 bg-blue-600 text-white rounded-full shadow-lg shadow-blue-900/50 hover:bg-blue-500 transition-all animate-bounce z-50 flex items-center justify-center w-10 h-10 border border-blue-400/30"
+                    title="Scroll to bottom"
+                >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 14l-7 7m0 0l-7-7m7 7V3" /></svg>
+                </button>
+            )}
+
             {activeTab === 'chat' && (
-                <div className="p-3 bg-gray-900 border-t border-gray-800">
+                <div className="p-3 bg-gray-900 border-t border-gray-800 relative z-20">
                     {isRecording ? (
-                        <div className="flex items-center gap-3 bg-red-900/20 p-2 rounded-2xl border border-red-500/30 animate-pulse relative overflow-hidden">
-                            <div className="absolute inset-0 flex items-center justify-center opacity-20 pointer-events-none gap-1">
-                                {[...Array(10)].map((_, i) => (
-                                    <div key={i} className="w-1 bg-red-500 rounded-full animate-bounce" style={{ height: `${Math.random() * 80 + 20}%`, animationDuration: `${Math.random() * 0.5 + 0.5}s` }}></div>
+                        <div className="flex items-center gap-3 bg-gray-800 p-2 rounded-2xl border border-red-500/50 shadow-[0_0_15px_rgba(239,68,68,0.2)] animate-fade-in relative overflow-hidden h-[60px]">
+                             {/* Animated Waveform Background */}
+                            <div className="absolute inset-0 flex items-center justify-center opacity-10 pointer-events-none gap-1 px-10">
+                                {[...Array(20)].map((_, i) => (
+                                    <div 
+                                        key={i} 
+                                        className="w-1 bg-red-500 rounded-full animate-pulse" 
+                                        style={{ 
+                                            height: `${30 + Math.random() * 50}%`, 
+                                            animationDuration: `${0.6 + Math.random() * 0.4}s`,
+                                            animationDelay: `${Math.random() * 0.5}s`
+                                        }} 
+                                    />
                                 ))}
                             </div>
 
-                            <div className="w-10 h-10 flex items-center justify-center bg-red-600 rounded-full shadow-lg shadow-red-600/40 relative z-10">
-                                <div className="w-3 h-3 bg-white rounded-full animate-ping"></div>
+                            {/* Blinking Dot */}
+                            <div className="flex-shrink-0 w-10 h-10 flex items-center justify-center bg-red-500/10 rounded-full relative z-10 ml-1">
+                                <div className="w-3 h-3 bg-red-500 rounded-full animate-[ping_1.5s_cubic-bezier(0,0,0.2,1)_infinite]"></div>
+                                <div className="absolute w-2 h-2 bg-red-500 rounded-full"></div>
                             </div>
-                            <div className="flex-grow text-center relative z-10">
-                                <p className="text-red-400 font-black text-lg font-mono tracking-widest">{formatTime(recordingTime)}</p>
-                                <p className="text-[8px] text-red-500 font-bold uppercase tracking-wider">Recording...</p>
+                            
+                            {/* Timer */}
+                            <div className="flex-grow flex flex-col justify-center relative z-10">
+                                <p className="text-white font-black text-lg font-mono tracking-widest leading-none">{formatTime(recordingTime)}</p>
+                                <p className="text-[9px] text-red-400 font-bold uppercase tracking-widest mt-0.5">Recording...</p>
                             </div>
-                            <div className="flex gap-2 relative z-10">
-                                <button onClick={handleCancelRecording} className="p-2.5 bg-gray-800 text-gray-400 hover:text-white rounded-xl hover:bg-gray-700 transition-all active:scale-95 border border-white/5">
-                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                            
+                            {/* Controls */}
+                            <div className="flex gap-2 relative z-10 mr-1">
+                                <button 
+                                    onClick={handleCancelRecording} 
+                                    className="p-2.5 text-gray-400 hover:text-red-400 hover:bg-red-500/10 rounded-full transition-all active:scale-90"
+                                    title="Cancel"
+                                >
+                                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
                                 </button>
-                                <button onClick={handleStopAndSendAudio} className="p-2.5 bg-blue-600 text-white rounded-xl shadow-lg hover:bg-blue-500 transition-all active:scale-95 border border-blue-500/50">
-                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
+                                <button 
+                                    onClick={handleStopAndSendAudio} 
+                                    className="p-2.5 bg-blue-600 text-white rounded-full shadow-lg shadow-blue-600/30 hover:bg-blue-500 transition-all active:scale-90 hover:scale-105"
+                                    title="Send"
+                                >
+                                    <svg className="w-5 h-5 ml-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" /></svg>
                                 </button>
                             </div>
                         </div>
                     ) : (
-                        <div className="flex items-end gap-2">
-                            <button onClick={() => fileInputRef.current?.click()} className="p-3 text-gray-400 hover:text-blue-400 hover:bg-gray-800 rounded-xl transition-all" title="Attach Image">
+                        <div className="flex items-end gap-2 relative">
+                            <button onClick={() => fileInputRef.current?.click()} className="p-3 text-gray-400 hover:text-blue-400 hover:bg-gray-800 rounded-xl transition-all flex-shrink-0 h-[44px] w-[44px] flex items-center justify-center" title="Attach Image">
                                 <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h14a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
                             </button>
                             <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={e => e.target.files && handleFileUpload(e.target.files[0])} />
@@ -691,18 +742,18 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ isOpen, onClose }) => {
                                         }
                                     }}
                                     placeholder="Type a message..." 
-                                    className="w-full bg-gray-800 text-white rounded-2xl py-3 pl-4 pr-10 border-transparent focus:border-blue-500 focus:ring-0 resize-none text-sm max-h-24 custom-scrollbar"
+                                    className="w-full bg-gray-800 text-white rounded-2xl py-3 pl-4 pr-10 border-transparent focus:border-blue-500 focus:ring-0 resize-none text-sm custom-scrollbar"
                                     rows={1}
-                                    style={{minHeight: '44px'}}
+                                    style={{minHeight: '44px', maxHeight: '100px'}}
                                 />
                             </div>
 
                             {newMessage.trim() ? (
-                                <button onClick={() => handleSendMessage(newMessage, 'text')} className="p-3 bg-blue-600 text-white rounded-xl shadow-lg shadow-blue-600/20 active:scale-95 transition-all hover:bg-blue-500">
+                                <button onClick={() => handleSendMessage(newMessage, 'text')} className="p-3 bg-blue-600 text-white rounded-xl shadow-lg shadow-blue-600/20 active:scale-95 transition-all hover:bg-blue-500 flex-shrink-0 h-[44px] w-[44px] flex items-center justify-center">
                                     <svg className="w-5 h-5 transform rotate-90" fill="currentColor" viewBox="0 0 20 20"><path d="M10.894 2.553a1 1 0 00-1.788 0l-7 14a1 1 0 001.169 1.409l5-1.429A1 1 0 009 15.571V11a1 1 0 112 0v4.571a1 1 0 00.725.962l5 1.428a1 1 0 001.17-1.408l-7-14z"/></svg>
                                 </button>
                             ) : (
-                                <button onClick={handleStartRecording} disabled={isSendingAudio} className="p-3 bg-gray-800 text-white rounded-xl border border-gray-700 hover:bg-red-500/20 hover:border-red-500/50 hover:text-red-500 transition-all active:scale-95 group">
+                                <button onClick={handleStartRecording} disabled={isSendingAudio} className="p-3 bg-gray-800 text-white rounded-xl border border-gray-700 hover:bg-red-500/10 hover:border-red-500/50 hover:text-red-500 transition-all active:scale-95 group flex-shrink-0 h-[44px] w-[44px] flex items-center justify-center">
                                     <svg className="w-5 h-5 group-hover:scale-110 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" /></svg>
                                 </button>
                             )}

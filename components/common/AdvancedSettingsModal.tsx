@@ -3,6 +3,7 @@ import { AppContext } from '../../context/AppContext';
 import Modal from './Modal';
 import { requestNotificationPermission, sendSystemNotification } from '../../utils/notificationUtils';
 import { translations } from '../../translations';
+import { NOTIFICATION_SOUNDS } from '../../constants';
 
 interface AdvancedSettingsModalProps {
     onClose: () => void;
@@ -107,6 +108,40 @@ const AdvancedSettingsModal: React.FC<AdvancedSettingsModalProps> = ({ onClose }
                                 >
                                     <div className={`w-4 h-4 rounded-full bg-white shadow-sm transform transition-transform duration-300 ${advancedSettings.enableFloatingAlerts ? 'translate-x-6' : 'translate-x-0'}`} />
                                 </button>
+                            </div>
+
+                            {/* Notification Sound Selection */}
+                            <div className="p-4 bg-gray-800/30 rounded-2xl border border-white/5">
+                                <div className="flex items-center gap-2 mb-4">
+                                    <div className="w-8 h-8 rounded-lg bg-yellow-500/10 flex items-center justify-center text-yellow-400">
+                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" /></svg>
+                                    </div>
+                                    <h4 className="text-[10px] font-black uppercase tracking-widest text-gray-500">Notification Alert Sound</h4>
+                                </div>
+                                <div className="grid grid-cols-2 gap-2 max-h-60 overflow-y-auto custom-scrollbar pr-1">
+                                    {NOTIFICATION_SOUNDS.map(sound => (
+                                        <button
+                                            key={sound.id}
+                                            onClick={() => {
+                                                setAdvancedSettings(prev => ({ ...prev, notificationSound: sound.id }));
+                                                const audio = new Audio(sound.url);
+                                                audio.play().catch(() => {});
+                                            }}
+                                            className={`p-3 rounded-xl border text-left transition-all flex items-center justify-between group ${
+                                                advancedSettings.notificationSound === sound.id 
+                                                ? 'bg-blue-600/20 border-blue-500/50 text-blue-100' 
+                                                : 'bg-gray-800/50 border-white/5 text-gray-400 hover:bg-gray-800 hover:border-white/10'
+                                            }`}
+                                        >
+                                            <span className="text-xs font-bold">{sound.name}</span>
+                                            {advancedSettings.notificationSound === sound.id ? (
+                                                <div className="w-2 h-2 rounded-full bg-blue-500 shadow-[0_0_8px_#3b82f6] animate-pulse" />
+                                            ) : (
+                                                <svg className="w-3 h-3 opacity-0 group-hover:opacity-40 transition-opacity" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                                            )}
+                                        </button>
+                                    ))}
+                                </div>
                             </div>
 
                             {/* Test Button Section */}

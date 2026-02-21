@@ -8,6 +8,7 @@ export interface AdvancedSettings {
     enableFloatingAlerts: boolean;
     enablePrivacyMode?: boolean;
     securityLevel?: 'standard' | 'high';
+    notificationSound?: string; // ID from NOTIFICATION_SOUNDS
 }
 
 export interface AppContextType {

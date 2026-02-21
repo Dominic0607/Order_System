@@ -1,6 +1,7 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
 import { convertGoogleDriveUrl } from '../../utils/fileUtils';
+import { AppContext } from '../../context/AppContext';
 
 interface UserAvatarProps {
     avatarUrl?: string;
@@ -8,9 +9,11 @@ interface UserAvatarProps {
     size?: 'sm' | 'md' | 'lg' | 'xl';
     className?: string;
     onClick?: () => void;
+    enablePreview?: boolean;
 }
 
-const UserAvatar: React.FC<UserAvatarProps> = ({ avatarUrl, name, size, className = '', onClick }) => {
+const UserAvatar: React.FC<UserAvatarProps> = ({ avatarUrl, name, size, className = '', onClick, enablePreview = true }) => {
+    const { previewImage } = useContext(AppContext);
     const [imgError, setImgError] = useState(false);
 
     useEffect(() => {
@@ -48,7 +51,15 @@ const UserAvatar: React.FC<UserAvatarProps> = ({ avatarUrl, name, size, classNam
     const charCodeSum = (name || '').split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
     const colorIndex = charCodeSum % bgColors.length;
 
-    const baseClasses = `rounded-full object-cover flex-shrink-0 select-none transition-opacity ${onClick ? 'cursor-pointer hover:opacity-80' : ''}`;
+    const handleAvatarClick = (e: React.MouseEvent) => {
+        if (onClick) {
+            onClick();
+        } else if (enablePreview && showImage && previewImage) {
+            previewImage(processedUrl);
+        }
+    };
+
+    const baseClasses = `rounded-full object-cover flex-shrink-0 select-none transition-opacity ${(onClick || (enablePreview && showImage)) ? 'cursor-pointer hover:opacity-80' : ''}`;
 
     if (showImage) {
         return (
@@ -57,7 +68,7 @@ const UserAvatar: React.FC<UserAvatarProps> = ({ avatarUrl, name, size, classNam
                 alt={name} 
                 className={`${dimClasses} ${baseClasses} ${className}`}
                 onError={() => setImgError(true)}
-                onClick={onClick}
+                onClick={handleAvatarClick}
                 referrerPolicy="no-referrer"
             />
         );
@@ -66,7 +77,7 @@ const UserAvatar: React.FC<UserAvatarProps> = ({ avatarUrl, name, size, classNam
     return (
         <div 
             className={`${dimClasses} ${baseClasses} flex items-center justify-center font-bold text-white border border-gray-600 ${bgColors[colorIndex]} ${className}`}
-            onClick={onClick}
+            onClick={handleAvatarClick}
             title={name}
         >
             {getInitials(name)}

@@ -1,5 +1,7 @@
 
 import React, { useEffect } from 'react';
+import { APP_LOGO_URL } from '../../constants';
+import { convertGoogleDriveUrl } from '../../utils/fileUtils';
 
 interface ToastProps {
     message: string;
@@ -14,25 +16,32 @@ const Toast: React.FC<ToastProps> = ({ message, type = 'info', onClose }) => {
     }, [onClose]);
 
     const bgClass = 
-        type === 'success' ? 'bg-emerald-600/90 border-emerald-500' :
-        type === 'error' ? 'bg-red-600/90 border-red-500' :
-        'bg-blue-600/90 border-blue-500';
+        type === 'success' ? 'bg-emerald-600/90 border-emerald-500 shadow-[0_10px_40px_rgba(16,185,129,0.3)]' :
+        type === 'error' ? 'bg-red-600/90 border-red-500 shadow-[0_10px_40px_rgba(239,68,68,0.3)]' :
+        'bg-blue-600/90 border-blue-500 shadow-[0_10px_40px_rgba(59,130,246,0.3)]';
 
-    const icon = 
-        type === 'success' ? <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg> :
-        type === 'error' ? <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg> :
-        <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>;
+    const logoUrl = convertGoogleDriveUrl(APP_LOGO_URL);
 
     return (
-        <div className={`fixed top-4 right-4 z-[100] flex items-center gap-4 px-6 py-4 rounded-2xl border backdrop-blur-xl shadow-[0_20px_50px_rgba(0,0,0,0.5)] text-white animate-slide-in-right ${bgClass} min-w-[300px] max-w-md`}>
-            <div className="flex-shrink-0">
-                {icon}
+        <div className={`fixed top-4 right-4 z-[100] flex items-center gap-3 pl-3 pr-4 py-3 rounded-2xl border backdrop-blur-xl text-white animate-slide-in-right ${bgClass} min-w-[320px] max-w-md`}>
+            <div className="flex-shrink-0 w-10 h-10 bg-white/10 rounded-xl p-1.5 flex items-center justify-center border border-white/20">
+                {logoUrl ? (
+                    <img src={logoUrl} alt="Logo" className="w-full h-full object-contain" />
+                ) : (
+                    <div className="w-full h-full bg-white/20 rounded-lg animate-pulse" />
+                )}
             </div>
-            <div className="flex-grow font-bold text-sm">
-                {message}
+            <div className="flex-grow">
+                <div className="flex items-center gap-2 mb-0.5">
+                    <span className="text-[10px] font-black uppercase tracking-widest opacity-60">System Notification</span>
+                    {type === 'success' && <div className="w-1.5 h-1.5 rounded-full bg-emerald-300 animate-pulse"></div>}
+                </div>
+                <div className="font-bold text-sm leading-tight">
+                    {message}
+                </div>
             </div>
-            <button onClick={onClose} className="flex-shrink-0 opacity-70 hover:opacity-100 transition-opacity">
-                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+            <button onClick={onClose} className="flex-shrink-0 p-2 hover:bg-white/10 rounded-lg transition-all">
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" /></svg>
             </button>
             <style>{`
                 @keyframes slide-in-right {
