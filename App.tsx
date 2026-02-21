@@ -267,6 +267,32 @@ const App: React.FC = () => {
         }
     };
 
+    // --- PROACTIVE NOTIFICATION PERMISSION REQUEST ---
+    useEffect(() => {
+        if (!currentUser) return;
+
+        const checkAndRequestPermission = async () => {
+            if ('Notification' in window && Notification.permission === 'default') {
+                // Show an in-app hint first to prepare the user
+                setTimeout(() => {
+                    showNotification("សូមបើក Notification ដើម្បីទទួលបានដំណឹងទម្លាក់ការកម្មង់ថ្មីៗ", 'info');
+                }, 3000);
+
+                // We need a user gesture for most browsers. 
+                // We'll add a one-time click listener to the window to trigger the prompt.
+                const triggerPrompt = async () => {
+                    console.log("Proactively requesting notification permission...");
+                    await Notification.requestPermission();
+                    window.removeEventListener('click', triggerPrompt);
+                };
+                window.addEventListener('click', triggerPrompt);
+                return () => window.removeEventListener('click', triggerPrompt);
+            }
+        };
+
+        checkAndRequestPermission();
+    }, [currentUser]);
+
     const shouldShowHeader = useMemo(() => appState !== 'admin_dashboard', [appState]);
 
     const containerClass = useMemo(() => 
