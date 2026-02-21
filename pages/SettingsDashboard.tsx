@@ -75,7 +75,7 @@ const SettingsDashboard: React.FC<SettingsDashboardProps> = ({ onBack, initialSe
         } catch (err) { alert('Delete failed'); }
     };
 
-    const handleSystemUpdate = async () => {
+    const handleSystemUpdate = async (message: string) => {
         setIsUpdatingSystem(true);
         try {
             // Update a 'Settings' sheet to trigger logout for everyone
@@ -85,7 +85,11 @@ const SettingsDashboard: React.FC<SettingsDashboardProps> = ({ onBack, initialSe
                 body: JSON.stringify({
                     sheetName: 'Settings', 
                     primaryKey: { 'Key': 'SystemVersion' },
-                    newData: { 'Value': Date.now().toString(), 'Action': 'ForceLogout' } 
+                    newData: {
+                        'Value': Date.now().toString(),
+                        'Action': 'ForceLogout',
+                        'Message': message || 'System Update in progress. Please log in again.'
+                    } 
                 })
             });
             

@@ -31,9 +31,15 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ isOpen, onClose }) => {
     const [recordingTime, setRecordingTime] = useState(0);
     const recordingIntervalRef = useRef<any>(null);
 
-    // Sound Refs
-    const soundNotification = useRef(new Audio(SOUND_URLS.NOTIFICATION));
-    const soundSent = useRef(new Audio(SOUND_URLS.SENT));
+    // Sound Refs - Lazy initialization to avoid creating Audio objects on every render
+    const soundNotification = useRef<HTMLAudioElement | null>(null);
+    const soundSent = useRef<HTMLAudioElement | null>(null);
+
+    // Initialize audio objects once
+    useEffect(() => {
+        soundNotification.current = new Audio(SOUND_URLS.NOTIFICATION);
+        soundSent.current = new Audio(SOUND_URLS.SENT);
+    }, []);
 
     const [messages, setMessages] = useState<ChatMessage[]>(() => {
         if (!CACHE_KEY) return [];
@@ -55,6 +61,10 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ isOpen, onClose }) => {
     const [activeTab, setActiveTab] = useState<ActiveTab>('chat');
     const [showScrollBottom, setShowScrollBottom] = useState(false);
     
+    // Mention State
+    const [mentionQuery, setMentionQuery] = useState('');
+    const [showMentionList, setShowMentionList] = useState(false);
+
     const fileInputRef = useRef<HTMLInputElement>(null);
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const chatBodyRef = useRef<HTMLDivElement>(null);
@@ -560,6 +570,59 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ isOpen, onClose }) => {
         } finally { setIsUploading(false); }
     };
 
+    // --- Mention Handling ---
+    const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+        const val = e.target.value;
+        setNewMessage(val);
+
+        // Detect if user is typing a mention (last word starts with @)
+        const lastWord = val.split(/[\s\n]+/).pop();
+        if (lastWord && lastWord.startsWith('@')) {
+            setMentionQuery(lastWord.slice(1)); // Remove @
+            setShowMentionList(true);
+        } else {
+            setShowMentionList(false);
+        }
+    };
+
+    const insertMention = (username: string) => {
+        const words = newMessage.split(/([\s\n]+)/);
+        const lastWordIndex = words.length - 1;
+        // Replace last word (the incomplete mention) with the full username
+        words[lastWordIndex] = `@${username} `; 
+        
+        setNewMessage(words.join(''));
+        setShowMentionList(false);
+        setMentionQuery('');
+        
+        // Refocus input
+        const textarea = document.querySelector('.chat-input-area textarea') as HTMLTextAreaElement;
+        if (textarea) textarea.focus();
+    };
+
+    const renderMessageContent = (content: string) => {
+        // Split by spaces to find mentions but preserve newlines
+        // A simple regex to find @words
+        const parts = content.split(/(@[\w\u1780-\u17FF]+)/g); // Supports Khmer characters in names if needed
+        
+        return parts.map((part, i) => {
+            if (part.startsWith('@')) {
+                const username = part.slice(1);
+                // Check if it's a valid user (optional, but good for highlighting)
+                const isValidUser = allUsers.some(u => u.UserName === username || u.FullName === username);
+                
+                if (isValidUser || part.length > 2) {
+                    return (
+                        <span key={i} className="text-blue-300 font-bold bg-blue-500/20 px-1 rounded-md mx-0.5">
+                            {part}
+                        </span>
+                    );
+                }
+            }
+            return <span key={i}>{part}</span>;
+        });
+    };
+
     const handleScroll = () => {
         if (chatBodyRef.current) {
             const { scrollTop, scrollHeight, clientHeight } = chatBodyRef.current;
@@ -647,7 +710,7 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ isOpen, onClose }) => {
                                                 } ${msg.isOptimistic ? 'opacity-70' : ''}`}>
                                                     {!isMe && showAvatar && <p className="text-[10px] font-black text-blue-400 mb-1 uppercase tracking-wider">{user?.FullName || msg.fullName}</p>}
                                                     
-                                                    {msg.type === 'text' && <p className="leading-relaxed text-sm whitespace-pre-wrap">{msg.content}</p>}
+                                                    {msg.type === 'text' && <p className="leading-relaxed text-sm whitespace-pre-wrap">{renderMessageContent(msg.content)}</p>}
                                                     {msg.type === 'image' && <img src={msg.content} className="rounded-xl max-w-full cursor-pointer hover:opacity-90 transition-opacity border border-black/20" onClick={() => previewImage(msg.content)} alt="attachment" />}
                                                     {msg.type === 'audio' && <MemoizedAudioPlayer src={msg.content} isMe={isMe} />}
                                                     
@@ -683,6 +746,39 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ isOpen, onClose }) => {
 
             {activeTab === 'chat' && (
                 <div className="p-3 bg-gray-900 border-t border-gray-800 relative z-20">
+                    {/* Mention Suggestions Popup */}
+                    {showMentionList && (
+                        <div className="absolute bottom-full left-4 mb-2 bg-gray-800 border border-gray-700 rounded-xl shadow-xl w-64 max-h-60 overflow-y-auto custom-scrollbar z-50 animate-fade-in-up flex flex-col">
+                            <div className="p-2 sticky top-0 bg-gray-800/95 backdrop-blur border-b border-gray-700 z-10">
+                                <p className="text-[10px] font-black uppercase tracking-widest text-gray-500">Suggested Members</p>
+                            </div>
+                            {allUsers
+                                .filter(u => 
+                                    (u.FullName?.toLowerCase().includes(mentionQuery.toLowerCase()) || 
+                                    u.UserName?.toLowerCase().includes(mentionQuery.toLowerCase())) &&
+                                    u.UserName !== currentUser?.UserName
+                                )
+                                .slice(0, 10)
+                                .map(user => (
+                                    <button
+                                        key={user.UserID}
+                                        onClick={() => insertMention(user.UserName)}
+                                        className="w-full flex items-center gap-3 p-2 hover:bg-white/5 transition-colors text-left group border-b border-gray-700/50 last:border-0"
+                                    >
+                                        <UserAvatar name={user.FullName} avatarUrl={user.ProfilePictureURL} size="sm" className="ring-1 ring-white/10" />
+                                        <div className="min-w-0">
+                                            <p className="text-sm font-bold text-gray-200 group-hover:text-blue-400 truncate">{user.FullName}</p>
+                                            <p className="text-[10px] text-gray-500 truncate">@{user.UserName}</p>
+                                        </div>
+                                    </button>
+                                ))
+                            }
+                            {allUsers.filter(u => u.FullName?.toLowerCase().includes(mentionQuery.toLowerCase()) || u.UserName?.toLowerCase().includes(mentionQuery.toLowerCase())).length === 0 && (
+                                <div className="p-4 text-center text-gray-500 text-[10px] uppercase tracking-wider">No matching members</div>
+                            )}
+                        </div>
+                    )}
+
                     {isRecording ? (
                         <div className="flex items-center gap-3 bg-gray-800 p-2 rounded-2xl border border-red-500/50 shadow-[0_0_15px_rgba(239,68,68,0.2)] animate-fade-in relative overflow-hidden h-[60px]">
                              {/* Animated Waveform Background */}
@@ -740,7 +836,7 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ isOpen, onClose }) => {
                             <div className="flex-grow relative">
                                 <textarea 
                                     value={newMessage} 
-                                    onChange={e => setNewMessage(e.target.value)} 
+                                    onChange={handleInputChange} 
                                     onKeyDown={e => {
                                         if (e.key === 'Enter' && !e.shiftKey) {
                                             e.preventDefault();
