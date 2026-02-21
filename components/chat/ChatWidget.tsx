@@ -80,6 +80,7 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ isOpen, onClose }) => {
     const isMutedRef = useRef(isMuted);
     const lastNotifiedMessageIdRef = useRef<string | null>(null);
     const archivedMessagesRef = useRef<ChatMessage[]>([]); // Store older messages here
+    const hasAttemptedFullLoadRef = useRef(false); // Track if full history was ever requested
 
     // Derived Pinned Messages
     const pinnedMessages = useMemo(() => messages.filter(m => m.isPinned && !m.isDeleted), [messages]);
@@ -365,7 +366,7 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ isOpen, onClose }) => {
         }
     }, [showNotification, setUnreadCount]);
 
-    const fetchHistory = useCallback(async () => {
+    const fetchHistory = useCallback(async (forceFull = false) => {
         // Use a flag to avoid concurrent fetches if polling and initial fetch collide
         if (isHistoryLoading) return;
         
@@ -373,7 +374,14 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ isOpen, onClose }) => {
         if (isInitialLoad && isOpenRef.current) setIsHistoryLoading(true);
         
         try {
-            const res = await fetch(`${WEB_APP_URL}/api/chat/messages`);
+            // Determine if we should fetch full history or just the last 2 days
+            // We fetch full only if specifically requested (forceFull)
+            const isFullFetch = forceFull;
+            const url = isFullFetch ? `${WEB_APP_URL}/api/chat/messages` : `${WEB_APP_URL}/api/chat/messages?days=2`;
+            
+            if (isFullFetch) hasAttemptedFullLoadRef.current = true;
+
+            const res = await fetch(url);
             if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
             const result = await res.json();
             if (result.status === 'success') {
@@ -418,9 +426,12 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ isOpen, onClose }) => {
                     // Final Recent List: All archived messages the user has loaded + the new 2-day window
                     const finalRecent = [...alreadyLoadedArchive, ...recentMessages].sort((a, b) => getTimestamp(a.timestamp) - getTimestamp(b.timestamp));
 
-                    // Update Archived Messages Ref: Everything in olderMessages that is NOT in finalRecent
-                    const finalIds = new Set(finalRecent.map(m => m.id));
-                    archivedMessagesRef.current = olderMessages.filter(m => !finalIds.has(m.id));
+                    // IMPORTANT: Only update Archived Messages Ref if we actually fetched the full history
+                    // If we just fetched the last 2 days, we should NOT clear the existing archive.
+                    if (isFullFetch) {
+                        const finalIds = new Set(finalRecent.map(m => m.id));
+                        archivedMessagesRef.current = olderMessages.filter(m => !finalIds.has(m.id));
+                    }
 
                     // Deduplicate results
                     const seenIds = new Set();
@@ -540,23 +551,27 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ isOpen, onClose }) => {
         setShowScrollBottom(!isNearBottom);
 
         // 2. Load More Messages (Scroll to Top)
-        if (scrollTop === 0 && archivedMessagesRef.current.length > 0) {
-            // Take last 20 from archive (most recent of the old ones)
-            const chunk = archivedMessagesRef.current.splice(-20); // Removes and returns last 20
-            if (chunk.length > 0) {
-                // Capture current scroll height before adding items
-                const oldHeight = scrollHeight;
-                
-                setMessages(prev => [...chunk, ...prev]);
-                
-                // Adjust scroll position after render to maintain view
-                // We need to wait for DOM update. requestAnimationFrame works well.
-                requestAnimationFrame(() => {
-                    if (chatBodyRef.current) {
-                        const newHeight = chatBodyRef.current.scrollHeight;
-                        chatBodyRef.current.scrollTop = newHeight - oldHeight;
-                    }
-                });
+        if (scrollTop === 0) {
+            if (archivedMessagesRef.current.length > 0) {
+                // Take last 20 from archive (most recent of the old ones)
+                const chunk = archivedMessagesRef.current.splice(-20); // Removes and returns last 20
+                if (chunk.length > 0) {
+                    // Capture current scroll height before adding items
+                    const oldHeight = scrollHeight;
+                    
+                    setMessages(prev => [...chunk, ...prev]);
+                    
+                    // Adjust scroll position after render to maintain view
+                    requestAnimationFrame(() => {
+                        if (chatBodyRef.current) {
+                            const newHeight = chatBodyRef.current.scrollHeight;
+                            chatBodyRef.current.scrollTop = newHeight - oldHeight;
+                        }
+                    });
+                }
+            } else if (!hasAttemptedFullLoadRef.current && !isHistoryLoading) {
+                // Archive is empty and we haven't tried full load yet - fetch full history
+                fetchHistory(true);
             }
         }
     };
