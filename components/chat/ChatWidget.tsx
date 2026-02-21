@@ -63,11 +63,21 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ isOpen, onClose }) => {
     const allUsersRef = useRef(allUsers);
     const currentUserRef = useRef(currentUser);
     const isMutedRef = useRef(isMuted);
+    const lastNotifiedMessageIdRef = useRef<string | null>(null);
 
     useEffect(() => { allUsersRef.current = allUsers; }, [allUsers]);
     useEffect(() => { currentUserRef.current = currentUser; }, [currentUser]);
     useEffect(() => { isMutedRef.current = isMuted; }, [isMuted]);
     useEffect(() => { isOpenRef.current = isOpen; }, [isOpen]);
+
+    // Initialize lastNotifiedMessageIdRef
+    useEffect(() => {
+        if (messages.length > 0 && !lastNotifiedMessageIdRef.current) {
+            // Sort to ensure we get the latest
+            const sorted = [...messages].sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+            lastNotifiedMessageIdRef.current = sorted[sorted.length - 1].id;
+        }
+    }, []); // Run once on mount to set initial baseline
 
     // --- User Data Synchronization ---
     const syncUsers = useCallback(async () => {
@@ -229,23 +239,114 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ isOpen, onClose }) => {
         };
     }, []); 
 
+    const processNotifications = useCallback((sortedMessages: ChatMessage[]) => {
+        if (sortedMessages.length === 0) return;
+
+        // Determine new messages
+        const lastId = lastNotifiedMessageIdRef.current;
+        let newMessages: ChatMessage[] = [];
+
+        if (!lastId) {
+             // If first load, don't notify everything, just mark the last one
+             lastNotifiedMessageIdRef.current = sortedMessages[sortedMessages.length - 1].id;
+             return;
+        }
+
+        // Find messages strictly after lastId
+        // Assuming sorted by timestamp asc
+        const lastIndex = sortedMessages.findIndex(m => m.id === lastId);
+        if (lastIndex !== -1) {
+            newMessages = sortedMessages.slice(lastIndex + 1);
+        } else {
+             // If lastId not found (maybe cleared?), check timestamps? 
+             // Or just check if there are messages with timestamp > lastId's timestamp (if we stored it)
+             // Simpler: assume if ID mismatch, scan all for newer timestamp
+             // Ideally ids are timestamps.
+             newMessages = sortedMessages.filter(m => m.id > lastId);
+        }
+
+        newMessages.forEach(msg => {
+            const isMe = msg.user === currentUserRef.current?.UserName;
+            
+            // Skip own messages
+            if (isMe) return;
+
+            // Global Notification Trigger
+            const isNewOrder = msg.content && msg.content.includes('📢 NEW ORDER:');
+            const isSystemAlert = msg.content && msg.content.includes('📢 SYSTEM_ALERT:');
+
+            if (isNewOrder || isSystemAlert) {
+                let alertMsg = msg.content;
+                if (isNewOrder) alertMsg = msg.content.replace('📢 NEW ORDER:', '').trim();
+                else if (isSystemAlert) alertMsg = msg.content.replace('📢 SYSTEM_ALERT:', '').trim();
+                
+                showNotification(alertMsg, 'success');
+                
+                if (!isMutedRef.current) {
+                    const audio = new Audio(SOUND_URLS.NOTIFICATION);
+                    audio.play().catch(e => console.warn("Audio play failed", e));
+                }
+                sendSystemNotification("ការកម្មង់ថ្មី 📦", alertMsg);
+            } else {
+                // Standard User Message
+                const senderName = msg.fullName || msg.user;
+                let contentPreview = msg.content;
+                
+                if (msg.type === 'image') contentPreview = '📷 Sent an image';
+                else if (msg.type === 'audio') contentPreview = '🎤 Sent a voice message';
+                
+                showNotification(`${senderName}: ${contentPreview}`, 'info');
+                
+                if (document.hidden || !isOpenRef.current) {
+                    sendSystemNotification(senderName, contentPreview);
+                    if (!isOpenRef.current) setUnreadCount(p => p + 1);
+                }
+
+                if (!isMutedRef.current) {
+                    soundNotification.current.currentTime = 0;
+                    soundNotification.current.play().catch(() => {});
+                }
+            }
+        });
+
+        // Update Ref
+        if (newMessages.length > 0) {
+            lastNotifiedMessageIdRef.current = newMessages[newMessages.length - 1].id;
+        }
+    }, [showNotification, setUnreadCount]);
+
     const fetchHistory = useCallback(async () => {
-        if (!isOpenRef.current) return;
-        if (messages.length === 0) setIsHistoryLoading(true);
+        // if (!isOpenRef.current) return; // Allow fetching in background for notifications
+        
+        if (messages.length === 0 && isOpenRef.current) setIsHistoryLoading(true);
+        
         try {
             const res = await fetch(`${WEB_APP_URL}/api/chat/messages`);
             if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
             const result = await res.json();
             if (result.status === 'success') {
                 const history = result.data.map(transformBackendMessage);
-                setAndCacheMessages(history.sort((a: ChatMessage, b: ChatMessage) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()));
+                const sortedHistory = history.sort((a: ChatMessage, b: ChatMessage) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+                
+                // Process Notifications
+                processNotifications(sortedHistory);
+
+                setAndCacheMessages(prev => {
+                    // Optimization: Only update if length changed or last message different
+                    if (prev.length === sortedHistory.length && prev.length > 0) {
+                         const prevLast = prev[prev.length - 1];
+                         const newLast = sortedHistory[sortedHistory.length - 1];
+                         if (prevLast.id === newLast.id) return prev;
+                    }
+                    return sortedHistory;
+                });
             }
         } catch (e) { 
             console.warn("Chat history service unavailable"); 
         } finally { 
             setIsHistoryLoading(false); 
         }
-    }, [transformBackendMessage, setAndCacheMessages, messages.length]);
+    }, [transformBackendMessage, setAndCacheMessages, messages.length, processNotifications]);
 
     const scrollToBottom = (behavior: ScrollBehavior = 'smooth') => {
         if (messagesEndRef.current) {
@@ -268,7 +369,8 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ isOpen, onClose }) => {
 
             ws.onopen = () => {
                 setConnectionStatus('connected');
-                if (isOpenRef.current) fetchHistory();
+                // Initial fetch on connect
+                fetchHistory();
             };
 
             ws.onclose = () => {
@@ -281,48 +383,25 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ isOpen, onClose }) => {
                     const data = JSON.parse(e.data);
                     if (data.action === 'new_message') {
                         const backendMsg = data.payload;
-                        const isMe = backendMsg.UserName === currentUserRef.current?.UserName;
+                        const msg = transformBackendMessage(backendMsg);
                         
-                        // *** Global Notification Trigger ***
-                        const isNewOrder = backendMsg.Content && backendMsg.Content.includes('📢 NEW ORDER:');
-                        const isSystemAlert = backendMsg.Content && backendMsg.Content.includes('📢 SYSTEM_ALERT:');
-
-                        // 1. Handle Special System Alerts
-                        if (isNewOrder || isSystemAlert) {
-                            let alertMsg = backendMsg.Content;
-                            if (isNewOrder) alertMsg = backendMsg.Content.replace('📢 NEW ORDER:', '').trim();
-                            else if (isSystemAlert) alertMsg = backendMsg.Content.replace('📢 SYSTEM_ALERT:', '').trim();
-                            
-                            console.log("🔔 SYSTEM ALERT RECEIVED via WS:", alertMsg);
-                            
-                            showNotification(alertMsg, 'success');
-                            
-                            if (!isMutedRef.current) {
-                                const audio = new Audio(SOUND_URLS.NOTIFICATION);
-                                audio.play().catch(e => console.warn("Audio play failed", e));
-                            }
-                            sendSystemNotification("ការកម្មង់ថ្មី 📦", alertMsg);
-                        } 
-                        // 2. Handle Standard User Messages (New Requirement)
-                        else if (!isMe) {
-                             const senderName = backendMsg.FullName || backendMsg.UserName;
-                             let contentPreview = backendMsg.Content;
-                             
-                             if (backendMsg.MessageType === 'Image') contentPreview = '📷 Sent an image';
-                             else if (backendMsg.MessageType === 'Audio') contentPreview = '🎤 Sent a voice message';
-                             
-                             // Show floating alert for ALL user messages
-                             showNotification(`${senderName}: ${contentPreview}`, 'info');
-                             
-                             // Also send system notification if app is in background
-                             if (document.hidden) {
-                                 sendSystemNotification(senderName, contentPreview);
-                             }
+                        // We use processNotifications here by constructing a list? 
+                        // Or just let fetchHistory handle it via polling?
+                        // Ideally we handle it immediately here.
+                        
+                        // Check if we already processed this ID (via polling)
+                        if (lastNotifiedMessageIdRef.current && msg.id <= lastNotifiedMessageIdRef.current) {
+                            // Already notified via polling
+                        } else {
+                            // Notify immediately
+                            processNotifications([msg]);
+                            // Note: processNotifications handles filtering 'isMe'
                         }
 
-                        const msg = transformBackendMessage(backendMsg);
                         setAndCacheMessages(prev => {
                             if (prev.some(m => m.id === msg.id)) return prev;
+                            
+                            // Optimistic update handling
                             const optimisticIndex = prev.findIndex(m => 
                                 m.isOptimistic && 
                                 m.user === msg.user && 
@@ -335,13 +414,9 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ isOpen, onClose }) => {
                             }
                             return [...prev, msg];
                         });
-                        setTimeout(() => scrollToBottom('smooth'), 100);
-                        if (!isMe) {
-                            if (!isOpenRef.current) setUnreadCount(p => p + 1);
-                            if (!isMutedRef.current && !backendMsg.Content.includes('SYSTEM_ALERT')) {
-                                soundNotification.current.currentTime = 0;
-                                soundNotification.current.play().catch(() => {});
-                            }
+                        
+                        if (isOpenRef.current) {
+                             setTimeout(() => scrollToBottom('smooth'), 100);
                         }
                     }
                 } catch (err) { console.error("WS Message Error", err); }
@@ -349,11 +424,20 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ isOpen, onClose }) => {
         };
         setupWs();
         return () => { wsRef.current?.close(); };
-    }, []); 
+    }, [processNotifications, transformBackendMessage, setAndCacheMessages]); // Added dependencies
 
     useEffect(() => {
         if (isOpen) fetchHistory();
     }, [isOpen, fetchHistory]);
+
+    // Polling mechanism (Runs always now to ensure background notifications)
+    useEffect(() => {
+        const interval = setInterval(() => {
+             fetchHistory();
+        }, 3000);
+
+        return () => clearInterval(interval);
+    }, [fetchHistory]);
 
     // Auto-Scroll Logic
     useEffect(() => {
