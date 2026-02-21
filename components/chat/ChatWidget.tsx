@@ -69,10 +69,16 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ isOpen, onClose }) => {
     useEffect(() => {
         const soundId = advancedSettings?.notificationSound || 'default';
         const soundObj = NOTIFICATION_SOUNDS.find(s => s.id === soundId) || NOTIFICATION_SOUNDS[0];
+        const volume = advancedSettings?.notificationVolume ?? 1.0;
+
         if (soundNotification.current) {
             soundNotification.current.src = soundObj.url;
+            soundNotification.current.volume = volume;
         }
-    }, [advancedSettings?.notificationSound]);
+        if (soundSent.current) {
+            soundSent.current.volume = volume;
+        }
+    }, [advancedSettings?.notificationSound, advancedSettings?.notificationVolume]);
 
     useEffect(() => { allUsersRef.current = allUsers; }, [allUsers]);
     useEffect(() => { currentUserRef.current = currentUser; }, [currentUser]);

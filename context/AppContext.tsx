@@ -9,6 +9,7 @@ export interface AdvancedSettings {
     enablePrivacyMode?: boolean;
     securityLevel?: 'standard' | 'high';
     notificationSound?: string; // ID from NOTIFICATION_SOUNDS
+    notificationVolume?: number; // 0.0 to 1.0
 }
 
 export interface AppContextType {

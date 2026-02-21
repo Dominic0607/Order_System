@@ -125,6 +125,7 @@ const AdvancedSettingsModal: React.FC<AdvancedSettingsModalProps> = ({ onClose }
                                             onClick={() => {
                                                 setAdvancedSettings(prev => ({ ...prev, notificationSound: sound.id }));
                                                 const audio = new Audio(sound.url);
+                                                audio.volume = advancedSettings.notificationVolume ?? 1;
                                                 audio.play().catch(() => {});
                                             }}
                                             className={`p-3 rounded-xl border text-left transition-all flex items-center justify-between group ${
@@ -141,6 +142,46 @@ const AdvancedSettingsModal: React.FC<AdvancedSettingsModalProps> = ({ onClose }
                                             )}
                                         </button>
                                     ))}
+                                </div>
+
+                                {/* Volume Slider */}
+                                <div className="mt-4 border-t border-white/5 pt-3">
+                                    <div className="flex items-center justify-between mb-2">
+                                        <div className="flex items-center gap-2">
+                                            <div className="w-6 h-6 rounded-md bg-blue-500/10 flex items-center justify-center text-blue-400">
+                                                {advancedSettings.notificationVolume === 0 ? (
+                                                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2" /></svg>
+                                                ) : (
+                                                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" /></svg>
+                                                )}
+                                            </div>
+                                            <h4 className="text-[10px] font-black uppercase tracking-widest text-gray-500">Alert Volume</h4>
+                                        </div>
+                                        <span className="text-xs font-bold text-blue-400">{Math.round((advancedSettings.notificationVolume || 1) * 100)}%</span>
+                                    </div>
+                                    
+                                    <input 
+                                        type="range" 
+                                        min="0" 
+                                        max="1" 
+                                        step="0.05" 
+                                        value={advancedSettings.notificationVolume ?? 1} 
+                                        onChange={(e) => {
+                                            const newVolume = parseFloat(e.target.value);
+                                            setAdvancedSettings(prev => ({ ...prev, notificationVolume: newVolume }));
+                                            // Play a test sound with new volume (debounced slightly by user action speed naturally)
+                                            // Ideally we debounce this but for simplicity direct play is okay if not too spammy
+                                        }}
+                                        onMouseUp={() => {
+                                             // Play sample on release to avoid spamming
+                                             const soundId = advancedSettings.notificationSound || 'default';
+                                             const soundObj = NOTIFICATION_SOUNDS.find(s => s.id === soundId) || NOTIFICATION_SOUNDS[0];
+                                             const audio = new Audio(soundObj.url);
+                                             audio.volume = advancedSettings.notificationVolume ?? 1;
+                                             audio.play().catch(() => {});
+                                        }}
+                                        className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-blue-600"
+                                    />
                                 </div>
                             </div>
 
