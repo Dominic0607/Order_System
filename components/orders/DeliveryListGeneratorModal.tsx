@@ -784,7 +784,6 @@ const DeliveryListGeneratorModal: React.FC<DeliveryListGeneratorModalProps> = ({
                         </div>
                     )}
                 </div>
-                </div>
 
                 {/* Footer Controls */}
                 <div className="p-6 border-t border-white/5 bg-gray-900 sticky bottom-0 z-20 flex justify-between gap-4">

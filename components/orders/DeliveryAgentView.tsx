@@ -3,6 +3,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { ParsedOrder } from '../../types';
 import { WEB_APP_URL } from '../../constants';
 import Spinner from '../common/Spinner';
+import html2canvas from 'html2canvas';
 
 interface DeliveryAgentViewProps {
     orderIds: string[];
@@ -78,6 +79,29 @@ const DeliveryAgentView: React.FC<DeliveryAgentViewProps> = ({ orderIds, storeNa
 
     const totalShipCost = useMemo(() => Object.values(costs).reduce((a, b) => a + b, 0), [costs]);
 
+    const handleDownloadImage = async () => {
+        const element = document.getElementById('summary-card');
+        if (!element) return;
+        
+        try {
+            const canvas = await html2canvas(element, {
+                backgroundColor: '#0f172a',
+                scale: 2, // Higher quality
+                logging: false,
+                useCORS: true
+            });
+            
+            const dataUrl = canvas.toDataURL('image/jpeg', 0.9);
+            const link = document.createElement('a');
+            link.download = `ship_cost_confirmation_${Date.now()}.jpg`;
+            link.href = dataUrl;
+            link.click();
+        } catch (e) {
+            console.error("Screenshot failed", e);
+            alert("Failed to generate image. Please take a manual screenshot.");
+        }
+    };
+
     if (loading) return <div className="flex h-screen items-center justify-center bg-gray-950"><Spinner size="lg" /></div>;
 
     if (isSubmitted) {
@@ -109,13 +133,11 @@ const DeliveryAgentView: React.FC<DeliveryAgentViewProps> = ({ orderIds, storeNa
                 </div>
                 
                 <button 
-                    onClick={() => {
-                        // Simple notification as copying image is restricted in most mobile browsers without library
-                        alert("Please take a screenshot of the summary card above.");
-                    }}
-                    className="mt-8 px-8 py-4 bg-white text-black font-black uppercase tracking-widest text-xs rounded-2xl shadow-xl active:scale-95 transition-all"
+                    onClick={handleDownloadImage}
+                    className="mt-8 px-8 py-4 bg-white text-black font-black uppercase tracking-widest text-xs rounded-2xl shadow-xl active:scale-95 transition-all flex items-center gap-3"
                 >
-                    Screenshot & Save
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+                    Download Image Confirmation
                 </button>
             </div>
         );
