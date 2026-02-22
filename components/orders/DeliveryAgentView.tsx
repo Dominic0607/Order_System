@@ -80,7 +80,7 @@ const DeliveryAgentView: React.FC<DeliveryAgentViewProps> = ({ orderIds, returnO
         if (orders.length === 0) return;
         setIsSubmitting(true);
         try {
-            // Sequential update with retry logic and delays for high reliability
+            // Slower sequential update to respect Google Apps Script quotas
             for (const o of orders) {
                 const isDelivered = successSet.has(o['Order ID']);
                 const finalCost = isDelivered ? (costs[o['Order ID']] || 0) : 0;
@@ -97,7 +97,7 @@ const DeliveryAgentView: React.FC<DeliveryAgentViewProps> = ({ orderIds, returnO
                             headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify({
                                 sheetName: 'Orders',
-                                primaryKey: { 'Order ID': o['Order ID'].trim() }, // Ensure trimmed ID
+                                primaryKey: { 'Order ID': o['Order ID'].trim() },
                                 newData: { 'Internal Cost': finalCost }
                             })
                         });
@@ -105,24 +105,27 @@ const DeliveryAgentView: React.FC<DeliveryAgentViewProps> = ({ orderIds, returnO
                         if (response.ok) {
                             success = true;
                         } else {
-                            if (attempts === maxAttempts) throw new Error("Server quota exceeded");
-                            // Wait longer on each retry
-                            await new Promise(resolve => setTimeout(resolve, attempts * 1000));
+                            if (response.status === 429 || response.status === 503) {
+                                // Quota hit, wait longer
+                                await new Promise(resolve => setTimeout(resolve, 3000));
+                            }
+                            if (attempts === maxAttempts) throw new Error("Server is too busy. Please wait 1 minute and try again.");
+                            await new Promise(resolve => setTimeout(resolve, attempts * 2000));
                         }
                     } catch (err) {
                         if (attempts === maxAttempts) throw err;
-                        await new Promise(resolve => setTimeout(resolve, attempts * 1000));
+                        await new Promise(resolve => setTimeout(resolve, attempts * 2000));
                     }
                 }
 
-                // Add a small breather between different orders even if success
-                await new Promise(resolve => setTimeout(resolve, 800));
+                // Crucial: Longer pause between different orders to prevent concurrency errors
+                await new Promise(resolve => setTimeout(resolve, 1500));
             }
 
             setIsSubmitted(true);
         } catch (e: any) {
             console.error("Critical Submission Error:", e);
-            alert(`ការបញ្ជូនបរាជ័យ: ${e.message || "បញ្ហាអ៊ីនធឺណិត"}\nសូមព្យាយាមចុចបញ្ជូនម្តងទៀត។`);
+            alert(`ការបញ្ជូនបរាជ័យ: ${e.message}\n\nគន្លឹះ៖ ប្រសិនបើនៅតែបរាជ័យ សូមរង់ចាំ ១នាទី រួចចុចបញ្ជូនម្តងទៀត។`);
         } finally {
             setIsSubmitting(false);
         }
