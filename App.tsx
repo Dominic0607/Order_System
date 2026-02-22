@@ -42,6 +42,7 @@ const LoginPage = lazyRetry(() => import('./pages/LoginPage'), 'LoginPage');
 const RoleSelectionPage = lazyRetry(() => import('./pages/RoleSelectionPage'), 'RoleSelectionPage');
 const AdminDashboard = lazyRetry(() => import('./pages/AdminDashboard'), 'AdminDashboard');
 const UserJourney = lazyRetry(() => import('./pages/UserJourney'), 'UserJourney');
+const DeliveryAgentView = lazyRetry(() => import('./components/orders/DeliveryAgentView'), 'DeliveryAgentView');
 const Header = lazyRetry(() => import('./components/common/Header'), 'Header');
 const ImpersonationBanner = lazyRetry(() => import('./components/common/ImpersonationBanner'), 'ImpersonationBanner');
 const ChatWidget = lazyRetry(() => import('./components/chat/ChatWidget'), 'ChatWidget');
@@ -61,8 +62,13 @@ const App: React.FC = () => {
     const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
     const [language, setLanguage] = useState<Language>(() => (localStorage.getItem('appLanguage') as Language) || 'en');
-    const [appState, setAppState] = useUrlState<'login' | 'role_selection' | 'admin_dashboard' | 'user_journey'>('view', 'login');
+    const [appState, setAppState] = useUrlState<'login' | 'role_selection' | 'admin_dashboard' | 'user_journey' | 'confirm_delivery'>('view', 'login');
     const [previewImageUrl, setPreviewImageUrl] = useState<string | null>(null);
+    
+    // URL Params for Delivery Confirmation
+    const urlParams = new URLSearchParams(window.location.search);
+    const confirmIds = useMemo(() => urlParams.get('ids')?.split(',').filter(Boolean) || [], [window.location.search]);
+    const confirmStore = useMemo(() => urlParams.get('store') || '', [window.location.search]);
     
     // Notification State
     const [notification, setNotification] = useState<{ message: string; type: 'success' | 'info' | 'error' } | null>(null);
@@ -359,7 +365,9 @@ const App: React.FC = () => {
             <div className="min-h-screen relative z-10">
                 <BackgroundMusic />
                 <Suspense fallback={<div className="flex h-screen items-center justify-center"><Spinner size="lg" /></div>}>
-                    {currentUser && appState !== 'login' ? (
+                    {appState === 'confirm_delivery' ? (
+                        <DeliveryAgentView orderIds={confirmIds} storeName={confirmStore} />
+                    ) : currentUser && appState !== 'login' ? (
                         <>
                             {originalAdminUser && <ImpersonationBanner />}
                             {shouldShowHeader && <Header appState={appState} onBackToRoleSelect={() => setAppState('role_selection')} />}

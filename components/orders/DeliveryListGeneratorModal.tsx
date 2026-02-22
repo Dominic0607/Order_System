@@ -38,6 +38,10 @@ const DeliveryListGeneratorModal: React.FC<DeliveryListGeneratorModalProps> = ({
     const [step1SelectedIds, setStep1SelectedIds] = useState<Set<string>>(new Set());
     const [step1ReturnIds, setStep1ReturnIds] = useState<Set<string>>(new Set());
 
+    // Manual Addition State
+    const [searchQuery, setSearchQuery] = useState('');
+    const [manualOrders, setManualOrders] = useState<ParsedOrder[]>([]);
+
     // Step 2: Verification & Adjustment
     const [pendingOrders, setPendingOrders] = useState<ParsedOrder[]>([]);
     const [verifiedIds, setVerifiedIds] = useState<Set<string>>(new Set());
@@ -66,7 +70,7 @@ const DeliveryListGeneratorModal: React.FC<DeliveryListGeneratorModalProps> = ({
 
     // Filtered Orders Logic (Stage 1)
     const filteredOrders = useMemo(() => {
-        return orders.filter(o => {
+        const dateFiltered = orders.filter(o => {
             if (!o.Timestamp) return false;
             const orderDate = getSafeIsoDate(o.Timestamp); 
             if (!orderDate) return false;
@@ -75,7 +79,26 @@ const DeliveryListGeneratorModal: React.FC<DeliveryListGeneratorModalProps> = ({
             const isShippingMatch = (o['Internal Shipping Method'] || '').toLowerCase() === selectedShipping.toLowerCase();
             return isDateMatch && isStoreMatch && isShippingMatch;
         });
-    }, [orders, selectedDate, selectedStore, selectedShipping]);
+
+        // Merge with manual orders and deduplicate
+        const combined = [...dateFiltered, ...manualOrders];
+        const seen = new Set();
+        return combined.filter(o => {
+            if (seen.has(o['Order ID'])) return false;
+            seen.add(o['Order ID']);
+            return true;
+        });
+    }, [orders, selectedDate, selectedStore, selectedShipping, manualOrders]);
+
+    // Search Results for manual addition
+    const searchResults = useMemo(() => {
+        if (!searchQuery.trim()) return [];
+        const q = searchQuery.toLowerCase();
+        return orders.filter(o => 
+            (o['Order ID'].toLowerCase().includes(q) || (o['Customer Phone'] || '').includes(q)) &&
+            !filteredOrders.some(existing => existing['Order ID'] === o['Order ID'])
+        ).slice(0, 5); // Limit results
+    }, [orders, searchQuery, filteredOrders]);
 
     // Sync selections when filters change
     useEffect(() => {
@@ -118,6 +141,8 @@ const DeliveryListGeneratorModal: React.FC<DeliveryListGeneratorModalProps> = ({
         setVerifiedIds(new Set());
         setShippingAdjustments({});
         setStep1ReturnIds(new Set());
+        setManualOrders([]);
+        setSearchQuery('');
         setShowPaymentModal(false);
         setPassword('');
         setSelectedBank('');
@@ -198,7 +223,16 @@ const DeliveryListGeneratorModal: React.FC<DeliveryListGeneratorModalProps> = ({
         text += `💰 **សរុបទឹកប្រាក់ (ដឹកជោគជ័យ):** $${totalSuccessUSD.toFixed(2)}\n`;
         text += `   ├─ 🟢 Paid: $${totalPaidUSD.toFixed(2)}\n`;
         text += `   └─ 🔴 COD: $${totalCodUSD.toFixed(2)} 💸\n`;
-        text += `❌ **សរុបទឹកប្រាក់ (ដឹកមិនជោគជ័យ):** $${totalFailedUSD.toFixed(2)}`;
+        text += `❌ **សរុបទឹកប្រាក់ (ដឹកមិនជោគជ័យ):** $${totalFailedUSD.toFixed(2)}\n\n`;
+        
+        // Add Confirmation Link for Agent
+        const selectedOrderIds = filteredOrders.filter(o => step1SelectedIds.has(o['Order ID'])).map(o => o['Order ID']);
+        if (selectedOrderIds.length > 0) {
+            const baseUrl = window.location.origin + window.location.pathname;
+            const confirmUrl = `${baseUrl}?view=confirm_delivery&ids=${selectedOrderIds.join(',')}&store=${encodeURIComponent(selectedStore)}`;
+            text += `--------------------------------\n`;
+            text += `🔗 **Link សម្រាប់ភ្នាក់ងារដឹកជញ្ជូនបញ្ជាក់ថ្លៃដឹក:**\n${confirmUrl}`;
+        }
 
         setPreviewText(text);
         setIsPreviewing(true);
@@ -396,6 +430,49 @@ const DeliveryListGeneratorModal: React.FC<DeliveryListGeneratorModalProps> = ({
                                     </select>
                                 </div>
                             </div>
+
+                            {/* Add Past Orders Search */}
+                            {!isPreviewing && (
+                                <div className="space-y-3 relative">
+                                    <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest block ml-1">បន្ថែមប្រតិបត្ដិការណ៍ចាស់ (Add Past Orders)</label>
+                                    <div className="relative group">
+                                        <input 
+                                            type="text" 
+                                            placeholder="ស្វែងរកតាម ID ឬ លេខទូរស័ព្ទ..." 
+                                            value={searchQuery}
+                                            onChange={(e) => setSearchQuery(e.target.value)}
+                                            className="w-full bg-black/40 border border-gray-800 rounded-xl py-3 pl-10 pr-4 text-xs font-bold text-white placeholder:text-gray-700 focus:border-blue-500/50 transition-all shadow-inner"
+                                        />
+                                        <svg className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" /></svg>
+                                    </div>
+
+                                    {/* Search Results Dropdown */}
+                                    {searchResults.length > 0 && (
+                                        <div className="absolute top-full left-0 right-0 mt-2 bg-gray-900 border border-gray-700 rounded-2xl shadow-2xl z-50 overflow-hidden animate-fade-in-down">
+                                            {searchResults.map(o => (
+                                                <button 
+                                                    key={o['Order ID']}
+                                                    onClick={() => {
+                                                        setManualOrders(prev => [...prev, o]);
+                                                        setStep1SelectedIds(prev => new Set(prev).add(o['Order ID']));
+                                                        setSearchQuery('');
+                                                    }}
+                                                    className="w-full flex items-center justify-between p-4 hover:bg-white/5 text-left border-b border-gray-800 last:border-0"
+                                                >
+                                                    <div className="min-w-0">
+                                                        <p className="text-sm font-bold text-white truncate">{o['Customer Name']}</p>
+                                                        <p className="text-[10px] text-gray-500 font-mono">{o['Order ID']} | {o['Customer Phone']}</p>
+                                                    </div>
+                                                    <div className="text-right">
+                                                        <p className="text-xs font-black text-blue-400">${o['Grand Total']}</p>
+                                                        <p className="text-[10px] text-gray-600 font-bold uppercase">{o.Timestamp.split(' ')[0]}</p>
+                                                    </div>
+                                                </button>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+                            )}
 
                             {/* List of Orders in Step 1 */}
                             {!isPreviewing && filteredOrders.length > 0 && (
