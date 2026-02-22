@@ -19,7 +19,7 @@ const BankSelector: React.FC<BankSelectorProps> = ({ bankAccounts, selectedBankN
     }
 
     return (
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 animate-fade-in-down">
+        <div className="grid grid-cols-3 gap-2 sm:gap-3 animate-fade-in-down">
             {bankAccounts.map((bank) => {
                 const isSelected = selectedBankName === bank.BankName;
                 
@@ -29,7 +29,7 @@ const BankSelector: React.FC<BankSelectorProps> = ({ bankAccounts, selectedBankN
                         type="button"
                         onClick={() => onSelect(bank.BankName)}
                         className={`
-                            relative flex flex-col items-center justify-center p-4 rounded-2xl border-2 transition-all duration-200 group
+                            relative flex flex-col items-center justify-center p-3 sm:p-4 rounded-xl sm:rounded-2xl border-2 transition-all duration-200 group
                             ${isSelected 
                                 ? 'bg-blue-600/10 border-blue-500 shadow-[0_0_20px_rgba(37,99,235,0.2)]' 
                                 : 'bg-gray-900/60 border-gray-700 hover:border-gray-500 hover:bg-gray-800'}
@@ -37,7 +37,7 @@ const BankSelector: React.FC<BankSelectorProps> = ({ bankAccounts, selectedBankN
                     >
                         {/* Logo */}
                         <div className={`
-                            w-12 h-12 rounded-xl flex items-center justify-center bg-white p-1 mb-3 transition-transform duration-300
+                            w-10 h-10 sm:w-12 sm:h-12 rounded-lg sm:rounded-xl flex items-center justify-center bg-white p-1 mb-2 sm:mb-3 transition-transform duration-300
                             ${isSelected ? 'scale-110 shadow-lg' : 'grayscale group-hover:grayscale-0'}
                         `}>
                             {bank.LogoURL ? (

@@ -67,8 +67,21 @@ const App: React.FC = () => {
     
     // URL Params for Delivery Confirmation
     const urlParams = new URLSearchParams(window.location.search);
-    const confirmIds = useMemo(() => urlParams.get('ids')?.split(',').filter(Boolean) || [], [window.location.search]);
-    const confirmStore = useMemo(() => urlParams.get('store') || '', [window.location.search]);
+
+    // Handle shortened URL shortcuts (v=cd -> view=confirm_delivery)
+    useEffect(() => {
+        const v = urlParams.get('v');
+        if (v === 'cd' && appState !== 'confirm_delivery') {
+            setAppState('confirm_delivery');
+        }
+    }, [appState, setAppState]);
+
+    const confirmIds = (urlParams.get('i') || urlParams.get('ids'))?.split(',') || [];
+    const returnIds = urlParams.get('r')?.split(',') || [];
+    const failedIdsParam = urlParams.get('f')?.split(',') || [];
+    const confirmStore = urlParams.get('s') || urlParams.get('store') || '';
+    const confirmExpires = urlParams.get('e') || urlParams.get('expires');
+    const isConfirmExpired = confirmExpires ? Date.now() > parseInt(confirmExpires) : false;
     
     // Notification State
     const [notification, setNotification] = useState<{ message: string; type: 'success' | 'info' | 'error' } | null>(null);
@@ -366,7 +379,7 @@ const App: React.FC = () => {
                 <BackgroundMusic />
                 <Suspense fallback={<div className="flex h-screen items-center justify-center"><Spinner size="lg" /></div>}>
                     {appState === 'confirm_delivery' ? (
-                        <DeliveryAgentView orderIds={confirmIds} storeName={confirmStore} />
+                        <DeliveryAgentView orderIds={confirmIds} returnOrderIds={returnIds} failedOrderIds={failedIdsParam} storeName={confirmStore} />
                     ) : currentUser && appState !== 'login' ? (
                         <>
                             {originalAdminUser && <ImpersonationBanner />}
