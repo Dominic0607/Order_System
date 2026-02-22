@@ -231,7 +231,8 @@ const DeliveryListGeneratorModal: React.FC<DeliveryListGeneratorModalProps> = ({
         const selectedOrderIds = filteredOrders.filter(o => step1SelectedIds.has(o['Order ID'])).map(o => o['Order ID']);
         if (selectedOrderIds.length > 0) {
             const baseUrl = window.location.origin + window.location.pathname;
-            const confirmUrl = `${baseUrl}?view=confirm_delivery&ids=${selectedOrderIds.join(',')}&store=${encodeURIComponent(selectedStore)}`;
+            const expiryTimestamp = Date.now() + (2 * 60 * 60 * 1000); // 2 hours from now
+            const confirmUrl = `${baseUrl}?view=confirm_delivery&ids=${selectedOrderIds.join(',')}&store=${encodeURIComponent(selectedStore)}&expires=${expiryTimestamp}`;
             text += `--------------------------------\n`;
             text += `🔗 **ចុចខាងក្រោមដើម្បីបញ្ជាក់ថ្លៃដឹក (Confirm):**\n`;
             text += `👉 ${confirmUrl}`;
@@ -248,7 +249,8 @@ const DeliveryListGeneratorModal: React.FC<DeliveryListGeneratorModalProps> = ({
             return;
         }
         const baseUrl = window.location.origin + window.location.pathname;
-        const confirmUrl = `${baseUrl}?view=confirm_delivery&ids=${selectedOrderIds.join(',')}&store=${encodeURIComponent(selectedStore)}`;
+        const expiryTimestamp = Date.now() + (2 * 60 * 60 * 1000); // 2 hours from now
+        const confirmUrl = `${baseUrl}?view=confirm_delivery&ids=${selectedOrderIds.join(',')}&store=${encodeURIComponent(selectedStore)}&expires=${expiryTimestamp}`;
         
         try {
             await navigator.clipboard.writeText(confirmUrl);
