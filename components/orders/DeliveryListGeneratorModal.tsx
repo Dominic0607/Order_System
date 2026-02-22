@@ -233,11 +233,27 @@ const DeliveryListGeneratorModal: React.FC<DeliveryListGeneratorModalProps> = ({
             const baseUrl = window.location.origin + window.location.pathname;
             const confirmUrl = `${baseUrl}?view=confirm_delivery&ids=${selectedOrderIds.join(',')}&store=${encodeURIComponent(selectedStore)}`;
             text += `--------------------------------\n`;
-            text += `🔗 **Link សម្រាប់ភ្នាក់ងារដឹកជញ្ជូនបញ្ជាក់ថ្លៃដឹក:**\n${confirmUrl}`;
+            text += `🔗 **ចុចខាងក្រោមដើម្បីបញ្ជាក់ថ្លៃដឹក (Confirm):**\n`;
+            text += `👉 ${confirmUrl}`;
         }
 
         setPreviewText(text);
         setIsPreviewing(true);
+    };
+
+    const handleCopyAgentLink = async () => {
+        const selectedOrderIds = filteredOrders.filter(o => step1SelectedIds.has(o['Order ID'])).map(o => o['Order ID']);
+        if (selectedOrderIds.length === 0) {
+            alert("No orders selected!");
+            return;
+        }
+        const baseUrl = window.location.origin + window.location.pathname;
+        const confirmUrl = `${baseUrl}?view=confirm_delivery&ids=${selectedOrderIds.join(',')}&store=${encodeURIComponent(selectedStore)}`;
+        
+        try {
+            await navigator.clipboard.writeText(confirmUrl);
+            showNotification("Agent Link Copied!", "success");
+        } catch (e) { alert("Failed to copy link"); }
     };
 
     const handleCopyAndSaveSession = async () => {
@@ -565,26 +581,28 @@ const DeliveryListGeneratorModal: React.FC<DeliveryListGeneratorModalProps> = ({
                                             <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></div>
                                             <label className="text-xs font-black text-gray-300 uppercase tracking-widest">Preview & Edit</label>
                                         </div>
-                                        <button onClick={() => setIsPreviewing(false)} className="text-[10px] font-black text-red-400 hover:text-red-300 uppercase tracking-widest flex items-center gap-1.5 transition-colors">
-                                            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M6 18L18 6M6 6l12 12" /></svg>
-                                            Reset Filters
-                                        </button>
+                                        <div className="flex items-center gap-2">
+                                            <button 
+                                                onClick={handleCopyAgentLink}
+                                                className="text-[10px] font-black text-blue-400 hover:text-blue-300 uppercase tracking-widest flex items-center gap-1.5 transition-colors bg-blue-400/10 px-3 py-1.5 rounded-lg border border-blue-400/20"
+                                            >
+                                                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" /></svg>
+                                                Copy Link Only
+                                            </button>
+                                            <button onClick={() => setIsPreviewing(false)} className="text-[10px] font-black text-red-400 hover:text-red-300 uppercase tracking-widest flex items-center gap-1.5 transition-colors">
+                                                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M6 18L18 6M6 6l12 12" /></svg>
+                                                Reset
+                                            </button>
+                                        </div>
                                     </div>
 
-                                    <div className="flex justify-between items-center gap-4">
-                                        <button 
-                                            onClick={() => setShowManualSearch(true)}
-                                            className="px-6 py-2.5 bg-blue-600/10 hover:bg-blue-600 text-blue-400 hover:text-white rounded-xl border border-blue-500/20 transition-all flex items-center gap-3 active:scale-95 text-[10px] font-black uppercase tracking-widest flex-1 justify-center shadow-lg shadow-blue-900/10"
-                                        >
-                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M12 4v16m8-8H4" /></svg>
-                                            បន្ថែមប្រតិបត្ដិការណ៍ចាស់ (Add Past Order)
-                                        </button>
+                                    <div className="flex justify-center">
                                         <button 
                                             onClick={handleGeneratePreview}
-                                            className="px-6 py-2.5 bg-emerald-600/10 hover:bg-emerald-600 text-emerald-400 hover:text-white rounded-xl border border-emerald-500/20 transition-all flex items-center gap-3 active:scale-95 text-[10px] font-black uppercase tracking-widest flex-1 justify-center shadow-lg shadow-emerald-900/10"
+                                            className="w-full px-6 py-2.5 bg-emerald-600/10 hover:bg-emerald-600 text-emerald-400 hover:text-white rounded-xl border border-emerald-500/20 transition-all flex items-center gap-3 active:scale-95 text-[10px] font-black uppercase tracking-widest justify-center shadow-lg shadow-blue-900/10"
                                         >
-                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.001 0 01-15.357-2m15.357 2H15" /></svg>
-                                            Refresh Report
+                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.001 0 01-15.357-2m15.357 2H15" /></svg>
+                                            Refresh Report Text
                                         </button>
                                     </div>
 
