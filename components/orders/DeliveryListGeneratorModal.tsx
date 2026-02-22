@@ -204,8 +204,15 @@ const DeliveryListGeneratorModal: React.FC<DeliveryListGeneratorModalProps> = ({
         if (!password) { alert("Password required."); return; }
         setIsSubmitting(true);
         try {
-            // Verify password using the users list in appData (matches LoginPage pattern)
-            const foundUser = appData.users?.find(u => u.UserName === currentUser?.UserName && u.Password === password);
+            // Fetch fresh user data to ensure we have the passwords for verification
+            const response = await fetch(`${WEB_APP_URL}/api/users`, { cache: 'no-store' });
+            if (!response.ok) throw new Error('Network synchronization error');
+            
+            const result = await response.json();
+            const users: User[] = result.data;
+            
+            // Match current user and verify password
+            const foundUser = users.find(u => u.UserName === currentUser?.UserName && u.Password === password);
             
             if (!foundUser) {
                 throw new Error("លេខសម្ងាត់មិនត្រឹមត្រូវ (Incorrect Password)");
