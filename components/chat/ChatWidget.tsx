@@ -46,7 +46,11 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ isOpen, onClose }) => {
         if (!CACHE_KEY) return [];
         try {
             const cached = localStorage.getItem(CACHE_KEY);
-            return (cached && cached !== "undefined") ? JSON.parse(cached) : [];
+            if (cached && cached !== "undefined") {
+                const parsed = JSON.parse(cached) as ChatMessage[];
+                return parsed.slice(-20); // Only show last 20 initially
+            }
+            return [];
         } catch (e) { return []; }
     });
 
@@ -85,9 +89,25 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ isOpen, onClose }) => {
     const abortControllerRef = useRef<AbortController | null>(null);
     const fetchInProgressRef = useRef(false);
     const hasScrolledToBottomRef = useRef(false); // Track initial scroll to bottom
+    const isOpeningRef = useRef(false); // Track if widget is currently being opened
 
     // Derived Pinned Messages
     const pinnedMessages = useMemo(() => messages.filter(m => m.isPinned && !m.isDeleted), [messages]);
+
+    // Initialize archive from cache on mount
+    useEffect(() => {
+        if (CACHE_KEY && archivedMessagesRef.current.length === 0) {
+            try {
+                const cached = localStorage.getItem(CACHE_KEY);
+                if (cached && cached !== "undefined") {
+                    const parsed = JSON.parse(cached) as ChatMessage[];
+                    if (parsed.length > 20) {
+                        archivedMessagesRef.current = parsed.slice(0, -20);
+                    }
+                }
+            } catch (e) {}
+        }
+    }, [CACHE_KEY]);
 
     useEffect(() => {
         const soundId = advancedSettings?.notificationSound || 'default';
@@ -251,7 +271,11 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ isOpen, onClose }) => {
     const setAndCacheMessages = useCallback((updater: React.SetStateAction<ChatMessage[]>) => {
         setMessages(prev => {
             const next = typeof updater === 'function' ? (updater as any)(prev) : updater;
-            if (CACHE_KEY) localStorage.setItem(CACHE_KEY, JSON.stringify(next));
+            if (CACHE_KEY) {
+                // Combine archive and current messages for full history
+                const fullHistory = [...archivedMessagesRef.current, ...next];
+                localStorage.setItem(CACHE_KEY, JSON.stringify(fullHistory.slice(-500)));
+            }
             return next;
         });
     }, [CACHE_KEY]);
@@ -394,10 +418,9 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ isOpen, onClose }) => {
         const signal = abortControllerRef.current.signal;
         
         try {
-            // Determine if we should fetch full history or just the last 2 days
-            // We fetch full only if specifically requested (forceFull)
+            // Determine if we should fetch full history or just the last few messages
             const isFullFetch = forceFull;
-            const url = isFullFetch ? `${WEB_APP_URL}/api/chat/messages` : `${WEB_APP_URL}/api/chat/messages?days=2`;
+            const url = isFullFetch ? `${WEB_APP_URL}/api/chat/messages` : `${WEB_APP_URL}/api/chat/messages?days=2&limit=20`;
             
             if (isFullFetch) hasAttemptedFullLoadRef.current = true;
 
@@ -412,25 +435,40 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ isOpen, onClose }) => {
                 // Process Notifications
                 processNotifications(sortedHistory);
 
-                // --- Chunked Loading Logic (Initial 20 messages) ---
-                const historyLen = sortedHistory.length;
-                const recentChunk = sortedHistory.slice(Math.max(0, historyLen - 20));
-                const olderThanRecent = sortedHistory.slice(0, Math.max(0, historyLen - 20));
-
                 setAndCacheMessages(prev => {
                     const prevOptimistics = prev.filter(m => m.isOptimistic);
                     const prevNonOptimistic = prev.filter(m => !m.isOptimistic);
                     
-                    // Deduplicate with incoming latest chunk
-                    const recentIds = new Set(recentChunk.map(m => m.id));
-                    const existingNonOverlapping = prevNonOptimistic.filter(m => !recentIds.has(m.id));
+                    // 1. Gather ALL known messages (Visible + Archive + New)
+                    const allKnownNonOptimistic = [
+                        ...prevNonOptimistic,
+                        ...archivedMessagesRef.current,
+                        ...sortedHistory
+                    ];
                     
-                    // Final messages in view
-                    const finalInView = [...existingNonOverlapping, ...recentChunk].sort((a, b) => getTimestamp(a.timestamp) - getTimestamp(b.timestamp));
+                    // 2. Deduplicate and Sort
+                    const seenIds = new Set();
+                    const deduplicated = allKnownNonOptimistic.filter(m => {
+                        if (seenIds.has(m.id)) return false;
+                        seenIds.add(m.id);
+                        return true;
+                    }).sort((a, b) => getTimestamp(a.timestamp) - getTimestamp(b.timestamp));
+
+                    // 3. Determine visible count
+                    // On initial opening, strictly show 20.
+                    // Otherwise, keep at least current visible count.
+                    const countToShow = isOpeningRef.current ? 20 : (prevNonOptimistic.length > 0 ? Math.max(20, prevNonOptimistic.length) : 20);
+                    
+                    const nextVisible = deduplicated.slice(-countToShow);
+                    const nextArchived = deduplicated.slice(0, -countToShow);
+
+                    // Update archive ref
+                    archivedMessagesRef.current = nextArchived;
+                    isOpeningRef.current = false; // Reset flag after use
 
                     // --- OPTIMISTIC RESOLUTION ---
                     const unresolvedOptimistics = prevOptimistics.filter(opt => {
-                        const isResolved = finalInView.some(real => 
+                        const isResolved = nextVisible.some(real => 
                             real.user === opt.user && 
                             real.type === opt.type && 
                             (real.content === opt.content || Math.abs(getTimestamp(real.timestamp) - getTimestamp(opt.timestamp)) < 15000)
@@ -439,28 +477,7 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ isOpen, onClose }) => {
                         return !isResolved && !isExpired;
                     });
 
-                    // --- ARCHIVE MANAGEMENT ---
-                    // Only overwrite archive on full fetch or if it's the very first load
-                    // This prevents periodic polls (which only get 2 days) from clearing the full archive
-                    if (isFullFetch || archivedMessagesRef.current.length === 0) {
-                        const inViewIds = new Set(finalInView.map(m => m.id));
-                        archivedMessagesRef.current = olderThanRecent.filter(m => !inViewIds.has(m.id));
-                        
-                        // If this was a scroll-triggered full fetch, automatically pop one chunk
-                        // to show the user that more messages were found.
-                        if (isFullFetch && archivedMessagesRef.current.length > 0) {
-                            const extraChunk = archivedMessagesRef.current.splice(-20);
-                            return [...extraChunk, ...finalInView, ...unresolvedOptimistics].sort((a, b) => getTimestamp(a.timestamp) - getTimestamp(b.timestamp));
-                        }
-                    }
-
-                    // Standard update (poll or first 2-day load)
-                    const seenIds = new Set();
-                    return [...finalInView, ...unresolvedOptimistics].filter(m => {
-                        if (seenIds.has(m.id)) return false;
-                        seenIds.add(m.id);
-                        return true;
-                    });
+                    return [...nextVisible, ...unresolvedOptimistics].sort((a, b) => getTimestamp(a.timestamp) - getTimestamp(b.timestamp));
                 });
             }
         } catch (e: any) { 
@@ -554,10 +571,14 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ isOpen, onClose }) => {
     }, [processNotifications, transformBackendMessage, setAndCacheMessages]); // Added dependencies
 
     useEffect(() => {
-        if (isOpen) fetchHistory();
-    }, [isOpen, fetchHistory]);
-
-    // Polling mechanism (Runs always now to ensure background notifications)
+        if (isOpen) {
+            setUnreadCount(0);
+            isOpeningRef.current = true;
+            fetchHistory();
+        } else {
+            hasScrolledToBottomRef.current = false; // Reset on close
+        }
+    }, [isOpen, fetchHistory, setUnreadCount]);
     useEffect(() => {
         const interval = setInterval(() => {
              // iOS Optimization: Only fetch when tab is active to save resources
@@ -588,12 +609,23 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ isOpen, onClose }) => {
             if (archivedMessagesRef.current.length > 0) {
                 setIsLoadingOlder(true);
                 
+                // Save current scroll height to restore later (prevent jumping)
+                const beforeScrollHeight = chatBodyRef.current.scrollHeight;
+
                 // Small delay to show "Loading..." indicator for UX
                 setTimeout(() => {
                     // Take last 20 from archive (most recent of the old ones)
                     const chunk = archivedMessagesRef.current.splice(-20);
                     if (chunk.length > 0) {
                         setMessages(prev => [...chunk, ...prev]);
+                        
+                        // Restore scroll position in the next tick after render
+                        setTimeout(() => {
+                            if (chatBodyRef.current) {
+                                const afterScrollHeight = chatBodyRef.current.scrollHeight;
+                                chatBodyRef.current.scrollTop = afterScrollHeight - beforeScrollHeight;
+                            }
+                        }, 0);
                     }
                     setIsLoadingOlder(false);
                 }, 400);
