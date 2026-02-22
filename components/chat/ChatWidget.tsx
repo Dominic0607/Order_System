@@ -410,6 +410,10 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ isOpen, onClose }) => {
         if (isInitialLoad && isOpenRef.current) setIsHistoryLoading(true);
         fetchInProgressRef.current = true;
 
+        // Save scroll height if we're about to load older messages to preserve position
+        const container = chatBodyRef.current;
+        const previousScrollHeight = isScrollTriggered && container ? container.scrollHeight : 0;
+
         // Abort previous request if still running (iOS Standard for cleaner network)
         if (abortControllerRef.current) {
             abortControllerRef.current.abort();
@@ -454,25 +458,45 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ isOpen, onClose }) => {
                         return true;
                     }).sort((a, b) => getTimestamp(a.timestamp) - getTimestamp(b.timestamp));
 
-                    // 3. Determine visible count
-                    let countToShow = prevNonOptimistic.length > 0 ? prevNonOptimistic.length : 20;
-                    
-                    if (isOpeningRef.current) {
-                        countToShow = 20;
-                    } else if (isScrollTriggered) {
-                        // If triggered by scroll and we fetched more, expand visibility
-                        countToShow += 20;
+                    // 3. Determine visible messages using anchor-based logic
+                    let nextVisible: ChatMessage[] = [];
+                    let nextArchived: ChatMessage[] = [];
+
+                    if (isOpeningRef.current || prevNonOptimistic.length === 0) {
+                        nextVisible = deduplicated.slice(-20);
+                        nextArchived = deduplicated.slice(0, -20);
+                    } else {
+                        // Find anchor index of the oldest currently visible non-optimistic message
+                        const oldestId = prevNonOptimistic[0].id;
+                        let anchorIndex = deduplicated.findIndex(m => m.id === oldestId);
+                        
+                        if (anchorIndex === -1) {
+                            // Fallback if anchor lost: use relative position from bottom
+                            anchorIndex = Math.max(0, deduplicated.length - prevNonOptimistic.length);
+                        }
+
+                        // If scroll triggered, expand visibility by moving the anchor up
+                        if (isScrollTriggered) {
+                            anchorIndex = Math.max(0, anchorIndex - 20);
+                        }
+
+                        nextVisible = deduplicated.slice(anchorIndex);
+                        nextArchived = deduplicated.slice(0, anchorIndex);
                     }
-                    
-                    // Ensure we don't try to show more than we have
-                    countToShow = Math.min(countToShow, deduplicated.length);
 
-                    const nextVisible = deduplicated.slice(-countToShow);
-                    const nextArchived = deduplicated.slice(0, -countToShow);
-
-                    // Update archive ref
+                    // Update archive ref for future scroll-ups
                     archivedMessagesRef.current = nextArchived;
-                    isOpeningRef.current = false; // Reset flag after use
+                    isOpeningRef.current = false; // Reset opening flag
+
+                    // Restore scroll position after render if this was a scroll-triggered fetch
+                    if (isScrollTriggered && previousScrollHeight > 0) {
+                        requestAnimationFrame(() => {
+                            if (chatBodyRef.current) {
+                                const newScrollHeight = chatBodyRef.current.scrollHeight;
+                                chatBodyRef.current.scrollTop = newScrollHeight - previousScrollHeight;
+                            }
+                        });
+                    }
 
                     // --- OPTIMISTIC RESOLUTION ---
                     const unresolvedOptimistics = prevOptimistics.filter(opt => {
@@ -612,32 +636,34 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ isOpen, onClose }) => {
         const isNearBottom = scrollHeight - scrollTop - clientHeight < 200;
         setShowScrollBottom(!isNearBottom);
 
-        // 2. Load More Messages (Scroll to Top)
-        if (scrollTop === 0 && !isLoadingOlder) {
+        // 2. Load More Messages (Scroll to Top) - using < 5px buffer for reliability
+        if (scrollTop < 5 && !isLoadingOlder && !isHistoryLoading) {
             if (archivedMessagesRef.current.length > 0) {
                 setIsLoadingOlder(true);
                 
-                // Save current scroll height to restore later (prevent jumping)
-                const beforeScrollHeight = chatBodyRef.current.scrollHeight;
+                // Save current scroll metrics to restore position accurately
+                const container = chatBodyRef.current;
+                const previousScrollHeight = container.scrollHeight;
 
                 // Small delay to show "Loading..." indicator for UX
                 setTimeout(() => {
                     // Take last 20 from archive (most recent of the old ones)
                     const chunk = archivedMessagesRef.current.splice(-20);
                     if (chunk.length > 0) {
-                        setMessages(prev => [...chunk, ...prev]);
+                        // Use setAndCacheMessages to ensure LocalStorage stays in sync
+                        setAndCacheMessages(prev => [...chunk, ...prev]);
                         
-                        // Restore scroll position in the next tick after render
-                        setTimeout(() => {
-                            if (chatBodyRef.current) {
-                                const afterScrollHeight = chatBodyRef.current.scrollHeight;
-                                chatBodyRef.current.scrollTop = afterScrollHeight - beforeScrollHeight;
+                        // Restore scroll position precisely
+                        requestAnimationFrame(() => {
+                            if (container) {
+                                const newScrollHeight = container.scrollHeight;
+                                container.scrollTop = newScrollHeight - previousScrollHeight;
                             }
-                        }, 0);
+                        });
                     }
                     setIsLoadingOlder(false);
                 }, 400);
-            } else if (!hasAttemptedFullLoadRef.current && !isHistoryLoading) {
+            } else if (!hasAttemptedFullLoadRef.current) {
                 // Archive is empty and we haven't tried full load yet - fetch full history
                 fetchHistory(true, true);
             }
