@@ -431,7 +431,10 @@ const DeliveryListGeneratorModal: React.FC<DeliveryListGeneratorModalProps> = ({
                                                     <div className="flex-shrink-0 w-5 text-[10px] font-mono text-gray-600 text-center">{idx + 1}</div>
                                                     
                                                     <div className="flex-grow min-w-0">
-                                                        <p className="text-xs font-bold text-white truncate">{order['Customer Name']}</p>
+                                                        <div className="flex items-center gap-2">
+                                                            <p className="text-xs font-bold text-white truncate">{order['Customer Name']}</p>
+                                                            <span className="text-[10px] font-black text-blue-400 font-mono bg-blue-400/10 px-1.5 rounded">{order['Customer Phone']}</span>
+                                                        </div>
                                                         <p className="text-[9px] text-gray-500 font-mono truncate">{order['Order ID']} | {order.Location}</p>
                                                     </div>
 
@@ -475,10 +478,10 @@ const DeliveryListGeneratorModal: React.FC<DeliveryListGeneratorModalProps> = ({
                                                                 setStep1SelectedIds(nextS);
                                                                 setStep1ReturnIds(nextR);
                                                             }}
-                                                            className={`w-8 h-8 rounded-lg flex items-center justify-center border-2 transition-all ${isReturn ? 'bg-red-600 border-red-500 text-white shadow-lg shadow-red-600/20' : 'bg-gray-900 border-gray-700 text-gray-600 hover:border-gray-500'}`}
+                                                            className={`w-8 h-8 rounded-lg flex items-center justify-center border-2 transition-all ${isReturn ? 'bg-red-600 border-red-500 text-white shadow-lg shadow-red-600/20' : 'bg-gray-900 border-gray-700 text-gray-600 hover:border-red-500/50 hover:text-red-400'}`}
                                                             title="Mark as Return"
                                                         >
-                                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={3}><path d="M16 15v4M16 15l-4-4m4 4l4-4M8 9V5M8 9l4 4M8 9L4 13" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18" /></svg>
                                                         </button>
                                                     </div>
                                                 </div>
@@ -592,7 +595,10 @@ const DeliveryListGeneratorModal: React.FC<DeliveryListGeneratorModalProps> = ({
                                             <div className="col-span-1 text-center font-mono text-gray-500">{idx + 1}</div>
                                             
                                             <div className="col-span-4 min-w-0">
-                                                <p className="text-sm font-bold text-white truncate">{order['Customer Name']}</p>
+                                                <div className="flex items-center gap-2">
+                                                    <p className="text-sm font-bold text-white truncate">{order['Customer Name']}</p>
+                                                    <span className="text-[10px] font-black text-blue-400 font-mono bg-blue-400/10 px-1.5 rounded">{order['Customer Phone']}</span>
+                                                </div>
                                                 <p className="text-[10px] text-gray-400 font-mono truncate">{order['Order ID']}</p>
                                             </div>
 
