@@ -402,7 +402,7 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ isOpen, onClose }) => {
         }
     }, [showNotification, setUnreadCount]);
 
-    const fetchHistory = useCallback(async (forceFull = false) => {
+    const fetchHistory = useCallback(async (forceFull = false, isScrollTriggered = false) => {
         // Use a flag to avoid concurrent fetches if polling and initial fetch collide
         if (fetchInProgressRef.current) return;
         
@@ -455,10 +455,18 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ isOpen, onClose }) => {
                     }).sort((a, b) => getTimestamp(a.timestamp) - getTimestamp(b.timestamp));
 
                     // 3. Determine visible count
-                    // On initial opening, strictly show 20.
-                    // Otherwise, keep at least current visible count.
-                    const countToShow = isOpeningRef.current ? 20 : (prevNonOptimistic.length > 0 ? Math.max(20, prevNonOptimistic.length) : 20);
+                    let countToShow = prevNonOptimistic.length > 0 ? prevNonOptimistic.length : 20;
                     
+                    if (isOpeningRef.current) {
+                        countToShow = 20;
+                    } else if (isScrollTriggered) {
+                        // If triggered by scroll and we fetched more, expand visibility
+                        countToShow += 20;
+                    }
+                    
+                    // Ensure we don't try to show more than we have
+                    countToShow = Math.min(countToShow, deduplicated.length);
+
                     const nextVisible = deduplicated.slice(-countToShow);
                     const nextArchived = deduplicated.slice(0, -countToShow);
 
@@ -631,7 +639,7 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ isOpen, onClose }) => {
                 }, 400);
             } else if (!hasAttemptedFullLoadRef.current && !isHistoryLoading) {
                 // Archive is empty and we haven't tried full load yet - fetch full history
-                fetchHistory(true);
+                fetchHistory(true, true);
             }
         }
     };
