@@ -41,6 +41,7 @@ const DeliveryListGeneratorModal: React.FC<DeliveryListGeneratorModalProps> = ({
     // Manual Addition State
     const [searchQuery, setSearchQuery] = useState('');
     const [manualOrders, setManualOrders] = useState<ParsedOrder[]>([]);
+    const [showManualSearch, setShowManualSearch] = useState(false);
 
     // Step 2: Verification & Adjustment
     const [pendingOrders, setPendingOrders] = useState<ParsedOrder[]>([]);
@@ -143,6 +144,7 @@ const DeliveryListGeneratorModal: React.FC<DeliveryListGeneratorModalProps> = ({
         setStep1ReturnIds(new Set());
         setManualOrders([]);
         setSearchQuery('');
+        setShowManualSearch(false);
         setShowPaymentModal(false);
         setPassword('');
         setSelectedBank('');
@@ -431,46 +433,16 @@ const DeliveryListGeneratorModal: React.FC<DeliveryListGeneratorModalProps> = ({
                                 </div>
                             </div>
 
-                            {/* Add Past Orders Search */}
+                            {/* Add Past Orders Button */}
                             {!isPreviewing && (
-                                <div className="space-y-3 relative">
-                                    <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest block ml-1">បន្ថែមប្រតិបត្ដិការណ៍ចាស់ (Add Past Orders)</label>
-                                    <div className="relative group">
-                                        <input 
-                                            type="text" 
-                                            placeholder="ស្វែងរកតាម ID ឬ លេខទូរស័ព្ទ..." 
-                                            value={searchQuery}
-                                            onChange={(e) => setSearchQuery(e.target.value)}
-                                            className="w-full bg-black/40 border border-gray-800 rounded-xl py-3 pl-10 pr-4 text-xs font-bold text-white placeholder:text-gray-700 focus:border-blue-500/50 transition-all shadow-inner"
-                                        />
-                                        <svg className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" /></svg>
-                                    </div>
-
-                                    {/* Search Results Dropdown */}
-                                    {searchResults.length > 0 && (
-                                        <div className="absolute top-full left-0 right-0 mt-2 bg-gray-900 border border-gray-700 rounded-2xl shadow-2xl z-50 overflow-hidden animate-fade-in-down">
-                                            {searchResults.map(o => (
-                                                <button 
-                                                    key={o['Order ID']}
-                                                    onClick={() => {
-                                                        setManualOrders(prev => [...prev, o]);
-                                                        setStep1SelectedIds(prev => new Set(prev).add(o['Order ID']));
-                                                        setSearchQuery('');
-                                                    }}
-                                                    className="w-full flex items-center justify-between p-4 hover:bg-white/5 text-left border-b border-gray-800 last:border-0"
-                                                >
-                                                    <div className="min-w-0">
-                                                        <p className="text-sm font-bold text-white truncate">{o['Customer Name']}</p>
-                                                        <p className="text-[10px] text-gray-500 font-mono">{o['Order ID']} | {o['Customer Phone']}</p>
-                                                    </div>
-                                                    <div className="text-right">
-                                                        <p className="text-xs font-black text-blue-400">${o['Grand Total']}</p>
-                                                        <p className="text-[10px] text-gray-600 font-bold uppercase">{o.Timestamp.split(' ')[0]}</p>
-                                                    </div>
-                                                </button>
-                                            ))}
-                                        </div>
-                                    )}
+                                <div className="flex justify-start">
+                                    <button 
+                                        onClick={() => setShowManualSearch(true)}
+                                        className="px-6 py-2.5 bg-gray-800/50 hover:bg-blue-600/20 text-gray-400 hover:text-blue-400 rounded-xl border border-dashed border-gray-700 hover:border-blue-500/50 transition-all flex items-center gap-3 active:scale-95 text-[10px] font-black uppercase tracking-widest"
+                                    >
+                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M12 4v16m8-8H4" /></svg>
+                                        បន្ថែមប្រតិបត្ដិការណ៍ចាស់ (Add Past Order)
+                                    </button>
                                 </div>
                             )}
 
@@ -599,46 +571,21 @@ const DeliveryListGeneratorModal: React.FC<DeliveryListGeneratorModalProps> = ({
                                         </button>
                                     </div>
 
-                                    {/* Add Past Orders Search (Integrated in Preview) */}
-                                    <div className="relative group">
-                                        <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none">
-                                            <svg className="h-4 w-4 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" /></svg>
-                                        </div>
-                                        <input 
-                                            type="text" 
-                                            placeholder="បន្ថែមការកម្មង់ចាស់ៗក្នុង Preview នេះ (ID ឬ លេខទូរស័ព្ទ)..." 
-                                            value={searchQuery}
-                                            onChange={(e) => setSearchQuery(e.target.value)}
-                                            className="w-full bg-blue-600/5 border border-blue-500/20 rounded-xl py-3 pl-10 pr-4 text-xs font-bold text-white placeholder:text-blue-900 focus:border-blue-500/50 transition-all shadow-inner"
-                                        />
-                                        
-                                        {/* Search Results Dropdown */}
-                                        {searchResults.length > 0 && (
-                                            <div className="absolute bottom-full left-0 right-0 mb-2 bg-gray-900 border border-blue-500/30 rounded-2xl shadow-2xl z-50 overflow-hidden animate-fade-in-up backdrop-blur-xl">
-                                                <div className="p-2 bg-blue-600/10 border-b border-blue-500/20 text-[9px] font-black text-blue-400 uppercase tracking-widest px-4">Found Past Orders</div>
-                                                {searchResults.map(o => (
-                                                    <button 
-                                                        key={o['Order ID']}
-                                                        onClick={() => {
-                                                            setManualOrders(prev => [...prev, o]);
-                                                            setStep1SelectedIds(prev => new Set(prev).add(o['Order ID']));
-                                                            setSearchQuery('');
-                                                            showNotification("Order added! Click Generate to refresh.", "info");
-                                                        }}
-                                                        className="w-full flex items-center justify-between p-4 hover:bg-blue-600/10 text-left border-b border-gray-800 last:border-0 transition-colors"
-                                                    >
-                                                        <div className="min-w-0">
-                                                            <p className="text-sm font-bold text-white truncate">{o['Customer Name']}</p>
-                                                            <p className="text-[10px] text-gray-500 font-mono">{o['Order ID']} | {o['Customer Phone']}</p>
-                                                        </div>
-                                                        <div className="text-right">
-                                                            <p className="text-xs font-black text-blue-400">${o['Grand Total']}</p>
-                                                            <p className="text-[10px] text-gray-600 font-bold uppercase">{o.Timestamp.split(' ')[0]}</p>
-                                                        </div>
-                                                    </button>
-                                                ))}
-                                            </div>
-                                        )}
+                                    <div className="flex justify-between items-center gap-4">
+                                        <button 
+                                            onClick={() => setShowManualSearch(true)}
+                                            className="px-6 py-2.5 bg-blue-600/10 hover:bg-blue-600 text-blue-400 hover:text-white rounded-xl border border-blue-500/20 transition-all flex items-center gap-3 active:scale-95 text-[10px] font-black uppercase tracking-widest flex-1 justify-center shadow-lg shadow-blue-900/10"
+                                        >
+                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M12 4v16m8-8H4" /></svg>
+                                            បន្ថែមប្រតិបត្ដិការណ៍ចាស់ (Add Past Order)
+                                        </button>
+                                        <button 
+                                            onClick={handleGeneratePreview}
+                                            className="px-6 py-2.5 bg-emerald-600/10 hover:bg-emerald-600 text-emerald-400 hover:text-white rounded-xl border border-emerald-500/20 transition-all flex items-center gap-3 active:scale-95 text-[10px] font-black uppercase tracking-widest flex-1 justify-center shadow-lg shadow-emerald-900/10"
+                                        >
+                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.001 0 01-15.357-2m15.357 2H15" /></svg>
+                                            Refresh Report
+                                        </button>
                                     </div>
 
                                     <textarea 
@@ -776,6 +723,67 @@ const DeliveryListGeneratorModal: React.FC<DeliveryListGeneratorModalProps> = ({
                             </div>
                         </div>
                     )}
+
+                    {/* --- MANUAL SEARCH OVERLAY --- */}
+                    {showManualSearch && (
+                        <div className="absolute inset-0 z-40 bg-black/60 backdrop-blur-md flex items-center justify-center p-4 animate-fade-in">
+                            <div className="bg-gray-900 border border-gray-700 rounded-[2.5rem] w-full max-w-xl p-8 shadow-2xl flex flex-col max-h-[80%] animate-scale-in">
+                                <div className="flex justify-between items-center mb-6">
+                                    <h3 className="text-xl font-black text-white uppercase tracking-tight">ស្វែងរកប្រតិបត្តិការណ៍ចាស់</h3>
+                                    <button onClick={() => { setShowManualSearch(false); setSearchQuery(''); }} className="text-gray-500 hover:text-white transition-colors">&times;</button>
+                                </div>
+
+                                <div className="relative mb-6">
+                                    <input 
+                                        type="text" 
+                                        autoFocus
+                                        placeholder="ស្វែងរកតាម ID ឬ លេខទូរស័ព្ទ..." 
+                                        value={searchQuery}
+                                        onChange={(e) => setSearchQuery(e.target.value)}
+                                        className="w-full bg-black/40 border border-gray-700 rounded-2xl py-4 pl-12 pr-4 text-sm font-bold text-white focus:border-blue-500 transition-all shadow-inner"
+                                    />
+                                    <svg className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" /></svg>
+                                </div>
+
+                                <div className="flex-grow overflow-y-auto custom-scrollbar space-y-2">
+                                    {searchResults.length > 0 ? searchResults.map(o => (
+                                        <button 
+                                            key={o['Order ID']}
+                                            onClick={() => {
+                                                setManualOrders(prev => [...prev, o]);
+                                                setStep1SelectedIds(prev => new Set(prev).add(o['Order ID']));
+                                                setShowManualSearch(false);
+                                                setSearchQuery('');
+                                                showNotification("Order added successfully!", "success");
+                                            }}
+                                            className="w-full flex items-center justify-between p-4 bg-gray-800/40 hover:bg-blue-600/10 rounded-2xl border border-white/5 hover:border-blue-500/30 text-left transition-all"
+                                        >
+                                            <div className="min-w-0">
+                                                <p className="text-sm font-bold text-white truncate">{o['Customer Name']}</p>
+                                                <p className="text-[10px] text-gray-500 font-mono">{o['Order ID']} | {o['Customer Phone']}</p>
+                                            </div>
+                                            <div className="text-right">
+                                                <p className="text-xs font-black text-blue-400">${o['Grand Total']}</p>
+                                                <p className="text-[10px] text-gray-600 font-bold uppercase">{o.Timestamp.split(' ')[0]}</p>
+                                            </div>
+                                        </button>
+                                    )) : searchQuery ? (
+                                        <div className="text-center py-10 text-gray-500 text-xs italic">មិនមានលទ្ធផលស្វែងរក...</div>
+                                    ) : (
+                                        <div className="text-center py-10 text-gray-600 text-xs">សូមវាយលេខសម្គាល់ ឬ លេខទូរស័ព្ទដើម្បីស្វែងរក</div>
+                                    )}
+                                </div>
+
+                                <button 
+                                    onClick={() => { setShowManualSearch(false); setSearchQuery(''); }}
+                                    className="mt-6 w-full py-4 bg-gray-800 text-gray-400 rounded-2xl font-black uppercase text-xs tracking-widest hover:bg-gray-700 transition-all"
+                                >
+                                    Close
+                                </button>
+                            </div>
+                        </div>
+                    )}
+                </div>
                 </div>
 
                 {/* Footer Controls */}
