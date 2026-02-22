@@ -80,33 +80,49 @@ const DeliveryAgentView: React.FC<DeliveryAgentViewProps> = ({ orderIds, returnO
         if (orders.length === 0) return;
         setIsSubmitting(true);
         try {
-            // Update Internal Cost for all orders in the assignment
-            const updates = orders.map(o => {
+            // Sequential update with retry logic and delays for high reliability
+            for (const o of orders) {
                 const isDelivered = successSet.has(o['Order ID']);
-                // Use the cost entered by agent if success, otherwise 0
                 const finalCost = isDelivered ? (costs[o['Order ID']] || 0) : 0;
                 
-                return fetch(`${WEB_APP_URL}/api/admin/update-row`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        sheetName: 'Orders',
-                        primaryKey: { 'Order ID': o['Order ID'] },
-                        newData: { 'Internal Cost': finalCost }
-                    })
-                });
-            });
+                let success = false;
+                let attempts = 0;
+                const maxAttempts = 3;
 
-            const results = await Promise.all(updates);
-            const allOk = results.every(r => r.ok);
-            
-            if (allOk) {
-                setIsSubmitted(true);
-            } else {
-                throw new Error("Some updates failed. Please try again.");
+                while (!success && attempts < maxAttempts) {
+                    attempts++;
+                    try {
+                        const response = await fetch(`${WEB_APP_URL}/api/admin/update-row`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                sheetName: 'Orders',
+                                primaryKey: { 'Order ID': o['Order ID'].trim() }, // Ensure trimmed ID
+                                newData: { 'Internal Cost': finalCost }
+                            })
+                        });
+
+                        if (response.ok) {
+                            success = true;
+                        } else {
+                            if (attempts === maxAttempts) throw new Error("Server quota exceeded");
+                            // Wait longer on each retry
+                            await new Promise(resolve => setTimeout(resolve, attempts * 1000));
+                        }
+                    } catch (err) {
+                        if (attempts === maxAttempts) throw err;
+                        await new Promise(resolve => setTimeout(resolve, attempts * 1000));
+                    }
+                }
+
+                // Add a small breather between different orders even if success
+                await new Promise(resolve => setTimeout(resolve, 800));
             }
+
+            setIsSubmitted(true);
         } catch (e: any) {
-            alert(e.message || "Submission failed. Please check your connection.");
+            console.error("Critical Submission Error:", e);
+            alert(`ការបញ្ជូនបរាជ័យ: ${e.message || "បញ្ហាអ៊ីនធឺណិត"}\nសូមព្យាយាមចុចបញ្ជូនម្តងទៀត។`);
         } finally {
             setIsSubmitting(false);
         }
