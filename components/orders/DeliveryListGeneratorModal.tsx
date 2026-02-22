@@ -35,6 +35,7 @@ const DeliveryListGeneratorModal: React.FC<DeliveryListGeneratorModalProps> = ({
     const [selectedShipping, setSelectedShipping] = useState('ACC Delivery Agent');
     const [previewText, setPreviewText] = useState('');
     const [isPreviewing, setIsPreviewing] = useState(false);
+    const [step1SelectedIds, setStep1SelectedIds] = useState<Set<string>>(new Set());
 
     // Step 2: Verification & Adjustment
     const [pendingOrders, setPendingOrders] = useState<ParsedOrder[]>([]);
@@ -75,6 +76,11 @@ const DeliveryListGeneratorModal: React.FC<DeliveryListGeneratorModalProps> = ({
         });
     }, [orders, selectedDate, selectedStore, selectedShipping]);
 
+    // Sync selections when filters change
+    useEffect(() => {
+        setStep1SelectedIds(new Set(filteredOrders.map(o => o['Order ID'])));
+    }, [filteredOrders]);
+
     // Initialize / Restore Session
     useEffect(() => {
         if (isOpen) {
@@ -114,8 +120,13 @@ const DeliveryListGeneratorModal: React.FC<DeliveryListGeneratorModalProps> = ({
         setPassword('');
         setSelectedBank('');
         // Set default store
-        if (appData.stores && appData.stores.length === 1) {
+        if (appData.stores && appData.stores.length > 0) {
             setSelectedStore(appData.stores[0].StoreName);
+        }
+        if (appData.shippingMethods && appData.shippingMethods.length > 0) {
+            // Check if ACC Delivery Agent exists, otherwise pick first
+            const hasACC = appData.shippingMethods.some(m => m.MethodName === 'ACC Delivery Agent');
+            if (!hasACC) setSelectedShipping(appData.shippingMethods[0].MethodName);
         }
     };
 
@@ -125,8 +136,10 @@ const DeliveryListGeneratorModal: React.FC<DeliveryListGeneratorModalProps> = ({
     };
 
     const handleGeneratePreview = () => {
-        if (filteredOrders.length === 0) {
-            alert("No orders found to generate!");
+        const ordersToGenerate = filteredOrders.filter(o => step1SelectedIds.has(o['Order ID']));
+        
+        if (ordersToGenerate.length === 0) {
+            alert("No orders selected to generate!");
             return;
         }
 
@@ -140,7 +153,7 @@ const DeliveryListGeneratorModal: React.FC<DeliveryListGeneratorModalProps> = ({
         
         let totalUSD = 0;
         
-        filteredOrders.forEach((o, index) => {
+        ordersToGenerate.forEach((o, index) => {
             const phone = o['Customer Phone'] || '';
             const orderId = o['Order ID'] || '';
             const grandTotal = o['Grand Total'] || 0;
@@ -161,7 +174,7 @@ const DeliveryListGeneratorModal: React.FC<DeliveryListGeneratorModalProps> = ({
         });
 
         text += `--------------------------------\n`;
-        text += `📦 **ចំនួនកញ្ចប់សរុប:** ${filteredOrders.length} កញ្ចប់\n`;
+        text += `📦 **ចំនួនកញ្ចប់សរុប:** ${ordersToGenerate.length} កញ្ចប់\n`;
         text += `💰 **សរុបទឹកប្រាក់:** $${totalUSD.toFixed(2)}\n`;
 
         setPreviewText(text);
@@ -173,8 +186,8 @@ const DeliveryListGeneratorModal: React.FC<DeliveryListGeneratorModalProps> = ({
             await navigator.clipboard.writeText(previewText);
             showNotification("Copied! Saving session...", "success");
 
-            // Prepare Data for Verification Stage
-            const currentOrders = [...filteredOrders];
+            // Prepare Data for Verification Stage - Only use what was selected in Step 1
+            const currentOrders = filteredOrders.filter(o => step1SelectedIds.has(o['Order ID']));
             const initialAdjustments: Record<string, number> = {};
             currentOrders.forEach(o => {
                 initialAdjustments[o['Order ID']] = o['Internal Cost'] || 0;
@@ -328,12 +341,12 @@ const DeliveryListGeneratorModal: React.FC<DeliveryListGeneratorModalProps> = ({
                 </div>
 
                 {/* Body */}
-                <div className="p-6 overflow-y-auto custom-scrollbar flex-grow bg-gradient-to-b from-[#0f172a] to-[#1e293b]">
+                <div className="p-6 overflow-y-auto custom-scrollbar flex-grow bg-gradient-to-b from-[#0f172a] to-[#1e293b] flex flex-col">
                     
                     {/* --- STEP 1: FILTER & EDIT PREVIEW --- */}
                     {step === STEPS.FILTER && (
-                        <div className="space-y-6 animate-fade-in max-w-3xl mx-auto h-full flex flex-col">
-                            {/* Filter Controls (Hide when previewing to save space, or keep top) */}
+                        <div className="space-y-6 animate-fade-in max-w-3xl mx-auto h-full flex flex-col w-full">
+                            {/* Filter Controls */}
                             <div className={`grid grid-cols-1 sm:grid-cols-3 gap-4 transition-all ${isPreviewing ? 'opacity-50 pointer-events-none hidden sm:grid' : ''}`}>
                                 <div className="space-y-2">
                                     <label className="text-[10px] font-bold text-blue-400 uppercase tracking-widest block ml-1">កាលបរិច្ឆេទ</label>
@@ -353,10 +366,64 @@ const DeliveryListGeneratorModal: React.FC<DeliveryListGeneratorModalProps> = ({
                                 </div>
                             </div>
 
+                            {/* List of Orders in Step 1 */}
+                            {!isPreviewing && filteredOrders.length > 0 && (
+                                <div className="flex-grow flex flex-col min-h-0 bg-black/20 rounded-2xl border border-gray-700 overflow-hidden shadow-inner">
+                                    <div className="p-3 bg-gray-800/50 border-b border-gray-700 flex justify-between items-center px-4">
+                                        <div className="flex items-center gap-2">
+                                            <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">ជ្រើសរើសទិន្នន័យ ({step1SelectedIds.size}/{filteredOrders.length})</span>
+                                        </div>
+                                        <button 
+                                            onClick={() => {
+                                                if (step1SelectedIds.size === filteredOrders.length) setStep1SelectedIds(new Set());
+                                                else setStep1SelectedIds(new Set(filteredOrders.map(o => o['Order ID'])));
+                                            }}
+                                            className="text-[10px] font-black text-blue-400 hover:text-blue-300 uppercase tracking-widest transition-colors"
+                                        >
+                                            {step1SelectedIds.size === filteredOrders.length ? 'Deselect All' : 'Select All'}
+                                        </button>
+                                    </div>
+                                    <div className="overflow-y-auto custom-scrollbar flex-grow">
+                                        {filteredOrders.map((order, idx) => {
+                                            const isSelected = step1SelectedIds.has(order['Order ID']);
+                                            return (
+                                                <div 
+                                                    key={order['Order ID']} 
+                                                    className={`flex items-center gap-4 p-3 border-b border-gray-800/50 hover:bg-white/5 transition-all cursor-pointer ${!isSelected ? 'opacity-40 grayscale' : ''}`}
+                                                    onClick={() => {
+                                                        const next = new Set(step1SelectedIds);
+                                                        if (next.has(order['Order ID'])) next.delete(order['Order ID']);
+                                                        else next.add(order['Order ID']);
+                                                        setStep1SelectedIds(next);
+                                                    }}
+                                                >
+                                                    <div className="flex-shrink-0 w-5 text-[10px] font-mono text-gray-600 text-center">{idx + 1}</div>
+                                                    <div className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-all ${isSelected ? 'bg-blue-600 border-blue-600 text-white shadow-lg shadow-blue-600/20' : 'border-gray-600 text-transparent'}`}>
+                                                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={4} d="M5 13l4 4L19 7" /></svg>
+                                                    </div>
+                                                    <div className="flex-grow min-w-0">
+                                                        <p className="text-xs font-bold text-white truncate">{order['Customer Name']}</p>
+                                                        <p className="text-[9px] text-gray-500 font-mono truncate">{order['Order ID']} | {order.Location}</p>
+                                                    </div>
+                                                    <div className="text-right flex-shrink-0">
+                                                        <p className="text-xs font-black text-blue-400">${order['Grand Total']}</p>
+                                                        <p className={`text-[8px] font-bold uppercase ${order['Payment Status'] === 'Paid' ? 'text-emerald-500' : 'text-red-500'}`}>{order['Payment Status']}</p>
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+                            )}
+
                             {/* Action Button for Generate */}
                             {!isPreviewing && (
-                                <div className="flex justify-center pt-10">
-                                    <button onClick={handleGeneratePreview} className="btn btn-primary px-10 py-4 shadow-xl shadow-blue-600/30 text-base">
+                                <div className="flex justify-center pt-4">
+                                    <button 
+                                        onClick={handleGeneratePreview} 
+                                        disabled={step1SelectedIds.size === 0}
+                                        className={`btn btn-primary px-10 py-4 shadow-xl text-base ${step1SelectedIds.size === 0 ? 'opacity-50 cursor-not-allowed grayscale' : 'shadow-blue-600/30'}`}
+                                    >
                                         <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" /></svg>
                                         បង្កើតបញ្ជី (Generate Preview)
                                     </button>
@@ -383,7 +450,7 @@ const DeliveryListGeneratorModal: React.FC<DeliveryListGeneratorModalProps> = ({
 
                     {/* --- STEP 1.5: PROMPT (RESUME SESSION) --- */}
                     {step === STEPS.PROMPT && (
-                        <div className="h-full flex flex-col items-center justify-center space-y-8 animate-fade-in text-center max-w-lg mx-auto">
+                        <div className="h-full flex flex-col items-center justify-center space-y-8 animate-fade-in text-center max-w-lg mx-auto w-full">
                             <div className="w-24 h-24 bg-blue-600/10 rounded-full flex items-center justify-center border-2 border-blue-500/20 shadow-[0_0_30px_rgba(37,99,235,0.1)]">
                                 <svg className="w-10 h-10 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                             </div>
@@ -407,7 +474,7 @@ const DeliveryListGeneratorModal: React.FC<DeliveryListGeneratorModalProps> = ({
 
                     {/* --- STEP 2: VERIFY & CONFIRM --- */}
                     {step === STEPS.VERIFY && (
-                        <div className="space-y-6 animate-fade-in">
+                        <div className="space-y-6 animate-fade-in w-full">
                             {/* Warning Banner */}
                             <div className="bg-amber-900/20 border border-amber-500/30 p-4 rounded-2xl flex items-start gap-3">
                                 <svg className="w-6 h-6 text-amber-500 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
@@ -423,32 +490,40 @@ const DeliveryListGeneratorModal: React.FC<DeliveryListGeneratorModalProps> = ({
                             </div>
 
                             {/* Table Header */}
-                            <div className="grid grid-cols-12 gap-4 text-[10px] font-black uppercase tracking-widest text-gray-500 px-4">
+                            <div className="grid grid-cols-12 gap-4 text-[10px] font-black uppercase tracking-widest text-gray-500 px-4 items-center">
                                 <div className="col-span-1 text-center">No</div>
                                 <div className="col-span-4">Customer Info</div>
                                 <div className="col-span-2 text-center">Status</div>
                                 <div className="col-span-2 text-right">Total</div>
                                 <div className="col-span-2 text-right">Ship Cost</div>
-                                <div className="col-span-1 text-center">Success</div>
+                                <div className="col-span-1 flex justify-center">
+                                    <button 
+                                        onClick={handleSelectAll}
+                                        className={`w-6 h-6 rounded-md flex items-center justify-center border-2 transition-all ${verifiedIds.size === pendingOrders.length && pendingOrders.length > 0 ? 'bg-emerald-500 border-emerald-500 text-white shadow-lg shadow-emerald-600/20' : 'border-gray-500 text-transparent hover:border-gray-300'}`}
+                                        title="Toggle All"
+                                    >
+                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>
+                                    </button>
+                                </div>
                             </div>
 
-                            <div className="space-y-2">
+                            <div className="space-y-2 pb-10">
                                 {pendingOrders.map((order, idx) => {
                                     const isChecked = verifiedIds.has(order['Order ID']);
                                     return (
                                         <div 
                                             key={order['Order ID']} 
-                                            className={`grid grid-cols-12 gap-4 items-center p-4 rounded-xl border transition-all ${isChecked ? 'bg-gray-800 border-gray-700' : 'bg-red-900/10 border-red-500/30 opacity-60'}`}
+                                            className={`grid grid-cols-12 gap-4 items-center p-4 rounded-xl border transition-all ${isChecked ? 'bg-gray-800 border-gray-700 shadow-md' : 'bg-red-900/10 border-red-500/30 opacity-50 grayscale'}`}
                                         >
                                             <div className="col-span-1 text-center font-mono text-gray-500">{idx + 1}</div>
                                             
                                             <div className="col-span-4 min-w-0">
                                                 <p className="text-sm font-bold text-white truncate">{order['Customer Name']}</p>
-                                                <p className="text-xs text-gray-400 font-mono truncate">{order['Order ID']}</p>
+                                                <p className="text-[10px] text-gray-400 font-mono truncate">{order['Order ID']}</p>
                                             </div>
 
                                             <div className="col-span-2 text-center">
-                                                <span className={`px-2 py-1 rounded text-[10px] font-black uppercase ${order['Payment Status'] === 'Paid' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-red-500/10 text-red-400'}`}>
+                                                <span className={`px-2 py-1 rounded text-[9px] font-black uppercase ${order['Payment Status'] === 'Paid' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-red-500/10 text-red-400'}`}>
                                                     {order['Payment Status']}
                                                 </span>
                                             </div>
@@ -459,13 +534,13 @@ const DeliveryListGeneratorModal: React.FC<DeliveryListGeneratorModalProps> = ({
 
                                             <div className="col-span-2">
                                                 <div className="relative">
-                                                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-xs">$</span>
+                                                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-[10px]">$</span>
                                                     <input 
                                                         type="number" 
                                                         step="0.01"
                                                         value={shippingAdjustments[order['Order ID']] ?? 0}
                                                         onChange={(e) => handleShippingChange(order['Order ID'], e.target.value)}
-                                                        className="w-full bg-black/30 border border-gray-600 rounded-lg py-1.5 pl-6 pr-2 text-right text-sm font-bold text-white focus:border-blue-500"
+                                                        className="w-full bg-black/30 border border-gray-600 rounded-lg py-1 pl-6 pr-2 text-right text-xs font-bold text-white focus:border-blue-500"
                                                         disabled={!isChecked}
                                                     />
                                                 </div>
@@ -474,7 +549,7 @@ const DeliveryListGeneratorModal: React.FC<DeliveryListGeneratorModalProps> = ({
                                             <div className="col-span-1 flex justify-center">
                                                 <button 
                                                     onClick={() => toggleVerify(order['Order ID'])}
-                                                    className={`w-6 h-6 rounded-md flex items-center justify-center border-2 transition-all ${isChecked ? 'bg-emerald-500 border-emerald-500 text-white' : 'border-gray-500 text-transparent hover:border-gray-300'}`}
+                                                    className={`w-6 h-6 rounded-md flex items-center justify-center border-2 transition-all ${isChecked ? 'bg-emerald-500 border-emerald-500 text-white shadow-lg' : 'border-gray-500 text-transparent hover:border-gray-300'}`}
                                                 >
                                                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>
                                                 </button>
