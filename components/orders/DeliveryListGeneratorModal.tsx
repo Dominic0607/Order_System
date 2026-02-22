@@ -36,6 +36,7 @@ const DeliveryListGeneratorModal: React.FC<DeliveryListGeneratorModalProps> = ({
     const [previewText, setPreviewText] = useState('');
     const [isPreviewing, setIsPreviewing] = useState(false);
     const [step1SelectedIds, setStep1SelectedIds] = useState<Set<string>>(new Set());
+    const [step1ReturnIds, setStep1ReturnIds] = useState<Set<string>>(new Set());
 
     // Step 2: Verification & Adjustment
     const [pendingOrders, setPendingOrders] = useState<ParsedOrder[]>([]);
@@ -116,6 +117,7 @@ const DeliveryListGeneratorModal: React.FC<DeliveryListGeneratorModalProps> = ({
         setPendingOrders([]);
         setVerifiedIds(new Set());
         setShippingAdjustments({});
+        setStep1ReturnIds(new Set());
         setShowPaymentModal(false);
         setPassword('');
         setSelectedBank('');
@@ -136,10 +138,8 @@ const DeliveryListGeneratorModal: React.FC<DeliveryListGeneratorModalProps> = ({
     };
 
     const handleGeneratePreview = () => {
-        const ordersToGenerate = filteredOrders.filter(o => step1SelectedIds.has(o['Order ID']));
-        
-        if (ordersToGenerate.length === 0) {
-            alert("No orders selected to generate!");
+        if (filteredOrders.length === 0) {
+            alert("No orders to generate!");
             return;
         }
 
@@ -151,9 +151,13 @@ const DeliveryListGeneratorModal: React.FC<DeliveryListGeneratorModalProps> = ({
         text += `🏭 ឃ្លាំង: ${selectedStore}\n`;
         text += `--------------------------------\n\n`;
         
-        let totalUSD = 0;
+        let totalSuccessUSD = 0;
+        let totalPaidUSD = 0;
+        let totalCodUSD = 0;
+        let totalFailedUSD = 0;
+        let successCount = 0;
         
-        ordersToGenerate.forEach((o, index) => {
+        filteredOrders.forEach((o, index) => {
             const phone = o['Customer Phone'] || '';
             const orderId = o['Order ID'] || '';
             const grandTotal = o['Grand Total'] || 0;
@@ -161,21 +165,40 @@ const DeliveryListGeneratorModal: React.FC<DeliveryListGeneratorModalProps> = ({
             const paymentStatusText = isPaid ? 'Paid' : 'COD';
             const statusIcon = isPaid ? '🟢' : '🔴';
             
+            const isSuccess = step1SelectedIds.has(orderId);
+            const isReturn = step1ReturnIds.has(orderId);
+            
             const location = o.Location || '';
             const details = o['Address Details'] || '';
             let fullAddress = (location === 'រាជធានីភ្នំពេញ' && details) ? details : [location, details].filter(Boolean).join(', ');
-            if (fullAddress.length > 25) fullAddress = fullAddress.substring(0, 25) + '...';
+            if (fullAddress.length > 35) fullAddress = fullAddress.substring(0, 35) + '...';
+
+            let lineSuffix = '';
+            if (isSuccess) {
+                lineSuffix = ' ✅';
+                totalSuccessUSD += grandTotal;
+                successCount++;
+                if (isPaid) totalPaidUSD += grandTotal;
+                else totalCodUSD += grandTotal;
+            } else if (isReturn) {
+                lineSuffix = ' ( Return )';
+                totalFailedUSD += grandTotal;
+            } else {
+                lineSuffix = ' ⏳ (ដឹកមិនជោគជ័យ)';
+                totalFailedUSD += grandTotal;
+            }
 
             text += `${index + 1}. 📞 ${phone} | \`${orderId}\`\n`;
             text += `   📍 ${fullAddress}\n`;
-            text += `   (💵 $${grandTotal.toFixed(2)}) - ${statusIcon} **${paymentStatusText}**\n\n`;
-            
-            totalUSD += grandTotal;
+            text += `   (💵 $${grandTotal.toFixed(2)}) - ${statusIcon} **${paymentStatusText}**${lineSuffix}\n\n`;
         });
 
         text += `--------------------------------\n`;
-        text += `📦 **ចំនួនកញ្ចប់សរុប:** ${ordersToGenerate.length} កញ្ចប់\n`;
-        text += `💰 **សរុបទឹកប្រាក់:** $${totalUSD.toFixed(2)}\n`;
+        text += `📦 **ចំនួនកញ្ចប់សរុប:** ${successCount} កញ្ចប់\n`;
+        text += `💰 **សរុបទឹកប្រាក់ (ដឹកជោគជ័យ):** $${totalSuccessUSD.toFixed(2)}\n`;
+        text += `   ├─ 🟢 Paid: $${totalPaidUSD.toFixed(2)}\n`;
+        text += `   └─ 🔴 COD: $${totalCodUSD.toFixed(2)} 💸\n`;
+        text += `❌ **សរុបទឹកប្រាក់ (ដឹកមិនជោគជ័យ):** $${totalFailedUSD.toFixed(2)}`;
 
         setPreviewText(text);
         setIsPreviewing(true);
@@ -327,6 +350,14 @@ const DeliveryListGeneratorModal: React.FC<DeliveryListGeneratorModalProps> = ({
 
     return (
         <Modal isOpen={isOpen} onClose={onClose} maxWidth="max-w-4xl">
+            <style>{`
+                @keyframes shimmer {
+                    0% { transform: translateX(-100%); }
+                    100% { transform: translateX(100%); }
+                }
+                .no-scrollbar::-webkit-scrollbar { display: none; }
+                .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+            `}</style>
             <div className="bg-[#0f172a] rounded-[2rem] overflow-hidden flex flex-col h-[85vh] border border-white/10 shadow-2xl relative">
                 
                 {/* Header */}
@@ -375,8 +406,12 @@ const DeliveryListGeneratorModal: React.FC<DeliveryListGeneratorModalProps> = ({
                                         </div>
                                         <button 
                                             onClick={() => {
-                                                if (step1SelectedIds.size === filteredOrders.length) setStep1SelectedIds(new Set());
-                                                else setStep1SelectedIds(new Set(filteredOrders.map(o => o['Order ID'])));
+                                                if (step1SelectedIds.size === filteredOrders.length) {
+                                                    setStep1SelectedIds(new Set());
+                                                } else {
+                                                    setStep1SelectedIds(new Set(filteredOrders.map(o => o['Order ID'])));
+                                                    setStep1ReturnIds(new Set());
+                                                }
                                             }}
                                             className="text-[10px] font-black text-blue-400 hover:text-blue-300 uppercase tracking-widest transition-colors"
                                         >
@@ -386,28 +421,65 @@ const DeliveryListGeneratorModal: React.FC<DeliveryListGeneratorModalProps> = ({
                                     <div className="overflow-y-auto custom-scrollbar flex-grow">
                                         {filteredOrders.map((order, idx) => {
                                             const isSelected = step1SelectedIds.has(order['Order ID']);
+                                            const isReturn = step1ReturnIds.has(order['Order ID']);
+                                            
                                             return (
                                                 <div 
                                                     key={order['Order ID']} 
-                                                    className={`flex items-center gap-4 p-3 border-b border-gray-800/50 hover:bg-white/5 transition-all cursor-pointer ${!isSelected ? 'opacity-40 grayscale' : ''}`}
-                                                    onClick={() => {
-                                                        const next = new Set(step1SelectedIds);
-                                                        if (next.has(order['Order ID'])) next.delete(order['Order ID']);
-                                                        else next.add(order['Order ID']);
-                                                        setStep1SelectedIds(next);
-                                                    }}
+                                                    className={`flex items-center gap-3 p-3 border-b border-gray-800/50 hover:bg-white/5 transition-all ${!isSelected && !isReturn ? 'bg-black/10' : ''}`}
                                                 >
                                                     <div className="flex-shrink-0 w-5 text-[10px] font-mono text-gray-600 text-center">{idx + 1}</div>
-                                                    <div className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-all ${isSelected ? 'bg-blue-600 border-blue-600 text-white shadow-lg shadow-blue-600/20' : 'border-gray-600 text-transparent'}`}>
-                                                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={4} d="M5 13l4 4L19 7" /></svg>
-                                                    </div>
+                                                    
                                                     <div className="flex-grow min-w-0">
                                                         <p className="text-xs font-bold text-white truncate">{order['Customer Name']}</p>
                                                         <p className="text-[9px] text-gray-500 font-mono truncate">{order['Order ID']} | {order.Location}</p>
                                                     </div>
-                                                    <div className="text-right flex-shrink-0">
+
+                                                    <div className="text-right flex-shrink-0 mr-2">
                                                         <p className="text-xs font-black text-blue-400">${order['Grand Total']}</p>
                                                         <p className={`text-[8px] font-bold uppercase ${order['Payment Status'] === 'Paid' ? 'text-emerald-500' : 'text-red-500'}`}>{order['Payment Status']}</p>
+                                                    </div>
+
+                                                    <div className="flex gap-1.5 flex-shrink-0">
+                                                        {/* Success Button */}
+                                                        <button 
+                                                            onClick={() => {
+                                                                const nextS = new Set(step1SelectedIds);
+                                                                const nextR = new Set(step1ReturnIds);
+                                                                if (nextS.has(order['Order ID'])) {
+                                                                    nextS.delete(order['Order ID']);
+                                                                } else {
+                                                                    nextS.add(order['Order ID']);
+                                                                    nextR.delete(order['Order ID']);
+                                                                }
+                                                                setStep1SelectedIds(nextS);
+                                                                setStep1ReturnIds(nextR);
+                                                            }}
+                                                            className={`w-8 h-8 rounded-lg flex items-center justify-center border-2 transition-all ${isSelected ? 'bg-emerald-600 border-emerald-500 text-white shadow-lg shadow-emerald-600/20' : 'bg-gray-900 border-gray-700 text-gray-600 hover:border-gray-500'}`}
+                                                            title="Mark as Success"
+                                                        >
+                                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={3}><path d="M5 13l4 4L19 7" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                                                        </button>
+
+                                                        {/* Return Button */}
+                                                        <button 
+                                                            onClick={() => {
+                                                                const nextS = new Set(step1SelectedIds);
+                                                                const nextR = new Set(step1ReturnIds);
+                                                                if (nextR.has(order['Order ID'])) {
+                                                                    nextR.delete(order['Order ID']);
+                                                                } else {
+                                                                    nextR.add(order['Order ID']);
+                                                                    nextS.delete(order['Order ID']);
+                                                                }
+                                                                setStep1SelectedIds(nextS);
+                                                                setStep1ReturnIds(nextR);
+                                                            }}
+                                                            className={`w-8 h-8 rounded-lg flex items-center justify-center border-2 transition-all ${isReturn ? 'bg-red-600 border-red-500 text-white shadow-lg shadow-red-600/20' : 'bg-gray-900 border-gray-700 text-gray-600 hover:border-gray-500'}`}
+                                                            title="Mark as Return"
+                                                        >
+                                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={3}><path d="M16 15v4M16 15l-4-4m4 4l4-4M8 9V5M8 9l4 4M8 9L4 13" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                                                        </button>
                                                     </div>
                                                 </div>
                                             );
@@ -421,11 +493,13 @@ const DeliveryListGeneratorModal: React.FC<DeliveryListGeneratorModalProps> = ({
                                 <div className="flex justify-center pt-4">
                                     <button 
                                         onClick={handleGeneratePreview} 
-                                        disabled={step1SelectedIds.size === 0}
-                                        className={`btn btn-primary px-10 py-4 shadow-xl text-base ${step1SelectedIds.size === 0 ? 'opacity-50 cursor-not-allowed grayscale' : 'shadow-blue-600/30'}`}
+                                        className="group relative px-12 py-4 bg-gradient-to-br from-blue-600 to-indigo-700 text-white rounded-[1.5rem] font-black uppercase text-sm tracking-tighter shadow-2xl hover:shadow-blue-500/40 transition-all active:scale-95 flex items-center gap-4 overflow-hidden"
                                     >
-                                        <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" /></svg>
-                                        បង្កើតបញ្ជី (Generate Preview)
+                                        <div className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/10 to-white/0 -translate-x-full group-hover:animate-[shimmer_2s_infinite]"></div>
+                                        <div className="w-10 h-10 bg-white/10 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform">
+                                            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" /></svg>
+                                        </div>
+                                        <span className="relative z-10">បង្កើតបញ្ជី (Generate Preview)</span>
                                     </button>
                                 </div>
                             )}

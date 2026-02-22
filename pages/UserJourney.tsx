@@ -600,7 +600,7 @@ const UserOrdersView: React.FC<{ team: string; onAdd: () => void }> = ({ team, o
             <DeliveryListGeneratorModal
                 isOpen={isDeliveryModalOpen}
                 onClose={() => setIsDeliveryModalOpen(false)}
-                orders={globalOrders} // Pass GLOBAL orders (all teams)
+                orders={allParsedOrdersRef.current} // Pass ALL pre-parsed orders (not limited by dashboard date)
                 appData={appData}
                 team={team}
             />
