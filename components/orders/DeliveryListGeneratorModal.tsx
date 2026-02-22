@@ -541,7 +541,7 @@ const DeliveryListGeneratorModal: React.FC<DeliveryListGeneratorModalProps> = ({
                                                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={3}><path d="M5 13l4 4L19 7" strokeLinecap="round" strokeLinejoin="round"/></svg>
                                                         </button>
 
-                                                        {/* Return Button */}
+                                                        {/* Return Button with Text */}
                                                         <button 
                                                             onClick={() => {
                                                                 const nextS = new Set(step1SelectedIds);
@@ -555,10 +555,11 @@ const DeliveryListGeneratorModal: React.FC<DeliveryListGeneratorModalProps> = ({
                                                                 setStep1SelectedIds(nextS);
                                                                 setStep1ReturnIds(nextR);
                                                             }}
-                                                            className={`w-8 h-8 rounded-lg flex items-center justify-center border-2 transition-all ${isReturn ? 'bg-red-600 border-red-500 text-white shadow-lg shadow-red-600/20' : 'bg-gray-900 border-gray-700 text-gray-600 hover:border-red-500/50 hover:text-red-400'}`}
+                                                            className={`px-3 h-8 rounded-lg flex items-center justify-center border-2 transition-all gap-1.5 ${isReturn ? 'bg-red-600 border-red-500 text-white shadow-lg shadow-red-600/20' : 'bg-gray-900 border-gray-700 text-gray-600 hover:border-red-500/50 hover:text-red-400'}`}
                                                             title="Mark as Return"
                                                         >
-                                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18" /></svg>
+                                                            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18" /></svg>
+                                                            <span className="text-[10px] font-black uppercase">Return</span>
                                                         </button>
                                                     </div>
                                                 </div>
@@ -573,30 +574,88 @@ const DeliveryListGeneratorModal: React.FC<DeliveryListGeneratorModalProps> = ({
                                 <div className="flex justify-center pt-4">
                                     <button 
                                         onClick={handleGeneratePreview} 
-                                        className="group relative px-12 py-4 bg-gradient-to-br from-blue-600 to-indigo-700 text-white rounded-[1.5rem] font-black uppercase text-sm tracking-tighter shadow-2xl hover:shadow-blue-500/40 transition-all active:scale-95 flex items-center gap-4 overflow-hidden"
+                                        className="group relative px-12 py-5 bg-gradient-to-br from-blue-600 via-indigo-600 to-purple-700 text-white rounded-[2rem] font-black uppercase text-sm tracking-widest shadow-[0_0_30px_rgba(79,70,229,0.4)] hover:shadow-[0_0_50px_rgba(79,70,229,0.6)] hover:scale-105 transition-all active:scale-95 flex items-center gap-4 overflow-hidden border border-white/20"
                                     >
-                                        <div className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/10 to-white/0 -translate-x-full group-hover:animate-[shimmer_2s_infinite]"></div>
-                                        <div className="w-10 h-10 bg-white/10 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform">
+                                        <div className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/20 to-white/0 -translate-x-full group-hover:animate-[shimmer_2s_infinite]"></div>
+                                        <div className="w-10 h-10 bg-white/10 rounded-xl flex items-center justify-center group-hover:rotate-12 transition-transform">
                                             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" /></svg>
                                         </div>
-                                        <span className="relative z-10">បង្កើតបញ្ជី (Generate Preview)</span>
+                                        <span className="relative z-10 drop-shadow-md">បង្កើតបញ្ជី (Generate Preview)</span>
                                     </button>
                                 </div>
                             )}
 
                             {/* Editable Preview Area */}
                             {isPreviewing && (
-                                <div className="flex-grow flex flex-col animate-fade-in-up">
-                                    <div className="flex justify-between items-end mb-2">
-                                        <label className="text-xs font-black text-gray-400 uppercase tracking-widest">Preview & Edit</label>
-                                        <button onClick={() => setIsPreviewing(false)} className="text-xs text-red-400 hover:text-red-300 underline">Reset Filters</button>
+                                <div className="flex-grow flex flex-col animate-fade-in-up space-y-4">
+                                    <div className="flex justify-between items-center bg-gray-900/50 p-3 rounded-2xl border border-white/5">
+                                        <div className="flex items-center gap-3">
+                                            <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></div>
+                                            <label className="text-xs font-black text-gray-300 uppercase tracking-widest">Preview & Edit</label>
+                                        </div>
+                                        <button onClick={() => setIsPreviewing(false)} className="text-[10px] font-black text-red-400 hover:text-red-300 uppercase tracking-widest flex items-center gap-1.5 transition-colors">
+                                            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M6 18L18 6M6 6l12 12" /></svg>
+                                            Reset Filters
+                                        </button>
                                     </div>
+
+                                    {/* Add Past Orders Search (Integrated in Preview) */}
+                                    <div className="relative group">
+                                        <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none">
+                                            <svg className="h-4 w-4 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" /></svg>
+                                        </div>
+                                        <input 
+                                            type="text" 
+                                            placeholder="បន្ថែមការកម្មង់ចាស់ៗក្នុង Preview នេះ (ID ឬ លេខទូរស័ព្ទ)..." 
+                                            value={searchQuery}
+                                            onChange={(e) => setSearchQuery(e.target.value)}
+                                            className="w-full bg-blue-600/5 border border-blue-500/20 rounded-xl py-3 pl-10 pr-4 text-xs font-bold text-white placeholder:text-blue-900 focus:border-blue-500/50 transition-all shadow-inner"
+                                        />
+                                        
+                                        {/* Search Results Dropdown */}
+                                        {searchResults.length > 0 && (
+                                            <div className="absolute bottom-full left-0 right-0 mb-2 bg-gray-900 border border-blue-500/30 rounded-2xl shadow-2xl z-50 overflow-hidden animate-fade-in-up backdrop-blur-xl">
+                                                <div className="p-2 bg-blue-600/10 border-b border-blue-500/20 text-[9px] font-black text-blue-400 uppercase tracking-widest px-4">Found Past Orders</div>
+                                                {searchResults.map(o => (
+                                                    <button 
+                                                        key={o['Order ID']}
+                                                        onClick={() => {
+                                                            setManualOrders(prev => [...prev, o]);
+                                                            setStep1SelectedIds(prev => new Set(prev).add(o['Order ID']));
+                                                            setSearchQuery('');
+                                                            showNotification("Order added! Click Generate to refresh.", "info");
+                                                        }}
+                                                        className="w-full flex items-center justify-between p-4 hover:bg-blue-600/10 text-left border-b border-gray-800 last:border-0 transition-colors"
+                                                    >
+                                                        <div className="min-w-0">
+                                                            <p className="text-sm font-bold text-white truncate">{o['Customer Name']}</p>
+                                                            <p className="text-[10px] text-gray-500 font-mono">{o['Order ID']} | {o['Customer Phone']}</p>
+                                                        </div>
+                                                        <div className="text-right">
+                                                            <p className="text-xs font-black text-blue-400">${o['Grand Total']}</p>
+                                                            <p className="text-[10px] text-gray-600 font-bold uppercase">{o.Timestamp.split(' ')[0]}</p>
+                                                        </div>
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </div>
+
                                     <textarea 
                                         value={previewText}
                                         onChange={(e) => setPreviewText(e.target.value)}
-                                        className="w-full flex-grow bg-black/40 border border-gray-700 rounded-2xl p-4 font-mono text-sm text-gray-300 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 resize-none shadow-inner"
+                                        className="w-full flex-grow bg-black/40 border border-gray-700 rounded-2xl p-4 font-mono text-sm text-gray-300 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 resize-none shadow-inner min-h-[300px]"
                                         placeholder="Generated text will appear here..."
                                     />
+                                    
+                                    <div className="flex justify-center">
+                                        <button 
+                                            onClick={handleGeneratePreview}
+                                            className="text-[10px] font-black text-blue-400 hover:text-white uppercase tracking-[0.2em] bg-blue-600/10 px-6 py-2 rounded-full border border-blue-500/20 transition-all active:scale-90"
+                                        >
+                                            Refresh Preview Text
+                                        </button>
+                                    </div>
                                 </div>
                             )}
                         </div>
