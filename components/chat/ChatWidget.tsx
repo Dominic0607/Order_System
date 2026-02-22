@@ -930,18 +930,40 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ isOpen, onClose }) => {
                 <button onClick={() => setActiveTab('users')} className={`text-xs font-bold uppercase tracking-wider transition-all ${activeTab === 'users' ? 'active bg-blue-600 text-white shadow-lg' : 'text-gray-500 hover:text-gray-300'}`}>Members</button>
             </div>
 
-            {/* Pinned Messages Header */}
+            {/* Redesigned Pinned Messages Header */}
             {activeTab === 'chat' && pinnedMessages.length > 0 && (
-                <div className="bg-gray-900/80 border-b border-gray-800 p-2 flex gap-2 overflow-x-auto custom-scrollbar">
-                    <div className="flex-shrink-0 flex items-center justify-center w-6 h-6 bg-yellow-500/20 rounded-full">
-                        <svg className="w-3 h-3 text-yellow-500" fill="currentColor" viewBox="0 0 24 24"><path d="M16 12V4h1V2H7v2h1v8l-2 2v2h5v6l1 1 1-1v-6h5v-2l-2-2z"/></svg>
+                <div className="bg-gray-900/90 backdrop-blur-md border-b border-white/5 p-2.5 flex items-center gap-3 sticky top-0 z-30 shadow-2xl">
+                    <div className="flex-shrink-0 flex items-center justify-center w-8 h-8 bg-yellow-500/10 rounded-xl border border-yellow-500/20">
+                        <svg className="w-4 h-4 text-yellow-500 drop-shadow-[0_0_5px_rgba(234,179,8,0.5)]" fill="currentColor" viewBox="0 0 24 24">
+                            <path d="M16 12V4h1V2H7v2h1v8l-2 2v2h5v6l1 1 1-1v-6h5v-2l-2-2z"/>
+                        </svg>
                     </div>
-                    {pinnedMessages.map(msg => (
-                        <div key={msg.id} className="flex-shrink-0 max-w-[200px] bg-gray-800 rounded-lg p-2 text-[10px] border border-gray-700 cursor-pointer hover:bg-gray-700" onClick={() => document.getElementById(`msg-${msg.id}`)?.scrollIntoView({behavior: 'smooth', block: 'center'})}>
-                            <p className="font-bold text-gray-400 truncate">{msg.fullName}</p>
-                            <p className="text-gray-300 truncate">{msg.type === 'text' ? msg.content : `[${msg.type}]`}</p>
+                    
+                    <div className="flex-grow overflow-hidden">
+                        <div className="flex gap-3 overflow-x-auto custom-scrollbar no-scrollbar py-0.5 px-0.5 snap-x">
+                            {pinnedMessages.map((msg, idx) => (
+                                <div 
+                                    key={msg.id} 
+                                    className="flex-shrink-0 min-w-[180px] max-w-[220px] bg-white/5 hover:bg-white/10 rounded-xl p-2 border border-white/5 cursor-pointer transition-all active:scale-95 snap-center group/pin"
+                                    onClick={() => document.getElementById(`msg-${msg.id}`)?.scrollIntoView({behavior: 'smooth', block: 'center'})}
+                                >
+                                    <div className="flex items-center justify-between gap-2 mb-1">
+                                        <p className="text-[10px] font-black text-yellow-500/80 uppercase tracking-wider truncate">Pinned #{idx + 1}</p>
+                                        <p className="text-[9px] font-bold text-gray-500">{msg.fullName}</p>
+                                    </div>
+                                    <p className="text-[11px] text-gray-200 truncate leading-tight">
+                                        {msg.type === 'text' ? msg.content : msg.type === 'image' ? '📷 Photo' : msg.type === 'audio' ? '🎤 Voice' : '🎥 Video'}
+                                    </p>
+                                </div>
+                            ))}
                         </div>
-                    ))}
+                    </div>
+
+                    {pinnedMessages.length > 1 && (
+                        <div className="flex-shrink-0 bg-gray-800 px-2 py-1 rounded-lg border border-white/5 shadow-inner">
+                            <p className="text-[10px] font-black text-gray-400">{pinnedMessages.length}</p>
+                        </div>
+                    )}
                 </div>
             )}
 
@@ -1039,8 +1061,13 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ isOpen, onClose }) => {
                                                         </>
                                                     )}
                                                     
-                                                    <div className="flex items-center justify-end gap-1 mt-1.5">
-                                                        {msg.isPinned && <svg className="w-3 h-3 text-yellow-500" fill="currentColor" viewBox="0 0 24 24"><path d="M16 12V4h1V2H7v2h1v8l-2 2v2h5v6l1 1 1-1v-6h5v-2l-2-2z"/></svg>}
+                                                    <div className="flex items-center justify-end gap-1.5 mt-1.5 border-t border-white/5 pt-1.5">
+                                                        {msg.isPinned && (
+                                                            <div className="flex items-center gap-1 bg-yellow-500/10 px-1.5 py-0.5 rounded-md border border-yellow-500/20 mr-auto">
+                                                                <svg className="w-2.5 h-2.5 text-yellow-500" fill="currentColor" viewBox="0 0 24 24"><path d="M16 12V4h1V2H7v2h1v8l-2 2v2h5v6l1 1 1-1v-6h5v-2l-2-2z"/></svg>
+                                                                <span className="text-[8px] font-black text-yellow-500/80 uppercase tracking-tighter">Pinned</span>
+                                                            </div>
+                                                        )}
                                                         <p className={`text-[9px] font-medium ${isMe ? 'text-blue-200' : 'text-gray-500'}`}>
                                                             {new Date(msg.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
                                                         </p>
@@ -1049,24 +1076,24 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ isOpen, onClose }) => {
 
                                                     {/* Message Actions (Hover) */}
                                                     {!msg.isDeleted && !msg.isOptimistic && (
-                                                        <div className={`absolute top-0 ${isMe ? '-left-10' : '-right-10'} opacity-0 group-hover/msg:opacity-100 transition-opacity flex flex-col gap-1 p-1`}>
-                                                            <button onClick={() => setReplyingTo(msg)} className="p-1.5 bg-gray-800 text-gray-400 hover:text-white rounded-full shadow border border-gray-700" title="Reply">
-                                                                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"/></svg>
+                                                        <div className={`absolute top-0 ${isMe ? '-left-12' : '-right-12'} opacity-0 group-hover/msg:opacity-100 transition-all duration-300 transform group-hover/msg:translate-x-0 ${isMe ? 'translate-x-2' : '-translate-x-2'} flex flex-col gap-1.5 p-1 z-10`}>
+                                                            <button onClick={() => setReplyingTo(msg)} className="p-2 bg-gray-900/80 backdrop-blur-sm text-gray-400 hover:text-blue-400 rounded-xl shadow-xl border border-white/10 transition-all hover:scale-110 active:scale-90" title="Reply">
+                                                                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"/></svg>
                                                             </button>
                                                             
-                                                            <button onClick={() => handlePinMessage(msg.id, !!msg.isPinned)} className={`p-1.5 bg-gray-800 rounded-full shadow border border-gray-700 ${msg.isPinned ? 'text-yellow-500' : 'text-gray-400 hover:text-white'}`} title={msg.isPinned ? "Unpin" : "Pin"}>
-                                                                <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 24 24"><path d="M16 12V4h1V2H7v2h1v8l-2 2v2h5v6l1 1 1-1v-6h5v-2l-2-2z"/></svg>
+                                                            <button onClick={() => handlePinMessage(msg.id, !!msg.isPinned)} className={`p-2 bg-gray-900/80 backdrop-blur-sm rounded-xl shadow-xl border border-white/10 transition-all hover:scale-110 active:scale-90 ${msg.isPinned ? 'text-yellow-500 bg-yellow-500/10 border-yellow-500/20' : 'text-gray-400 hover:text-yellow-500'}`} title={msg.isPinned ? "Unpin" : "Pin"}>
+                                                                <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24"><path d="M16 12V4h1V2H7v2h1v8l-2 2v2h5v6l1 1 1-1v-6h5v-2l-2-2z"/></svg>
                                                             </button>
 
                                                             {(msg.type === 'image' || msg.type === 'video') && (
-                                                                <button onClick={() => handleDownload(msg.content, `${msg.type}_${msg.id}.${msg.type === 'video' ? 'mp4' : 'jpg'}`)} className="p-1.5 bg-gray-800 text-gray-400 hover:text-white rounded-full shadow border border-gray-700" title="Download">
-                                                                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+                                                                <button onClick={() => handleDownload(msg.content, `${msg.type}_${msg.id}.${msg.type === 'video' ? 'mp4' : 'jpg'}`)} className="p-2 bg-gray-900/80 backdrop-blur-sm text-gray-400 hover:text-emerald-400 rounded-xl shadow-xl border border-white/10 transition-all hover:scale-110 active:scale-90" title="Download">
+                                                                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
                                                                 </button>
                                                             )}
 
                                                             {isMe && (
-                                                                <button onClick={() => handleDeleteMessage(msg.id)} className="p-1.5 bg-gray-800 text-red-400 hover:bg-red-900/20 rounded-full shadow border border-gray-700" title="Delete">
-                                                                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                                                                <button onClick={() => handleDeleteMessage(msg.id)} className="p-2 bg-gray-900/80 backdrop-blur-sm text-red-400 hover:bg-red-500/20 rounded-xl shadow-xl border border-red-500/20 transition-all hover:scale-110 active:scale-90" title="Delete">
+                                                                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
                                                                 </button>
                                                             )}
                                                         </div>
