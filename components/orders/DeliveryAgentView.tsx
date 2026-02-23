@@ -79,53 +79,85 @@ const DeliveryAgentView: React.FC<DeliveryAgentViewProps> = ({ orderIds, returnO
     const handleSubmit = async () => {
         if (orders.length === 0) return;
         setIsSubmitting(true);
+        let failureCount = 0;
+        const failedOrders: string[] = [];
+
         try {
-            // Slower sequential update to respect Google Apps Script quotas
-            for (const o of orders) {
+            // Algorithm: Progressive Queue Processing (Concurrency 2)
+            // Balancing speed and safety for Google Sheets via Node backend
+            const concurrencyLimit = 2;
+            const queue = [...orders];
+            const totalToProcess = queue.length;
+            let processedCount = 0;
+
+            const processItem = async (o: ParsedOrder) => {
                 const isDelivered = successSet.has(o['Order ID']);
                 const finalCost = isDelivered ? (costs[o['Order ID']] || 0) : 0;
                 
+                // Construct full payload for update-order consistency
+                const payload = {
+                    orderId: o['Order ID'],
+                    team: o.Team,
+                    userName: 'Delivery Agent',
+                    newData: {
+                        ...o,
+                        'Internal Cost': finalCost,
+                        'Products (JSON)': JSON.stringify(o.Products)
+                    }
+                };
+
                 let success = false;
                 let attempts = 0;
-                const maxAttempts = 3;
+                const maxAttempts = 5;
 
                 while (!success && attempts < maxAttempts) {
                     attempts++;
                     try {
-                        const response = await fetch(`${WEB_APP_URL}/api/admin/update-row`, {
+                        const response = await fetch(`${WEB_APP_URL}/api/admin/update-order`, {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({
-                                sheetName: 'Orders',
-                                primaryKey: { 'Order ID': o['Order ID'].trim() },
-                                newData: { 'Internal Cost': finalCost }
-                            })
+                            body: JSON.stringify(payload)
                         });
 
                         if (response.ok) {
                             success = true;
                         } else {
-                            if (response.status === 429 || response.status === 503) {
-                                // Quota hit, wait longer
-                                await new Promise(resolve => setTimeout(resolve, 3000));
-                            }
-                            if (attempts === maxAttempts) throw new Error("Server is too busy. Please wait 1 minute and try again.");
-                            await new Promise(resolve => setTimeout(resolve, attempts * 2000));
+                            // Exponential backoff with jitter
+                            const delay = Math.min(10000, (Math.pow(2, attempts) * 1000) + (Math.random() * 1000));
+                            await new Promise(resolve => setTimeout(resolve, delay));
                         }
                     } catch (err) {
-                        if (attempts === maxAttempts) throw err;
-                        await new Promise(resolve => setTimeout(resolve, attempts * 2000));
+                        const delay = Math.min(10000, (Math.pow(2, attempts) * 1000) + (Math.random() * 1000));
+                        await new Promise(resolve => setTimeout(resolve, delay));
                     }
                 }
+                
+                if (!success) {
+                    failureCount++;
+                    failedOrders.push(o['Order ID']);
+                }
 
-                // Crucial: Longer pause between different orders to prevent concurrency errors
+                processedCount++;
+                console.log(`Agent Progress: ${processedCount}/${totalToProcess} (${o['Order ID']}: ${success ? 'OK' : 'FAIL'})`);
+                
+                // Small breather
                 await new Promise(resolve => setTimeout(resolve, 1500));
+            };
+
+            // Run in concurrent batches
+            for (let i = 0; i < queue.length; i += concurrencyLimit) {
+                const batch = queue.slice(i, i + concurrencyLimit);
+                await Promise.all(batch.map(processItem));
             }
 
-            setIsSubmitted(true);
+            if (failureCount > 0) {
+                 alert(`ការបញ្ជូនបានបញ្ចប់ ប៉ុន្តែមាន ${failureCount} កញ្ចប់បរាជ័យក្នុងការ Update: (${failedOrders.join(', ')})\n\nសូមព្យាយាមម្តងទៀតសម្រាប់កញ្ចប់ដែលបរាជ័យ។`);
+            } else {
+                 setIsSubmitted(true);
+            }
         } catch (e: any) {
             console.error("Critical Submission Error:", e);
-            alert(`ការបញ្ជូនបរាជ័យ: ${e.message}\n\nគន្លឹះ៖ ប្រសិនបើនៅតែបរាជ័យ សូមរង់ចាំ ១នាទី រួចចុចបញ្ជូនម្តងទៀត។`);
+            alert(`ការបញ្ជូនបរាជ័យ: ${e.message}\n\nគន្លឹះ៖ សូមពិនិត្យអ៊ីនធឺណិត រួចចុចបញ្ជូនម្តងទៀត។`);
         } finally {
             setIsSubmitting(false);
         }
@@ -346,7 +378,12 @@ const DeliveryAgentView: React.FC<DeliveryAgentViewProps> = ({ orderIds, returnO
                                                             )}
                                                         </div>
                                                     </td>
-                                                    <td className="p-3 text-right"><p className="text-base font-black text-emerald-400 italic">${Number(o['Grand Total']).toFixed(2)}</p></td>
+                                                    <td className="p-3 text-right">
+                                                        <p className="text-base font-black text-emerald-400 italic">${Number(o['Grand Total']).toFixed(2)}</p>
+                                                        <span className={`text-[7px] font-black uppercase px-1.5 py-0.5 rounded border mt-1 inline-block ${o['Payment Status'] === 'Paid' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 'bg-red-500/10 text-red-400 border-red-500/20'}`}>
+                                                            {o['Payment Status'] === 'Paid' ? 'Paid' : 'COD'}
+                                                        </span>
+                                                    </td>
                                                     <td className="p-3 text-right">
                                                         {!isNotSuccess ? (
                                                             <div className="relative inline-block w-32 animate-fade-in">
@@ -388,9 +425,14 @@ const DeliveryAgentView: React.FC<DeliveryAgentViewProps> = ({ orderIds, returnO
                                                 </div>
                                                 <div className="text-right flex-shrink-0">
                                                     <p className={`text-base font-black italic transition-colors ${isNotSuccess ? 'text-gray-600 line-through' : 'text-emerald-400'}`}>${Number(o['Grand Total']).toFixed(2)}</p>
-                                                    <span className={`text-[8px] font-black uppercase mt-1.5 inline-block px-2 py-0.5 rounded border ${isReturned ? 'bg-red-600/10 text-red-500 border-red-500/20' : isFailed ? 'bg-orange-600/10 text-orange-500 border-orange-500/20' : 'bg-emerald-600/10 text-emerald-500 border-emerald-500/20'}`}>
-                                                        {isReturned ? 'Returned' : isFailed ? 'Failed' : 'Success'}
-                                                    </span>
+                                                    <div className="flex flex-col items-end gap-1 mt-1">
+                                                        <span className={`text-[7px] font-black uppercase px-1.5 py-0.5 rounded border ${o['Payment Status'] === 'Paid' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 'bg-red-500/10 text-red-400 border-red-500/20'}`}>
+                                                            {o['Payment Status'] === 'Paid' ? 'Paid' : 'COD'}
+                                                        </span>
+                                                        <span className={`text-[8px] font-black uppercase px-2 py-0.5 rounded border ${isReturned ? 'bg-red-600/10 text-red-500 border-red-500/20' : isFailed ? 'bg-orange-600/10 text-orange-500 border-orange-500/20' : 'bg-emerald-600/10 text-emerald-500 border-emerald-500/20'}`}>
+                                                            {isReturned ? 'Returned' : isFailed ? 'Failed' : 'Success'}
+                                                        </span>
+                                                    </div>
                                                 </div>
                                             </div>
                                             {!isNotSuccess && (

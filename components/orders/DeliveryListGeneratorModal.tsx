@@ -203,7 +203,9 @@ const DeliveryListGeneratorModal: React.FC<DeliveryListGeneratorModalProps> = ({
     const handleConfirmTransaction = async () => {
         if (!password) { alert("Password required."); return; }
         setIsSubmitting(true);
+        
         try {
+            // 1. Verify Password First
             const response = await fetch(`${WEB_APP_URL}/api/users`, { cache: 'no-store' });
             if (!response.ok) throw new Error('Network synchronization error');
             const result = await response.json();
@@ -211,43 +213,104 @@ const DeliveryListGeneratorModal: React.FC<DeliveryListGeneratorModalProps> = ({
             const foundUser = users.find(u => u.UserName === currentUser?.UserName && u.Password === password);
             if (!foundUser) throw new Error("លេខសម្ងាត់មិនត្រឹមត្រូវ (Incorrect Password)");
 
-            // Sequential updates for maximum reliability with Google Sheets
-            for (const order of pendingOrders) {
-                if (!verifiedIds.has(order['Order ID'])) continue;
-                
+            const idArray = pendingOrders.map(o => o['Order ID']);
+            let failureCount = 0;
+            const failedOrders: string[] = [];
+            
+            // 2. Algorithm: Progressive Queue Processing
+            // We use a small concurrency limit (2) to balance speed and safety with Google Sheets
+            const concurrencyLimit = 2;
+            const queue = [...pendingOrders];
+            const totalToProcess = queue.length;
+            let processedCount = 0;
+
+            console.log(`Starting delivery list finalization for ${totalToProcess} orders...`);
+
+            const processOrder = async (order: ParsedOrder) => {
+                const isVerified = verifiedIds.has(order['Order ID']);
                 const isUnpaid = order['Payment Status'] !== 'Paid';
-                const newData: any = { 'Internal Cost': shippingAdjustments[order['Order ID']] };
-                if (isUnpaid) { 
+                
+                // Construct the payload based on update-order requirements (Full Data)
+                const finalInternalCost = shippingAdjustments[order['Order ID']] !== undefined 
+                    ? shippingAdjustments[order['Order ID']] 
+                    : (order['Internal Cost'] || 0);
+
+                const newData: any = { 
+                    ...order,
+                    'Internal Cost': finalInternalCost
+                };
+                
+                if (isVerified && isUnpaid) { 
                     newData['Payment Status'] = 'Paid'; 
                     newData['Payment Info'] = selectedBank; 
                     newData['Delivery Paid'] = order['Grand Total']; 
                     newData['Delivery Unpaid'] = 0; 
                 }
 
+                // Ensure Products are stringified for the API
+                const payload = {
+                    orderId: order['Order ID'],
+                    team: order.Team,
+                    userName: currentUser?.UserName,
+                    newData: {
+                        ...newData,
+                        'Products (JSON)': JSON.stringify(order.Products)
+                    }
+                };
+
                 let success = false;
                 let attempts = 0;
-                while (!success && attempts < 3) {
+                const maxAttempts = 5;
+
+                while (!success && attempts < maxAttempts) {
                     attempts++;
-                    const res = await fetch(`${WEB_APP_URL}/api/admin/update-row`, { 
-                        method: 'POST', 
-                        headers: { 'Content-Type': 'application/json' }, 
-                        body: JSON.stringify({ 
-                            sheetName: 'Orders', 
-                            primaryKey: { 'Order ID': order['Order ID'].trim() }, 
-                            newData 
-                        }) 
-                    });
-                    if (res.ok) success = true;
-                    else await new Promise(resolve => setTimeout(resolve, 1000));
+                    try {
+                        const res = await fetch(`${WEB_APP_URL}/api/admin/update-order`, { 
+                            method: 'POST', 
+                            headers: { 'Content-Type': 'application/json' }, 
+                            body: JSON.stringify(payload) 
+                        });
+                        
+                        if (res.ok) {
+                            success = true;
+                        } else {
+                            // Exponential backoff with jitter
+                            const delay = Math.min(10000, (Math.pow(2, attempts) * 1000) + (Math.random() * 1000));
+                            await new Promise(resolve => setTimeout(resolve, delay));
+                        }
+                    } catch (e) {
+                        const delay = Math.min(10000, (Math.pow(2, attempts) * 1000) + (Math.random() * 1000));
+                        await new Promise(resolve => setTimeout(resolve, delay));
+                    }
                 }
-                // Small breather between updates
-                await new Promise(resolve => setTimeout(resolve, 500));
+
+                if (!success) {
+                    failureCount++;
+                    failedOrders.push(order['Order ID']);
+                }
+                
+                processedCount++;
+                console.log(`Progress: ${processedCount}/${totalToProcess} (${order['Order ID']}: ${success ? 'OK' : 'FAIL'})`);
+                
+                // Small breather after each request to avoid hitting rate limits too hard
+                await new Promise(resolve => setTimeout(resolve, 1500));
+            };
+
+            // Run in small concurrent batches
+            for (let i = 0; i < queue.length; i += concurrencyLimit) {
+                const batch = queue.slice(i, i + concurrencyLimit);
+                await Promise.all(batch.map(processOrder));
             }
 
-            localStorage.removeItem(SESSION_KEY); 
+            if (failureCount > 0) {
+                alert(`ការ Update បានបញ្ចប់ ប៉ុន្តែមានបញ្ហាលើ ${failureCount} កញ្ចប់: (${failedOrders.join(', ')})\n\nសូមព្យាយាមម្តងទៀតសម្រាប់កញ្ចប់ដែលនៅសល់។`);
+            } else {
+                localStorage.removeItem(SESSION_KEY); 
+                showNotification("Delivery verified and database updated!", "success"); 
+                onClose();
+            }
+            
             await refreshData();
-            showNotification("Delivery verified and database updated!", "success"); 
-            onClose();
         } catch (err: any) { 
             alert(err.message || "Failed to update database."); 
         } finally { 
@@ -315,7 +378,9 @@ const DeliveryListGeneratorModal: React.FC<DeliveryListGeneratorModalProps> = ({
                                                     <span className="text-[9px] font-black text-gray-500 uppercase tracking-widest">SELECTED</span>
                                                     <span className="text-2xl font-black text-white">{step1SelectedIds.size} / {filteredOrders.length}</span>
                                                 </div>
-                                                <button onClick={() => { if (step1SelectedIds.size === filteredOrders.length) setStep1SelectedIds(new Set()); else { setStep1SelectedIds(new Set(filteredOrders.map(o => o['Order ID']))); setStep1ReturnIds(new Set()); } }} className="px-4 py-2 bg-blue-600/10 text-[10px] font-black text-blue-400 uppercase rounded-xl border border-blue-500/20">Select All</button>
+                                                <button onClick={() => { if (step1SelectedIds.size === filteredOrders.length) setStep1SelectedIds(new Set()); else { setStep1SelectedIds(new Set(filteredOrders.map(o => o['Order ID']))); setStep1ReturnIds(new Set()); } }} className="px-4 py-2 bg-blue-600/10 text-[10px] font-black text-blue-400 uppercase rounded-xl border border-blue-500/20">
+                                                    {step1SelectedIds.size === filteredOrders.length ? 'Unselect All' : 'Select All'}
+                                                </button>
                                             </div>
                                             
                                             <div className="overflow-y-auto custom-scrollbar flex-grow p-3 sm:p-6">
@@ -411,6 +476,17 @@ const DeliveryListGeneratorModal: React.FC<DeliveryListGeneratorModalProps> = ({
                                     </div>
                                 </div>
                                 <div className="space-y-3 pb-20 px-2">
+                                    <div className="flex justify-end mb-4">
+                                        <button 
+                                            onClick={() => {
+                                                if (verifiedIds.size === pendingOrders.length) setVerifiedIds(new Set());
+                                                else setVerifiedIds(new Set(pendingOrders.map(o => o['Order ID'])));
+                                            }}
+                                            className="px-4 py-2 bg-emerald-600/10 text-[10px] font-black text-emerald-400 uppercase rounded-xl border border-emerald-500/20"
+                                        >
+                                            {verifiedIds.size === pendingOrders.length ? 'Unselect All' : 'Select All'}
+                                        </button>
+                                    </div>
                                     {pendingOrders.map((order, idx) => {
                                         const isChecked = verifiedIds.has(order['Order ID']);
                                         const isPaid = order['Payment Status'] === 'Paid';
@@ -487,7 +563,18 @@ const DeliveryListGeneratorModal: React.FC<DeliveryListGeneratorModalProps> = ({
                             <button onClick={handleCopyAndSaveSession} className="px-10 py-4 rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-700 text-white font-black uppercase text-[10px] tracking-[0.2em] shadow-2xl active:scale-95">Copy & Continue</button>
                         </div>
                     )}
-                    {step === STEPS.VERIFY && <button onClick={() => setShowPaymentModal(true)} className="w-full sm:w-auto ml-auto px-12 py-4 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-600 text-white font-black uppercase text-[10px] tracking-[0.2em] shadow-2xl active:scale-95">Finalize Delivery</button>}
+                    {step === STEPS.VERIFY && (
+                        <button 
+                            onClick={() => {
+                                const hasUnpaid = pendingOrders.some(o => verifiedIds.has(o['Order ID']) && o['Payment Status'] !== 'Paid');
+                                // We can't set state and immediately use it, so we'll handle the logic in the render
+                                setShowPaymentModal(true);
+                            }} 
+                            className="w-full sm:w-auto ml-auto px-12 py-4 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-600 text-white font-black uppercase text-[10px] tracking-[0.2em] shadow-2xl active:scale-95"
+                        >
+                            Finalize Delivery
+                        </button>
+                    )}
                 </div>
 
                 {/* Payment Modal Overlay - Vertically Optimized for Mobile */}
@@ -506,7 +593,7 @@ const DeliveryListGeneratorModal: React.FC<DeliveryListGeneratorModalProps> = ({
                                 </div>
 
                                 <div className="space-y-4 sm:space-y-6">
-                                    {hasCheckedUnpaidOrders && (
+                                    {pendingOrders.some(o => verifiedIds.has(o['Order ID']) && o['Payment Status'] !== 'Paid') && (
                                         <div className="space-y-1.5">
                                             <label className="text-[9px] font-black text-blue-400 uppercase tracking-widest ml-3">ជ្រើសរើសធនាគារ (Bank)</label>
                                             <BankSelector bankAccounts={appData.bankAccounts || []} selectedBankName={selectedBank} onSelect={setSelectedBank} />
