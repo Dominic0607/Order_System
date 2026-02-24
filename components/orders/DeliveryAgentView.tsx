@@ -94,14 +94,48 @@ const DeliveryAgentView: React.FC<DeliveryAgentViewProps> = ({ orderIds, returnO
                 const isDelivered = successSet.has(o['Order ID']);
                 const finalCost = isDelivered ? (costs[o['Order ID']] || 0) : 0;
                 
+                const newData: any = {
+                    ...o,
+                    'Internal Cost': finalCost
+                };
+
+                if (isDelivered) {
+                    // --- Past Date Logic ---
+                    if (o.Timestamp) {
+                        const now = new Date();
+                        const todayStr = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
+                        const match = o.Timestamp.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+                        
+                        if (match) {
+                            const orderDate = `${match[1]}-${match[2].padStart(2,'0')}-${match[3].padStart(2,'0')}`;
+                            if (orderDate !== todayStr) {
+                                const originalDD = match[3].padStart(2,'0');
+                                const originalMM = match[2].padStart(2,'0');
+                                const originalYY = match[1].slice(-2);
+                                const noteAdd = `(កាលបរិចេ្ឆទទម្លាក់ការកម្មង់ : ${originalDD}/${originalMM}/${originalYY})`;
+                                
+                                let newNote = o.Note || '';
+                                if (!newNote.includes('កាលបរិចេ្ឆទទម្លាក់ការកម្មង់')) {
+                                    newData.Note = newNote ? `${newNote}\n${noteAdd}` : noteAdd;
+                                }
+                                
+                                let timeStr = '12:00:00';
+                                const timeMatch = o.Timestamp.match(/\s(\d{1,2}:\d{2}(?::\d{2})?)/);
+                                if (timeMatch) timeStr = timeMatch[1].length === 5 ? `${timeMatch[1]}:00` : timeMatch[1];
+                                
+                                newData.Timestamp = `${todayStr} ${timeStr}`;
+                            }
+                        }
+                    }
+                }
+                
                 // Construct full payload for update-order consistency
                 const payload = {
                     orderId: o['Order ID'],
                     team: o.Team,
                     userName: 'Delivery Agent',
                     newData: {
-                        ...o,
-                        'Internal Cost': finalCost,
+                        ...newData,
                         'Products (JSON)': JSON.stringify(o.Products)
                     }
                 };
