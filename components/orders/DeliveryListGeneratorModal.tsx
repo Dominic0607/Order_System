@@ -218,8 +218,8 @@ const DeliveryListGeneratorModal: React.FC<DeliveryListGeneratorModalProps> = ({
             const failedOrders: string[] = [];
             
             // 2. Algorithm: Progressive Queue Processing
-            // We use a small concurrency limit (2) to balance speed and safety with Google Sheets
-            const concurrencyLimit = 2;
+            // Optimized for high speed: Concurrency 5 with reduced delay
+            const concurrencyLimit = 5;
             const queue = [...pendingOrders];
             const totalToProcess = queue.length;
             let processedCount = 0;
@@ -240,11 +240,41 @@ const DeliveryListGeneratorModal: React.FC<DeliveryListGeneratorModalProps> = ({
                     'Internal Cost': finalInternalCost
                 };
                 
-                if (isVerified && isUnpaid) { 
-                    newData['Payment Status'] = 'Paid'; 
-                    newData['Payment Info'] = selectedBank; 
-                    newData['Delivery Paid'] = order['Grand Total']; 
-                    newData['Delivery Unpaid'] = 0; 
+                if (isVerified) { 
+                    if (isUnpaid) {
+                        newData['Payment Status'] = 'Paid'; 
+                        newData['Payment Info'] = selectedBank; 
+                        newData['Delivery Paid'] = order['Grand Total']; 
+                        newData['Delivery Unpaid'] = 0; 
+                    }
+                    
+                    // --- Past Date Logic ---
+                    if (order.Timestamp) {
+                        const now = new Date();
+                        const todayStr = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
+                        const match = order.Timestamp.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+                        
+                        if (match) {
+                            const orderDate = `${match[1]}-${match[2].padStart(2,'0')}-${match[3].padStart(2,'0')}`;
+                            if (orderDate !== todayStr) {
+                                const originalDD = match[3].padStart(2,'0');
+                                const originalMM = match[2].padStart(2,'0');
+                                const originalYY = match[1].slice(-2);
+                                const noteAdd = `(កាលបរិចេ្ឆទទម្លាក់ការកម្មង់ : ${originalDD}/${originalMM}/${originalYY})`;
+                                
+                                let newNote = order.Note || '';
+                                if (!newNote.includes('កាលបរិចេ្ឆទទម្លាក់ការកម្មង់')) {
+                                    newData.Note = newNote ? `${newNote}\n${noteAdd}` : noteAdd;
+                                }
+                                
+                                let timeStr = '12:00:00';
+                                const timeMatch = order.Timestamp.match(/\s(\d{1,2}:\d{2}(?::\d{2})?)/);
+                                if (timeMatch) timeStr = timeMatch[1].length === 5 ? `${timeMatch[1]}:00` : timeMatch[1];
+                                
+                                newData.Timestamp = `${todayStr} ${timeStr}`;
+                            }
+                        }
+                    }
                 }
 
                 // Ensure Products are stringified for the API
@@ -260,7 +290,7 @@ const DeliveryListGeneratorModal: React.FC<DeliveryListGeneratorModalProps> = ({
 
                 let success = false;
                 let attempts = 0;
-                const maxAttempts = 5;
+                const maxAttempts = 3;
 
                 while (!success && attempts < maxAttempts) {
                     attempts++;
@@ -274,12 +304,12 @@ const DeliveryListGeneratorModal: React.FC<DeliveryListGeneratorModalProps> = ({
                         if (res.ok) {
                             success = true;
                         } else {
-                            // Exponential backoff with jitter
-                            const delay = Math.min(10000, (Math.pow(2, attempts) * 1000) + (Math.random() * 1000));
+                            // Exponential backoff
+                            const delay = Math.min(5000, (Math.pow(2, attempts) * 500));
                             await new Promise(resolve => setTimeout(resolve, delay));
                         }
                     } catch (e) {
-                        const delay = Math.min(10000, (Math.pow(2, attempts) * 1000) + (Math.random() * 1000));
+                        const delay = Math.min(5000, (Math.pow(2, attempts) * 500));
                         await new Promise(resolve => setTimeout(resolve, delay));
                     }
                 }
@@ -292,11 +322,11 @@ const DeliveryListGeneratorModal: React.FC<DeliveryListGeneratorModalProps> = ({
                 processedCount++;
                 console.log(`Progress: ${processedCount}/${totalToProcess} (${order['Order ID']}: ${success ? 'OK' : 'FAIL'})`);
                 
-                // Small breather after each request to avoid hitting rate limits too hard
-                await new Promise(resolve => setTimeout(resolve, 1500));
+                // Minimal breather for high-performance processing
+                await new Promise(resolve => setTimeout(resolve, 300));
             };
 
-            // Run in small concurrent batches
+            // Run in concurrent batches
             for (let i = 0; i < queue.length; i += concurrencyLimit) {
                 const batch = queue.slice(i, i + concurrencyLimit);
                 await Promise.all(batch.map(processOrder));

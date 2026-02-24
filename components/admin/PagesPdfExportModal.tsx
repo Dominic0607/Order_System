@@ -163,6 +163,19 @@ const PagesPdfExportModal: React.FC<PagesPdfExportModalProps> = ({ isOpen, onClo
                 windowHeight: TARGET_H,
                 allowTaint: true,
                 imageTimeout: 15000,
+                onclone: (clonedDoc) => {
+                    const el = clonedDoc.getElementById('png-export-layer');
+                    if (el) {
+                        el.style.fontFamily = "'Kantumruy Pro', sans-serif";
+                        const allNodes = el.querySelectorAll('*');
+                        allNodes.forEach(node => {
+                            const htmlNode = node as HTMLElement;
+                            htmlNode.style.letterSpacing = 'normal';
+                            htmlNode.style.textTransform = 'none';
+                            htmlNode.style.fontFamily = "'Kantumruy Pro', sans-serif";
+                        });
+                    }
+                }
             });
 
             const imgData = canvas.toDataURL('image/png', 0.9);

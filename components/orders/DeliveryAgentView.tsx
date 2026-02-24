@@ -83,9 +83,9 @@ const DeliveryAgentView: React.FC<DeliveryAgentViewProps> = ({ orderIds, returnO
         const failedOrders: string[] = [];
 
         try {
-            // Algorithm: Progressive Queue Processing (Concurrency 2)
+            // Algorithm: Progressive Queue Processing (Concurrency 5 for speed)
             // Balancing speed and safety for Google Sheets via Node backend
-            const concurrencyLimit = 2;
+            const concurrencyLimit = 5;
             const queue = [...orders];
             const totalToProcess = queue.length;
             let processedCount = 0;
@@ -108,7 +108,7 @@ const DeliveryAgentView: React.FC<DeliveryAgentViewProps> = ({ orderIds, returnO
 
                 let success = false;
                 let attempts = 0;
-                const maxAttempts = 5;
+                const maxAttempts = 3; // Reduced for faster failure detection, backend has its own retries
 
                 while (!success && attempts < maxAttempts) {
                     attempts++;
@@ -122,12 +122,12 @@ const DeliveryAgentView: React.FC<DeliveryAgentViewProps> = ({ orderIds, returnO
                         if (response.ok) {
                             success = true;
                         } else {
-                            // Exponential backoff with jitter
-                            const delay = Math.min(10000, (Math.pow(2, attempts) * 1000) + (Math.random() * 1000));
+                            // Exponential backoff
+                            const delay = Math.min(5000, (Math.pow(2, attempts) * 500));
                             await new Promise(resolve => setTimeout(resolve, delay));
                         }
                     } catch (err) {
-                        const delay = Math.min(10000, (Math.pow(2, attempts) * 1000) + (Math.random() * 1000));
+                        const delay = Math.min(5000, (Math.pow(2, attempts) * 500));
                         await new Promise(resolve => setTimeout(resolve, delay));
                     }
                 }
@@ -140,8 +140,8 @@ const DeliveryAgentView: React.FC<DeliveryAgentViewProps> = ({ orderIds, returnO
                 processedCount++;
                 console.log(`Agent Progress: ${processedCount}/${totalToProcess} (${o['Order ID']}: ${success ? 'OK' : 'FAIL'})`);
                 
-                // Small breather
-                await new Promise(resolve => setTimeout(resolve, 1500));
+                // Minimal breather (300ms instead of 1500ms for high performance)
+                await new Promise(resolve => setTimeout(resolve, 300));
             };
 
             // Run in concurrent batches
@@ -187,21 +187,29 @@ const DeliveryAgentView: React.FC<DeliveryAgentViewProps> = ({ orderIds, returnO
         if (!element) return;
         try {
             setCopyStatus('idle');
+            // Ensure fonts are loaded before capturing
             await document.fonts.ready;
-            await new Promise(resolve => setTimeout(resolve, 600));
+            
+            // Artificial delay to ensure full render
+            await new Promise(resolve => setTimeout(resolve, 800));
+            
             const canvas = await html2canvas(element, {
                 backgroundColor: '#020617',
-                scale: 3, 
+                scale: 4, // Higher scale for extreme clarity
                 logging: false,
                 useCORS: true,
                 onclone: (clonedDoc) => {
                     const el = clonedDoc.getElementById('summary-card');
                     if (el) {
+                        // FORCE FONT AND REMOVE BREAKING STYLES FOR KHMER
                         el.style.fontFamily = "'Kantumruy Pro', sans-serif";
-                        const textElements = el.querySelectorAll('p, span, h2, h1, div');
-                        textElements.forEach(node => {
-                            (node as HTMLElement).style.fontFamily = "'Kantumruy Pro', sans-serif";
-                            (node as HTMLElement).style.textTransform = "none"; 
+                        const allNodes = el.querySelectorAll('*');
+                        allNodes.forEach(node => {
+                            const htmlNode = node as HTMLElement;
+                            // Khmer rendering breaks with letter-spacing or uppercase in some canvas engines
+                            htmlNode.style.letterSpacing = 'normal';
+                            htmlNode.style.textTransform = 'none';
+                            htmlNode.style.fontFamily = "'Kantumruy Pro', sans-serif";
                         });
                     }
                 }
@@ -210,10 +218,13 @@ const DeliveryAgentView: React.FC<DeliveryAgentViewProps> = ({ orderIds, returnO
             canvas.toBlob(async (blob) => {
                 if (blob) {
                     try {
+                        // Standard clipboard copy (modern browsers)
                         await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
                         setCopyStatus('success');
                         setTimeout(() => setCopyStatus('idle'), 4000);
                     } catch (err) {
+                        console.error("Clipboard write failed, falling back to download:", err);
+                        // Fallback only if clipboard fails (required to Paste in Telegram)
                         const dataUrl = canvas.toDataURL('image/png');
                         const link = document.createElement('a');
                         link.download = `confirm_${Date.now()}.png`;
@@ -224,7 +235,10 @@ const DeliveryAgentView: React.FC<DeliveryAgentViewProps> = ({ orderIds, returnO
                     }
                 }
             }, 'image/png');
-        } catch (e) { setCopyStatus('error'); }
+        } catch (e) { 
+            console.error("Canvas capture failed:", e);
+            setCopyStatus('error'); 
+        }
     };
 
     if (loading) return <div className="flex h-screen items-center justify-center bg-[#020617]"><Spinner size="lg" /></div>;
@@ -258,33 +272,33 @@ const DeliveryAgentView: React.FC<DeliveryAgentViewProps> = ({ orderIds, returnO
                         
                         <div className="grid grid-cols-2 gap-4 relative z-10">
                             <div className="bg-black/40 p-6 rounded-[2rem] border border-white/5 shadow-inner text-center">
-                                <p className="text-[9px] font-bold text-gray-500 uppercase tracking-widest mb-2">ចំនួនកញ្ចប់ (Count)</p>
-                                <p className="text-3xl font-black text-white">{orderIds.length}</p>
+                                <p className="text-[10px] font-bold text-gray-500 mb-2">ចំនួនកញ្ចប់ (COUNT)</p>
+                                <p className="text-4xl font-black text-white">{orderIds.length}</p>
                             </div>
                             <div className="bg-blue-600/10 p-6 rounded-[2rem] border border-blue-500/20 shadow-inner text-center">
-                                <p className="text-[9px] font-bold text-blue-400 uppercase tracking-widest mb-2">ថ្លៃដឹកសរុប (Total)</p>
-                                <p className="text-3xl font-black text-white">${totalShipCost.toFixed(2)}</p>
+                                <p className="text-[10px] font-bold text-blue-400 mb-2">ថ្លៃដឹកសរុប (TOTAL)</p>
+                                <p className="text-4xl font-black text-white">${totalShipCost.toFixed(2)}</p>
                             </div>
                         </div>
 
-                        <div className="bg-black/20 p-6 rounded-[2.5rem] border border-white/5 text-left space-y-3">
-                            <div className="flex justify-between items-center text-white font-black border-b border-white/10 pb-3 mb-1">
-                                <span className="text-xs tracking-widest font-bold">សរុបទឹកប្រាក់ (ដឹកជោគជ័យ)</span>
-                                <span className="text-xl tracking-tighter">${financialStats.totalSuccess.toFixed(2)}</span>
+                        <div className="bg-black/20 p-7 rounded-[2.5rem] border border-white/5 text-left space-y-4">
+                            <div className="flex justify-between items-center text-white font-black border-b border-white/10 pb-4 mb-1">
+                                <span className="text-[13px] font-bold">សរុបទឹកប្រាក់ (ដឹកជោគជ័យ)</span>
+                                <span className="text-2xl tracking-tighter">${financialStats.totalSuccess.toFixed(2)}</span>
                             </div>
-                            <div className="space-y-2 text-[13px] font-bold text-gray-300">
+                            <div className="space-y-3 font-bold text-gray-300">
                                 <div className="flex justify-between items-center">
-                                    <span>├─ 🟢 Paid (បង់រួច)</span>
-                                    <span className="text-emerald-400 font-black">${financialStats.paidSuccess.toFixed(2)}</span>
+                                    <span className="text-sm">├─ 🟢 Paid (បង់រួច)</span>
+                                    <span className="text-2xl text-emerald-400 font-black">${financialStats.paidSuccess.toFixed(2)}</span>
                                 </div>
                                 <div className="flex justify-between items-center">
-                                    <span>└─ 🔴 COD (ប្រមូលលុយ) 💸</span>
-                                    <span className="text-red-400 font-black">${financialStats.codSuccess.toFixed(2)}</span>
+                                    <span className="text-sm">└─ 🔴 COD (ប្រមូលលុយ) 💸</span>
+                                    <span className="text-2xl text-red-400 font-black">${financialStats.codSuccess.toFixed(2)}</span>
                                 </div>
                             </div>
-                            <div className="flex justify-between items-center text-gray-600 font-bold pt-3 border-t border-white/10 opacity-60">
+                            <div className="flex justify-between items-center text-gray-600 font-bold pt-4 border-t border-white/10 opacity-60">
                                 <span className="text-xs font-bold">❌ ដឹកមិនជោគជ័យ និង Return</span>
-                                <span className="text-base tracking-tighter">${financialStats.totalFailed.toFixed(2)}</span>
+                                <span className="text-lg tracking-tighter">${financialStats.totalFailed.toFixed(2)}</span>
                             </div>
                         </div>
                     </div>
