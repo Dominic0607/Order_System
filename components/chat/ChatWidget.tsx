@@ -1207,7 +1207,7 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ isOpen, onClose }) => {
                                         className="w-1 bg-red-500 rounded-full animate-pulse" 
                                         style={{ 
                                             height: `${30 + Math.random() * 50}%`, 
-                                            animationDuration: `${0.6 + Math.ran1dom() * 0.4}s`,
+                                            animationDuration: `${0.6 + Math.random() * 0.4}s`,
                                             animationDelay: `${Math.random() * 0.5}s`
                                         }} 
                                     />
