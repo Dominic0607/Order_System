@@ -922,12 +922,40 @@ const CreateOrderPage: React.FC<CreateOrderPageProps> = ({ team, onSaveSuccess, 
                         {currentStep < STEPS.length ? (
                             <button type="button" onClick={nextStep} className="relative flex-[2] bg-blue-600 hover:bg-blue-700 text-white rounded-2xl font-black uppercase text-[12px] sm:text-[14px] tracking-[0.2em] shadow-2xl active:scale-95 transition-all flex items-center justify-center gap-3 group overflow-hidden btn-pulse"><div className="absolute inset-0 btn-shimmer pointer-events-none"></div><span className="relative z-10">ជំហានបន្ទាប់</span><svg className="w-4 h-4 sm:w-5 sm:h-5 relative z-10 transform group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={3}><path d="M9 5l7 7-7 7"/></svg></button>
                         ) : (
-                             <button type="button" onClick={submitOrder} className="relative flex-[2] bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl font-black uppercase text-[12px] sm:text-[14px] tracking-[0.2em] shadow-2xl active:scale-95 transition-all flex items-center justify-center gap-3 overflow-hidden" disabled={loading}><div className="absolute inset-0 btn-shimmer pointer-events-none"></div>{loading ? <Spinner size="sm" /> : <><span className="relative z-10">បញ្ជូនកម្ម៉ង់ឥឡូវនេះ</span><svg className="w-4 h-4 sm:w-5 sm:h-5 relative z-10 animate-bounce-x" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={3}><path d="M5 13l4 4L19 7"/></svg></>}</button>
+                             <button type="button" onClick={submitOrder} className="relative flex-[2] bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl font-black uppercase text-[12px] sm:text-[14px] tracking-[0.2em] shadow-2xl active:scale-95 transition-all flex items-center justify-center gap-3 overflow-hidden" disabled={loading}><div className="absolute inset-0 btn-shimmer pointer-events-none"></div>{loading && undoTimer === null ? <Spinner size="sm" /> : <><span className="relative z-10">បញ្ជូនកម្ម៉ង់ឥឡូវនេះ</span><svg className="w-4 h-4 sm:w-5 sm:h-5 relative z-10 animate-bounce-x" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={3}><path d="M5 13l4 4L19 7"/></svg></>}</button>
                         )}
                     </div>
                     <button onClick={handleCancelClick} className="md:hidden w-full py-4 bg-gray-800/40 text-gray-500 hover:text-red-400 font-black rounded-2xl uppercase text-[10px] tracking-widest transition-all active:scale-95 border border-white/5">បោះបង់ការបញ្ចូល</button>
                 </div>
             </div>
+
+            {/* UNDO / GRACE PERIOD OVERLAY */}
+            {undoTimer !== null && (
+                <div className={`fixed inset-0 z-[200] flex items-end sm:items-center justify-center p-4 sm:p-0 bg-black/60 backdrop-blur-sm transition-opacity duration-300 ${isUndoing ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}>
+                    <div className="bg-[#0f172a] border-2 border-emerald-500/30 rounded-[2rem] sm:rounded-[3rem] p-6 sm:p-10 w-full max-w-md shadow-[0_0_50px_rgba(16,185,129,0.2)] text-center relative overflow-hidden animate-slide-up sm:animate-scale-in">
+                        <div className="absolute top-0 left-0 w-full h-1 bg-gray-800">
+                            <div className="h-full bg-emerald-500 transition-all duration-1000 ease-linear" style={{ width: `${(undoTimer / 5) * 100}%` }}></div>
+                        </div>
+                        
+                        <div className="w-20 h-20 bg-emerald-500/10 rounded-full flex items-center justify-center mx-auto mb-6 border border-emerald-500/20 relative">
+                            <svg className="w-10 h-10 text-emerald-500 absolute animate-ping opacity-20" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
+                            <svg className="w-10 h-10 text-emerald-500 relative z-10" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
+                        </div>
+                        
+                        <h3 className="text-2xl font-black text-white uppercase tracking-tighter mb-2">ជោគជ័យ!</h3>
+                        <p className="text-gray-400 text-sm font-bold mb-8">ការកម្ម៉ង់កំពុងបញ្ជូនទៅកាន់ប្រព័ន្ធ...</p>
+                        
+                        <button 
+                            onClick={handleUndo}
+                            className="w-full py-4 bg-gray-800 hover:bg-red-600/20 text-gray-300 hover:text-red-400 border border-gray-700 hover:border-red-500/50 rounded-2xl font-black uppercase text-xs tracking-widest transition-all flex items-center justify-center gap-3 group"
+                        >
+                            <svg className="w-5 h-5 group-hover:-rotate-45 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" /></svg>
+                            បញ្ឈប់ការបញ្ជូន (Undo) <span className="bg-gray-900 px-2 py-0.5 rounded text-[10px] text-gray-500 group-hover:text-red-400 ml-1 font-mono">{undoTimer}s</span>
+                        </button>
+                    </div>
+                </div>
+            )}
+
             <style>{`.animate-bounce-x { animation: bounce-x 1s infinite ease-in-out; } @keyframes bounce-x { 0%, 100% { transform: translateX(0); } 50% { transform: translateX(5px); } }`}</style>
         </div>
     );
