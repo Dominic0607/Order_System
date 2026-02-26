@@ -133,6 +133,7 @@ const OrdersListDesktop: React.FC<OrdersListDesktopProps> = ({
                             {isVisible('shippingCost') && <th className="px-6 py-6 font-black uppercase tracking-[0.2em] text-left text-gray-500 w-28 text-[clamp(10px,0.8vw,12px)]">Exp. Cost</th>}
                             {isVisible('status') && <th className="px-6 py-6 font-black uppercase tracking-[0.2em] text-left text-gray-500 w-32 text-[clamp(10px,0.8vw,12px)]">Status</th>}
                             {isVisible('date') && <th className="px-4 py-6 font-black uppercase tracking-[0.2em] text-left text-gray-500 w-24 text-[clamp(10px,0.8vw,12px)]">Time</th>}
+                            {isVisible('note') && <th className="px-6 py-6 font-black uppercase tracking-[0.2em] text-left text-gray-500 w-48 text-[clamp(10px,0.8vw,12px)]">Note</th>}
                             {isVisible('print') && <th className="px-4 py-6 font-black uppercase tracking-[0.2em] text-center text-gray-500 w-32 text-[clamp(10px,0.8vw,12px)]">Output</th>}
                             {isVisible('check') && <th className="px-2 py-6 font-normal uppercase tracking-[0.15em] text-center text-emerald-500/80 w-14 text-[9px]">VERIFIED</th>}
                             {isVisible('orderId') && <th className="px-2 py-6 font-black uppercase tracking-[0.2em] text-center text-gray-500 w-16 text-[clamp(10px,0.8vw,12px)]">Node ID</th>}
@@ -162,6 +163,7 @@ const OrdersListDesktop: React.FC<OrdersListDesktopProps> = ({
                                 {isVisible('shippingCost') && <th className="w-28"></th>}
                                 {isVisible('status') && <th className="w-32"></th>}
                                 {isVisible('date') && <th className="w-24"></th>}
+                                {isVisible('note') && <th className="w-48"></th>}
                                 {isVisible('print') && <th className="w-32"></th>}
                                 {isVisible('check') && <th className="w-14"></th>}
                                 {isVisible('orderId') && <th className="w-16"></th>}
@@ -225,6 +227,7 @@ const OrdersListDesktop: React.FC<OrdersListDesktopProps> = ({
                                         {isVisible('shippingCost') && <td className="px-6 py-5 text-gray-400 font-mono font-black tracking-tighter text-[clamp(13px,0.9vw,15px)]">${(Number(order['Internal Cost']) || 0).toFixed(3)}</td>}
                                         {isVisible('status') && <td className="px-6 py-5"><span className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest border ${order['Payment Status'] === 'Paid' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 'bg-red-500/10 text-red-400 border border-red-500/20'}`}>{order['Payment Status']}</span></td>}
                                         {isVisible('date') && (<td className="px-4 py-5"><div className="flex flex-col items-start"><span className="font-bold text-gray-400 text-[clamp(11px,0.8vw,12px)]">{orderDate.toLocaleDateString('km-KH')}</span><span className="font-mono text-blue-500/80 font-black text-[clamp(10px,0.7vw,11px)]">{orderDate.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })}</span></div></td>)}
+                                        {isVisible('note') && <td className="px-6 py-5 overflow-hidden"><div className="text-gray-300 text-[clamp(11px,0.8vw,12px)] line-clamp-2 break-words overflow-hidden" title={order.Note}>{order.Note || '-'}</div></td>}
                                         
                                         {isVisible('print') && (
                                             <td className="px-4 py-5 text-center">

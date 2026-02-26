@@ -6,6 +6,7 @@ import { AppContext } from '../../context/AppContext';
 import { WEB_APP_URL } from '../../constants';
 import BankSelector from './BankSelector';
 import Spinner from '../common/Spinner';
+import html2canvas from 'html2canvas';
 
 interface DeliveryListGeneratorModalProps {
     isOpen: boolean;
@@ -18,7 +19,8 @@ interface DeliveryListGeneratorModalProps {
 const STEPS = {
     FILTER: 1,
     PROMPT: 1.5,
-    VERIFY: 2
+    VERIFY: 2,
+    SUMMARY: 3
 };
 
 const SESSION_KEY = 'delivery_list_session';
@@ -56,6 +58,8 @@ const DeliveryListGeneratorModal: React.FC<DeliveryListGeneratorModalProps> = ({
     const [selectedBank, setSelectedBank] = useState('');
     const [password, setPassword] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [summaryResult, setSummaryResult] = useState<any>(null);
+    const [copyStatus, setCopyStatus] = useState<'idle' | 'success' | 'error'>('idle');
 
     const getSafeIsoDate = (dateStr: string) => {
         if (!dateStr) return '';
@@ -336,8 +340,35 @@ const DeliveryListGeneratorModal: React.FC<DeliveryListGeneratorModalProps> = ({
                 alert(`ការ Update បានបញ្ចប់ ប៉ុន្តែមានបញ្ហាលើ ${failureCount} កញ្ចប់: (${failedOrders.join(', ')})\n\nសូមព្យាយាមម្តងទៀតសម្រាប់កញ្ចប់ដែលនៅសល់។`);
             } else {
                 localStorage.removeItem(SESSION_KEY); 
+                
+                // Calculate Summary Stats
+                const successVerified = pendingOrders.filter(o => verifiedIds.has(o['Order ID']));
+                const stats = {
+                    count: successVerified.length,
+                    totalUSD: successVerified.reduce((sum, o) => sum + (o['Grand Total'] || 0), 0),
+                    paidUSD: successVerified.filter(o => o['Payment Status'] === 'Paid' || verifiedIds.has(o['Order ID'])).reduce((sum, o) => sum + (o['Grand Total'] || 0), 0),
+                    codUSD: successVerified.filter(o => o['Payment Status'] !== 'Paid' && !verifiedIds.has(o['Order ID'])).reduce((sum, o) => sum + (o['Grand Total'] || 0), 0),
+                    shipCost: successVerified.reduce((sum, o) => sum + (shippingAdjustments[o['Order ID']] || 0), 0),
+                    date: selectedDate,
+                    store: selectedStore,
+                    user: currentUser?.FullName
+                };
+                
+                // Adjust paid/cod logic: since we just MARKED them as Paid if verified, 
+                // in the summary they are all basically "Processed as Paid" if they were verified.
+                // However, let's just show the breakdown of what was ALREADY paid vs what was just COLLECTED.
+                const alreadyPaid = successVerified.filter(o => o['Payment Status'] === 'Paid').reduce((sum, o) => sum + (o['Grand Total'] || 0), 0);
+                const newlyPaid = successVerified.filter(o => o['Payment Status'] !== 'Paid').reduce((sum, o) => sum + (o['Grand Total'] || 0), 0);
+
+                setSummaryResult({
+                    ...stats,
+                    alreadyPaid,
+                    newlyPaid
+                });
+
                 showNotification("Delivery verified and database updated!", "success"); 
-                onClose();
+                setStep(STEPS.SUMMARY);
+                setShowPaymentModal(false);
             }
             
             await refreshData();
@@ -345,6 +376,66 @@ const DeliveryListGeneratorModal: React.FC<DeliveryListGeneratorModalProps> = ({
             alert(err.message || "Failed to update database."); 
         } finally { 
             setIsSubmitting(false); 
+        }
+    };
+
+    const handleCopySummary = async () => {
+        const element = document.getElementById('summary-card');
+        if (!element) return;
+        try {
+            setCopyStatus('idle');
+            // Ensure fonts are loaded before capturing
+            await document.fonts.ready;
+            
+            // Artificial delay to ensure full render
+            await new Promise(resolve => setTimeout(resolve, 800));
+            
+            const canvas = await html2canvas(element, {
+                backgroundColor: '#020617',
+                scale: 4, // Higher scale for extreme clarity
+                logging: false,
+                useCORS: true,
+                onclone: (clonedDoc) => {
+                    const el = clonedDoc.getElementById('summary-card');
+                    if (el) {
+                        // FORCE FONT AND REMOVE BREAKING STYLES FOR KHMER
+                        el.style.fontFamily = "'Kantumruy Pro', sans-serif";
+                        const allNodes = el.querySelectorAll('*');
+                        allNodes.forEach(node => {
+                            const htmlNode = node as HTMLElement;
+                            // Khmer rendering breaks with letter-spacing or uppercase in some canvas engines
+                            htmlNode.style.letterSpacing = 'normal';
+                            htmlNode.style.textTransform = 'none';
+                            htmlNode.style.fontFamily = "'Kantumruy Pro', sans-serif";
+                        });
+                    }
+                }
+            });
+            
+            canvas.toBlob(async (blob) => {
+                if (blob) {
+                    try {
+                        // Standard clipboard copy (modern browsers)
+                        await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
+                        setCopyStatus('success');
+                        setTimeout(() => setCopyStatus('idle'), 4000);
+                        showNotification("Image Copied to Clipboard!", "success");
+                    } catch (err) {
+                        console.error("Clipboard write failed, falling back to download:", err);
+                        // Fallback only if clipboard fails (required to Paste in Telegram)
+                        const dataUrl = canvas.toDataURL('image/png');
+                        const link = document.createElement('a');
+                        link.download = `summary_${Date.now()}.png`;
+                        link.href = dataUrl;
+                        link.click();
+                        setCopyStatus('error');
+                        setTimeout(() => setCopyStatus('idle'), 4000);
+                    }
+                }
+            }, 'image/png');
+        } catch (e) { 
+            console.error("Canvas capture failed:", e);
+            setCopyStatus('error'); 
         }
     };
 
@@ -561,6 +652,87 @@ const DeliveryListGeneratorModal: React.FC<DeliveryListGeneratorModalProps> = ({
                                             </div>
                                         );
                                     })}
+                                </div>
+                            </div>
+                        )}
+
+                        {step === STEPS.SUMMARY && summaryResult && (
+                            <div className="h-full flex flex-col items-center justify-center space-y-8 animate-fade-in text-center max-w-lg mx-auto w-full">
+                                <div id="summary-card" className="w-full bg-slate-900/60 border-2 border-emerald-500/30 rounded-[2.5rem] p-6 sm:p-8 space-y-6 shadow-2xl relative overflow-hidden flex flex-col items-center">
+                                    <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-600/10 blur-[60px] -mr-16 -mt-16"></div>
+                                    
+                                    <div className="w-20 h-20 bg-emerald-500/10 rounded-full flex items-center justify-center border-2 border-emerald-500/20 shadow-xl mb-2 relative z-10">
+                                        <svg className="w-10 h-10 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
+                                    </div>
+                                    
+                                    <div className="space-y-2 relative z-10">
+                                        <h3 className="text-2xl font-black text-white uppercase tracking-tighter">ប្រតិបត្តិការណ៍ជោគជ័យ</h3>
+                                        <p className="text-gray-400 text-[10px] font-bold uppercase tracking-widest">{summaryResult.date} | {summaryResult.store}</p>
+                                    </div>
+
+                                    <div className="w-full grid grid-cols-2 gap-4 relative z-10">
+                                        <div className="bg-black/40 p-4 rounded-[2rem] border border-white/5 shadow-inner">
+                                            <p className="text-[10px] text-gray-500 font-bold mb-1">ចំនួនកញ្ចប់ (COUNT)</p>
+                                            <p className="text-3xl font-black text-white">{summaryResult.count}</p>
+                                        </div>
+                                        <div className="bg-blue-600/10 p-4 rounded-[2rem] border border-blue-500/20 shadow-inner">
+                                            <p className="text-[10px] text-blue-400 font-bold mb-1">ថ្លៃដឹកសរុប (SHIPPING)</p>
+                                            <p className="text-3xl font-black text-white">${summaryResult.shipCost.toFixed(2)}</p>
+                                        </div>
+                                    </div>
+
+                                    <div className="w-full bg-black/20 p-5 rounded-[2rem] border border-white/5 space-y-3 text-left relative z-10">
+                                        <div className="flex justify-between items-center border-b border-white/5 pb-3">
+                                            <span className="text-[13px] font-bold text-gray-200">សរុបទឹកប្រាក់ (TOTAL)</span>
+                                            <span className="text-2xl font-black text-white tracking-tighter">${summaryResult.totalUSD.toFixed(2)}</span>
+                                        </div>
+                                        <div className="flex justify-between items-center text-xs font-bold text-gray-300">
+                                            <span>├─ 🟢 បង់រួចស្រាប់ (Paid)</span>
+                                            <span className="text-emerald-400">${summaryResult.alreadyPaid.toFixed(2)}</span>
+                                        </div>
+                                        <div className="flex justify-between items-center text-xs font-bold text-gray-300">
+                                            <span>└─ 💵 ប្រមូលថ្មី (COD)</span>
+                                            <span className="text-blue-400">${summaryResult.newlyPaid.toFixed(2)}</span>
+                                        </div>
+                                    </div>
+
+                                    <div className="pt-4 border-t border-white/5 w-full relative z-10">
+                                        <p className="text-[9px] text-gray-500 font-bold italic">🙏 សូមអរគុណដល់ {summaryResult.user}!</p>
+                                        <p className="text-[8px] text-gray-600 font-bold uppercase tracking-widest mt-1">Generated by ACC Order System</p>
+                                    </div>
+                                </div>
+
+                                <div className="flex flex-col w-full gap-3 mt-4">
+                                    <button 
+                                        onClick={async () => {
+                                            // Handle Text Copy manually here to combine both
+                                            const text = `✅ **ប្រតិបត្តិការណ៍ជោគជ័យ**\n` +
+                                                `👤 អ្នករៀបចំ: ${summaryResult.user}\n` +
+                                                `📅 កាលបរិច្ឆេទ: ${summaryResult.date}\n` +
+                                                `🏭 ឃ្លាំង: ${summaryResult.store}\n` +
+                                                `--------------------------------\n` +
+                                                `📦 ចំនួនកញ្ចប់: ${summaryResult.count} កញ្ចប់\n` +
+                                                `💰 សរុបទឹកប្រាក់: $${summaryResult.totalUSD.toFixed(2)}\n` +
+                                                `   ├─ 🟢 បង់រួចស្រាប់: $${summaryResult.alreadyPaid.toFixed(2)}\n` +
+                                                `   └─ 💵 ប្រមូលថ្មី (COD): $${summaryResult.newlyPaid.toFixed(2)}\n` +
+                                                `🚚 ថ្លៃដឹកសរុប: $${summaryResult.shipCost.toFixed(2)}\n` +
+                                                `--------------------------------\n` +
+                                                `🙏 សូមអរគុណដល់ ${summaryResult.user} សម្រាប់ការបញ្ចប់កិច្ចការនេះ!`;
+                                            try { await navigator.clipboard.writeText(text); } catch (e) {} // Silent fail for text
+                                            
+                                            // Then trigger Image Copy
+                                            await handleCopySummary();
+                                        }}
+                                        className={`w-full py-4 rounded-2xl font-black uppercase text-xs tracking-[0.1em] shadow-xl active:scale-95 transition-all flex items-center justify-center gap-3 border ${copyStatus === 'success' ? 'bg-emerald-600 text-white border-emerald-500' : 'bg-white text-black border-white/10'}`}
+                                    >
+                                        {copyStatus === 'success' ? <>✅ បានចម្លង (Copied!)</> : <><svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" /></svg> ចម្លងសេចក្តីសង្ខេប (Copy Text & Image)</>}
+                                    </button>
+                                    <button 
+                                        onClick={onClose}
+                                        className="w-full py-4 bg-gray-800 text-gray-400 rounded-2xl font-black uppercase text-xs tracking-widest hover:text-white transition-all active:scale-95"
+                                    >
+                                        បិទ (Close)
+                                    </button>
                                 </div>
                             </div>
                         )}

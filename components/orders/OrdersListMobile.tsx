@@ -186,6 +186,7 @@ const OrdersListMobile: React.FC<OrdersListMobileProps> = ({
                                         <th className="p-3 min-w-[100px] text-gray-400">Store</th>
                                     )}
                                     <th className="p-3 text-right min-w-[80px]">Total</th>
+                                    {isVisible('note') && <th className="p-3 text-left min-w-[120px]">Note</th>}
                                     <th className="p-3 text-center min-w-[90px]">Status</th>
                                     <th className="p-3 text-center min-w-[50px]">Act</th>
                                     <th className="p-3 min-w-[100px]">Date</th>
@@ -214,6 +215,13 @@ const OrdersListMobile: React.FC<OrdersListMobileProps> = ({
                                             <td className="p-3 text-right font-black text-blue-400">
                                                 ${order['Grand Total'].toFixed(2)}
                                             </td>
+                                            {isVisible('note') && (
+                                                <td className="p-3">
+                                                    <div className="text-gray-400 line-clamp-1 truncate max-w-[100px] break-words" title={order.Note}>
+                                                        {order.Note || '-'}
+                                                    </div>
+                                                </td>
+                                            )}
                                             <td className="p-3 text-center">
                                                 <span className={`px-2 py-0.5 rounded text-[8px] font-black uppercase border ${order['Payment Status'] === 'Paid' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 'bg-red-500/10 text-red-400 border-red-500/20'}`}>
                                                     {order['Payment Status']}
@@ -412,6 +420,14 @@ const OrdersListMobile: React.FC<OrdersListMobileProps> = ({
                                             </button>
                                         )}
                                     </div>
+                                </div>
+                            )}
+
+                            {/* Note Section */}
+                            {isVisible('note') && order.Note && (
+                                <div className="bg-black/20 rounded-2xl p-3 border border-white/5 mb-5 shadow-inner">
+                                    <p className="text-[9px] text-gray-500 font-black uppercase tracking-widest mb-1">Note</p>
+                                    <p className="text-[11px] text-gray-300 line-clamp-2 break-words">{order.Note}</p>
                                 </div>
                             )}
 

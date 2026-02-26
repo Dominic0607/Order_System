@@ -213,6 +213,14 @@ const OrdersListTablet: React.FC<OrdersListTabletProps> = ({
                                 </div>
                             </div>
 
+                            {/* Note Section */}
+                            {isVisible('note') && order.Note && (
+                                <div className="mb-4 px-3 py-2 bg-black/20 rounded-xl border border-white/5">
+                                    <p className="text-[9px] text-gray-500 font-bold uppercase tracking-wider mb-1">Note</p>
+                                    <p className="text-[11px] text-gray-300 line-clamp-2 break-words">{order.Note}</p>
+                                </div>
+                            )}
+
                             {/* Footer: Total & Actions */}
                             <div className="mt-auto">
                                 <div className="flex justify-between items-end mb-4 pt-3 border-t border-white/5">

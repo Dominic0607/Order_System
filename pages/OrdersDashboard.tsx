@@ -60,7 +60,8 @@ const OrdersDashboard: React.FC<OrdersDashboardProps> = ({ onBack, initialFilter
                 c.key !== 'productInfo' && 
                 c.key !== 'print' && 
                 c.key !== 'check' && 
-                c.key !== 'fulfillment'
+                c.key !== 'fulfillment' &&
+                c.key !== 'note'
             ).map(c => c.key)
         );
     });
@@ -460,3 +461,4 @@ const OrdersDashboard: React.FC<OrdersDashboardProps> = ({ onBack, initialFilter
 };
 
 export default OrdersDashboard;
+1

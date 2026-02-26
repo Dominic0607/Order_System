@@ -2,21 +2,22 @@
 import React, { useState, useRef, useEffect } from 'react';
 
 export const availableColumns = [
-    { key: 'index', label: '#' },
-    { key: 'orderId', label: 'ID' },
-    { key: 'customerName', label: 'ឈ្មោះអតិថិជន' },
-    { key: 'productInfo', label: 'ព័ត៌មាន Product' }, 
+    { key: 'index', label: 'លេខរៀង' },
+    { key: 'actions', label: 'ប៊ូតុង' },
+    { key: 'customerName', label: 'អតិថិជន' },
+    { key: 'productInfo', label: 'ទំនិញ' },
     { key: 'location', label: 'ទីតាំង' },
-    { key: 'pageInfo', label: 'Page' }, 
-    { key: 'fulfillment', label: 'ឃ្លាំង (Fulfillment)' },
-    { key: 'total', label: 'សរុប' },
+    { key: 'pageInfo', label: 'Page' },
+    { key: 'fulfillment', label: 'ឃ្លាំង' },
+    { key: 'total', label: 'តម្លៃសរុប' },
     { key: 'shippingService', label: 'សេវាដឹក' },
-    { key: 'shippingCost', label: '(Cost) សេវាដឹក' },
-    { key: 'status', label: 'ស្ថានភាព' },
-    { key: 'date', label: 'កាលបរិច្ឆេទ & ម៉ោង' },
-    { key: 'print', label: 'ព្រីន' },
-    { key: 'actions', label: 'សកម្មភាព' },
-    { key: 'check', label: 'Check' },
+    { key: 'shippingCost', label: 'ថ្លៃដឹក' },
+    { key: 'status', label: 'ស្ថានភាពបង់ប្រាក់' },
+    { key: 'date', label: 'កាលបរិច្ឆេទ' },
+    { key: 'note', label: 'ចំណាំ (Note)' },
+    { key: 'print', label: 'Print' },
+    { key: 'check', label: 'ផ្ទៀងផ្ទាត់' },
+    { key: 'orderId', label: 'ID' }
 ];
 
 interface ColumnTogglerProps {
