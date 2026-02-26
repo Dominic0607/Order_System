@@ -71,7 +71,9 @@ const OrdersListMobile: React.FC<OrdersListMobileProps> = ({
     const isActionsVisible = !visibleColumns || visibleColumns.has('actions');
     const isPrintVisible = !visibleColumns || visibleColumns.has('print');
     const isCheckVisible = !visibleColumns || visibleColumns.has('check');
-    const isFulfillmentVisible = !visibleColumns || visibleColumns.has('fulfillment');
+    const isVisible = (key: string) => !visibleColumns || visibleColumns.has(key);
+
+    const isFulfillmentVisible = isVisible('fulfillment');
 
     // Helper for robust date parsing
     const getSafeDateObj = (dateStr: string) => {

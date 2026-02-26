@@ -368,9 +368,50 @@ const CreateOrderPage: React.FC<CreateOrderPageProps> = ({ team, onSaveSuccess, 
     const nextStep = () => { if (validateStep(currentStep)) setCurrentStep(currentStep + 1); };
     const prevStep = () => { if (currentStep > 1) setCurrentStep(currentStep - 1); };
 
+    const [undoTimer, setUndoTimer] = useState<number | null>(null);
+    const [isUndoing, setIsUndoing] = useState(false);
+    const submitTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
     const submitOrder = async () => {
         for (const step of STEPS) { if (!validateStep(step.number)) { setCurrentStep(step.number); return; } }
         setLoading(true);
+
+        // OPTIMISTIC UI: Start 5-second countdown
+        setUndoTimer(5);
+        
+        let secondsLeft = 5;
+        const interval = setInterval(() => {
+            secondsLeft -= 1;
+            setUndoTimer(secondsLeft);
+            if (secondsLeft <= 0) {
+                clearInterval(interval);
+            }
+        }, 1000);
+
+        // Wait for the Grace Period before actual submission
+        submitTimeoutRef.current = setTimeout(async () => {
+            clearInterval(interval);
+            setUndoTimer(null);
+            
+            // Proceed with ACTUAL API CALL
+            await executeFinalSubmit();
+        }, 5000);
+    };
+
+    const handleUndo = () => {
+        if (submitTimeoutRef.current) {
+            clearTimeout(submitTimeoutRef.current);
+            submitTimeoutRef.current = null;
+        }
+        setIsUndoing(true);
+        setTimeout(() => {
+            setUndoTimer(null);
+            setLoading(false);
+            setIsUndoing(false);
+        }, 500); // Small animation delay
+    };
+
+    const executeFinalSubmit = async () => {
         let phoneToSend = '0' + order.customer.phone.replace(/[^0-9]/g, '').replace(/^0+/, '');
         
         // Construct Address Details manually to ensure it appears in the Sheet/Telegram even if scheduled

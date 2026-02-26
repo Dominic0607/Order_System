@@ -106,6 +106,8 @@ const OrdersListTablet: React.FC<OrdersListTabletProps> = ({
         return date.toLocaleDateString('km-KH');
     };
 
+    const isVisible = (key: string) => !visibleColumns || visibleColumns.has(key);
+
     return (
         <div className="space-y-6 pb-20">
             {/* Grand Total Summary Reused from Mobile but tailored style handled by grid container */}
