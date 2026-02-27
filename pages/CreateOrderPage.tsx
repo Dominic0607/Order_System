@@ -377,10 +377,10 @@ const CreateOrderPage: React.FC<CreateOrderPageProps> = ({ team, onSaveSuccess, 
         for (const step of STEPS) { if (!validateStep(step.number)) { setCurrentStep(step.number); return; } }
         setLoading(true);
 
-        // OPTIMISTIC UI: Start 5-second countdown
-        setUndoTimer(5);
+        // OPTIMISTIC UI: Start 7-second countdown
+        setUndoTimer(7);
         
-        let secondsLeft = 5;
+        let secondsLeft = 7;
         if (submitIntervalRef.current) clearInterval(submitIntervalRef.current);
         submitIntervalRef.current = setInterval(() => {
             secondsLeft -= 1;
@@ -404,7 +404,7 @@ const CreateOrderPage: React.FC<CreateOrderPageProps> = ({ team, onSaveSuccess, 
             
             // Proceed with ACTUAL API CALL
             await executeFinalSubmit();
-        }, 5000);
+        }, 7000);
     };
 
     const handleUndo = () => {
@@ -965,7 +965,7 @@ const CreateOrderPage: React.FC<CreateOrderPageProps> = ({ team, onSaveSuccess, 
                                     className="stroke-emerald-500 fill-none transition-all duration-1000 ease-linear" 
                                     strokeWidth="6" 
                                     strokeDasharray={2 * Math.PI * 45}
-                                    strokeDashoffset={2 * Math.PI * 45 * (1 - undoTimer / 5)}
+                                    strokeDashoffset={2 * Math.PI * 45 * (1 - undoTimer / 7)}
                                     strokeLinecap="round"
                                 />
                             </svg>
