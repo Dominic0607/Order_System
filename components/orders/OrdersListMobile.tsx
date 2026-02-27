@@ -225,9 +225,17 @@ const OrdersListMobile: React.FC<OrdersListMobileProps> = ({
                                                 </td>
                                             )}
                                             <td className="p-3 text-center">
-                                                <span className={`px-2 py-0.5 rounded text-[8px] font-black uppercase border ${order['Payment Status'] === 'Paid' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 'bg-red-500/10 text-red-400 border-red-500/20'}`}>
-                                                    {order['Payment Status']}
-                                                </span>
+                                                <div className="flex flex-col items-center gap-1">
+                                                    <span className={`px-2 py-0.5 rounded text-[8px] font-black uppercase border ${order['Payment Status'] === 'Paid' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 'bg-red-500/10 text-red-400 border-red-500/20'}`}>
+                                                        {order['Payment Status']}
+                                                    </span>
+                                                    {order['Scheduled Time'] && getSafeDateObj(order['Scheduled Time']).getTime() > Date.now() && (
+                                                        <div className="flex items-center gap-1 text-[7px] font-black text-indigo-400 uppercase tracking-widest bg-indigo-500/10 px-1 rounded animate-pulse">
+                                                            <svg className="w-2 h-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                                                            Sch
+                                                        </div>
+                                                    )}
+                                                </div>
                                             </td>
                                             <td className="p-3 text-center">
                                                 <div className="flex items-center gap-2 justify-center">
@@ -284,6 +292,7 @@ const OrdersListMobile: React.FC<OrdersListMobileProps> = ({
                     const isThisCopied = copiedId === order['Order ID'];
                     const isThisTemplateCopied = copiedTemplateId === order['Order ID'];
                     const allowEdit = canEditOrder(order);
+                    const isScheduled = order['Scheduled Time'] && getSafeDateObj(order['Scheduled Time']).getTime() > Date.now();
 
                     return (
                         <div 
@@ -316,40 +325,48 @@ const OrdersListMobile: React.FC<OrdersListMobileProps> = ({
                                             />
                                         </div>
                                     )}
-                                    <div className="flex gap-2">
-                                        <button 
-                                            onClick={() => handleCopy(order['Order ID'])}
-                                            className={`
-                                                flex items-center gap-2 px-3 py-1 rounded-xl border transition-all active:scale-95
-                                                ${isThisCopied 
-                                                    ? 'bg-emerald-500/20 border-emerald-500/50 text-emerald-400' 
-                                                    : 'bg-black/30 border-white/5 text-gray-400 hover:text-white'
-                                                }
-                                            `}
-                                        >
-                                            <span className="text-[10px] font-black uppercase tracking-widest font-mono">
-                                                #{order['Order ID'].substring(0, 8)}
-                                            </span>
-                                            {isThisCopied && <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>}
-                                        </button>
-                                        
-                                        {/* Copy Template Button */}
-                                        <button
-                                            onClick={() => handleCopyTemplate(order)}
-                                            className={`
-                                                flex items-center justify-center w-8 h-8 rounded-xl border transition-all active:scale-95
-                                                ${isThisTemplateCopied 
-                                                    ? 'bg-indigo-500/20 border-indigo-500/50 text-indigo-400' 
-                                                    : 'bg-black/30 border-white/5 text-gray-400 hover:text-white'
-                                                }
-                                            `}
-                                        >
-                                            {isThisTemplateCopied ? (
-                                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7"/></svg>
-                                            ) : (
-                                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" /></svg>
-                                            )}
-                                        </button>
+                                    <div className="flex flex-col gap-1">
+                                        <div className="flex gap-2">
+                                            <button 
+                                                onClick={() => handleCopy(order['Order ID'])}
+                                                className={`
+                                                    flex items-center gap-2 px-3 py-1 rounded-xl border transition-all active:scale-95
+                                                    ${isThisCopied 
+                                                        ? 'bg-emerald-500/20 border-emerald-500/50 text-emerald-400' 
+                                                        : 'bg-black/30 border-white/5 text-gray-400 hover:text-white'
+                                                    }
+                                                `}
+                                            >
+                                                <span className="text-[10px] font-black uppercase tracking-widest font-mono">
+                                                    #{order['Order ID'].substring(0, 8)}
+                                                </span>
+                                                {isThisCopied && <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>}
+                                            </button>
+                                            
+                                            {/* Copy Template Button */}
+                                            <button
+                                                onClick={() => handleCopyTemplate(order)}
+                                                className={`
+                                                    flex items-center justify-center w-8 h-8 rounded-xl border transition-all active:scale-95
+                                                    ${isThisTemplateCopied 
+                                                        ? 'bg-indigo-500/20 border-indigo-500/50 text-indigo-400' 
+                                                        : 'bg-black/30 border-white/5 text-gray-400 hover:text-white'
+                                                    }
+                                                `}
+                                            >
+                                                {isThisTemplateCopied ? (
+                                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7"/></svg>
+                                                ) : (
+                                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" /></svg>
+                                                )}
+                                            </button>
+                                        </div>
+                                        {isScheduled && (
+                                            <div className="flex items-center gap-1.5 px-2 py-0.5 bg-indigo-500/20 border border-indigo-500/30 rounded-lg animate-pulse self-start" title={`Scheduled: ${order['Scheduled Time']}`}>
+                                                <svg className="w-2.5 h-2.5 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                                                <span className="text-[8px] font-black text-indigo-400 uppercase tracking-widest">Scheduled</span>
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
                                 

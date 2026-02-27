@@ -180,6 +180,10 @@ const OrdersListDesktop: React.FC<OrdersListDesktopProps> = ({
                                 const shippingLogo = getShippingLogo(order['Internal Shipping Method']);
                                 const orderId = order['Order ID'];
                                 
+                                // Scheduled Status Check
+                                const scheduledTimeStr = order['Scheduled Time'];
+                                const isScheduled = scheduledTimeStr && getSafeDateObj(scheduledTimeStr).getTime() > Date.now();
+                                
                                 // *** STRICT CHECK FOR 'A' or TRUE ***
                                 const isVerified = order.IsVerified === true || String(order.IsVerified).toUpperCase() === 'TRUE' || order.IsVerified === 'A';
                                 
@@ -226,7 +230,22 @@ const OrdersListDesktop: React.FC<OrdersListDesktopProps> = ({
                                         {isVisible('shippingService') && <td className="px-6 py-5"><div className="flex items-center gap-2.5">{shippingLogo && <img src={shippingLogo} className="w-5 h-5 rounded-lg object-contain bg-gray-950 p-0.5 border border-white/5" alt="shipping" />}<span className="text-orange-400/80 font-black uppercase truncate tracking-tight text-[clamp(10px,0.8vw,12px)]">{order['Internal Shipping Method'] || '-'}</span></div></td>}
                                         {isVisible('shippingCost') && <td className="px-6 py-5 text-gray-400 font-mono font-black tracking-tighter text-[clamp(13px,0.9vw,15px)]">${(Number(order['Internal Cost']) || 0).toFixed(3)}</td>}
                                         {isVisible('status') && <td className="px-6 py-5"><span className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest border ${order['Payment Status'] === 'Paid' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 'bg-red-500/10 text-red-400 border border-red-500/20'}`}>{order['Payment Status']}</span></td>}
-                                        {isVisible('date') && (<td className="px-4 py-5"><div className="flex flex-col items-start"><span className="font-bold text-gray-400 text-[clamp(11px,0.8vw,12px)]">{orderDate.toLocaleDateString('km-KH')}</span><span className="font-mono text-blue-500/80 font-black text-[clamp(10px,0.7vw,11px)]">{orderDate.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })}</span></div></td>)}
+                                        {isVisible('date') && (
+                                            <td className="px-4 py-5">
+                                                <div className="flex flex-col items-start gap-1">
+                                                    {isScheduled && (
+                                                        <div className="flex items-center gap-1.5 px-2 py-0.5 bg-indigo-500/20 border border-indigo-500/30 rounded-md mb-1 animate-pulse" title={`Scheduled for: ${scheduledTime}`}>
+                                                            <svg className="w-3 h-3 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                                                            <span className="text-[9px] font-black text-indigo-400 uppercase tracking-widest">Scheduled</span>
+                                                        </div>
+                                                    )}
+                                                    <div className="flex flex-col items-start">
+                                                        <span className="font-bold text-gray-400 text-[clamp(11px,0.8vw,12px)]">{orderDate.toLocaleDateString('km-KH')}</span>
+                                                        <span className="font-mono text-blue-500/80 font-black text-[clamp(10px,0.7vw,11px)]">{orderDate.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })}</span>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                        )}
                                         {isVisible('note') && <td className="px-6 py-5 overflow-hidden"><div className="text-gray-300 text-[clamp(11px,0.8vw,12px)] line-clamp-2 break-words overflow-hidden" title={order.Note}>{order.Note || '-'}</div></td>}
                                         
                                         {isVisible('print') && (
