@@ -371,6 +371,7 @@ const CreateOrderPage: React.FC<CreateOrderPageProps> = ({ team, onSaveSuccess, 
     const [undoTimer, setUndoTimer] = useState<number | null>(null);
     const [isUndoing, setIsUndoing] = useState(false);
     const submitTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+    const submitIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
     const submitOrder = async () => {
         for (const step of STEPS) { if (!validateStep(step.number)) { setCurrentStep(step.number); return; } }
@@ -380,17 +381,25 @@ const CreateOrderPage: React.FC<CreateOrderPageProps> = ({ team, onSaveSuccess, 
         setUndoTimer(5);
         
         let secondsLeft = 5;
-        const interval = setInterval(() => {
+        if (submitIntervalRef.current) clearInterval(submitIntervalRef.current);
+        submitIntervalRef.current = setInterval(() => {
             secondsLeft -= 1;
             setUndoTimer(secondsLeft);
             if (secondsLeft <= 0) {
-                clearInterval(interval);
+                if (submitIntervalRef.current) {
+                    clearInterval(submitIntervalRef.current);
+                    submitIntervalRef.current = null;
+                }
             }
         }, 1000);
 
         // Wait for the Grace Period before actual submission
+        if (submitTimeoutRef.current) clearTimeout(submitTimeoutRef.current);
         submitTimeoutRef.current = setTimeout(async () => {
-            clearInterval(interval);
+            if (submitIntervalRef.current) {
+                clearInterval(submitIntervalRef.current);
+                submitIntervalRef.current = null;
+            }
             setUndoTimer(null);
             
             // Proceed with ACTUAL API CALL
@@ -402,6 +411,10 @@ const CreateOrderPage: React.FC<CreateOrderPageProps> = ({ team, onSaveSuccess, 
         if (submitTimeoutRef.current) {
             clearTimeout(submitTimeoutRef.current);
             submitTimeoutRef.current = null;
+        }
+        if (submitIntervalRef.current) {
+            clearInterval(submitIntervalRef.current);
+            submitIntervalRef.current = null;
         }
         setIsUndoing(true);
         setTimeout(() => {
@@ -931,27 +944,54 @@ const CreateOrderPage: React.FC<CreateOrderPageProps> = ({ team, onSaveSuccess, 
 
             {/* UNDO / GRACE PERIOD OVERLAY */}
             {undoTimer !== null && (
-                <div className={`fixed inset-0 z-[200] flex items-end sm:items-center justify-center p-4 sm:p-0 bg-black/60 backdrop-blur-sm transition-opacity duration-300 ${isUndoing ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}>
-                    <div className="bg-[#0f172a] border-2 border-emerald-500/30 rounded-[2rem] sm:rounded-[3rem] p-6 sm:p-10 w-full max-w-md shadow-[0_0_50px_rgba(16,185,129,0.2)] text-center relative overflow-hidden animate-slide-up sm:animate-scale-in">
-                        <div className="absolute top-0 left-0 w-full h-1 bg-gray-800">
-                            <div className="h-full bg-emerald-500 transition-all duration-1000 ease-linear" style={{ width: `${(undoTimer / 5) * 100}%` }}></div>
+                <div className={`fixed inset-0 z-[250] flex items-center justify-center p-4 bg-slate-950/40 backdrop-blur-md transition-all duration-500 ${isUndoing ? 'opacity-0 scale-95 pointer-events-none' : 'opacity-100 scale-100'}`}>
+                    <div className="relative bg-[#0f172a]/90 border border-white/10 rounded-[2.5rem] p-8 sm:p-12 w-full max-w-sm shadow-[0_20px_70px_rgba(0,0,0,0.5)] text-center overflow-hidden ring-1 ring-white/10">
+                        {/* Background Decorative Glow */}
+                        <div className="absolute -top-24 -left-24 w-48 h-48 bg-emerald-500/20 blur-[80px] rounded-full pointer-events-none"></div>
+                        <div className="absolute -bottom-24 -right-24 w-48 h-48 bg-blue-500/20 blur-[80px] rounded-full pointer-events-none"></div>
+
+                        {/* Circular Progress & Icon */}
+                        <div className="relative w-32 h-32 mx-auto mb-8 flex items-center justify-center">
+                            <svg className="w-full h-full -rotate-90 transform" viewBox="0 0 100 100">
+                                {/* Background Circle */}
+                                <circle 
+                                    cx="50" cy="50" r="45" 
+                                    className="stroke-gray-800 fill-none" 
+                                    strokeWidth="6" 
+                                />
+                                {/* Progress Circle */}
+                                <circle 
+                                    cx="50" cy="50" r="45" 
+                                    className="stroke-emerald-500 fill-none transition-all duration-1000 ease-linear" 
+                                    strokeWidth="6" 
+                                    strokeDasharray={2 * Math.PI * 45}
+                                    strokeDashoffset={2 * Math.PI * 45 * (1 - undoTimer / 5)}
+                                    strokeLinecap="round"
+                                />
+                            </svg>
+                            <div className="absolute inset-0 flex flex-col items-center justify-center">
+                                <span className="text-3xl font-black text-white font-mono leading-none">{undoTimer}</span>
+                                <span className="text-[10px] font-black text-gray-500 uppercase tracking-widest mt-1">Seconds</span>
+                            </div>
                         </div>
-                        
-                        <div className="w-20 h-20 bg-emerald-500/10 rounded-full flex items-center justify-center mx-auto mb-6 border border-emerald-500/20 relative">
-                            <svg className="w-10 h-10 text-emerald-500 absolute animate-ping opacity-20" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
-                            <svg className="w-10 h-10 text-emerald-500 relative z-10" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
+
+                        <div className="space-y-2 mb-10">
+                            <h3 className="text-2xl font-black text-white uppercase tracking-tighter">រួចរាល់ហើយ!</h3>
+                            <p className="text-gray-400 text-sm font-medium px-4">ការកម្ម៉ង់របស់អ្នកនឹងត្រូវបានបញ្ជូនទៅកាន់ប្រព័ន្ធក្នុងពេលបន្តិចទៀតនេះ...</p>
                         </div>
-                        
-                        <h3 className="text-2xl font-black text-white uppercase tracking-tighter mb-2">ជោគជ័យ!</h3>
-                        <p className="text-gray-400 text-sm font-bold mb-8">ការកម្ម៉ង់កំពុងបញ្ជូនទៅកាន់ប្រព័ន្ធ...</p>
-                        
+
                         <button 
                             onClick={handleUndo}
-                            className="w-full py-4 bg-gray-800 hover:bg-red-600/20 text-gray-300 hover:text-red-400 border border-gray-700 hover:border-red-500/50 rounded-2xl font-black uppercase text-xs tracking-widest transition-all flex items-center justify-center gap-3 group"
+                            className="w-full py-4 bg-red-500 hover:bg-red-600 text-white rounded-2xl font-black uppercase text-[11px] tracking-[0.2em] shadow-[0_10px_25px_rgba(239,68,68,0.3)] transition-all active:scale-95 flex items-center justify-center gap-3 group relative overflow-hidden"
                         >
-                            <svg className="w-5 h-5 group-hover:-rotate-45 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" /></svg>
-                            បញ្ឈប់ការបញ្ជូន (Undo) <span className="bg-gray-900 px-2 py-0.5 rounded text-[10px] text-gray-500 group-hover:text-red-400 ml-1 font-mono">{undoTimer}s</span>
+                            <div className="absolute inset-0 bg-white/10 translate-y-full group-hover:translate-y-0 transition-transform duration-300"></div>
+                            <svg className="w-5 h-5 relative z-10 group-hover:-rotate-90 transition-transform duration-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={3}>
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
+                            </svg>
+                            <span className="relative z-10">បញ្ឈប់ការបញ្ជូន (Undo)</span>
                         </button>
+                        
+                        <p className="mt-6 text-[10px] font-black text-gray-600 uppercase tracking-[0.3em] animate-pulse-soft">Processing Order...</p>
                     </div>
                 </div>
             )}
