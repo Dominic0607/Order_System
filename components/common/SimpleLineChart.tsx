@@ -62,10 +62,10 @@ const SimpleLineChart: React.FC<SimpleLineChartProps> = ({ data, title }) => {
     const yTicks = getTicks(maxValue);
 
     return (
-        <div className="relative">
-            <h3 className="text-lg font-bold mb-4 text-white text-center">{title}</h3>
-            <div className="w-full overflow-x-auto">
-                <svg viewBox={`0 0 ${chartWidth} ${chartHeight}`} className="min-w-[500px]" preserveAspectRatio="xMinYMin meet">
+        <div className="relative w-full">
+            <h3 className="text-sm sm:text-lg font-black mb-6 text-white text-center uppercase tracking-widest">{title}</h3>
+            <div className="w-full overflow-hidden">
+                <svg viewBox={`0 0 ${chartWidth} ${chartHeight}`} className="w-full h-auto" preserveAspectRatio="xMinYMin meet">
                     {/* Y-Axis and Grid Lines */}
                     <g className="y-axis">
                         {yTicks.map(tick => (
@@ -80,18 +80,26 @@ const SimpleLineChart: React.FC<SimpleLineChartProps> = ({ data, title }) => {
 
                     {/* X-Axis Labels */}
                     <g className="x-axis">
-                         {data.map((d, i) => (
-                            <text
-                                key={i}
-                                x={padding.left + i * xScale}
-                                y={chartHeight - padding.bottom + 20}
-                                textAnchor="middle"
-                                fill="#9ca3af"
-                                fontSize="12"
-                            >
-                                {d.label}
-                            </text>
-                        ))}
+                         {data.map((d, i) => {
+                            // Only show certain labels if there are many to prevent overlapping
+                            const total = data.length;
+                            const skip = total > 10 ? Math.ceil(total / 6) : (total > 6 ? 2 : 1);
+                            if (i % skip !== 0 && i !== total - 1) return null;
+                            
+                            return (
+                                <text
+                                    key={i}
+                                    x={padding.left + i * xScale}
+                                    y={chartHeight - padding.bottom + 20}
+                                    textAnchor="middle"
+                                    fill="#9ca3af"
+                                    fontSize="10"
+                                    className="font-bold"
+                                >
+                                    {d.label}
+                                </text>
+                            );
+                        })}
                     </g>
                     
                     {/* Line path */}

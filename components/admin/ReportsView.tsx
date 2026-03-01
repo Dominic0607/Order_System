@@ -134,7 +134,7 @@ const ReportsView: React.FC<ReportsViewProps> = ({ orders, reportType, dateFilte
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8">
                 {/* Main Revenue Chart */}
                 <div className="lg:col-span-8 space-y-6 lg:space-y-8">
-                    <div className="page-card !p-8 bg-gray-900/40 border-white/5 h-full min-h-[400px] flex flex-col justify-center">
+                    <div className="page-card p-4 sm:!p-8 bg-gray-900/40 border-white/5 h-full min-h-[300px] sm:min-h-[400px] flex flex-col justify-center">
                         <SimpleLineChart data={stats.chartData} title="និន្នាការចំណូល (Revenue Trends)" />
                     </div>
 

@@ -189,6 +189,19 @@ const AdminDashboard: React.FC = () => {
         return Object.values(stats).sort((a, b) => b.revenue - a.revenue);
     }, [filteredData]);
 
+    const brandStats = useMemo(() => {
+        const stats: Record<string, { name: string, revenue: number, orders: number }> = {};
+        filteredData.forEach(order => {
+            const pageConfig = appData.pages?.find(p => p.PageName === order.Page);
+            const brandName = pageConfig?.DefaultStore || 'Unassigned';
+            
+            if (!stats[brandName]) stats[brandName] = { name: brandName, revenue: 0, orders: 0 };
+            stats[brandName].revenue += (Number(order['Grand Total']) || 0);
+            stats[brandName].orders += 1;
+        });
+        return Object.values(stats).sort((a, b) => b.revenue - a.revenue);
+    }, [filteredData, appData.pages]);
+
     const provinceStats = useMemo(() => {
         const stats: Record<string, { name: string, revenue: number, orders: number }> = {};
         filteredData.forEach(order => {
@@ -271,11 +284,12 @@ const AdminDashboard: React.FC = () => {
         setActiveDashboard('orders');
     };
 
-    const navigateToOrders = (filterType: 'team' | 'location' | 'store', value: string) => {
+    const navigateToOrders = (filterType: 'team' | 'location' | 'store' | 'brand', value: string) => {
         const filters: any = {};
         if (filterType === 'team') filters.team = value;
         if (filterType === 'location') filters.location = value;
         if (filterType === 'store') filters.fulfillmentStore = value; // Maps to Fulfillment Store from Overview
+        if (filterType === 'brand') filters.store = value; // Brand store
         
         // Pass current date state from dashboard overview
         filters.datePreset = dateFilter.preset;
@@ -301,9 +315,11 @@ const AdminDashboard: React.FC = () => {
                             teamRevenueStats={teamRevenueStats}
                             provinceStats={provinceStats}
                             storeStats={storeStats}
+                            brandStats={brandStats}
                             onTeamClick={(t) => navigateToOrders('team', t)}
                             onProvinceClick={(p) => navigateToOrders('location', p)}
                             onStoreClick={(s) => navigateToOrders('store', s)}
+                            onBrandClick={(b) => navigateToOrders('brand', b)}
                         />
                     );
                 }

@@ -7,6 +7,7 @@ import ProvincialMap from './ProvincialMap';
 import ProvincialSummaryList from './ProvincialSummaryList';
 import DateRangeFilter, { DateRangePreset } from '../common/DateRangeFilter';
 import FulfillmentStoreTable from './FulfillmentStoreTable';
+import SalesStoreTable from './SalesStoreTable';
 import { AppContext } from '../../context/AppContext';
 
 interface DashboardOverviewProps {
@@ -20,16 +21,18 @@ interface DashboardOverviewProps {
     teamRevenueStats: any[];
     provinceStats: any[];
     storeStats: any[];
+    brandStats: any[];
     onTeamClick: (team: string) => void;
     onProvinceClick: (province: string) => void;
     onStoreClick: (store: string) => void;
+    onBrandClick: (brand: string) => void;
 }
 
 const DashboardOverview: React.FC<DashboardOverviewProps> = ({
     currentUser, parsedOrders, 
     dateFilter, setDateFilter,
-    teamRevenueStats, provinceStats, storeStats,
-    onTeamClick, onProvinceClick, onStoreClick
+    teamRevenueStats, provinceStats, storeStats, brandStats,
+    onTeamClick, onProvinceClick, onStoreClick, onBrandClick
 }) => {
     // Note: We intentionally do NOT set a mobile page title here.
     // The requirement is to show the App Logo for the Dashboard view.
@@ -102,15 +105,15 @@ const DashboardOverview: React.FC<DashboardOverviewProps> = ({
             </div>
             
             {/* Main Tables */}
-            {/* Split layout for Team and Store tables */}
+            {/* Top row with 3 main breakdown tables */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8">
+                <TeamRevenueTable stats={teamRevenueStats} onStatClick={onTeamClick} />
+                <SalesStoreTable stats={brandStats} onStatClick={onBrandClick} />
+                <FulfillmentStoreTable stats={storeStats} onStatClick={onStoreClick} />
+            </div>
+            
+            {/* Map and Summary row */}
             <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 lg:gap-8">
-                <div className="xl:col-span-6">
-                    <TeamRevenueTable stats={teamRevenueStats} onStatClick={onTeamClick} />
-                </div>
-                <div className="xl:col-span-6">
-                    <FulfillmentStoreTable stats={storeStats} onStatClick={onStoreClick} />
-                </div>
-                
                 <div className="xl:col-span-8">
                     <ProvincialMap data={provinceStats} onProvinceClick={onProvinceClick} />
                 </div>
