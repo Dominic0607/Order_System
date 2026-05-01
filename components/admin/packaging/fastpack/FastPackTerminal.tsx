@@ -597,7 +597,7 @@ const FastPackTerminal: React.FC<FastPackTerminalProps> = ({ order, onClose, onS
                                                                 <span className="text-[10px] font-black text-[#848E9C] uppercase tracking-[0.2em]">Operational Source</span>
                                                                 <div className="flex items-center gap-2 mt-0.5">
                                                                     <h4 className="text-sm font-black text-white truncate uppercase">{order.Page || 'Direct'}</h4>
-                                                                    <span className="px-1.5 py-0.5 bg-[#FCD535]/10 border border-[#FCD535]/20 text-[#FCD535] text-[9px] font-black uppercase rounded">Team {order.Team || 'General'}</span>
+                                                                    <span className="px-2.5 py-1 bg-[#FCD535]/10 border border-[#FCD535]/20 text-[#FCD535] text-[11px] font-black uppercase rounded">TEAM-{order.Team || 'GENERAL'}</span>
                                                                 </div>
                                                             </div>
                                                         </div>
