@@ -613,14 +613,15 @@ function sendOrderToTelegram(data) {
   }
 
   // Check if already sent
-  if (!forceSync) {
+  if (!forceSync && !data.isUpdate) {
     const existingData = fetchOrderDataFromSheet(orderId, team);
     if (existingData) {
       const id1 = existingData["Telegram Message ID 1"];
       const id2 = existingData["Telegram Message ID 2"];
-      if (id1 || id2) {
+      const id3 = existingData["Telegram Message ID 3"];
+      if (id1 || id2 || id3) {
         console.log("ℹ️ [sendOrderToTelegram] Order " + orderId + " already has Telegram IDs. Skipping send (use Force Sync to retry).");
-        return { id1: id1, id2: id2 };
+        return { id1: id1, id2: id2, id3: id3 };
       }
     }
   }
@@ -1036,24 +1037,58 @@ function sendTelegramMessage(settings, data, templates) {
     "paymentStatus": paymentText,
     "date": dateText,
     "packedBy": data["Packed By"] || "",
-    "packedTime": data["Packed Time"] || "",
-    "driverName": data["Driver Name"] || "",
-    "trackingNumber": data["Tracking Number"] || "",
+    "packedTime": formatDateTime(data["Packed Time"]),
+    "driverName": data["Driver Name"] || data["Internal Shipping Details"] || data["Internal Shipping Method"] || "",
+    "trackingNumber": data["Tracking Number"] || data.orderId || "",
     "dispatchedBy": data["Dispatched By"] || "",
-    "dispatchedTime": data["Dispatched Time"] || "",
-    "deliveredTime": data["Delivered Time"] || "",
-    "packagePhotoUrl": data["Package Photo"] || "",
-    "deliveryPhotoUrl": data["Delivery Photo URL"] || data["Delivery Photo"] || ""
+    "dispatchedTime": formatDateTime(data["Dispatched Time"]),
+    "deliveredTime": formatDateTime(data["Delivered Time"]),
+    "packagePhotoUrl": toDirectLink(data["Package Photo"] || ""),
+    "deliveryPhotoUrl": toDirectLink(data["Delivery Photo URL"] || data["Delivery Photo"] || ""),
+    "dispatchInfo": (data["Dispatched By"] || data["Dispatched Time"]) ? ("\n\n--- ដឹកចេញ ---\n🚀 *យកចេញដោយ:* *" + (data["Dispatched By"] || "") + "*\n🕔 *ម៉ោងដឹកចេញ:* *" + formatDateTime(data["Dispatched Time"]) + "*") : "",
+    "deliveryInfo": (data["Delivered Time"] || data["Delivery Photo URL"] || data["Delivery Photo"]) ? ("\n\n--- ដឹកជោគជ័យ ---\n✅ *ម៉ោងទៅដល់:* *" + formatDateTime(data["Delivered Time"]) + "*" + (toDirectLink(data["Delivery Photo URL"] || data["Delivery Photo"] || "") ? ("\n[📸 រូបភាពដឹកជោគជ័យ](" + toDirectLink(data["Delivery Photo URL"] || data["Delivery Photo"] || "") + ")") : "")) : ""
   };
+
+  function formatDateTime(rawDate) {
+    if (!rawDate) return "";
+    try {
+      const d = new Date(rawDate);
+      if (isNaN(d.getTime())) return String(rawDate); // Return as-is if invalid date string
+      return Utilities.formatDate(d, Session.getScriptTimeZone(), "dd/MM/yyyy HH:mm");
+    } catch (e) {
+      return String(rawDate);
+    }
+  }
+
+  function toDirectLink(url) {
+    if (!url || typeof url !== 'string') return url;
+    if (url.indexOf("drive.google.com") !== -1) {
+      const match = url.match(/[-\w]{25,}/);
+      if (match) return "https://drive.google.com/uc?export=view&id=" + match[0];
+    }
+    return url;
+  }
 
   function applyTemplate(tpl) {
     if (!tpl) return "";
+
+    // DYNAMIC LABEL: Switch from "អ្នកដឹក:" to "ដាក់តាម:" if no driver/details exist
+    const hasDriverInfo = !!(data["Driver Name"] || data["Internal Shipping Details"]);
+    if (!hasDriverInfo && data["Internal Shipping Method"]) {
+      // Use regex to handle potential bold stars like *អ្នកដឹក:* or plain អ្នកដឹក:
+      tpl = tpl.replace(/អ្នកដឹក\s*:/g, "ដាក់តាម:");
+    }
+
     return tpl.replace(/\{\{(\w+)\}\}/g, function(m, key) {
       let val = vars[key] !== undefined ? vars[key] : m;
       
       // ESCAPE LOGIC: Protect Telegram Markdown V1 special characters
-      // We only escape if the value is a string and not already formatted by our logic
-      if (typeof val === 'string' && key !== 'paymentStatus' && key !== 'note' && key !== 'shippingDetails') {
+      // Do NOT escape URLs as it breaks the link (e.g. underscores in Drive IDs)
+      if (typeof val === 'string' && 
+          key !== 'paymentStatus' && 
+          key !== 'note' && 
+          key !== 'shippingDetails' &&
+          !key.toLowerCase().includes('url')) {
         // Characters to escape: * _ ` [
         return val.replace(/([*_`\[])/g, '\\$1');
       }
@@ -1119,10 +1154,17 @@ function sendTelegramMessage(settings, data, templates) {
     }
   }
   if (part3Tpl) {
+    const isPacked = data["Fulfillment Status"] === "Ready to Ship" || 
+                     data["Fulfillment Status"] === "Shipped" || 
+                     data["Fulfillment Status"] === "Delivered" || 
+                     data["Package Photo"];
+    
+    const part3Text = isPacked ? applyTemplate(part3Tpl) : "📦 *ព័ត៌មានការវេចខ្ចប់*\n----------------------------------\n⏳ *ស្ថានភាព:* *រង់ចាំការវេចខ្ចប់...*";
+
     if (msgId3Existing) {
-      editSingleTelegramMsg(settings, msgId3Existing, applyTemplate(part3Tpl));
-    } else if (data["Fulfillment Status"] === "Ready to Ship" || data["Fulfillment Status"] === "Shipped" || data["Fulfillment Status"] === "Delivered" || data["Package Photo"]) {
-      msgId3 = sendSingleTelegramMsg(settings, applyTemplate(part3Tpl));
+      editSingleTelegramMsg(settings, msgId3Existing, part3Text);
+    } else {
+      msgId3 = sendSingleTelegramMsg(settings, part3Text);
     }
   }
 
@@ -1337,6 +1379,14 @@ function updateOrderTelegram(data, lock) {
         const tempOrder = fetchOrderDataFromSheet(orderId, "");
         if (tempOrder) team = tempOrder["Team"];
       }
+
+      // 🛡️ Auto-generate Tracking Number if missing during packing
+      if (updatedFields["Fulfillment Status"] === "Ready to Ship" && !updatedFields["Tracking Number"]) {
+        const existing = fetchOrderDataFromSheet(orderId, team);
+        if (existing && !existing["Tracking Number"]) {
+          updatedFields["Tracking Number"] = orderId;
+        }
+      }
       
       updateOrderInSheets(orderId, team, updatedFields);
       console.log("✅ updateOrderTelegram: Sheets updated for ID: " + orderId + " (Team: " + team + ")");
@@ -1381,6 +1431,7 @@ function updateOrderTelegram(data, lock) {
     normalizedData.team = team || normalizedData["Team"];
     normalizedData.fulfillmentStore = normalizedData["Fulfillment Store"] || updatedFields["Fulfillment Store"];
     normalizedData.forceSync = updatedFields["Force Sync"] === true || data.forceSync === true;
+    normalizedData.isUpdate = true;
 
     return sendOrderToTelegram(normalizedData);
   } catch (e) {

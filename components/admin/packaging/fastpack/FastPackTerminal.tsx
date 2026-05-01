@@ -1,6 +1,7 @@
 import React, { useState, useContext, useRef, useEffect, useCallback, useMemo } from 'react';
 import ReactQRCode from 'react-qr-code';
 import { AppContext } from '@/context/AppContext';
+import { useUI } from '@/context/UIContext';
 import { WEB_APP_URL } from '@/constants';
 import Spinner from '@/components/common/Spinner';
 import { ParsedOrder } from '@/types';
@@ -29,11 +30,24 @@ interface FastPackTerminalProps {
 
 const FastPackTerminal: React.FC<FastPackTerminalProps> = ({ order, onClose, onSuccess }) => {
     const { currentUser, appData, advancedSettings, language } = useContext(AppContext);
+    const { showNotification } = useUI();
     const t = translations[language as 'km' | 'en'];
     const { setOrders } = useOrder();
     
     const [step, setStep] = useState<PackStep>('VERIFYING');
     const prevStepRef = useRef<PackStep>('VERIFYING');
+
+    const formattedPhone = useMemo(() => {
+        if (!order?.['Customer Phone']) return '';
+        const phone = order['Customer Phone'].trim();
+        return phone.startsWith('0') ? phone : '0' + phone;
+    }, [order]);
+
+    const handleCopy = (text: string, label: string) => {
+        if (!text) return;
+        navigator.clipboard.writeText(text);
+        showNotification(`${label} Copied`, 'success');
+    };
     
     // Update prevStepRef whenever step changes
     useEffect(() => {
@@ -278,7 +292,7 @@ const FastPackTerminal: React.FC<FastPackTerminalProps> = ({ order, onClose, onS
             drawTextWithShadow(`អ្នកវេចខ្ចប់: ${currentUser?.FullName || 'Admin'}`, paddingX, botLeftY - lineSpacing - 15, `bold ${Math.round(canvas.height * 0.03)}px Kantumruy Pro, Kantumruy, sans-serif`, '#FFFFFF', 'left', 'bottom');
 
             // 2nd line: "លេខទូរស័ព្ទ: Phone"
-            drawTextWithShadow(`លេខទូរស័ព្ទ: ${order['Customer Phone']}`, paddingX, botLeftY - (lineSpacing * 2) - 30, `bold ${Math.round(canvas.height * 0.03)}px Kantumruy Pro, Kantumruy, sans-serif`, '#FCD535', 'left', 'bottom');
+            drawTextWithShadow(`លេខទូរស័ព្ទ: ${formattedPhone}`, paddingX, botLeftY - (lineSpacing * 2) - 30, `bold ${Math.round(canvas.height * 0.03)}px Kantumruy Pro, Kantumruy, sans-serif`, '#FCD535', 'left', 'bottom');
 
             // 1st line: "ទីតាំង: Location"
             drawTextWithShadow(`ទីតាំង: ${order.Location}`, paddingX, botLeftY - (lineSpacing * 3) - 45, `bold ${Math.round(canvas.height * 0.03)}px Kantumruy Pro, Kantumruy, sans-serif`, '#FFFFFF', 'left', 'bottom');
@@ -325,7 +339,7 @@ const FastPackTerminal: React.FC<FastPackTerminalProps> = ({ order, onClose, onS
         } finally { 
             setIsCapturing(false); 
         }
-    }, [order, currentUser, isCapturing]);
+    }, [order, currentUser, isCapturing, formattedPhone]);
 
     const { 
         isInitializing: isScannerLoading, 
@@ -393,7 +407,7 @@ const FastPackTerminal: React.FC<FastPackTerminalProps> = ({ order, onClose, onS
                                 setShowLabelEditor(false);
                                 setRefreshKey(prev => prev + 1);
                             }} 
-                            initialData={{ id: order['Order ID'], name: order['Customer Name'], phone: order['Customer Phone'], location: order.Location, address: order['Address Details'] || '', total: String(order['Grand Total']), payment: order['Payment Status'] || '', shipping: order['Internal Shipping Method'] || '', user: order.User, page: order.Page, store: order['Fulfillment Store'], note: order.Note || '' }} 
+                            initialData={{ id: order['Order ID'], name: order['Customer Name'], phone: formattedPhone, location: order.Location, address: order['Address Details'] || '', total: String(order['Grand Total']), payment: order['Payment Status'] || '', shipping: order['Internal Shipping Method'] || '', user: order.User, page: order.Page, store: order['Fulfillment Store'], note: order.Note || '' }} 
                         />
                     </div>
                 )}
@@ -514,7 +528,10 @@ const FastPackTerminal: React.FC<FastPackTerminalProps> = ({ order, onClose, onS
                                                         <span className="text-[11px] font-medium text-[#848E9C] mt-1">Order Logistics & Entity Data</span>
                                                     </div>
                                                     <div className="flex flex-col items-end">
-                                                        <span className="text-sm font-mono font-bold text-[#FCD535] bg-[#2B3139] px-3 py-1 rounded tracking-widest">
+                                                        <span 
+                                                            onClick={() => handleCopy(order['Order ID'], 'Order ID')}
+                                                            className="text-sm font-mono font-bold text-[#FCD535] bg-[#2B3139] px-3 py-1 rounded tracking-widest cursor-pointer hover:bg-[#363C44] transition-colors"
+                                                        >
                                                             #{order['Order ID'].substring(0, 12)}
                                                         </span>
                                                         <span className="text-[11px] text-[#848E9C] mt-1">Reference ID</span>
@@ -534,12 +551,22 @@ const FastPackTerminal: React.FC<FastPackTerminalProps> = ({ order, onClose, onS
                                                         <div>
                                                             <span className="text-[10px] font-black text-[#848E9C] uppercase tracking-[0.2em]">Customer Information | ព័ត៌មានអតិថិជន</span>
                                                             <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-6 mt-1">
-                                                                <h4 className="text-xl font-black text-white truncate leading-tight">{order['Customer Name']}</h4>
+                                                                <h4 
+                                                                    onClick={() => handleCopy(order['Customer Name'], 'Customer Name')}
+                                                                    className="text-xl font-black text-white truncate leading-tight cursor-pointer hover:text-[#FCD535] transition-colors"
+                                                                >
+                                                                    {order['Customer Name']}
+                                                                </h4>
                                                                 <div className="h-4 w-px bg-white/10 hidden sm:block"></div>
                                                                 <div className="flex items-center gap-3">
-                                                                    <span className="text-xl font-mono font-black text-[#FCD535] tracking-[0.05em]">{order['Customer Phone']}</span>
+                                                                    <span 
+                                                                        onClick={() => handleCopy(formattedPhone, 'Phone Number')}
+                                                                        className="text-xl font-mono font-black text-[#FCD535] tracking-[0.05em] cursor-pointer hover:text-white transition-colors"
+                                                                    >
+                                                                        {formattedPhone}
+                                                                    </span>
                                                                     {(() => {
-                                                                        const carrier = appData.phoneCarriers?.find(c => order['Customer Phone']?.startsWith(c.Prefixes.split(',')[0]));
+                                                                        const carrier = appData.phoneCarriers?.find(c => formattedPhone?.startsWith(c.Prefixes.split(',')[0]));
                                                                         if (!carrier) return null;
                                                                         return (
                                                                             <div className="w-6 h-6 flex items-center justify-center">
@@ -629,9 +656,9 @@ const FastPackTerminal: React.FC<FastPackTerminalProps> = ({ order, onClose, onS
 
                                                                         {/* Integrated Pay Info on the right of the cell */}
                                                                         <div className="flex flex-col items-end pl-6 border-l border-white/5">
-                                                                            <span className="text-[9px] font-black text-[#848E9C] uppercase tracking-[0.2em] mb-1 block text-right">Internal Cost<br/>(ថ្លៃដឹកដើម)</span>
+                                                                            <span className="text-[9px] font-black text-[#848E9C] uppercase tracking-[0.2em] mb-1 block text-right">Internal Cost<br/>(ថ្លៃសេវាអ្នកដឹក)</span>
                                                                             <div className="flex items-baseline gap-1">
-                                                                                <span className="text-xl font-mono font-black text-[#FCD535]">${(Number(order['Internal Shipping Fee']) || 0).toFixed(2)}</span>
+                                                                                <span className="text-xl font-mono font-black text-[#FCD535]">${(Number(order['Internal Cost']) || 0).toFixed(2)}</span>
                                                                                 <span className="text-[9px] font-black text-[#848E9C] tracking-tighter uppercase">USD</span>
                                                                             </div>
                                                                         </div>
@@ -899,7 +926,7 @@ const FastPackTerminal: React.FC<FastPackTerminalProps> = ({ order, onClose, onS
                         initialData={{ 
                             id: order['Order ID'], 
                             name: order['Customer Name'], 
-                            phone: order['Customer Phone'], 
+                            phone: formattedPhone, 
                             location: order.Location, 
                             address: order['Address Details'] || '', 
                             total: String(order['Grand Total']), 

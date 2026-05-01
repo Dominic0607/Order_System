@@ -194,7 +194,7 @@ function setupDefaultTelegramTemplates(ss) {
   const defaultTemplates = [
     ["TPL001", "Global", "Part1", "📃 *Page:* {{sourceInfo}}\n👨‍💻 *អ្នកលក់:* {{user}}\n🏪 *ដឹកចេញពី:* {{fulfillmentStore}}\n🚚 *ដឹកដោយ:* {{shippingMethod}}{{shippingDetails}}\n{{note}}\n\n🔔 *ការកម្ម៉ង់ថ្មី* | ID: `{{orderId}}`\n--------------------------------------"],
     ["TPL002", "Global", "Part2", "✅សូមបងពិនិត្យលេខទូរស័ព្ទ និងទីតាំងម្ដងទៀតបង 🙏\n📃 *Page:* {{sourceInfo}}\n👤 *អតិថិជន:* {{customerName}}\n📞 *លេខទូរស័ព្ទ:* {{customerPhone}}\n📍 *ទីតាំង:* {{location}}\n🏠 *អាសយដ្ឋាន:* {{addressDetails}}\n\n *----------- ផលិតផល -----------*\n{{productsList}}\n\n💰 *សរុប:*\n  - តម្លៃទំនិញ: ${{subtotal}}\n  - សេវាដឹក: ${{shippingFee}}\n  - *សរុបចុងក្រោយ: ${{grandTotal}}*\n {{paymentStatus}}\n\n🚚 *វិធីសាស្រ្តដឹកជញ្ជូន:* {{shippingMethod}}\n{{date}}\n--------------------------------------\nអរគុណបង🙏🥰 | ID: `{{orderId}}`"],
-    ["TPL003", "Global", "Part3", "📦 *ព័ត៌មានការវេចខ្ចប់*\n🧑‍🔧 *អ្នកវេចខ្ចប់:* {{packedBy}}\n⏰ *ពេលវេលា:* {{packedTime}}\n🚚 *អ្នកដឹក:* {{driverName}}\n🏷️ *លេខកូដដឹកជញ្ជូន:* `{{trackingNumber}}`\n[📷 រូបភាពវេចខ្ចប់]({{packagePhotoUrl}})"]
+    ["TPL003", "Global", "Part3", "📦 *ព័ត៌មានការវេចខ្ចប់*\n🧑‍🔧 *អ្នកវេចខ្ចប់:* *{{packedBy}}*\n⏰ *ពេលវេលា:* *{{packedTime}}*\n🚚 *អ្នកដឹក:* *{{driverName}}*\n🏷️ *លេខកូដដឹកជញ្ជូន:* `{{trackingNumber}}`\n[📷 រូបភាពវេចខ្ចប់]({{packagePhotoUrl}}){{dispatchInfo}}{{deliveryInfo}}"]
   ];
 
   const lastRow = templateSheet.getLastRow();
