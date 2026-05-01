@@ -30,6 +30,8 @@ interface DesktopPackagingHubProps {
     onPrintManifest: () => void;
     onSwitchHub: () => void;
     onExit: () => void;
+    shippingFilter: string;
+    setShippingFilter: (filter: string) => void;
     selectedStore: string;
     progressStats: { packedByUserToday: number, storeTotalToday: number, progressPercentage: number };
     viewMode: 'card' | 'list';
@@ -50,7 +52,9 @@ interface DesktopPackagingHubProps {
 
 const DesktopPackagingHub: React.FC<DesktopPackagingHubProps> = ({
     orders, activeTab, setActiveTab, searchTerm, setSearchTerm,
-    onPack, onShip, onUndo, onUndoShipped, onView, onPrintManifest, onSwitchHub, onExit, selectedStore,
+    onPack, onShip, onUndo, onUndoShipped, onView, onPrintManifest, onSwitchHub, onExit,
+    shippingFilter, setShippingFilter,
+    selectedStore,
     progressStats, viewMode, setViewMode, setIsFilterModalOpen, loadingActionId, tabCounts,
     selectedOrderIds, toggleOrderSelection, clearSelection, onBulkShip, isBulkProcessing,
     onToggleSelectAll, onCloseShift, isViewOnly, activeShift
@@ -226,8 +230,11 @@ const DesktopPackagingHub: React.FC<DesktopPackagingHubProps> = ({
                             <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" /></svg>
                             Filters
                         </button>
+                    </div>
+
+                    <div className="flex items-center gap-3">
                         {activeTab === 'Ready to Ship' && (
-                            <div className="flex items-center gap-3">
+                            <div className="flex items-center gap-3 mr-4">
                                 {viewMode === 'card' && orders.length > 0 && (
                                     <button 
                                         onClick={() => onToggleSelectAll(orders)}
@@ -237,32 +244,54 @@ const DesktopPackagingHub: React.FC<DesktopPackagingHubProps> = ({
                                     </button>
                                 )}
                                 <button onClick={onPrintManifest} className={`px-4 py-2 border border-[#FCD535]/50 hover:bg-[#FCD535] group transition-all rounded-sm flex items-center gap-2 whitespace-nowrap`}>
-                                <svg className="w-4 h-4 text-[#FCD535] group-hover:text-[#0B0E11]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" /></svg>
-                                <span className="text-[#FCD535] group-hover:text-[#0B0E11] text-xs font-bold uppercase tracking-wider">Print Manifest</span>
-                            </button>
-                            {activeTab === 'Ready to Ship' && selectedOrderIds.size > 0 && (
-                                <button 
-                                    onClick={onBulkShip}
-                                    disabled={isBulkProcessing}
-                                    className={`px-4 py-2 bg-[#0ECB81] hover:bg-[#0CA66B] text-[#0B0E11] text-xs font-bold rounded-sm flex items-center gap-2 transition-all animate-fade-in-down whitespace-nowrap`}
-                                >
-                                    {isBulkProcessing ? <Spinner size="sm" /> : (
-                                        <>
-                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>
-                                            SHIP SELECTED ({selectedOrderIds.size})
-                                        </>
-                                    )}
+                                    <svg className="w-4 h-4 text-[#FCD535] group-hover:text-[#0B0E11]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" /></svg>
+                                    <span className="text-[#FCD535] group-hover:text-[#0B0E11] text-xs font-bold uppercase tracking-wider">Print Manifest</span>
                                 </button>
-                            )}
+                                {selectedOrderIds.size > 0 && (
+                                    <button 
+                                        onClick={onBulkShip}
+                                        disabled={isBulkProcessing}
+                                        className={`px-4 py-2 bg-[#0ECB81] hover:bg-[#0CA66B] text-[#0B0E11] text-xs font-bold rounded-sm flex items-center gap-2 transition-all animate-fade-in-down whitespace-nowrap`}
+                                    >
+                                        {isBulkProcessing ? <Spinner size="sm" /> : (
+                                            <>
+                                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>
+                                                SHIP SELECTED ({selectedOrderIds.size})
+                                            </>
+                                        )}
+                                    </button>
+                                )}
+                            </div>
+                        )}
+                        <div className="flex bg-[#0B0E11] p-0.5 border border-[#2B3139] rounded-sm">
+                            <button onClick={() => setViewMode('card')} className={`p-1.5 rounded-sm transition-all ${viewMode === 'card' ? 'bg-[#2B3139] text-[#EAECEF]' : 'text-[#848E9C] hover:text-[#EAECEF]'}`}><svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><rect x="3" y="3" width="7" height="7" /><rect x="14" y="3" width="7" height="7" /><rect x="14" y="14" width="7" height="7" /><rect x="3" y="14" width="7" height="7" /></svg></button>
+                            <button onClick={() => setViewMode('list')} className={`p-1.5 rounded-sm transition-all ${viewMode === 'list' ? 'bg-[#2B3139] text-[#EAECEF]' : 'text-[#848E9C] hover:text-[#EAECEF]'}`}><svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><line x1="3" y1="6" x2="21" y2="6" /><line x1="3" y1="12" x2="21" y2="12" /><line x1="3" y1="18" x2="21" y2="18" /></svg></button>
                         </div>
-                    )}
-                    </div>
-
-                    <div className="flex bg-[#0B0E11] p-0.5 border border-[#2B3139] rounded-sm">
-                        <button onClick={() => setViewMode('card')} className={`p-1.5 rounded-sm transition-all ${viewMode === 'card' ? 'bg-[#2B3139] text-[#EAECEF]' : 'text-[#848E9C] hover:text-[#EAECEF]'}`}><svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><rect x="3" y="3" width="7" height="7" /><rect x="14" y="3" width="7" height="7" /><rect x="14" y="14" width="7" height="7" /><rect x="3" y="14" width="7" height="7" /></svg></button>
-                        <button onClick={() => setViewMode('list')} className={`p-1.5 rounded-sm transition-all ${viewMode === 'list' ? 'bg-[#2B3139] text-[#EAECEF]' : 'text-[#848E9C] hover:text-[#EAECEF]'}`}><svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><line x1="3" y1="6" x2="21" y2="6" /><line x1="3" y1="12" x2="21" y2="12" /><line x1="3" y1="18" x2="21" y2="18" /></svg></button>
                     </div>
                 </header>
+
+                {/* Shipping Method Shortcuts Bar (Desktop) */}
+                {activeTab === 'Ready to Ship' && (
+                    <div className={`flex-shrink-0 px-8 py-3 bg-[#181A20] border-b ${B_BORDER} flex items-center gap-3 overflow-x-auto no-scrollbar`}>
+                        <span className={`text-[10px] font-black ${B_TEXT_SECONDARY} uppercase tracking-[0.2em] mr-2`}>Shipping Filter:</span>
+                        <button 
+                            onClick={() => setShippingFilter('')}
+                            className={`px-4 py-2 rounded-sm text-[10px] font-black uppercase tracking-wider transition-all whitespace-nowrap border ${!shippingFilter ? 'bg-[#FCD535] border-[#FCD535] text-black shadow-[0_0_15px_rgba(252,213,53,0.2)]' : 'bg-[#0B0E11] border-[#2B3139] text-[#848E9C] hover:border-[#FCD535]/50 hover:text-[#EAECEF]'}`}
+                        >
+                            ALL CARRIERS
+                        </button>
+                        {appData.shippingMethods?.filter((m: any) => m.Status !== 'Inactive').map((method: any) => (
+                            <button
+                                key={method.MethodName}
+                                onClick={() => setShippingFilter(shippingFilter === method.MethodName ? '' : method.MethodName)}
+                                className={`px-4 py-2 rounded-sm text-[10px] font-black uppercase tracking-wider transition-all whitespace-nowrap border flex items-center gap-2.5 ${shippingFilter === method.MethodName ? 'bg-[#FCD535] border-[#FCD535] text-black shadow-[0_0_15px_rgba(252,213,53,0.2)]' : 'bg-[#0B0E11] border-[#2B3139] text-[#848E9C] hover:border-[#FCD535]/50 hover:text-[#EAECEF]'}`}
+                            >
+                                {method.LogoURL && <img src={convertGoogleDriveUrl(method.LogoURL)} alt="" className="w-5 h-5 object-contain" />}
+                                {method.MethodName}
+                            </button>
+                        ))}
+                    </div>
+                )}
 
                 <div className="flex-1 overflow-y-auto custom-scrollbar p-4 md:p-6 lg:p-8 pt-4">
                     {orders.length === 0 ? (

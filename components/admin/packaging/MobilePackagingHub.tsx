@@ -26,6 +26,8 @@ interface MobilePackagingHubProps {
     onPrintManifest: () => void;
     onSwitchHub: () => void;
     onExit: () => void;
+    shippingFilter: string;
+    setShippingFilter: (filter: string) => void;
     selectedStore: string;
     progressStats: { packedByUserToday: number, storeTotalToday: number, progressPercentage: number };
     setIsFilterModalOpen: (open: boolean) => void;
@@ -44,7 +46,9 @@ interface MobilePackagingHubProps {
 
 const MobilePackagingHub: React.FC<MobilePackagingHubProps> = ({
     orders, activeTab, setActiveTab, searchTerm, setSearchTerm,
-    onPack, onShip, onUndo, onUndoShipped, onView, onPrintManifest, onSwitchHub, onExit, selectedStore,
+    onPack, onShip, onUndo, onUndoShipped, onView, onPrintManifest, onSwitchHub, onExit,
+    shippingFilter, setShippingFilter,
+    selectedStore,
     progressStats, setIsFilterModalOpen, loadingActionId, tabCounts,
     selectedOrderIds, toggleOrderSelection, clearSelection, onBulkShip, isBulkProcessing,
     onToggleSelectAll, onCloseShift, isViewOnly, activeShift
@@ -183,24 +187,34 @@ const MobilePackagingHub: React.FC<MobilePackagingHubProps> = ({
             </div>
 
             {/* Sticky Mobile Search/Filter */}
-            <div className={`flex-shrink-0 p-3 border-b ${B_BORDER} ${B_BG_MAIN} flex gap-2 sticky z-20 shadow-md`}>
-                <div className="relative flex-1">
-                    <input 
-                        type="text" 
-                        placeholder="Search operations..." 
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                        className={`w-full pl-8 pr-3 py-2 ${B_BG_PANEL} border ${B_BORDER} rounded-sm text-xs ${B_TEXT_PRIMARY} placeholder:text-[#848E9C] focus:border-[#FCD535] outline-none transition-colors`}
-                    />
-                    <div className={`absolute inset-y-0 left-0 flex items-center pl-2.5 pointer-events-none ${B_TEXT_SECONDARY}`}>
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5}><path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+            <div className={`flex-shrink-0 p-3 border-b ${B_BORDER} ${B_BG_MAIN} sticky z-20 shadow-md space-y-3`}>
+                <div className="flex gap-2">
+                    <div className="relative flex-1">
+                        <input 
+                            type="text" 
+                            placeholder="Search operations..." 
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                            className={`w-full pl-8 pr-3 py-2 ${B_BG_PANEL} border ${B_BORDER} rounded-sm text-xs ${B_TEXT_PRIMARY} placeholder:text-[#848E9C] focus:border-[#FCD535] outline-none transition-colors`}
+                        />
+                        <div className={`absolute inset-y-0 left-0 flex items-center pl-2.5 pointer-events-none ${B_TEXT_SECONDARY}`}>
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5}><path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+                        </div>
                     </div>
+                    <button onClick={() => setIsFilterModalOpen(true)} className={`px-3 py-2 ${B_BG_PANEL} border ${B_BORDER} rounded-sm ${B_TEXT_SECONDARY} flex items-center justify-center`}>
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}><path d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" /></svg>
+                    </button>
+                    {activeTab === 'Ready to Ship' && (
+                        <div className="flex items-center gap-2">
+                            <button onClick={onPrintManifest} className={`p-2 bg-[#181A20] border border-[#FCD535]/30 rounded-sm hover:border-[#FCD535] transition-all`}>
+                                <svg className="w-4 h-4 text-[#FCD535]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" /></svg>
+                            </button>
+                        </div>
+                    )}
                 </div>
-                <button onClick={() => setIsFilterModalOpen(true)} className={`px-3 py-2 ${B_BG_PANEL} border ${B_BORDER} rounded-sm ${B_TEXT_SECONDARY} flex items-center justify-center`}>
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}><path d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" /></svg>
-                </button>
+
                 {activeTab === 'Ready to Ship' && (
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 pt-1">
                         {orders.length > 0 && (
                             <button 
                                 onClick={() => onToggleSelectAll(orders)}
@@ -209,14 +223,11 @@ const MobilePackagingHub: React.FC<MobilePackagingHubProps> = ({
                                 <span className="text-[9px] font-bold uppercase">{orders.every(o => selectedOrderIds.has(o['Order ID'])) ? 'None' : 'All'}</span>
                             </button>
                         )}
-                        <button onClick={onPrintManifest} className={`p-2 bg-[#181A20] border border-[#FCD535]/30 rounded-sm hover:border-[#FCD535] transition-all`}>
-                            <svg className="w-4 h-4 text-[#FCD535]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" /></svg>
-                        </button>
-                        {activeTab === 'Ready to Ship' && selectedOrderIds.size > 0 && (
+                        {selectedOrderIds.size > 0 && (
                             <button 
                                 onClick={onBulkShip}
                                 disabled={isBulkProcessing}
-                                className={`px-4 py-2 bg-[#0ECB81] hover:bg-[#0CA66B] text-[#0B0E11] text-[10px] font-bold rounded-sm flex items-center gap-2 transition-all animate-fade-in-down whitespace-nowrap`}
+                                className={`flex-1 py-2 bg-[#0ECB81] hover:bg-[#0CA66B] text-[#0B0E11] text-[10px] font-bold rounded-sm flex items-center justify-center gap-2 transition-all animate-fade-in-down whitespace-nowrap`}
                             >
                                 {isBulkProcessing ? <Spinner size="sm" /> : (
                                     <>
@@ -229,6 +240,28 @@ const MobilePackagingHub: React.FC<MobilePackagingHubProps> = ({
                     </div>
                 )}
             </div>
+
+            {/* Shipping Method Shortcuts Bar (Mobile) - Positioned below Sticky Search */}
+            {activeTab === 'Ready to Ship' && (
+                <div className={`flex-shrink-0 px-3 py-2 border-b ${B_BORDER} bg-[#181A20] overflow-x-auto no-scrollbar flex items-center gap-2`}>
+                    <button 
+                        onClick={() => setShippingFilter('')}
+                        className={`px-3 py-1.5 rounded-sm text-[9px] font-black uppercase tracking-wider transition-all whitespace-nowrap border ${!shippingFilter ? 'bg-[#FCD535] border-[#FCD535] text-black shadow-[0_0_10px_rgba(252,213,53,0.15)]' : 'bg-[#0B0E11] border-[#2B3139] text-[#848E9C]'}`}
+                    >
+                        ALL
+                    </button>
+                    {appData.shippingMethods?.filter((m: any) => m.Status !== 'Inactive').map((method: any) => (
+                        <button
+                            key={method.MethodName}
+                            onClick={() => setShippingFilter(shippingFilter === method.MethodName ? '' : method.MethodName)}
+                            className={`px-3 py-1.5 rounded-sm text-[9px] font-black uppercase tracking-wider transition-all whitespace-nowrap border flex items-center gap-2 ${shippingFilter === method.MethodName ? 'bg-[#FCD535] border-[#FCD535] text-black shadow-[0_0_10px_rgba(252,213,53,0.15)]' : 'bg-[#0B0E11] border-[#2B3139] text-[#848E9C]'}`}
+                        >
+                            {method.LogoURL && <img src={convertGoogleDriveUrl(method.LogoURL)} alt="" className="w-3.5 h-3.5 object-contain" />}
+                            {method.MethodName}
+                        </button>
+                    ))}
+                </div>
+            )}
 
             {/* Scrollable Order List */}
             <div className={`flex-1 overflow-y-auto custom-scrollbar p-3 relative z-10 space-y-4 pb-24`}>

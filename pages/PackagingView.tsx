@@ -37,6 +37,7 @@ const PackagingView: React.FC<{ orders?: ParsedOrder[] }> = ({ orders: propOrder
     const [selectedOrderIds, setSelectedOrderIds] = useState<Set<string>>(new Set());
     const [viewingOrder, setViewingOrder] = useState<ParsedOrder | null>(null);
     const [searchTerm, setSearchTerm] = useState('');
+    const [shippingFilter, setShippingFilter] = useState<string>('');
     const [deviceType, setDeviceType] = useState<'mobile' | 'tablet' | 'desktop'>('desktop');
     const [isBulkProcessing, setIsBulkProcessing] = useState(false);
     const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
@@ -252,12 +253,21 @@ const PackagingView: React.FC<{ orders?: ParsedOrder[] }> = ({ orders: propOrder
     const allFilteredOrders = useMemo(() => {
         if (!selectedStore) return [];
         let filtered = allOrdersMapped.filter(o => (o['Fulfillment Store'] || 'Unassigned').trim().toLowerCase() === selectedStore.trim().toLowerCase());
+        
+        if (shippingFilter) {
+            filtered = filtered.filter(o => o['Internal Shipping Method'] === shippingFilter);
+        }
+
         if (searchTerm.trim()) {
             const q = searchTerm.toLowerCase();
-            filtered = filtered.filter(o => o['Order ID'].toLowerCase().includes(q) || (o['Customer Name'] || '').toLowerCase().includes(q));
+            filtered = filtered.filter(o => 
+                o['Order ID'].toLowerCase().includes(q) || 
+                (o['Customer Name'] || '').toLowerCase().includes(q) ||
+                (o['Internal Shipping Method'] || '').toLowerCase().includes(q)
+            );
         }
         return filtered;
-    }, [allOrdersMapped, selectedStore, searchTerm]);
+    }, [allOrdersMapped, selectedStore, searchTerm, shippingFilter]);
 
     const filteredOrders = useMemo(() => allFilteredOrders.filter(o => o.FulfillmentStatus === activeTab), [allFilteredOrders, activeTab]);
 
@@ -305,6 +315,19 @@ const PackagingView: React.FC<{ orders?: ParsedOrder[] }> = ({ orders: propOrder
     if (!selectedStore) {
         return (
             <div className="flex flex-col items-center justify-center h-full p-6 bg-[#0B0E11] font-sans relative overflow-hidden">
+                {/* Header Actions */}
+                <div className="absolute top-0 left-0 p-6 z-50">
+                    <button 
+                        onClick={() => setAppState('role_selection')}
+                        className="flex items-center gap-2 px-4 py-2 bg-white/5 hover:bg-white/10 text-white rounded-xl border border-white/10 transition-all active:scale-[0.98] group"
+                    >
+                        <svg className="w-5 h-5 text-gray-400 group-hover:text-white transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                        </svg>
+                        <span className="text-sm font-bold uppercase tracking-wider">Back</span>
+                    </button>
+                </div>
+
                 {/* Background Decorative Elements */}
                 <div className="absolute top-0 left-0 w-96 h-96 bg-[#FCD535]/5 rounded-full blur-[120px] -translate-x-1/2 -translate-y-1/2"></div>
                 <div className="absolute bottom-0 right-0 w-[500px] h-[500px] bg-[#FCD535]/[0.02] rounded-full blur-[150px] translate-x-1/2 translate-y-1/2"></div>
@@ -352,12 +375,9 @@ const PackagingView: React.FC<{ orders?: ParsedOrder[] }> = ({ orders: propOrder
                         )}
                     </div>
 
-                    <button 
-                        onClick={() => setAppState('role_selection')}
-                        className="text-[10px] font-black text-gray-600 hover:text-[#FCD535] uppercase tracking-[0.4em] transition-colors pt-8"
-                    >
-                        [ Terminate Session ]
-                    </button>
+                    <p className="text-[10px] font-black text-gray-600 uppercase tracking-[0.4em] pt-8">
+                        Authorized Access Only
+                    </p>
                 </div>
             </div>
         );
@@ -429,6 +449,8 @@ const PackagingView: React.FC<{ orders?: ParsedOrder[] }> = ({ orders: propOrder
         onSwitchHub: () => setSelectedStore(''),
         onExit: () => setAppState('role_selection'),
         onCloseShift: handleCloseShift,
+        shippingFilter,
+        setShippingFilter,
         selectedStore, tabCounts, viewMode, setViewMode, loadingActionId: isShiftLoading ? 'shift-loading' : loadingActionId,
         selectedOrderIds, toggleOrderSelection: (id: string) => !isViewOnly && setSelectedOrderIds(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; }),
         clearSelection: () => setSelectedOrderIds(new Set()),
