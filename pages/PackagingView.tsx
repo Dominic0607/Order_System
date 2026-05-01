@@ -10,6 +10,7 @@ import Modal from '@/components/common/Modal';
 import MobilePackagingHub from '@/components/admin/packaging/MobilePackagingHub';
 import TabletPackagingHub from '@/components/admin/packaging/TabletPackagingHub';
 import DesktopPackagingHub from '@/components/admin/packaging/DesktopPackagingHub';
+import { Shift } from '@/types';
 
 const bClasses = {
     surface: 'bg-[#1E2329] border border-[#2B3139]',
@@ -21,6 +22,14 @@ const PackagingView: React.FC<{ orders?: ParsedOrder[] }> = ({ orders: propOrder
     const { appData, refreshData, currentUser, setMobilePageTitle, appState, setAppState } = useContext(AppContext);
     
     const [selectedStore, setSelectedStore] = useState<string>('');
+    const [activeShift, setActiveShift] = useState<Shift | null>(null);
+    const [isViewOnly, setIsViewOnly] = useState(false);
+    const [isShiftModalOpen, setIsShiftModalOpen] = useState(false);
+    const [shiftStep, setShiftStep] = useState<'options' | 'login' | 'photo' | 'closing'>('options');
+    const [shiftLogin, setShiftLogin] = useState({ username: '', password: '' });
+    const [capturedPhoto, setCapturedPhoto] = useState<string | null>(null);
+    const [isShiftLoading, setIsShiftLoading] = useState(false);
+
     const [activeTab, setActiveTab] = useState<'Pending' | 'Ready to Ship' | 'Shipped'>('Pending');
     const [packingOrder, setPackingOrder] = useState<ParsedOrder | null>(null);
     const [loadingActionId, setLoadingActionId] = useState<string | null>(null);
@@ -31,6 +40,123 @@ const PackagingView: React.FC<{ orders?: ParsedOrder[] }> = ({ orders: propOrder
     const [deviceType, setDeviceType] = useState<'mobile' | 'tablet' | 'desktop'>('desktop');
     const [isBulkProcessing, setIsBulkProcessing] = useState(false);
     const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
+
+    const checkActiveShift = async (store: string) => {
+        setIsShiftLoading(true);
+        try {
+            const session = await CacheService.get<{ token: string }>(CACHE_KEYS.SESSION);
+            const token = session?.token || '';
+            const res = await fetch(`${WEB_APP_URL}/api/admin/shifts/active/${encodeURIComponent(store)}`, {
+                headers: { ...(token ? { 'Authorization': `Bearer ${token}` } : {}) }
+            });
+            const data = await res.json();
+            if (data.status === 'success') {
+                setActiveShift(data.shift);
+                const openedBy = (data.shift.OpenedBy || '').trim().toLowerCase();
+                const me = (currentUser?.FullName || '').trim().toLowerCase();
+                setIsViewOnly(openedBy !== me);
+            } else {
+                setActiveShift(null);
+                setIsViewOnly(false);
+                setIsShiftModalOpen(true);
+                setShiftStep('options');
+            }
+        } catch (error) {
+            console.error("Failed to check active shift", error);
+        } finally {
+            setIsShiftLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        if (selectedStore) {
+            checkActiveShift(selectedStore);
+        } else {
+            setActiveShift(null);
+            setIsViewOnly(false);
+            setIsShiftModalOpen(false);
+        }
+    }, [selectedStore]);
+
+    const handleOpenShift = async () => {
+        setIsShiftLoading(true);
+        try {
+            const session = await CacheService.get<{ token: string }>(CACHE_KEYS.SESSION);
+            const token = session?.token || '';
+            const res = await fetch(`${WEB_APP_URL}/api/admin/shifts/open`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+                },
+                body: JSON.stringify({
+                    userName: shiftLogin.username,
+                    password: shiftLogin.password,
+                    storeName: selectedStore,
+                    photo: capturedPhoto || ""
+                })
+            });            const data = await res.json();
+            if (data.status === 'success') {
+                setActiveShift(data.shift);
+                setIsViewOnly(false);
+                setIsShiftModalOpen(false);
+                setShiftStep('options');
+                setActiveTab('Pending');
+                alert("បើកវេនជោគជ័យ!");
+            } else {
+                alert(data.message || "មិនអាចបើកវេនបានទេ");
+            }
+        } catch (error) {
+            alert("មានបញ្ហាពេលបើកវេន");
+        } finally {
+            setIsShiftLoading(false);
+        }
+    };
+
+    const handleCloseShift = async () => {
+        if (!activeShift) return;
+        
+        // Calculate summary
+        const todayStr = new Date().toLocaleDateString('km-KH').split(',')[0];
+        const shiftOrders = allFilteredOrders.filter(o => {
+            const isMe = o['Packed By'] === currentUser?.FullName;
+            const isToday = (o['Packed Time'] || '').startsWith(todayStr);
+            return isMe && isToday && (o.FulfillmentStatus === 'Ready to Ship' || o.FulfillmentStatus === 'Shipped');
+        });
+        const summary = `ទិន្នន័យសង្ខេបនៃ ការវេចខ្ចប់: ${shiftOrders.length} កញ្ចប់`;
+
+        if (!window.confirm(`តើអ្នកប្រាកដថាចង់បិទវេនមែនទេ?\n\n${summary}`)) return;
+
+        setIsShiftLoading(true);
+        try {
+            const session = await CacheService.get<{ token: string }>(CACHE_KEYS.SESSION);
+            const token = session?.token || '';
+            const res = await fetch(`${WEB_APP_URL}/api/admin/shifts/close`, {
+                method: 'POST',
+                headers: { 
+                    'Content-Type': 'application/json',
+                    ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+                },
+                body: JSON.stringify({
+                    shiftId: activeShift.ID,
+                    summary: summary
+                })
+            });
+            const data = await res.json();
+            if (data.status === 'success') {
+                setActiveShift(null);
+                setSelectedStore('');
+                setIsShiftModalOpen(false);
+                alert("បិទវេនជោគជ័យ!");
+            } else {
+                alert(data.message || "មិនអាចបិទវេនបានទេ");
+            }
+        } catch (error) {
+            alert("មានបញ្ហាពេលបិទវេន");
+        } finally {
+            setIsShiftLoading(false);
+        }
+    };
 
     const onToggleSelectAll = (ordersToSelect: ParsedOrder[]) => {
         if (ordersToSelect.length === 0) return;
@@ -239,10 +365,10 @@ const PackagingView: React.FC<{ orders?: ParsedOrder[] }> = ({ orders: propOrder
 
     const hubProps = {
         orders: filteredOrders, activeTab, setActiveTab, searchTerm, setSearchTerm,
-        onPack: (order: ParsedOrder) => setPackingOrder(order),
-        onShip: (order: ParsedOrder) => executeAction(order, 'Shipped', { 'Dispatched Time': new Date().toLocaleString('km-KH'), 'Dispatched By': currentUser?.FullName || 'Packer' }),
-        onUndo: (o: ParsedOrder) => executeAction(o, 'Pending', { 'Packed By': '', 'Packed Time': '', 'Package Photo': '' }),
-        onUndoShipped: (o: ParsedOrder) => executeAction(o, 'Ready to Ship', { 'Dispatched Time': '', 'Dispatched By': '' }),
+        onPack: (order: ParsedOrder) => !isViewOnly && setPackingOrder(order),
+        onShip: (order: ParsedOrder) => !isViewOnly && executeAction(order, 'Shipped', { 'Dispatched Time': new Date().toLocaleString('km-KH'), 'Dispatched By': currentUser?.FullName || 'Packer' }),
+        onUndo: (o: ParsedOrder) => !isViewOnly && executeAction(o, 'Pending', { 'Packed By': '', 'Packed Time': '', 'Package Photo': '' }),
+        onUndoShipped: (o: ParsedOrder) => !isViewOnly && executeAction(o, 'Ready to Ship', { 'Dispatched Time': '', 'Dispatched By': '' }),
         onView: (order: ParsedOrder) => setViewingOrder(order),
         onPrintManifest: () => {
             const printWindow = window.open('', '_blank');
@@ -302,15 +428,18 @@ const PackagingView: React.FC<{ orders?: ParsedOrder[] }> = ({ orders: propOrder
         },
         onSwitchHub: () => setSelectedStore(''),
         onExit: () => setAppState('role_selection'),
-        selectedStore, tabCounts, viewMode, setViewMode, loadingActionId,
-        selectedOrderIds, toggleOrderSelection: (id: string) => setSelectedOrderIds(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; }),
+        onCloseShift: handleCloseShift,
+        selectedStore, tabCounts, viewMode, setViewMode, loadingActionId: isShiftLoading ? 'shift-loading' : loadingActionId,
+        selectedOrderIds, toggleOrderSelection: (id: string) => !isViewOnly && setSelectedOrderIds(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; }),
         clearSelection: () => setSelectedOrderIds(new Set()),
-        onToggleSelectAll,
-        onBulkShip,
+        onToggleSelectAll: (orders: ParsedOrder[]) => !isViewOnly && onToggleSelectAll(orders),
+        onBulkShip: () => !isViewOnly && onBulkShip(),
         isBulkProcessing,
         progressStats,
         isFilterModalOpen,
-        setIsFilterModalOpen
+        setIsFilterModalOpen,
+        isViewOnly,
+        activeShift
     };
 
     return (
@@ -319,6 +448,75 @@ const PackagingView: React.FC<{ orders?: ParsedOrder[] }> = ({ orders: propOrder
             {deviceType === 'tablet' && <TabletPackagingHub {...hubProps} />}
             {deviceType === 'desktop' && <DesktopPackagingHub {...hubProps} />}
 
+            {isShiftModalOpen && (
+                <Modal isOpen={true} onClose={() => setSelectedStore('')} maxWidth="max-w-md">
+                    <div className="bg-[#1E2329] border border-[#2B3139] p-8 space-y-8 rounded-2xl animate-in fade-in zoom-in duration-300">
+                        {shiftStep === 'options' && (
+                            <div className="space-y-6 text-center">
+                                <div className="w-20 h-20 bg-[#FCD535]/10 rounded-[2rem] flex items-center justify-center mx-auto mb-6">
+                                    <svg className="w-10 h-10 text-[#FCD535]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
+                                </div>
+                                <h3 className="text-2xl font-black text-white uppercase tracking-wider">{selectedStore}</h3>
+                                <p className="text-gray-400 text-sm">សូមជ្រើសរើសជម្រើសខាងក្រោម៖</p>
+                                <div className="grid grid-cols-1 gap-4 pt-4">
+                                    <button 
+                                        onClick={() => { setIsViewOnly(true); setIsShiftModalOpen(false); }}
+                                        className="w-full py-4 bg-white/5 hover:bg-white/10 text-white font-bold rounded-xl transition-all border border-white/10"
+                                    >
+                                        👀 ចូលមើល (View Only)
+                                    </button>
+                                    <button 
+                                        onClick={() => setShiftStep('login')}
+                                        className="w-full py-4 bg-[#FCD535] hover:bg-[#FCD535]/90 text-black font-bold rounded-xl transition-all shadow-xl shadow-[#FCD535]/10"
+                                    >
+                                        🔑 បើកវេន (Open Shift)
+                                    </button>
+                                </div>
+                            </div>
+                        )}
+
+                        {shiftStep === 'login' && (
+                            <div className="space-y-6">
+                                <div className="text-center">
+                                    <h3 className="text-xl font-black text-white uppercase tracking-wider">បញ្ជាក់អត្តសញ្ញាណ</h3>
+                                    <p className="text-gray-400 text-xs mt-2 uppercase tracking-widest">Verify credentials to open shift</p>
+                                </div>
+                                <div className="space-y-4">
+                                    <input 
+                                        type="text" placeholder="Username" 
+                                        value={shiftLogin.username} onChange={e => setShiftLogin({...shiftLogin, username: e.target.value})}
+                                        className="w-full bg-[#0B0E11] border border-[#2B3139] rounded-xl px-5 py-4 text-white focus:border-[#FCD535] outline-none transition-all font-mono"
+                                    />
+                                    <input 
+                                        type="password" placeholder="Password" 
+                                        value={shiftLogin.password} onChange={e => setShiftLogin({...shiftLogin, password: e.target.value})}
+                                        className="w-full bg-[#0B0E11] border border-[#2B3139] rounded-xl px-5 py-4 text-white focus:border-[#FCD535] outline-none transition-all font-mono"
+                                    />
+                                    <div className="flex gap-3 pt-4">
+                                        <button onClick={() => setShiftStep('options')} className="flex-1 py-4 bg-white/5 text-gray-400 font-bold rounded-xl hover:bg-white/10 transition-all">ថយក្រោយ</button>
+                                        <button
+                                            onClick={() => {
+                                                if (shiftLogin.username && shiftLogin.password) handleOpenShift();
+                                                else alert("សូមបញ្ចូល Username និង Password");
+                                            }}
+                                            disabled={isShiftLoading}
+                                            className="flex-grow py-4 bg-[#FCD535] text-black font-bold rounded-xl hover:bg-[#FCD535]/90 transition-all shadow-lg flex items-center justify-center"
+                                        >
+                                            {isShiftLoading ? (
+                                                <div className="flex items-center gap-2">
+                                                    <div className="w-4 h-4 border-2 border-black/20 border-t-black rounded-full animate-spin"></div>
+                                                    <span>កំពុងបើកវេន...</span>
+                                                </div>
+                                            ) : 'បើកវេន'}
+                                        </button>                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Photo step removed as requested - using stickers automatically */}
+                        </div>
+                        </Modal>
+                        )}
             {packingOrder && (
                 <FastPackTerminal 
                     order={packingOrder} onClose={() => setPackingOrder(null)} 
@@ -344,8 +542,30 @@ const PackagingView: React.FC<{ orders?: ParsedOrder[] }> = ({ orders: propOrder
                             <div className="space-y-8">
                                 <div>
                                     <label className="text-xs font-bold text-[#848E9C] uppercase tracking-wider mb-2 block">Customer Information</label>
-                                    <p className="text-lg font-bold text-[#EAECEF]">{viewingOrder['Customer Name']}</p>
-                                    <p className="text-base font-mono text-[#FCD535] mt-1">{viewingOrder['Customer Phone']}</p>
+                                    <p 
+                                        onClick={() => { navigator.clipboard.writeText(viewingOrder['Customer Name']); }}
+                                        className="text-lg font-bold text-[#EAECEF] cursor-pointer hover:text-[#FCD535] transition-colors"
+                                    >
+                                        {viewingOrder['Customer Name']}
+                                    </p>
+                                    <p 
+                                        onClick={() => { 
+                                            const phone = viewingOrder['Customer Phone'];
+                                            let cleaned = phone.replace(/\D/g, '');
+                                            if (cleaned.startsWith('855')) cleaned = cleaned.substring(3);
+                                            if (!cleaned.startsWith('0')) cleaned = '0' + cleaned;
+                                            navigator.clipboard.writeText(cleaned);
+                                        }}
+                                        className="text-base font-mono text-[#FCD535] mt-1 cursor-pointer hover:underline"
+                                    >
+                                        {(() => {
+                                            const phone = viewingOrder['Customer Phone'];
+                                            let cleaned = phone.replace(/\D/g, '');
+                                            if (cleaned.startsWith('855')) cleaned = cleaned.substring(3);
+                                            if (!cleaned.startsWith('0')) cleaned = '0' + cleaned;
+                                            return cleaned;
+                                        })()}
+                                    </p>
                                 </div>
                                 
                                 <div>
@@ -395,11 +615,14 @@ const PackagingView: React.FC<{ orders?: ParsedOrder[] }> = ({ orders: propOrder
                                 <div>
                                     <label className="text-xs font-bold text-[#848E9C] uppercase tracking-wider mb-3 block">Fulfillment Details</label>
                                     <div className="space-y-3">
-                                        <div className="flex items-center gap-3 bg-[#0B0E11] p-3 rounded-xl border border-[#2B3139]">
-                                            <div className="w-8 h-8 bg-[#2B3139] rounded flex items-center justify-center text-xs font-bold text-[#848E9C]">Node</div>
+                                        <div 
+                                            onClick={() => navigator.clipboard.writeText(viewingOrder['Order ID'])}
+                                            className="flex items-center gap-3 bg-[#0B0E11] p-3 rounded-xl border border-[#2B3139] cursor-pointer hover:border-[#FCD535] transition-all group"
+                                        >
+                                            <div className="w-8 h-8 bg-[#2B3139] rounded flex items-center justify-center text-[10px] font-bold text-[#848E9C] group-hover:text-[#FCD535]">ID</div>
                                             <div>
-                                                <p className="text-sm font-bold text-[#EAECEF] leading-tight">{viewingOrder['Fulfillment Store'] || 'Unassigned'}</p>
-                                                <span className="text-[10px] text-[#848E9C] font-medium uppercase tracking-tighter">Assigned Store</span>
+                                                <p className="text-sm font-bold text-[#EAECEF] leading-tight group-hover:text-[#FCD535]">{viewingOrder['Order ID']}</p>
+                                                <span className="text-[10px] text-[#848E9C] font-medium uppercase tracking-tighter">Order ID (Click to Copy)</span>
                                             </div>
                                         </div>
                                         
@@ -414,6 +637,20 @@ const PackagingView: React.FC<{ orders?: ParsedOrder[] }> = ({ orders: propOrder
                                                 <span className="text-[10px] text-[#848E9C] font-medium uppercase tracking-tighter">Courier Service</span>
                                             </div>
                                         </div>
+
+                                        {(viewingOrder['Driver Name'] || '') && (
+                                            <div className="flex items-center gap-3 bg-[#0B0E11] p-3 rounded-xl border border-[#2B3139]">
+                                                {appData.drivers?.find((d: any) => d.DriverName === viewingOrder['Driver Name'])?.ImageURL ? (
+                                                    <img src={convertGoogleDriveUrl(appData.drivers.find((d: any) => d.DriverName === viewingOrder['Driver Name'])?.ImageURL || '')} alt="Driver" className="w-8 h-8 object-cover rounded" />
+                                                ) : (
+                                                    <div className="w-8 h-8 bg-[#2B3139] rounded flex items-center justify-center text-[10px] font-bold text-[#848E9C]">👨‍✈️</div>
+                                                )}
+                                                <div>
+                                                    <p className="text-sm font-bold text-[#EAECEF] leading-tight">{viewingOrder['Driver Name']}</p>
+                                                    <span className="text-[10px] text-[#848E9C] font-medium uppercase tracking-tighter">Assigned Driver</span>
+                                                </div>
+                                            </div>
+                                        )}
 
                                         <div className="flex items-center gap-3 bg-[#0B0E11] p-3 rounded-xl border border-[#2B3139]">
                                             {appData.pages?.find((p: any) => p.PageName === viewingOrder.Page)?.PageLogoURL ? (

@@ -318,6 +318,50 @@ const AppContent: React.FC = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [currentUser?.Role, appData?.permissions]);
 
+    // --- USER DATA SYNC ---
+    // Sync currentUser with appData.users to catch updates to FullName, ProfilePictureURL, etc.
+    useEffect(() => {
+        if (!currentUser || !appData?.users || !Array.isArray(appData.users)) return;
+
+        const updatedUserRecord = appData.users.find(u => 
+            u.UserName === currentUser.UserName || 
+            (u.user_name === currentUser.UserName)
+        );
+
+        if (updatedUserRecord) {
+            setCurrentUser(prev => {
+                if (!prev) return null;
+                // Only update if critical fields changed to avoid loops
+                if (
+                    updatedUserRecord.FullName !== prev.FullName ||
+                    updatedUserRecord.ProfilePictureURL !== prev.ProfilePictureURL ||
+                    updatedUserRecord.Role !== prev.Role ||
+                    updatedUserRecord.IsSystemAdmin !== prev.IsSystemAdmin
+                ) {
+                    console.log(`[App] 🔄 Syncing currentUser with appData.users for: ${prev.UserName}`);
+                    const updated = {
+                        ...prev,
+                        FullName: updatedUserRecord.FullName || prev.FullName,
+                        ProfilePictureURL: updatedUserRecord.ProfilePictureURL || prev.ProfilePictureURL,
+                        Role: updatedUserRecord.Role || prev.Role,
+                        IsSystemAdmin: updatedUserRecord.IsSystemAdmin ?? prev.IsSystemAdmin,
+                        TelegramUsername: updatedUserRecord.TelegramUsername || prev.TelegramUsername
+                    };
+                    
+                    // Persist to cache
+                    CacheService.get<{ token: string }>(CACHE_KEYS.SESSION).then(session => {
+                        if (session) {
+                            CacheService.set(CACHE_KEYS.SESSION, { ...session, user: updated, timestamp: Date.now() });
+                        }
+                    });
+                    
+                    return updated;
+                }
+                return prev;
+            });
+        }
+    }, [currentUser?.UserName, appData?.users]);
+
     useEffect(() => {
         if (currentUser) fetchOrders();
     }, [currentUser, fetchOrders]);
@@ -431,7 +475,19 @@ const AppContent: React.FC = () => {
     const legacyContextValue = useMemo(() => ({
         currentUser, appData, orders, isOrdersLoading, isSyncing, login, logout, refreshData, refreshTimestamp,
         originalAdminUser, returnToAdmin: () => {}, previewImage: (u: string) => setPreviewImageUrl(convertGoogleDriveUrl(u)),
-        updateCurrentUser: (u: any) => setCurrentUser(prev => prev ? {...prev, ...u} : null),
+        updateCurrentUser: (u: any) => {
+            setCurrentUser(prev => {
+                if (!prev) return null;
+                const updated = { ...prev, ...u };
+                // Also persist to cache so it survives refresh
+                CacheService.get<{ token: string }>(CACHE_KEYS.SESSION).then(session => {
+                    if (session) {
+                        CacheService.set(CACHE_KEYS.SESSION, { ...session, user: updated, timestamp: Date.now() });
+                    }
+                });
+                return updated;
+            });
+        },
         setUnreadCount, unreadCount, updateProductInData: () => {}, apiKey: '',
         appState, setAppState, setOriginalAdminUser, fetchData, fetchOrders, setCurrentUser, setChatVisibility,
         hasPermission, updatePermission: async (role: string, feature: string, isEnabled: boolean) => {

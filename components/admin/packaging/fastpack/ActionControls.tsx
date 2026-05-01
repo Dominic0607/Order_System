@@ -1,5 +1,7 @@
-import React from 'react';
+import React, { useContext } from 'react';
 import Spinner from '@/components/common/Spinner';
+import { AppContext } from '@/context/AppContext';
+import { translations } from '@/translations';
 
 type PackStep = 'VERIFYING' | 'LABELING' | 'PHOTO';
 
@@ -18,6 +20,9 @@ interface ActionControlsProps {
 const ActionControls: React.FC<ActionControlsProps> = ({
     step, isOrderVerified, hasGeneratedLabel, packagePhoto, uploading, undoTimer, onClose, setStep, handleSubmit
 }) => {
+    const { language } = useContext(AppContext);
+    const t = translations[language as 'km' | 'en'];
+
     const handleBack = () => {
         if (step === 'LABELING') setStep('VERIFYING');
         else if (step === 'PHOTO') setStep('LABELING');
@@ -25,30 +30,29 @@ const ActionControls: React.FC<ActionControlsProps> = ({
     };
 
     return (
-        <footer className="relative z-30 px-6 sm:px-12 py-8 bg-[#181A20] border-t border-white/10 flex flex-col sm:flex-row gap-6 flex-shrink-0 justify-between items-center shadow-[0_-10px_40px_rgba(0,0,0,0.4)]">
-            <div className="order-2 sm:order-1 flex gap-4 w-full sm:w-auto">
+        <footer className="relative z-30 px-6 py-4 flex flex-col sm:flex-row gap-4 flex-shrink-0 justify-between items-center bg-[#181A20] border-t border-[#2B3139] shadow-[0_-10px_40px_rgba(0,0,0,0.4)]">
+            {/* Back Control */}
+            <div className="order-2 sm:order-1 flex w-full sm:w-auto">
                 <button 
                     onClick={handleBack} 
                     disabled={uploading} 
-                    className="flex-1 sm:flex-none px-12 py-5 bg-white/5 text-gray-300 hover:text-white hover:bg-white/10 rounded-2xl font-bold text-sm tracking-wide transition-all border border-white/5 active:scale-95 flex items-center justify-center gap-3"
+                    className="w-full sm:w-auto px-6 py-3 bg-[#2B3139] hover:bg-[#474D57] text-[#EAECEF] rounded font-bold text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-3 active:scale-95 group"
                 >
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" /></svg>
-                    {step === 'VERIFYING' ? 'Back' : step === 'LABELING' ? 'Back to Verify' : 'Back to Label'}
+                    <svg className="w-4 h-4 group-hover:-translate-x-1 transition-transform text-[#848E9C]" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M6.75 15.75L3 12m0 0l3.75-3.75M3 12h18" /></svg>
+                    {step === 'VERIFYING' ? 'Abort Terminal' : step === 'LABELING' ? 'Back' : 'Back'}
                 </button>
             </div>
 
-            <div className="order-1 sm:order-2 flex gap-4 w-full sm:w-auto">
+            {/* Primary Action Control */}
+            <div className="order-1 sm:order-2 flex w-full sm:w-auto min-w-[280px]">
                 {step === 'VERIFYING' && (
                     <button 
                         onClick={() => setStep('LABELING')} 
                         disabled={!isOrderVerified} 
-                        className={`flex-1 sm:flex-none px-16 py-5 rounded-2xl font-bold text-base tracking-tight transition-all flex flex-col items-center justify-center gap-1 active:scale-95 ${!isOrderVerified ? 'bg-white/5 text-gray-600 border border-white/5 cursor-not-allowed opacity-50' : 'bg-[#FCD535] text-black hover:bg-[#FCD535]/90 shadow-xl shadow-[#FCD535]/20'}`}
+                        className={`w-full px-8 py-3.5 rounded font-bold text-base uppercase tracking-tight transition-all flex items-center justify-center gap-4 active:scale-[0.98] group ${!isOrderVerified ? 'bg-[#2B3139] text-[#5E6673] cursor-not-allowed' : 'bg-[#FCD535] text-[#181A20] hover:bg-[#FCD535]/90 shadow-lg shadow-[#FCD535]/10'}`}
                     >
-                        <div className="flex items-center gap-3">
-                            Proceed to Label
-                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" /></svg>
-                        </div>
-                        <span className="text-[10px] opacity-70">បន្តទៅកាន់ការព្រីនឡាប៊ែល</span>
+                        <span>Confirm & Label</span>
+                        <svg className="w-5 h-5 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" /></svg>
                     </button>
                 )}
 
@@ -56,13 +60,10 @@ const ActionControls: React.FC<ActionControlsProps> = ({
                     <button 
                         onClick={() => setStep('PHOTO')} 
                         disabled={!hasGeneratedLabel} 
-                        className={`flex-1 sm:flex-none px-16 py-5 rounded-2xl font-bold text-base tracking-tight transition-all flex flex-col items-center justify-center gap-1 active:scale-95 ${!hasGeneratedLabel ? 'bg-white/5 text-gray-600 border border-white/5 cursor-not-allowed opacity-50' : 'bg-[#FCD535] text-black hover:bg-[#FCD535]/90 shadow-xl shadow-[#FCD535]/20'}`}
+                        className={`w-full px-8 py-3.5 rounded font-bold text-base uppercase tracking-tight transition-all flex items-center justify-center gap-4 active:scale-[0.98] group ${!hasGeneratedLabel ? 'bg-[#2B3139] text-[#5E6673] cursor-not-allowed' : 'bg-[#FCD535] text-[#181A20] hover:bg-[#FCD535]/90 shadow-lg shadow-[#FCD535]/10'}`}
                     >
-                        <div className="flex items-center gap-3">
-                            Initialize Camera
-                            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" /><path strokeLinecap="round" strokeLinejoin="round" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
-                        </div>
-                        <span className="text-[10px] opacity-70">បើកកាមេរ៉ាដើម្បីថតរូប</span>
+                        <span>Initialize Vision</span>
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M6.827 6.175A2.31 2.31 0 015.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 002.25 2.25h15a2.25 2.25 0 002.25-2.25V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 00-1.134-.175 2.31 2.31 0 01-1.64-1.055l-.822-1.316a2.192 2.192 0 00-1.736-1.039 48.774 48.774 0 00-5.232 0 2.192 2.192 0 00-1.736 1.039l-.821 1.316z" /><path strokeLinecap="round" strokeLinejoin="round" d="M16.5 12.75a4.5 4.5 0 11-9 0 4.5 4.5 0 019 0zM18.75 10.5h.008v.008h-.008V10.5z" /></svg>
                     </button>
                 )}
 
@@ -70,20 +71,14 @@ const ActionControls: React.FC<ActionControlsProps> = ({
                     <button 
                         onClick={handleSubmit} 
                         disabled={!packagePhoto || uploading} 
-                        className={`flex-1 sm:flex-none px-16 py-5 rounded-2xl font-bold text-base tracking-tight transition-all flex flex-col items-center justify-center gap-1 active:scale-95 ${!packagePhoto || uploading ? 'bg-white/5 text-gray-600 border border-white/5 cursor-not-allowed opacity-50' : 'bg-[#0ECB81] text-white hover:bg-[#0ECB81]/90 shadow-xl shadow-[#0ECB81]/20'}`}
+                        className={`w-full px-10 py-3.5 rounded font-bold text-lg uppercase tracking-tight transition-all flex items-center justify-center gap-4 active:scale-[0.98] group ${!packagePhoto || uploading ? 'bg-[#2B3139] text-[#5E6673] cursor-not-allowed' : 'bg-[#02C076] text-white shadow-lg shadow-[#02C076]/10'}`}
                     >
                         {uploading && undoTimer === null ? (
-                            <div className="flex items-center gap-3">
-                                <div className="w-5 h-5 border-3 border-white/20 border-t-white rounded-full animate-spin"></div>
-                                <span>Processing...</span>
-                            </div>
+                            <div className="w-6 h-6 border-3 border-white/20 border-t-white rounded-full animate-spin"></div>
                         ) : (
                             <>
-                                <div className="flex items-center gap-3">
-                                    Finalize Packing 
-                                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
-                                </div>
-                                <span className="text-[10px] opacity-70">បញ្ចប់ការវេចខ្ចប់ និងរក្សាទុក</span>
+                                <span>Commit Order</span>
+                                <svg className="w-6 h-6 group-hover:scale-110 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                             </>
                         )}
                     </button>

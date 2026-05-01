@@ -8,6 +8,7 @@ import {
     Activity, Server, LogOut, ChevronLeft, BarChart3, 
     Layers, Search, ChevronRight, Plus, DollarSign, ListChecks, AlertCircle
 } from 'lucide-react';
+import { safeParseDate } from '../utils/dateUtils';
 
 interface DesktopUserJourneyProps {
     onBackToRoleSelect: () => void;
@@ -78,10 +79,15 @@ const DesktopUserJourney: React.FC<DesktopUserJourneyProps> = ({ onBackToRoleSel
         const now = new Date();
         const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
         const endOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
+        
         const filtered = orders.filter(o => {
+            const orderId = (o['Order ID'] || '').toString();
+            if (orderId.includes('Opening_Balance') || orderId.includes('Opening Balance')) return false;
+
             if (!o.Timestamp) return false;
-            const date = new Date(o.Timestamp);
-            if (isNaN(date.getTime())) return false;
+            const date = safeParseDate(o.Timestamp);
+            if (!date || isNaN(date.getTime())) return false;
+
             if (dateFilter === 'today') return date >= today && date <= endOfToday;
             if (dateFilter === 'week') {
                 const day = now.getDay();
@@ -89,8 +95,14 @@ const DesktopUserJourney: React.FC<DesktopUserJourneyProps> = ({ onBackToRoleSel
                 weekStart.setDate(today.getDate() - (day === 0 ? 6 : day - 1));
                 return date >= weekStart && date <= endOfToday;
             }
-            if (dateFilter === 'month') return date.getMonth() === now.getMonth() && date.getFullYear() === now.getFullYear() && date <= endOfToday;
-            if (dateFilter === 'year') return date.getFullYear() === now.getFullYear() && date <= endOfToday;
+            if (dateFilter === 'month') {
+                const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+                return date >= startOfMonth && date <= endOfToday;
+            }
+            if (dateFilter === 'year') {
+                const startOfYear = new Date(now.getFullYear(), 0, 1);
+                return date >= startOfYear && date <= endOfToday;
+            }
             if (dateFilter === 'custom') {
                 const start = customStart ? new Date(customStart + 'T00:00:00') : null;
                 const end = customEnd ? new Date(customEnd + 'T23:59:59') : null;

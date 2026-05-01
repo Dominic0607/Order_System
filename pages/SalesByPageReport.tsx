@@ -102,56 +102,66 @@ const SalesByPageReport: React.FC<SalesByPageReportProps> = ({
                 return `${year}-${month}-${day}`;
             };
 
-            filters.page = pageName;
-            filters.datePreset = 'custom';
-            filters.startDate = fmt(start);
-            filters.endDate = fmt(end);
+            // Preserve existing filters when navigating
+            const newFilters = { 
+                ...contextFilters,
+                ...filters,
+                page: pageName,
+                datePreset: 'custom' as const,
+                startDate: fmt(start),
+                endDate: fmt(end)
+            };
 
-            onNavigate(filters);
+            onNavigate(newFilters);
         }
     };
 
     const pageStats = useMemo(() => {
         const stats: Record<string, any> = {};
         
+        // Helper to check if a page matches the current team/page filters
+        const matchesFilters = (pName: string, pTeam: string) => {
+            if (contextFilters?.team) {
+                const selectedTeams = contextFilters.team.split(',').map(t => t.trim().toLowerCase());
+                if (!selectedTeams.includes((pTeam || '').toLowerCase())) return false;
+            }
+            if (contextFilters?.page) {
+                const selectedPages = contextFilters.page.split(',').map(p => p.trim().toLowerCase());
+                if (!selectedPages.includes((pName || '').toLowerCase())) return false;
+            }
+            return true;
+        };
+
         if (appData.pages) {
             appData.pages.forEach(p => {
-                stats[p.PageName] = {
-                    pageName: p.PageName,
-                    teamName: p.Team || 'Unassigned',
-                    logoUrl: p.PageLogoURL || '',
-                    revenue: 0,
-                    profit: 0,
-                    orderCount: 0
-                };
-                MONTHS.forEach(m => { stats[p.PageName][`rev_${m}`] = 0; stats[p.PageName][`prof_${m}`] = 0; });
+                if (matchesFilters(p.PageName, p.Team || '')) {
+                    stats[p.PageName] = {
+                        pageName: p.PageName,
+                        teamName: p.Team || 'Unassigned',
+                        logoUrl: p.PageLogoURL || '',
+                        revenue: 0,
+                        profit: 0,
+                        orderCount: 0
+                    };
+                    MONTHS.forEach(m => { stats[p.PageName][`rev_${m}`] = 0; stats[p.PageName][`prof_${m}`] = 0; });
+                }
             });
         }
 
         orders.forEach(o => {
             const page = o.Page || 'Unknown';
-            if (!stats[page]) {
-                const info = appData.pages?.find(p => p.PageName === page);
-                stats[page] = { 
-                    pageName: page, 
-                    teamName: o.Team || 'Unassigned', 
-                    logoUrl: info?.PageLogoURL || '', 
-                    revenue: 0, 
-                    profit: 0,
-                    orderCount: 0
-                };
-                MONTHS.forEach(m => { stats[page][`rev_${m}`] = 0; stats[page][`prof_${m}`] = 0; });
-            }
-            const rev = Number(o['Grand Total']) || 0;
-            const cost = (Number(o['Total Product Cost ($)']) || 0) + (Number(o['Internal Cost']) || 0);
-            stats[page].revenue += rev;
-            stats[page].profit += (rev - cost);
-            stats[page].orderCount += 1;
-            if (o.Timestamp) { 
-                const d = new Date(o.Timestamp); 
-                const monthName = MONTHS[d.getMonth()];
-                stats[page][`rev_${monthName}`] += rev; 
-                stats[page][`prof_${monthName}`] += (rev - cost); 
+            if (stats[page]) {
+                const rev = Number(o['Grand Total']) || 0;
+                const cost = (Number(o['Total Product Cost ($)']) || 0) + (Number(o['Internal Cost']) || 0);
+                stats[page].revenue += rev;
+                stats[page].profit += (rev - cost);
+                stats[page].orderCount += 1;
+                if (o.Timestamp) { 
+                    const d = new Date(o.Timestamp); 
+                    const monthName = MONTHS[d.getMonth()];
+                    stats[page][`rev_${monthName}`] += rev; 
+                    stats[page][`prof_${monthName}`] += (rev - cost); 
+                }
             }
         });
 
@@ -167,7 +177,7 @@ const SalesByPageReport: React.FC<SalesByPageReportProps> = ({
             if (typeof valA === 'string') return valA.localeCompare(valB) * mult;
             return (valA - valB) * mult;
         });
-    }, [orders, sortConfig, appData.pages, showAllPages]);
+    }, [orders, sortConfig, appData.pages, showAllPages, contextFilters]);
 
     const grandTotals = useMemo(() => {
         const totals: any = { revenue: 0, profit: 0, pagesCount: pageStats.length };

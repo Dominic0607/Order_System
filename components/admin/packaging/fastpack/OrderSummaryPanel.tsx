@@ -1,31 +1,39 @@
-import React, { useRef, useState, useContext } from 'react';
+import React, { useRef, useState, useContext, useEffect } from 'react';
 import { ParsedOrder, AppData } from '@/types';
 import { convertGoogleDriveUrl, fileToBase64 } from '@/utils/fileUtils';
 import { AppContext } from '@/context/AppContext';
 import { CacheService, CACHE_KEYS } from '@/services/cacheService';
 import { compressImage } from '@/utils/imageCompressor';
 import { WEB_APP_URL } from '@/constants';
-import Spinner from '@/components/common/Spinner';
+import { translations } from '@/translations';
 
-type PackStep = 'VERIFYING' | 'LABELING' | 'PHOTO';
-
-interface OrderSummaryPanelProps {
+interface PackingChecklistProps {
     order: ParsedOrder;
     appData: AppData;
-    step: PackStep;
     verifiedItems: Record<string, number>;
-    isOrderVerified: boolean;
     verifyItem: (productName: string) => void;
-    showFullImage: (url: string) => void;
 }
 
-const OrderSummaryPanel: React.FC<OrderSummaryPanelProps> = ({
-    order, appData, step, verifiedItems, isOrderVerified, verifyItem, showFullImage
+const OrderSummaryPanel: React.FC<PackingChecklistProps> = ({
+    order, appData, verifiedItems, verifyItem
 }) => {
-    const { refreshData, currentUser } = useContext(AppContext);
+    const { refreshData, language } = useContext(AppContext);
     const fileInputRef = useRef<HTMLInputElement>(null);
+    const inputRef = useRef<HTMLInputElement>(null);
     const [editingProduct, setEditingProduct] = useState<string | null>(null);
     const [uploadingImage, setUploadingImage] = useState<string | null>(null);
+    const [manualBarcode, setManualBarcode] = useState('');
+
+    useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (document.activeElement?.tagName !== 'INPUT' && document.activeElement?.tagName !== 'TEXTAREA') {
+                inputRef.current?.focus();
+            }
+        };
+        window.addEventListener('keydown', handleKeyDown);
+        inputRef.current?.focus();
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, []);
 
     const handleProductImageEdit = async (productName: string, file: File) => {
         if (!file) return;
@@ -35,294 +43,221 @@ const OrderSummaryPanel: React.FC<OrderSummaryPanelProps> = ({
             const base64Data = await fileToBase64(compressedBlob);
             const session = await CacheService.get<{ token: string }>(CACHE_KEYS.SESSION);
             const token = session?.token;
-
             const response = await fetch(`${WEB_APP_URL}/api/upload-image`, {
                 method: 'POST',
-                headers: { 
-                    'Content-Type': 'application/json',
-                    ...(token ? { 'Authorization': `Bearer ${token}` } : {})
-                },
-                body: JSON.stringify({ 
-                    fileData: base64Data, 
-                    fileName: `Product_${Date.now()}.jpg`, 
-                    mimeType: 'image/jpeg',
-                    sheetName: 'Products',
-                    primaryKey: { 'ProductName': productName },
-                    targetColumn: 'ImageURL'
-                })
+                headers: { 'Content-Type': 'application/json', ...(token ? { 'Authorization': `Bearer ${token}` } : {}) },
+                body: JSON.stringify({ fileData: base64Data, fileName: `Product_${Date.now()}.jpg`, mimeType: 'image/jpeg', sheetName: 'Products', primaryKey: { 'ProductName': productName }, targetColumn: 'ImageURL' })
             });
             const result = await response.json();
             if (!response.ok || result.status !== 'success') throw new Error(result.message || 'Upload failed');
-            
             await refreshData();
-        } catch (err: any) { 
-            alert('Failed to update product image: ' + err.message); 
-        } finally { 
-            setUploadingImage(null); 
-            setEditingProduct(null);
+        } catch (err: any) { alert('Failed: ' + err.message); } 
+        finally { setUploadingImage(null); setEditingProduct(null); }
+    };
+
+    const handleManualBarcodeSubmit = (e: React.FormEvent) => {
+        e.preventDefault();
+        const code = manualBarcode.trim();
+        if (!code) return;
+        const product = appData.products?.find(p => p.Barcode === code || p.ProductName === code);
+        if (product) {
+            const orderItem = order.Products.find(op => op.name === product.ProductName);
+            if (orderItem) { verifyItem(orderItem.name); setManualBarcode(''); return; }
+        } else {
+            const orderItem = order.Products.find(op => op.name === code);
+            if (orderItem) { verifyItem(orderItem.name); setManualBarcode(''); return; }
         }
+        setManualBarcode('');
     };
 
-    const renderStepIndicator = () => {
-        const steps: { id: PackStep, label: string, sub: string, icon: React.ReactNode }[] = [
-            { id: 'VERIFYING', label: 'Verify Items', sub: 'Scanning', icon: <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" /></svg> },
-            { id: 'LABELING', label: 'Print Label', sub: 'Identification', icon: <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M7 20l4-16m2 16l4-16M6 9h14M4 15h14" /></svg> },
-            { id: 'PHOTO', label: 'Take Photo', sub: 'Evidence', icon: <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" /><path strokeLinecap="round" strokeLinejoin="round" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" /></svg> },
-        ];
-        const currentIdx = steps.findIndex(st => st.id === step);
-        const progressWidth = currentIdx === 0 ? 0 : currentIdx === 1 ? 50 : 100;
+    const totalExpected = order.Products.reduce((sum, p) => sum + p.quantity, 0);
+    const totalVerified = Object.values(verifiedItems).reduce((sum, v) => sum + v, 0);
+    const progressPercent = Math.round((totalVerified / totalExpected) * 100);
 
-        return (
-            <div className="mb-12 px-2 relative">
-                {/* Track Background */}
-                <div className="absolute top-8 left-10 right-10 h-[2px] bg-white/10 rounded-full"></div>
-                
-                {/* Progress Track */}
-                <div 
-                    className="absolute top-8 left-10 h-[2px] bg-[#FCD535] transition-all duration-700 ease-in-out shadow-[0_0_10px_rgba(252,213,53,0.4)]"
-                    style={{ width: progressWidth > 0 ? `calc(${progressWidth}% - 20px)` : '0' }}
-                ></div>
-                
-                <div className="relative flex items-center justify-between">
-                    {steps.map((s, idx) => {
-                        const isActive = step === s.id;
-                        const isPast = currentIdx > idx;
-                        
-                        return (
-                            <div key={s.id} className="flex flex-col items-center relative z-10 w-28">
-                                <div className={`w-16 h-16 rounded-full flex items-center justify-center border-2 transition-all duration-500 ${
-                                    isPast ? 'bg-[#0ECB81] border-[#0ECB81] text-black shadow-lg shadow-[#0ECB81]/20'
-                                    : isActive ? 'bg-[#1E2329] border-[#FCD535] text-[#FCD535] shadow-lg shadow-[#FCD535]/20'
-                                    : 'bg-[#0B0E11] border-white/10 text-white/20'
-                                }`}>
-                                    {isPast ? (
-                                        <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
-                                    ) : (
-                                        <span className="scale-110">{s.icon}</span>
-                                    )}
-                                </div>
-
-                                <div className="mt-3 flex flex-col items-center text-center">
-                                    <span className={`text-sm font-bold transition-all duration-500 ${
-                                        isActive ? 'text-white' : isPast ? 'text-[#0ECB81]' : 'text-white/20'
-                                    }`}>
-                                        {s.label}
-                                    </span>
-                                    <span className={`text-[11px] font-medium mt-0.5 transition-all duration-500 ${
-                                        isActive ? 'text-[#FCD535]' : 'text-white/10'
-                                    }`}>
-                                        {s.sub}
-                                    </span>
-                                </div>
-                            </div>
-                        );
-                    })}
-                </div>
-            </div>
-        );
-    };
-
-    const renderChecklist = () => (
-        <div className="space-y-4 max-h-[50vh] overflow-y-auto pr-3 custom-scrollbar px-1">
-            {order.Products.map((p, i) => {
-                const verified = verifiedItems[p.name] || 0;
-                const isComplete = verified >= p.quantity;
-                const masterP = appData.products?.find(mp => mp.ProductName === p.name);
-                
-                return (
-                    <div key={i} className={`flex flex-col p-4 rounded-xl border transition-all duration-300 ${isComplete ? 'bg-[#0ECB81]/5 border-[#0ECB81]/20' : 'bg-[#181A20] border-white/5 hover:border-white/10'}`}>
-                        <div className="flex items-start gap-4">
-                            <div 
-                                className="relative flex-shrink-0 cursor-pointer group/img"
-                                onClick={() => {
-                                    setEditingProduct(p.name);
-                                    fileInputRef.current?.click();
-                                }}
-                            >
-                                <div className="w-20 h-20 rounded-lg overflow-hidden border border-white/10">
-                                    {p.image ? (
-                                        <img src={convertGoogleDriveUrl(p.image)} className={`w-full h-full object-cover transition-transform ${uploadingImage === p.name ? 'opacity-30 blur-sm' : 'group-hover/img:scale-110'}`} alt={p.name} />
-                                    ) : (
-                                        <div className="w-full h-full bg-[#0B0E11] flex items-center justify-center text-gray-700">
-                                            <svg className="w-8 h-8 opacity-20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" /></svg>
-                                        </div>
-                                    )}
-                                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover/img:opacity-100 flex items-center justify-center transition-opacity">
-                                        <span className="text-[10px] font-bold text-white uppercase tracking-wider">Change</span>
-                                    </div>
-                                </div>
-                            </div>
-                            
-                            <div className="flex-grow min-w-0">
-                                <p className={`font-bold text-base leading-tight mb-1 ${isComplete ? 'text-[#0ECB81]' : 'text-white'}`}>{p.name}</p>
-                                {p.colorInfo && <p className="text-xs text-gray-500 mb-1">{p.colorInfo}</p>}
-                                {masterP?.Barcode && (
-                                    <p className="text-[11px] font-mono text-gray-500 mb-2">Barcode: {masterP.Barcode}</p>
-                                )}
-
-                                <div className="flex items-center gap-4 mt-2">
-                                    <div className="flex flex-col">
-                                        <span className="text-[10px] text-gray-500 uppercase font-bold tracking-wider">Price</span>
-                                        <span className="text-sm font-mono text-white">${(Number(p.finalPrice) || 0).toFixed(2)}</span>
-                                    </div>
-                                    <div className="flex flex-col">
-                                        <span className="text-[10px] text-gray-500 uppercase font-bold tracking-wider">Qty</span>
-                                        <span className="text-sm font-bold text-white">x {p.quantity}</span>
-                                    </div>
-                                    <div className="flex flex-col ml-auto text-right">
-                                        <span className="text-[10px] text-[#FCD535] uppercase font-bold tracking-wider">Total</span>
-                                        <span className="text-sm font-bold text-[#FCD535]">${((Number(p.finalPrice) || 0) * (Number(p.quantity) || 1)).toFixed(2)}</span>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <div className="flex items-center gap-4 mt-4 pt-3 border-t border-white/5">
-                            <div className="flex-grow h-3 bg-black/50 rounded-full overflow-hidden relative">
-                                <div className={`h-full rounded-full transition-all duration-500 ${isComplete ? 'bg-[#0ECB81]' : 'bg-[#FCD535]'}`} style={{ width: `${p.quantity > 0 ? (verified / p.quantity) * 100 : 0}%` }}></div>
-                                {isComplete && (
-                                    <div className="absolute inset-0 bg-[#0ECB81]/20 animate-pulse"></div>
-                                )}
-                            </div>
-                            <div className="flex items-center gap-3">
-                                {isComplete ? (
-                                    <div className="flex items-center gap-2 px-3 py-1 bg-[#0ECB81]/10 border border-[#0ECB81]/20 rounded-lg">
-                                        <svg className="w-4 h-4 text-[#0ECB81]" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
-                                        <span className="text-[10px] font-black text-[#0ECB81] uppercase">Complete</span>
-                                    </div>
-                                ) : (
-                                    <span className="text-xs font-bold text-gray-400">{verified} / {p.quantity} <span className="text-[10px] opacity-60 uppercase">Packed</span></span>
-                                )}
-                                {!isComplete && (
-                                    <button 
-                                        onClick={() => verifyItem(p.name)} 
-                                        className="h-10 px-6 bg-[#FCD535] hover:bg-[#FCD535]/90 text-black rounded-lg text-xs font-bold uppercase tracking-wider transition-all active:scale-95 shadow-md flex items-center gap-2"
-                                    >
-                                        Pack Item
-                                    </button>
-                                )}
-                            </div>
-                        </div>
-                    </div>
-                );
-            })}
-        </div>
-    );
+    const discountAmount = order['Discount ($)'] || 0;
+    const subtotal = order.Subtotal || 0;
+    const discountPercent = subtotal > 0 ? (discountAmount / subtotal) * 100 : 0;
 
     return (
-        <div className="w-full xl:w-[45%] flex flex-col border-b xl:border-r border-white/10 bg-[#0B0E11] relative overflow-hidden">
-            <div className="flex-grow p-8 overflow-y-auto custom-scrollbar flex flex-col relative z-10">
-                <div className="flex items-center gap-4 mb-10">
-                    <div className="w-14 h-14 rounded-2xl bg-[#FCD535]/10 border border-[#FCD535]/20 flex items-center justify-center">
-                        <svg className="w-8 h-8 text-[#FCD535]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" /></svg>
+        <div className="h-full flex flex-col gap-5 font-sans text-[#EAECEF] bg-[#181A20]">
+            {/* --- Binance Style Header --- */}
+            <div className="shrink-0 space-y-4 px-1">
+                <div className="flex items-center justify-between">
+                    <div className="flex flex-col">
+                        <h2 className="text-xl font-bold tracking-tight text-white flex items-center gap-2">
+                            Checklist <span className="text-xs font-normal text-[#848E9C] px-2 py-0.5 bg-[#2B3139] rounded">SPOT</span>
+                        </h2>
+                        <span className="text-[11px] font-medium text-[#848E9C] mt-1">Verification Progress</span>
                     </div>
-                    <div>
-                        <h2 className="text-2xl font-bold text-white tracking-tight">Pack Terminal</h2>
-                        <p className="text-xs font-medium text-gray-500">Fast Fulfillment Mode</p>
+                    <div className="flex flex-col items-end">
+                        <span className={`text-3xl font-bold ${progressPercent === 100 ? 'text-[#02C076]' : 'text-[#FCD535]'}`}>
+                            {progressPercent}%
+                        </span>
+                        <span className="text-[11px] text-[#848E9C]">Finalizing...</span>
                     </div>
                 </div>
-
-                {renderStepIndicator()}
                 
-                <div className="flex-grow flex flex-col">
-                    <div className="mb-8 space-y-6">
-                        <div className="grid grid-cols-2 gap-8">
-                            <div>
-                                <label className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-1 block">Order ID</label>
-                                <span className="text-lg font-mono font-bold text-white">#{order['Order ID'].substring(0, 12)}</span>
-                            </div>
-                            <div>
-                                <label className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-1 block">Team / Store</label>
-                                <span className="text-base font-bold text-white/80">{order.Team} — {order['Fulfillment Store'] || 'Central'}</span>
-                            </div>
-                        </div>
-
-                        <div className="grid grid-cols-2 gap-8">
-                            <div>
-                                <label className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-1 block">Customer</label>
-                                <div className="flex flex-col">
-                                    <span className="text-base font-bold text-white">{order['Customer Name']}</span>
-                                    <span className="text-sm font-mono text-[#FCD535]">{order['Customer Phone']}</span>
-                                </div>
-                            </div>
-                            <div>
-                                <label className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-1 block">Delivery Location</label>
-                                <span className="text-sm font-bold text-white/80 line-clamp-2">{order.Location}</span>
-                            </div>
-                        </div>
-
-                        {order.Note && (
-                            <div className="bg-red-500/10 border border-red-500/20 p-4 rounded-xl flex items-start gap-3">
-                                <svg className="w-5 h-5 text-red-500 mt-0.5 shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" /></svg>
-                                <div>
-                                    <span className="text-xs font-bold text-red-400 uppercase tracking-wider block mb-0.5">Note from Order</span>
-                                    <p className="text-sm text-red-200/90 font-medium italic">"{order.Note}"</p>
-                                </div>
-                            </div>
-                        )}
-                    </div>
-
-                    <div className="flex items-center justify-between mb-4">
-                        <h4 className="text-xs font-bold text-gray-500 uppercase tracking-widest">Packing Checklist</h4>
-                        <div className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider border ${isOrderVerified ? 'bg-[#0ECB81]/10 text-[#0ECB81] border-[#0ECB81]/20' : 'bg-white/5 text-gray-500 border-white/5'}`}>
-                            {isOrderVerified ? 'All Items Packed' : 'Awaiting Items'}
-                        </div>
-                    </div>
-                    
-                    {renderChecklist()}
-
-                    {(() => {
-                        const originalSubtotal = order.Products.reduce((sum, p) => sum + (Number(p.cost) || 0) * (Number(p.quantity) || 1), 0);
-                        const shipping = Number(order['Shipping Fee (Customer)']) || 0;
-                        const grandTotal = Number(order['Grand Total']) || 0;
-                        const totalDiscount = (originalSubtotal + shipping) - grandTotal;
-
-                        return (
-                            <div className="mt-8 p-6 rounded-2xl bg-[#181A20] border border-white/5 shadow-xl shrink-0">
-                                <div className="space-y-2 mb-6">
-                                    <div className="flex justify-between items-center text-gray-500 text-xs">
-                                        <span>Subtotal</span>
-                                        <span className="font-mono">${originalSubtotal.toFixed(2)}</span>
-                                    </div>
-                                    <div className="flex justify-between items-center text-gray-500 text-xs">
-                                        <span>Logistics</span>
-                                        <span className="font-mono">${shipping.toFixed(2)}</span>
-                                    </div>
-                                    {totalDiscount > 0 && (
-                                        <div className="flex justify-between items-center text-[#0ECB81] text-xs">
-                                            <span>Discount</span>
-                                            <span className="font-mono">- ${totalDiscount.toFixed(2)}</span>
-                                        </div>
-                                    )}
-                                </div>
-                                
-                                <div className="flex justify-between items-center pt-4 border-t border-white/10">
-                                    <div className="flex flex-col">
-                                        <span className="text-xs font-bold text-[#FCD535] uppercase tracking-wider">Total to Collect</span>
-                                        <span className="text-[10px] text-gray-500 font-medium">VAT & Fees included</span>
-                                    </div>
-                                    <div className="text-right">
-                                        <span className="text-4xl font-mono font-bold text-[#0ECB81] tracking-tighter">${grandTotal.toFixed(2)}</span>
-                                    </div>
-                                </div>
-                            </div>
-                        );
-                    })()}
+                {/* Clean Progress Bar */}
+                <div className="w-full h-2.5 bg-[#2B3139] rounded-full overflow-hidden">
+                    <div 
+                        className={`h-full transition-all duration-700 ease-out ${progressPercent === 100 ? 'bg-[#02C076]' : 'bg-[#FCD535]'}`} 
+                        style={{ width: `${progressPercent}%` }}
+                    ></div>
                 </div>
             </div>
-            {/* Hidden Input for Editing Images */}
-            <input 
-                type="file" 
-                accept="image/*" 
-                className="hidden" 
-                ref={fileInputRef} 
-                onChange={(e) => {
-                    if (e.target.files && editingProduct) {
-                        handleProductImageEdit(editingProduct, e.target.files[0]);
-                    }
-                    if (fileInputRef.current) fileInputRef.current.value = '';
-                }} 
-            />
+
+            {/* --- Search/Scan Input --- */}
+            <div className="shrink-0 px-1">
+                <form onSubmit={handleManualBarcodeSubmit} className="relative group">
+                    <div className="absolute inset-y-0 left-3.5 flex items-center pointer-events-none">
+                        <svg className="w-4 h-4 text-[#848E9C]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+                    </div>
+                    <input 
+                        ref={inputRef}
+                        type="text"
+                        value={manualBarcode}
+                        onChange={(e) => setManualBarcode(e.target.value)}
+                        placeholder="Search Product / Scan Barcode"
+                        className="w-full bg-[#2B3139] border border-transparent py-3 pl-11 pr-4 text-base font-medium text-[#EAECEF] placeholder-[#848E9C] focus:outline-none focus:border-[#FCD535] rounded-md transition-all"
+                    />
+                </form>
+            </div>
+
+            {/* --- Asset/Product List --- */}
+            <div className="flex-grow overflow-y-auto custom-scrollbar-terminal space-y-1">
+                <div className="flex items-center justify-between px-3 py-2 text-[12px] font-medium text-[#848E9C] border-b border-[#2B3139]">
+                    <span>Product Name</span>
+                    <span className="text-right">Qty / Status</span>
+                </div>
+                
+                {order.Products.map((p, i) => {
+                    const verified = verifiedItems[p.name] || 0;
+                    const isComplete = verified >= p.quantity;
+                    
+                    return (
+                        <div key={i} className={`flex items-center gap-4 px-3 py-5 transition-colors ${isComplete ? 'bg-[#1E2329]/30 opacity-60' : 'hover:bg-[#1E2329]'}`}>
+                            {/* Product Image like Asset Icon */}
+                            <div 
+                                className="w-12 h-12 shrink-0 bg-[#2B3139] rounded-full relative overflow-hidden cursor-pointer flex items-center justify-center border border-[#2B3139]"
+                                onClick={() => { setEditingProduct(p.name); fileInputRef.current?.click(); }}
+                            >
+                                {p.image ? (
+                                    <img src={convertGoogleDriveUrl(p.image)} className={`w-full h-full object-cover ${isComplete ? 'grayscale' : ''}`} alt="" />
+                                ) : (
+                                    <span className="text-sm font-bold text-[#848E9C]">{p.name.substring(0, 2).toUpperCase()}</span>
+                                )}
+                                {isComplete && (
+                                    <div className="absolute inset-0 bg-[#02C076]/20 flex items-center justify-center">
+                                        <svg className="w-6 h-6 text-[#02C076]" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={4}><path d="M5 13l4 4L19 7" /></svg>
+                                    </div>
+                                )}
+                            </div>
+
+                            <div className="flex-grow min-w-0">
+                                <div className="flex justify-between items-start mb-1">
+                                    <h4 className="text-base font-bold text-[#EAECEF] truncate leading-tight">
+                                        {p.name}
+                                    </h4>
+                                    <span className="text-base font-bold text-[#EAECEF]">
+                                        {verified} <span className="text-[#848E9C] font-medium">/ {p.quantity}</span>
+                                    </span>
+                                </div>
+                                <div className="flex justify-between items-center">
+                                    <div className="flex flex-col">
+                                        <div className="flex items-center gap-2">
+                                            <span className="text-sm text-[#EAECEF] font-bold">${p.finalPrice.toFixed(2)}</span>
+                                            {p.originalPrice > p.finalPrice && (
+                                                <span className="text-[12px] text-[#848E9C] line-through">${p.originalPrice.toFixed(2)}</span>
+                                            )}
+                                        </div>
+                                        {p.originalPrice > p.finalPrice && (
+                                            <span className="text-[11px] text-[#F6465D] font-bold uppercase mt-0.5">
+                                                SAVE ${(p.originalPrice - p.finalPrice).toFixed(2)} ({Math.round((1 - p.finalPrice/p.originalPrice) * 100)}%)
+                                            </span>
+                                        )}
+                                    </div>
+                                    <div className={`text-[11px] font-bold px-2 py-0.5 rounded-sm ${isComplete ? 'text-[#02C076] bg-[#02C076]/10' : 'text-[#FCD535] bg-[#FCD535]/10'}`}>
+                                        {isComplete ? 'VERIFIED' : 'PENDING'}
+                                    </div>
+                                </div>
+                            </div>
+
+                            {!isComplete && (
+                                <button 
+                                    onClick={() => verifyItem(p.name)}
+                                    className="w-10 h-10 bg-[#2B3139] hover:bg-[#FCD535] hover:text-black text-[#FCD535] rounded flex items-center justify-center transition-all active:scale-90 shadow-lg"
+                                >
+                                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={3}><path d="M12 6v6m0 0v6m0-6h6m-6 0H6" /></svg>
+                                </button>
+                            )}
+                        </div>
+                    );
+                })}
+            </div>
+
+            {/* --- Settlement Summary like Wallet/Trade Details --- */}
+            <div className="shrink-0 bg-[#1E2329] rounded-xl p-6 space-y-4 shadow-xl border border-[#2B3139]">
+                <div className="space-y-2.5">
+                    <div className="flex justify-between items-center text-sm">
+                        <span className="text-[#848E9C]">Total Estimated</span>
+                        <span className="text-[#EAECEF] font-bold">${subtotal.toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-between items-center text-sm">
+                        <span className="text-[#848E9C]">Total Discounts</span>
+                        <span className="text-[#F6465D] font-bold">-${discountAmount.toFixed(2)} <span className="text-[11px] ml-1">(-{discountPercent.toFixed(1)}%)</span></span>
+                    </div>
+                </div>
+
+                {(() => {
+                    const shippingFee = Number(order['Shipping Fee (Customer)']) || 0;
+                    const hasFee = shippingFee > 0;
+                    return (
+                        <div className={`border rounded-lg flex justify-between items-center p-3.5 transition-all duration-500 ${
+                            hasFee 
+                                ? 'bg-[#FCD535] border-[#FCD535] shadow-[0_0_20px_rgba(252,213,53,0.2)]' 
+                                : 'bg-[#2B3139]/30 border-white/5'
+                        }`}>
+                            <span className={`text-[13px] font-black uppercase tracking-widest ${hasFee ? 'text-black' : 'text-[#848E9C]'}`}>
+                                Shipping Fee | ថ្លៃសេវាដឹក
+                            </span>
+                            <div className="flex items-baseline gap-1.5">
+                                <span className={`text-2xl font-black ${hasFee ? 'text-black' : 'text-[#EAECEF]'}`}>
+                                    ${shippingFee.toFixed(2)}
+                                </span>
+                                <span className={`text-[11px] font-bold ${hasFee ? 'text-black/60' : 'text-[#848E9C]'}`}>
+                                    USD
+                                </span>
+                            </div>
+                        </div>
+                    );
+                })()}
+                
+                <div className="pt-4 border-t border-[#2B3139] flex justify-between items-end">
+                    <div className="flex flex-col">
+                        <span className="text-[12px] font-medium text-[#848E9C] mb-1">Total Settlement</span>
+                        <div className="flex items-baseline gap-1.5">
+                            <span className="text-4xl font-bold text-[#FCD535] tracking-tight">${(order['Grand Total'] || 0).toFixed(2)}</span>
+                            <span className="text-sm font-medium text-[#848E9C]">USD</span>
+                        </div>
+                    </div>
+                    <div className="flex flex-col items-end gap-1.5">
+                        <div className="px-2.5 py-1 bg-[#2B3139] rounded text-[11px] font-bold text-[#EAECEF] flex items-center gap-2">
+                            <div className="w-2 h-2 rounded-full bg-[#02C076]"></div>
+                            Fulfillment Ready
+                        </div>
+                        <span className="text-[11px] text-[#848E9C] font-mono uppercase tracking-tighter">REF: {order['Order ID']?.substring(0, 12)}</span>
+                    </div>
+                </div>
+            </div>
+
+            <input type="file" accept="image/*" className="hidden" ref={fileInputRef} onChange={(e) => { if (e.target.files && editingProduct) handleProductImageEdit(editingProduct, e.target.files[0]); if (fileInputRef.current) fileInputRef.current.value = ''; }} />
+
+            <style>{`
+                .custom-scrollbar-terminal::-webkit-scrollbar { width: 3px; }
+                .custom-scrollbar-terminal::-webkit-scrollbar-track { background: transparent; }
+                .custom-scrollbar-terminal::-webkit-scrollbar-thumb { background: #2B3139; border-radius: 10px; }
+                .custom-scrollbar-terminal::-webkit-scrollbar-thumb:hover { background: #FCD535; }
+            `}</style>
         </div>
     );
 };

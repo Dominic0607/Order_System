@@ -405,6 +405,18 @@ export interface IncentiveManualData {
     value: number;
 }
 
+export interface Shift {
+  ID: number;
+  StoreName: string;
+  OpenedBy: string;
+  OpenedAt: string;
+  OpenPhoto: string;
+  ClosedBy: string;
+  ClosedAt: string | null;
+  Status: 'Open' | 'Closed';
+  SummaryJSON: string;
+}
+
 export interface IncentiveCustomPayout {
     id: number;
     projectId: number;

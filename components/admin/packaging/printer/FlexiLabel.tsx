@@ -12,12 +12,14 @@ interface FlexiLabelProps {
   watermarkIntensity?: number;
 }
 
-const FlexiLabel: React.FC<FlexiLabelProps> = ({ data, qrValue, isDesignMode }) => {
+const FlexiLabel: React.FC<FlexiLabelProps> = ({ data, qrValue, isDesignMode, watermarkIntensity = 20 }) => {
   const totalAmount = parseFloat(data.total);
   const paymentLower = (data.payment || '').toLowerCase();
   
   const isPaid = paymentLower.includes('paid') && !paymentLower.includes('unpaid');
   const isCOD = !isPaid && totalAmount > 0;
+
+  const bgOpacity = watermarkIntensity / 100;
   
   // Logic 1: Auto-scale Location (Province)
   const getLocationBaseSize = (text: string) => {
@@ -97,6 +99,15 @@ const FlexiLabel: React.FC<FlexiLabelProps> = ({ data, qrValue, isDesignMode }) 
 
   return (
     <div className="flex flex-col w-full h-full bg-white text-black font-sans relative box-border overflow-hidden">
+        {/* Background Watermark */}
+        <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-0">
+            <span 
+                className="text-[82pt] font-black uppercase rotate-[-45deg] text-black tracking-[0.2em]"
+                style={{ opacity: bgOpacity }}
+            >
+                {isPaid ? 'PAID' : (isCOD ? 'C.O.D' : 'ORDER')}
+            </span>
+        </div>
         
         {/* 1. HEADER & STORE IDENTITY */}
         <div className="px-3 pt-1.5 pb-0 flex justify-between items-start shrink-0">

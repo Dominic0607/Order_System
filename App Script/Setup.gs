@@ -12,7 +12,7 @@ function onOpen() {
 }
 
 const SYSTEM_STRUCTURE = {
-  "Users": ["UserName", "Password", "Team", "FullName", "ProfilePictureURL", "Role", "IsSystemAdmin", "TelegramUsername"],
+  "Users": ["UserName", "Password", "Team", "FullName", "ProfilePictureURL", "Role", "IsSystemAdmin", "TelegramUsername", "TelegramStickerID"],
   "Stores": ["StoreName", "StoreType", "Address", "TelegramBotToken", "TelegramGroupID", "TelegramTopicID", "LabelPrinterURL", "CODAlertGroupID"],
   "Settings": ["Key", "Value", "Description"],
   "TeamsPages": ["ID", "Team", "PageName", "TelegramValue", "PageLogoURL", "DefaultStore", "TelegramTopicID"],
@@ -62,7 +62,8 @@ const SYSTEM_STRUCTURE = {
   // ឯកសារយោង និង Chat
   "ChatMessages": ["ID", "Timestamp", "UserName", "Receiver", "MessageType", "Content", "FileID"],
   "EditLogs": ["ID", "Timestamp", "OrderID", "Requester", "Field Changed", "Old Value", "New Value"],
-  "UserActivityLogs": ["ID", "Timestamp", "User", "Action", "Details"]
+  "UserActivityLogs": ["ID", "Timestamp", "User", "Action", "Details"],
+  "Shifts": ["ID", "StoreName", "OpenedBy", "OpenedAt", "OpenPhoto", "ClosedBy", "ClosedAt", "Status", "SummaryJSON"]
 };
 
 function initializeSystem() {
@@ -127,6 +128,7 @@ function initializeSystem() {
   setupSamplePhoneCarriers(ss);
   setupSampleRoles(ss);
   setupSampleRolePermissions(ss);
+  setupSampleShifts(ss);
 
   const ui = SpreadsheetApp.getUi();
   ui.alert('✅ ជោគជ័យ!', `បានបង្កើត Sheet ថ្មីចំនួន: ${createdCount}\nបានធ្វើបច្ចុប្បន្នភាព Sheet ចាស់ចំនួន: ${updatedCount}\n\nរចនាសម្ព័ន្ធទិន្នន័យរបស់អ្នកឥឡូវនេះស៊ីគ្នា ១០០% ជាមួយ Backend ហើយ។\n\n📝 សូមកែប្រែទិន្នន័យគំរូឱ្យត្រឹមត្រូវតាមអាជីវកម្មរបស់អ្នក។`, ui.ButtonSet.OK);
@@ -371,4 +373,10 @@ function setupSampleRolePermissions(ss) {
   });
 
   insertSampleIfEmpty(ss, "RolePermissions", permissions);
+}
+
+function setupSampleShifts(ss) {
+  insertSampleIfEmpty(ss, "Shifts", [
+    [1, "MainStore", "Admin User", "2024-01-01 08:00:00", "", "Admin User", "2024-01-01 17:00:00", "Closed", "ទិន្នន័យសង្ខេបគំរូ: ៥ កញ្ចប់"]
+  ]);
 }

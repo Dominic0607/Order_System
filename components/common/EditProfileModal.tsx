@@ -1,5 +1,5 @@
 
-import React, { useState, useContext, useRef } from 'react';
+import React, { useState, useContext, useRef, useEffect } from 'react';
 import { AppContext } from '../../context/AppContext';
 import Modal from './Modal';
 import Spinner from './Spinner';
@@ -18,7 +18,20 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({ onClose }) => {
     // General State
     const [fullName, setFullName] = useState(currentUser?.FullName || '');
     const [profilePicUrl, setProfilePicUrl] = useState(currentUser?.ProfilePictureURL || '');
-    
+    const isFirstLoad = useRef(true);
+
+    // Sync state with currentUser when it changes (e.g. after background refresh)
+    // but only if the user hasn't edited the field yet.
+    useEffect(() => {
+        if (currentUser) {
+            if (isFirstLoad.current || fullName === '') {
+                setFullName(currentUser.FullName || '');
+                setProfilePicUrl(currentUser.ProfilePictureURL || '');
+                isFirstLoad.current = false;
+            }
+        }
+    }, [currentUser]);
+
     // Security State
     const [oldPassword, setOldPassword] = useState('');
     const [password, setPassword] = useState('');

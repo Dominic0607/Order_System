@@ -27,115 +27,109 @@ const AccLabel: React.FC<AccLabelProps> = ({ data, qrValue, isDesignMode, printD
   };
   const paymentLabel = getPaymentLabel(data.payment);
 
-  // Dynamic Font Size logic for Address - Refined to prevent cutoff
   const getAddressBaseSize = (text: string) => {
     const len = text.length;
-    if (len > 160) return 5;
-    if (len > 130) return 6;
-    if (len > 90) return 7;
-    if (len > 60) return 8;
-    if (len > 30) return 9;
-    return 10;
+    if (len > 150) return 6;
+    if (len > 110) return 7;
+    if (len > 80) return 8;
+    if (len > 50) return 9;
+    if (len > 30) return 10;
+    return 11;
   };
 
-  // Calculate opacity based on watermarkIntensity (0-100)
-  // Maps 0-100 directly to 0-1.0 opacity, allowing full black if desired.
-  // Standard refined default is around 0.2 - 0.3
   const bgOpacity = watermarkIntensity / 100;
 
   return (
-    <div className="flex flex-col w-full h-full bg-white text-black font-sans relative overflow-hidden box-border p-0.5">
-        {/* Background Watermark - Responsive to Watermark Intensity */}
+    <div className="flex flex-col w-full h-full bg-white text-black font-sans relative overflow-hidden box-border p-0">
+        {/* Background Watermark */}
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-0">
             <span 
-                className="text-[64pt] font-black uppercase rotate-[-25deg] text-black"
+                className="text-[72pt] font-black uppercase rotate-[-25deg] text-black tracking-widest"
                 style={{ opacity: bgOpacity }}
             >
                 {isPaid ? 'PAID' : (isCOD ? 'C.O.D' : 'ORDER')}
             </span>
         </div>
 
-        <div className="flex-1 border-[2.5px] border-black rounded-lg flex flex-col overflow-hidden relative z-10 bg-transparent">
-            {/* Header */}
-            <div className="bg-black text-white px-2 py-1 flex justify-between items-center shrink-0">
-                <SmartText storageKey="acc_store" isDesignMode={isDesignMode} initialValue={data.store} baseSize={10} bold font="sans" className="text-white" />
-                <div className="bg-white text-black px-1 py-0.5 rounded text-[6pt] font-mono font-bold">#{data.id}</div>
+        <div className="flex-1 border-[3px] border-black flex flex-col overflow-hidden relative z-10 bg-transparent m-0.5">
+            {/* Header: Logistics Style */}
+            <div className="bg-black text-white px-3 py-1.5 flex justify-between items-center shrink-0 border-b-[3px] border-black">
+                <SmartText storageKey="acc_store" isDesignMode={isDesignMode} initialValue={data.store} baseSize={12} bold heavy font="sans" className="text-white uppercase tracking-wider" />
+                <div className="bg-white text-black px-1.5 py-0.5 rounded-sm text-[8pt] font-mono font-black tracking-tight">#{data.id}</div>
             </div>
 
-            {/* Main Info */}
+            {/* Main Content Area */}
             <div className="flex flex-1 min-h-0">
-                <div className="flex-1 p-2 flex flex-col gap-1 min-w-0">
-                    <div className="flex justify-between items-center shrink-0">
-                         {/* BOLD & BLACK - Recipient Delivery */}
-                         <span className="text-[5pt] uppercase tracking-wider text-black font-black block">Recipient Delivery</span>
-                         {/* BOLD & BLACK - Date */}
-                         <div className="flex items-center gap-1 text-black font-black">
-                            <span className="text-[4.5pt] font-black">DATE:</span>
-                            <SmartText storageKey="acc_date" isDesignMode={isDesignMode} initialValue={data.date} baseSize={6} font="sans" bold heavy />
+                {/* Left Column: Delivery Info */}
+                <div className="flex-1 p-2.5 flex flex-col gap-1 min-w-0 border-r-[2.5px] border-black">
+                    <div className="flex justify-between items-end shrink-0 mb-1">
+                         <div className="bg-black text-white px-1.5 py-0.5 inline-block rounded-[1px]">
+                             <span className="text-[5pt] uppercase tracking-widest font-black block leading-none">DELIVERY TO</span>
+                         </div>
+                         <div className="flex items-center gap-1 text-black">
+                            <span className="text-[5pt] font-black">DATE:</span>
+                            <SmartText storageKey="acc_date" isDesignMode={isDesignMode} initialValue={data.date} baseSize={7} font="sans" bold heavy />
                          </div>
                     </div>
                     
-                    <div className="flex flex-wrap items-baseline gap-2 shrink-0 border-b border-black/5 pb-1 mb-0.5">
-                        <SmartText storageKey="acc_name" isDesignMode={isDesignMode} initialValue={data.name} baseSize={11} bold font="sans" className="text-black" />
-                        <span className="text-black/10 text-[9pt]">|</span>
-                        <SmartText storageKey="acc_phone" isDesignMode={isDesignMode} initialValue={data.phone} baseSize={11} bold font="sans" className="text-black" />
+                    <div className="flex flex-col gap-0.5 shrink-0 border-b-2 border-black/10 pb-1.5 mb-1.5">
+                        <SmartText storageKey="acc_name" isDesignMode={isDesignMode} initialValue={data.name} baseSize={13} bold heavy font="sans" className="text-black uppercase leading-tight" />
+                        <SmartText storageKey="acc_phone" isDesignMode={isDesignMode} initialValue={data.phone} baseSize={12} bold font="mono" className="text-black" />
                     </div>
                     
-                    <div className="flex-1 flex flex-col justify-start min-h-0 overflow-hidden pt-1">
-                        <div className="leading-tight">
-                            {/* Location followed by detail with wrapping */}
-                            <SmartText storageKey="acc_location" isDesignMode={isDesignMode} initialValue={data.location} baseSize={13} bold heavy font="sans" className="mr-2 inline-block align-top text-black" />
-                            {/* Address - BOLD & BLACK */}
-                            <SmartText storageKey="acc_address" isDesignMode={isDesignMode} initialValue={data.address} baseSize={getAddressBaseSize(data.address)} bold heavy font="sans" className="text-black inline-block align-top" />
+                    <div className="flex-1 flex flex-col justify-start min-h-0 overflow-hidden">
+                        <div className="leading-[1.15]">
+                            <SmartText storageKey="acc_location" isDesignMode={isDesignMode} initialValue={data.location} baseSize={14} bold heavy font="sans" className="text-black uppercase block mb-0.5" />
+                            <SmartText storageKey="acc_address" isDesignMode={isDesignMode} initialValue={data.address} baseSize={getAddressBaseSize(data.address)} bold font="sans" className="text-black block" />
                         </div>
                     </div>
                 </div>
 
-                {/* Sidebar */}
-                <div className="w-[28mm] border-l-[2px] border-black p-1 flex flex-col items-center text-center shrink-0 bg-white/40">
-                    <div className="bg-white p-0.5 rounded border border-black/10 mb-2 shrink-0">
-                         <SmartQR storageKey="acc_qr" value={qrValue} baseSize={50} isDesignMode={isDesignMode} />
+                {/* Right Column: QR & Logistics */}
+                <div className="w-[28mm] p-1.5 flex flex-col items-center text-center shrink-0 bg-white">
+                    <div className="bg-white p-1 rounded-sm border-[2px] border-black mb-1.5 shrink-0 w-full flex justify-center">
+                         <SmartQR storageKey="acc_qr" value={qrValue} baseSize={54} isDesignMode={isDesignMode} />
                     </div>
                     
-                    <div className="w-full mb-1 bg-black/5 px-1 py-1 rounded border border-black/10 flex flex-col items-start shrink-0">
-                        {/* SHIPPER - BOLD & BLACK */}
-                        <span className="text-[4pt] text-black uppercase font-black">SHIPPER:</span>
-                        <SmartText storageKey="acc_shipping" isDesignMode={isDesignMode} initialValue={data.shipping} baseSize={6.5} bold heavy font="sans" align="left" block className="text-black" />
+                    <div className="w-full mb-1.5 px-1 py-1 flex flex-col items-center shrink-0 border-t border-b border-black/20">
+                        <span className="text-[4.5pt] text-gray-500 uppercase font-black tracking-widest mb-0.5">SHIPPER</span>
+                        <SmartText storageKey="acc_shipping" isDesignMode={isDesignMode} initialValue={data.shipping} baseSize={7} bold heavy font="sans" align="center" block className="text-black uppercase" />
                     </div>
 
-                    <div className="w-full mt-auto flex flex-col gap-0.5">
+                    <div className="w-full mt-auto flex flex-col justify-end min-h-[14mm]">
                         {isPaid ? (
-                            <div className="bg-white text-black rounded p-1 border-[1.5px] border-black">
-                                <div className="flex items-center justify-center gap-0.5 mb-0.5 text-black">
-                                    <CheckCircle2 size={7} className="text-black" /><span className="text-[5pt] font-black uppercase">PAID</span>
+                            <div className="bg-black text-white rounded-sm p-1.5 w-full flex flex-col items-center justify-center h-full">
+                                <div className="flex items-center gap-1 mb-0.5">
+                                    <CheckCircle2 size={8} strokeWidth={3} /><span className="text-[6pt] font-black uppercase tracking-widest">PAID</span>
                                 </div>
-                                <SmartText storageKey="acc_total_paid" isDesignMode={isDesignMode} initialValue={`$${data.total}`} baseSize={9} bold heavy font="sans" align="center" block className="text-black" />
+                                <SmartText storageKey="acc_total_paid" isDesignMode={isDesignMode} initialValue={`$${data.total}`} baseSize={11} bold heavy font="sans" align="center" block className="text-white" />
                             </div>
                         ) : (isCOD ? (
-                            <div className="bg-black text-white rounded p-1 border-[1.5px] border-black">
-                                <div className="flex items-center justify-center gap-0.5 mb-0.5 bg-white text-black px-0.5 rounded-[1px]">
-                                    <AlertTriangle size={6} strokeWidth={4} /><span className="text-[5pt] font-black uppercase tracking-tighter">COD DUE</span>
+                            <div className="bg-white text-black border-[2.5px] border-black rounded-sm p-1 w-full flex flex-col items-center justify-center h-full relative overflow-hidden">
+                                <div className="absolute top-0 left-0 w-full h-[3px] bg-black"></div>
+                                <div className="flex items-center gap-1 mb-0.5 mt-1">
+                                    <AlertTriangle size={8} strokeWidth={3} /><span className="text-[6.5pt] font-black uppercase tracking-widest">COD DUE</span>
                                 </div>
-                                <SmartText storageKey="acc_total_cod" isDesignMode={isDesignMode} initialValue={`$${data.total}`} baseSize={13} bold font="sans" align="center" block className="text-white" />
+                                <SmartText storageKey="acc_total_cod" isDesignMode={isDesignMode} initialValue={`$${data.total}`} baseSize={14} bold heavy font="sans" align="center" block className="text-black" />
                             </div>
                         ) : (
-                            <div className="bg-white text-black rounded p-1 border border-black/20">
-                                <span className="text-[6pt] font-bold">UNSPECIFIED</span>
+                            <div className="bg-gray-100 text-black rounded-sm p-1.5 border border-black/20 w-full flex items-center justify-center h-full">
+                                <span className="text-[6pt] font-bold uppercase tracking-widest text-gray-500">UNSPECIFIED</span>
                             </div>
                         ))}
-                        <SmartText storageKey="acc_payment_label" isDesignMode={isDesignMode} initialValue={paymentLabel} baseSize={6} bold font="sans" className="text-black" />
                     </div>
                 </div>
             </div>
 
-            {/* Bottom Bar - User/Page BOLD & BLACK */}
-            <div className="bg-black/5 border-t-[1.5px] border-black h-[4.5mm] flex items-center justify-between px-2 shrink-0">
+            {/* Bottom Bar: Routing Info */}
+            <div className="bg-black text-white h-[5mm] flex items-center justify-between px-3 shrink-0">
                  <div className="flex items-center gap-2">
-                    <SmartText storageKey="acc_page" isDesignMode={isDesignMode} initialValue={data.page || "STORE"} baseSize={6} font="sans" bold heavy className="text-black" />
-                    <span className="text-[4pt] text-black font-black">|</span>
-                    <SmartText storageKey="acc_user" isDesignMode={isDesignMode} initialValue={data.user || "Admin"} baseSize={5.5} font="sans" bold heavy className="text-black" />
+                    <SmartText storageKey="acc_page" isDesignMode={isDesignMode} initialValue={data.page || "STORE"} baseSize={6.5} font="sans" bold heavy className="text-white uppercase tracking-wider" />
                  </div>
-                 <span className="text-[4pt] text-black font-black uppercase">PRO DELIVERY SYSTEM</span>
+                 <div className="flex items-center gap-2">
+                    <span className="text-[5pt] font-bold opacity-70 uppercase">BY</span>
+                    <SmartText storageKey="acc_user" isDesignMode={isDesignMode} initialValue={data.user || "Admin"} baseSize={6.5} font="sans" bold heavy className="text-white uppercase" />
+                 </div>
             </div>
         </div>
     </div>

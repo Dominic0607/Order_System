@@ -36,6 +36,9 @@ interface TabletPackagingHubProps {
     onBulkShip: () => void;
     isBulkProcessing: boolean;
     onToggleSelectAll: (orders: ParsedOrder[]) => void;
+    onCloseShift?: () => void;
+    isViewOnly?: boolean;
+    activeShift?: any;
 }
 
 const TabletPackagingHub: React.FC<TabletPackagingHubProps> = ({
@@ -43,9 +46,54 @@ const TabletPackagingHub: React.FC<TabletPackagingHubProps> = ({
     onPack, onShip, onUndo, onUndoShipped, onView, onPrintManifest, onSwitchHub, onExit, selectedStore,
     progressStats, setIsFilterModalOpen, loadingActionId, tabCounts,
     selectedOrderIds, toggleOrderSelection, clearSelection, onBulkShip, isBulkProcessing,
-    onToggleSelectAll
+    onToggleSelectAll, onCloseShift, isViewOnly, activeShift
 }) => {
-    const { previewImage: showFullImage } = useContext(AppContext);
+    const { previewImage: showFullImage, appData } = useContext(AppContext);
+
+    const handleCopy = (text: string, label: string) => {
+        if (!text) return;
+        navigator.clipboard.writeText(text);
+        console.log(`Copied ${label}: ${text}`);
+    };
+
+    const formatPhoneNumber = (phone: string) => {
+        if (!phone) return '';
+        let cleaned = phone.replace(/\D/g, '');
+        if (cleaned.startsWith('855')) {
+            cleaned = cleaned.substring(3);
+        }
+        if (!cleaned.startsWith('0')) {
+            cleaned = '0' + cleaned;
+        }
+        return cleaned;
+    };
+
+    const getCarrierLogo = (phone: string) => {
+        const formatted = formatPhoneNumber(phone);
+        if (!formatted) return null;
+        const prefix2 = formatted.substring(1, 3);
+        const prefix3 = formatted.substring(1, 4);
+        const carrier = appData.phoneCarriers?.find(c => {
+            const prefixes = c.Prefixes.split(',').map(p => p.trim());
+            return prefixes.includes(prefix2) || prefixes.includes(prefix3);
+        });
+        return carrier?.CarrierLogoURL ? convertGoogleDriveUrl(carrier.CarrierLogoURL) : null;
+    };
+
+    const getBankLogo = (bankName: string) => {
+        const bank = appData.bankAccounts?.find(b => b.BankName === bankName);
+        return bank?.LogoURL ? convertGoogleDriveUrl(bank.LogoURL) : null;
+    };
+
+    const getShippingLogo = (methodName: string) => {
+        const method = appData.shippingMethods?.find(m => m.MethodName === methodName);
+        return method?.LogoURL ? convertGoogleDriveUrl(method.LogoURL) : null;
+    };
+
+    const getDriverImage = (driverName: string) => {
+        const driver = appData.drivers?.find(d => d.DriverName === driverName);
+        return driver?.ImageURL ? convertGoogleDriveUrl(driver.ImageURL) : null;
+    };
 
     const getSafeDateObj = (dateStr: string) => {
         if (!dateStr) return new Date();
@@ -103,6 +151,22 @@ const TabletPackagingHub: React.FC<TabletPackagingHubProps> = ({
                         <p className={`text-[8px] font-bold ${B_TEXT_SECONDARY} uppercase`}>Packs</p>
                         <p className={`text-sm font-bold text-[#0ECB81] font-mono`}>{progressStats.packedByUserToday}</p>
                     </div>
+                    {activeShift && !isViewOnly && (
+                        <button 
+                            onClick={onCloseShift}
+                            className="flex flex-col items-center justify-center gap-1 w-12 py-2 bg-[#F6465D] text-white rounded-xl shadow-lg shadow-[#F6465D]/20 hover:scale-105 transition-all animate-pulse active:scale-95"
+                        >
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            <span className="text-[8px] font-black uppercase">បិទវេន</span>
+                        </button>
+                    )}
+                    {activeShift && isViewOnly && (
+                         <div className="w-10 h-10 flex items-center justify-center bg-blue-500/10 text-blue-500 rounded-lg" title={`View Only: ${activeShift.OpenedBy}`}>
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
+                        </div>
+                    )}
                 </div>
 
                 <div className="mt-auto flex flex-col border-t border-[#2B3139]">
@@ -199,24 +263,58 @@ const TabletPackagingHub: React.FC<TabletPackagingHubProps> = ({
                                             <div className={`p-2 border-b ${B_BORDER} flex justify-between items-center ${activeTab === 'Ready to Ship' ? 'pt-10' : ''}`}>
                                                 <div className="flex items-center gap-2">
                                                     <span className={`text-[10px] font-mono ${B_TEXT_SECONDARY}`}>{(idx + 1).toString().padStart(2, '0')}</span>
-                                                    <span className={`text-[11px] font-mono font-medium ${B_TEXT_PRIMARY}`}>{order['Order ID'].substring(0, 10)}</span>
+                                                    <span 
+                                                        onClick={(e) => { e.stopPropagation(); handleCopy(order['Order ID'], 'ID'); }}
+                                                        className={`text-[11px] font-mono font-medium ${B_TEXT_PRIMARY} cursor-pointer hover:text-[#FCD535] transition-colors`}
+                                                    >
+                                                        {order['Order ID'].substring(0, 10)}
+                                                    </span>
                                                 </div>
-                                                <span className={`text-[8px] uppercase font-bold px-1 rounded-sm border ${B_BORDER} ${B_TEXT_SECONDARY}`}>{order.Team}</span>
+                                                <div className="flex items-center gap-2">
+                                                    {getShippingLogo(order['Internal Shipping Method']) && (
+                                                        <img src={getShippingLogo(order['Internal Shipping Method'])!} className="w-3 h-3 object-contain" alt="" />
+                                                    )}
+                                                    <span className={`text-[8px] uppercase font-bold px-1 rounded-sm border ${B_BORDER} ${B_TEXT_SECONDARY}`}>{order.Team}</span>
+                                                </div>
                                             </div>
 
                                             <div className="px-2 pb-2">
-                                                <h4 className={`text-xs font-bold ${B_TEXT_PRIMARY} truncate uppercase flex items-center gap-2`}>
+                                                <h4 
+                                                    onClick={(e) => { e.stopPropagation(); handleCopy(order['Customer Name'], 'Name'); }}
+                                                    className={`text-xs font-bold ${B_TEXT_PRIMARY} truncate uppercase flex items-center gap-2 cursor-pointer hover:text-[#FCD535] transition-colors`}
+                                                >
                                                     {order['Customer Name']}
                                                     {getOptimisticPackagePhoto(order['Order ID'], order['Package Photo']) && <span title="Photo Verified">📸</span>}
                                                 </h4>
                                                 <div className="flex justify-between items-center mt-0.5">
-                                                    <p className={`text-[10px] ${B_TEXT_SECONDARY} font-mono`}>{order['Customer Phone']}</p>
+                                                    <div 
+                                                        onClick={(e) => { e.stopPropagation(); handleCopy(formatPhoneNumber(order['Customer Phone']), 'Phone'); }}
+                                                        className="flex items-center gap-1 cursor-pointer hover:text-[#FCD535] group"
+                                                    >
+                                                        {getCarrierLogo(order['Customer Phone']) && (
+                                                            <img src={getCarrierLogo(order['Customer Phone'])!} className="w-3 h-3 object-contain rounded-full bg-white/10" alt="" />
+                                                        )}
+                                                        <p className={`text-[10px] ${B_TEXT_SECONDARY} font-mono group-hover:text-[#FCD535]`}>{formatPhoneNumber(order['Customer Phone'])}</p>
+                                                    </div>
                                                     {(activeTab === 'Ready to Ship' || activeTab === 'Shipped') && (
-                                                        <p className={`text-[9px] ${B_ACCENT} font-bold uppercase truncate max-w-[80px]`}>{order['Driver Name'] || 'TBD'}</p>
+                                                        <div className="flex items-center gap-1 truncate">
+                                                            {getDriverImage(order['Driver Name']) && (
+                                                                <img src={getDriverImage(order['Driver Name'])!} className="w-3 h-3 object-cover rounded-full" alt="" />
+                                                            )}
+                                                            <p className={`text-[9px] ${B_ACCENT} font-bold uppercase truncate max-w-[50px]`}>{order['Driver Name'] || 'TBD'}</p>
+                                                        </div>
                                                     )}
                                                 </div>
                                                 <div className={`flex justify-between items-center mt-2 pt-2 border-t ${B_BORDER}`}>
-                                                    <span className={`text-[11px] font-mono font-bold text-[#0ECB81]`}>${(Number(order['Grand Total']) || 0).toFixed(2)}</span>
+                                                    <div className="flex flex-col">
+                                                        <div className="flex items-center gap-1.5">
+                                                            <span className={`text-[11px] font-mono font-bold text-[#0ECB81]`}>${(Number(order['Grand Total']) || 0).toFixed(2)}</span>
+                                                            {getBankLogo(order['Payment Info']) && (
+                                                                <img src={getBankLogo(order['Payment Info'])!} className="w-3 h-3 object-contain rounded-sm bg-white" alt="" />
+                                                            )}
+                                                        </div>
+                                                        <span className={`text-[8px] uppercase ${order['Payment Status']?.toLowerCase() === 'paid' ? 'text-[#0ECB81]' : 'text-[#FCD535]'}`}>{order['Payment Status'] || 'Unpaid'}</span>
+                                                    </div>
                                                     <div className="flex gap-1">
                                                         <button onClick={(e) => { e.stopPropagation(); onView(order); }} className={`px-2 py-1 bg-[#2B3139] text-[#EAECEF] rounded-sm text-[10px]`}>View</button>
                                                         {activeTab === 'Pending' && <button onClick={(e) => { e.stopPropagation(); onPack(order); }} className={`px-3 py-1 bg-[#FCD535] text-[#0B0E11] rounded-sm text-[10px] font-bold uppercase`}>Pack</button>}

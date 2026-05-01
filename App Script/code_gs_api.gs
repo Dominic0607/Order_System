@@ -30,7 +30,8 @@ const CONFIG = {
   RETURNS_SHEET: 'Returns',
   DRIVER_RECOMMENDATIONS_SHEET: 'DriverRecommendations',
   INCENTIVE_RESULTS_SHEET: 'IncentiveResults',
-  MOVIES_SHEET: 'Movies'
+  MOVIES_SHEET: 'Movies',
+  SHIFTS_SHEET: 'Shifts'
 };
 
 // --- មុខងារជំនួយ (Helpers) ---

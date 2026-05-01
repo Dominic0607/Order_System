@@ -4,15 +4,18 @@ import { AppContext } from '@/context/AppContext';
 import { WEB_APP_URL } from '@/constants';
 import Spinner from '@/components/common/Spinner';
 import { ParsedOrder } from '@/types';
-import { convertGoogleDriveUrl, fileToBase64, fileToDataUrl, getOptimisticPackagePhoto } from '@/utils/fileUtils';
+import { fileToDataUrl, convertGoogleDriveUrl } from '@/utils/fileUtils';
 import { compressImage } from '@/utils/imageCompressor';
 import { CacheService, CACHE_KEYS } from '@/services/cacheService';
 import OrderGracePeriod from '@/components/orders/OrderGracePeriod';
 import { printViaIframe } from '@/utils/printUtils';
 import { useBarcodeScanner } from '@/hooks/useBarcodeScanner';
 import { useOrder } from '@/context/OrderContext';
+import { translations } from '@/translations';
+import UserAvatar from '@/components/common/UserAvatar';
 
-import OrderSummaryPanel from './OrderSummaryPanel';
+import { Printer, Edit3, MapPin } from 'lucide-react';
+import OrderSummaryPanel from './OrderSummaryPanel'; 
 import ActionControls from './ActionControls';
 import PrintLabelPage from '@/pages/PrintLabelPage';
 
@@ -25,14 +28,22 @@ interface FastPackTerminalProps {
 }
 
 const FastPackTerminal: React.FC<FastPackTerminalProps> = ({ order, onClose, onSuccess }) => {
-    const { currentUser, appData, previewImage: showFullImage, refreshData, advancedSettings } = useContext(AppContext);
+    const { currentUser, appData, advancedSettings, language } = useContext(AppContext);
+    const t = translations[language as 'km' | 'en'];
     const { setOrders } = useOrder();
     
-    // Workflow State
     const [step, setStep] = useState<PackStep>('VERIFYING');
+    const prevStepRef = useRef<PackStep>('VERIFYING');
+    
+    // Update prevStepRef whenever step changes
+    useEffect(() => {
+        return () => {
+            prevStepRef.current = step;
+        };
+    }, [step]);
+
     const [verifiedItems, setVerifiedItems] = useState<Record<string, number>>({}); 
     const hasAutoAdvanced = useRef({ verify: false, label: false, photo: false });
-    const fileInputRef = useRef<HTMLInputElement>(null);
     const qrCodeRef = useRef<HTMLDivElement>(null);
 
     const isOrderVerified = useMemo(() => {
@@ -40,207 +51,40 @@ const FastPackTerminal: React.FC<FastPackTerminalProps> = ({ order, onClose, onS
         return order.Products.every(p => (verifiedItems[p.name] || 0) >= p.quantity);
     }, [order, verifiedItems]);
     
-    // UI State
     const [uploading, setUploading] = useState(false);
     const [uploadProgress, setUploadProgress] = useState(0);
     const [hasGeneratedLabel, setHasGeneratedLabel] = useState(false);
     const [packagePhoto, setPackagePhoto] = useState<string | null>(null);
     const [showLabelEditor, setShowLabelEditor] = useState(false);
-    const [copiedField, setCopiedField] = useState<string | null>(null);
-    const [isAdvancingLabel, setIsAdvancingLabel] = useState(false);
-    const [advancementProgress, setAdvancementProgress] = useState(0);
+    const [refreshKey, setRefreshKey] = useState(0);
+    const [printTarget, setPrintTarget] = useState<'label' | 'qr'>('label');
 
-    // Auto Capture State
+    // Automatically trigger print when entering LABELING step ONLY if coming from VERIFYING
+    useEffect(() => {
+        if (step === 'LABELING' && prevStepRef.current === 'VERIFYING') {
+            const timer = setTimeout(() => {
+                handleDirectPrint('label');
+            }, 800); // Small delay to allow Step 2 UI to animate in
+            return () => clearTimeout(timer);
+        }
+    }, [step]);
+
     const [autoCaptureCountdown, setAutoCaptureCountdown] = useState<number | null>(null);
     const [isCapturing, setIsCapturing] = useState(false);
     const lastDetectedQR = useRef<string | null>(null);
     const countdownTimerRef = useRef<any>(null);
     
-    // Grace Period / Undo State
     const [undoTimer, setUndoTimer] = useState<number | null>(null);
     const [isUndoing, setIsUndoing] = useState(false);
     const maxUndoTimer = advancedSettings.packagingGracePeriod || 5;
     const submitTimeoutRef = useRef<NodeJS.Timeout | null>(null);
     const submitIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
-    const MAX_ATTEMPTS = 5;
+    const barcodeBuffer = useRef<string>('');
+    const lastKeyTime = useRef<number>(0);
 
-    const executeFinalSubmit = useCallback(async () => {
-        try {
-            if (!order) return;
-            setUploading(true);
-            setUploadProgress(5); 
-
-            const session = await CacheService.get<{ token: string }>(CACHE_KEYS.SESSION);
-            const token = session?.token || '';
-            
-            const packTime = new Date().toLocaleString('km-KH');
-            const newData = {
-                'Fulfillment Status': 'Ready to Ship',
-                'Packed By': currentUser?.FullName || 'Packer',
-                'Packed Time': packTime
-            };
-
-            setUploadProgress(20);
-
-            let driveUrl = '';
-            if (packagePhoto) {
-                const base64Data = packagePhoto.includes(',') ? packagePhoto.split(',')[1] : packagePhoto;
-                const uploadData = {
-                    action: 'uploadImage',
-                    fileData: base64Data,
-                    fileName: `Package_${order['Order ID'].substring(0,8)}_${Date.now()}.jpg`,
-                    mimeType: 'image/jpeg',
-                    orderId: order['Order ID'],
-                    team: order.Team,
-                    targetColumn: 'Package Photo',
-                    newData: newData
-                };
-
-                setUploadProgress(40);
-
-                const response = await fetch(`${WEB_APP_URL}/api/upload-image`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${token}`
-                    },
-                    body: JSON.stringify(uploadData)
-                });
-
-                if (!response.ok) {
-                    const errResult = await response.json().catch(() => ({}));
-                    throw new Error(errResult.message || `Server responded with ${response.status}`);
-                }
-
-                const result = await response.json();
-                if (result.status !== 'success') throw new Error(result.message || 'Upload failed');
-                driveUrl = result.url;
-                setUploadProgress(85);
-            } else {
-                const statusResponse = await fetch(`${WEB_APP_URL}/api/admin/update-order`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${token}`
-                    },
-                    body: JSON.stringify({
-                        orderId: order['Order ID'],
-                        team: order.Team,
-                        userName: currentUser?.FullName || 'System',
-                        newData: newData
-                    })
-                });
-                if (!statusResponse.ok) throw new Error("Status update failed");
-                setUploadProgress(85);
-            }
-
-            // Apply optimistic update with EXACT same packTime
-            setOrders(prev => prev.map(o =>
-                o['Order ID'] === order['Order ID']
-                    ? {
-                        ...o,
-                        'Fulfillment Status': 'Ready to Ship',
-                        FulfillmentStatus: 'Ready to Ship',
-                        'Packed By': currentUser?.FullName || 'Packer',
-                        'Packed Time': packTime,
-                        'Package Photo': driveUrl || o['Package Photo']
-                      }
-                    : o
-            ));
-
-            setUploadProgress(100);
-
-            // Trigger success
-            onSuccess(driveUrl || packagePhoto || 'manual_sync_ok');
-
-            // Send Chat Notification with correct keys: Sender, Message, Type, Team
-            const id = order['Order ID'].substring(0,8);
-            const chatMsg = `📦 **[PACKED]** កញ្ចប់ #${id} (${order['Customer Name']}) វេចខ្ចប់រួចរាល់`;
-            fetch(`${WEB_APP_URL}/api/chat/send`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
-                },
-                body: JSON.stringify({ 
-                    Sender: 'System', 
-                    Type: 'text', 
-                    Message: chatMsg, 
-                    Team: order.Team 
-                })
-            }).catch(() => {});
-
-        } catch (err: any) {
-            console.error("Critical submission error:", err);
-            alert("❌ ការបញ្ជូនបរាជ័យ: " + err.message);
-        } finally {
-            setUploading(false);
-            setUploadProgress(0);
-        }
-    }, [order, currentUser, onSuccess, packagePhoto, setOrders, refreshData]);
-
-    const handleSubmit = useCallback(() => {
-        if (submitTimeoutRef.current) clearTimeout(submitTimeoutRef.current);
-        if (submitIntervalRef.current) clearInterval(submitIntervalRef.current);
-
-        const gracePeriod = advancedSettings.packagingGracePeriod || 5;
-        setUndoTimer(gracePeriod);
-        let secondsLeft = gracePeriod;
-
-        submitIntervalRef.current = setInterval(() => {
-            secondsLeft -= 1;
-            if (secondsLeft <= 0) {
-                if (submitIntervalRef.current) clearInterval(submitIntervalRef.current);
-                submitIntervalRef.current = null;
-                setUndoTimer(null);
-                executeFinalSubmit();
-            } else {
-                setUndoTimer(secondsLeft);
-            }
-        }, 1000);
-    }, [advancedSettings.packagingGracePeriod, maxUndoTimer, executeFinalSubmit]);
-
-    const handleUndo = () => {
-        if (submitTimeoutRef.current) {
-            clearTimeout(submitTimeoutRef.current);
-            submitTimeoutRef.current = null;
-        }
-        if (submitIntervalRef.current) {
-            clearInterval(submitIntervalRef.current);
-            submitIntervalRef.current = null;
-        }
-
-        setIsUndoing(true);
-        setTimeout(() => {
-            setUndoTimer(null);
-            setIsUndoing(false);
-        }, 500);
-    };
-
-    useEffect(() => {
-        const handlePrintSuccess = (e: any) => {
-            if (e.detail?.target === 'label') {
-                setHasGeneratedLabel(true);
-                // Automatically move to PHOTO step after a short delay
-                setTimeout(() => {
-                    setStep('PHOTO');
-                }, 1500);
-            }
-        };
-        window.addEventListener('print-success', handlePrintSuccess);
-        return () => window.removeEventListener('print-success', handlePrintSuccess);
-    }, []);
-
-    useEffect(() => {
-        return () => {
-            if (submitTimeoutRef.current) clearTimeout(submitTimeoutRef.current);
-            if (submitIntervalRef.current) clearInterval(submitIntervalRef.current);
-        };
-    }, []);
-
-    const verifyItem = (name: string) => {
-        if (!name) return; // Guard against products with missing name (legacy data)
+    const verifyItem = useCallback((name: string) => {
+        if (!name) return;
         setVerifiedItems(prev => {
             const product = order?.Products.find(p => p.name === name);
             const current = prev[name] || 0;
@@ -248,498 +92,826 @@ const FastPackTerminal: React.FC<FastPackTerminalProps> = ({ order, onClose, onS
             if (current >= max) return prev;
             return { ...prev, [name]: current + 1 };
         });
+    }, [order]);
+
+    useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (step !== 'VERIFYING') return;
+            if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+            const now = Date.now();
+            const diff = now - lastKeyTime.current;
+            lastKeyTime.current = now;
+            if (diff > 100) barcodeBuffer.current = '';
+            if (e.key === 'Enter') {
+                const finalBarcode = barcodeBuffer.current.trim();
+                if (finalBarcode) {
+                    const product = appData.products?.find(p => p.Barcode === finalBarcode || p.ProductName === finalBarcode);
+                    if (product) {
+                        const orderItem = order?.Products.find(op => op.name === product.ProductName);
+                        if (orderItem) verifyItem(orderItem.name);
+                    } else {
+                        const orderItem = order?.Products.find(op => op.name === finalBarcode);
+                        if (orderItem) verifyItem(orderItem.name);
+                    }
+                }
+                barcodeBuffer.current = '';
+                e.preventDefault();
+            } else if (e.key.length === 1) barcodeBuffer.current += e.key;
+        };
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [step, appData.products, order, verifyItem]);
+
+    const executeFinalSubmit = useCallback(async () => {
+        try {
+            if (!order) return;
+            setUploading(true); setUploadProgress(5); 
+            const session = await CacheService.get<{ token: string }>(CACHE_KEYS.SESSION);
+            const token = session?.token || '';
+            const packTime = new Date().toLocaleString('km-KH');
+            const newData = { 'Fulfillment Status': 'Ready to Ship', 'Packed By': currentUser?.FullName || 'Packer', 'Packed Time': packTime };
+            setUploadProgress(20);
+            if (packagePhoto) {
+                const base64Data = packagePhoto.includes(',') ? packagePhoto.split(',')[1] : packagePhoto;
+                const uploadData = { action: 'uploadImage', fileData: base64Data, fileName: `Package_${order['Order ID'].substring(0,8)}_${Date.now()}.jpg`, mimeType: 'image/jpeg', orderId: order['Order ID'], team: order.Team, targetColumn: 'Package Photo', newData: newData, isAsync: true };
+                setUploadProgress(40);
+                fetch(`${WEB_APP_URL}/api/upload-image`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }, body: JSON.stringify(uploadData) }).catch(err => console.error("Background upload failed:", err));
+                setUploadProgress(100);
+            } else {
+                const statusResponse = await fetch(`${WEB_APP_URL}/api/admin/update-order`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }, body: JSON.stringify({ orderId: order['Order ID'], team: order.Team, userName: currentUser?.FullName || 'System', newData: newData }) });
+                if (!statusResponse.ok) throw new Error("Status update failed");
+                setUploadProgress(85);
+            }
+            setOrders(prev => prev.map(o => o['Order ID'] === order['Order ID'] ? { ...o, 'Fulfillment Status': 'Ready to Ship', FulfillmentStatus: 'Ready to Ship', 'Packed By': currentUser?.FullName || 'Packer', 'Packed Time': packTime, 'Package Photo': packagePhoto || o['Package Photo'] } : o));
+            setUploadProgress(100);
+            onSuccess(packagePhoto || 'manual_sync_ok');
+        } catch (err: any) { alert("❌ បញ្ជូនបរាជ័យ: " + err.message); } finally { setUploading(false); setUploadProgress(0); }
+    }, [order, currentUser, onSuccess, packagePhoto, setOrders]);
+
+    const handleSubmit = useCallback(() => {
+        if (submitTimeoutRef.current) clearTimeout(submitTimeoutRef.current);
+        if (submitIntervalRef.current) clearInterval(submitIntervalRef.current);
+        const gracePeriod = advancedSettings.packagingGracePeriod || 5;
+        setUndoTimer(gracePeriod);
+        let secondsLeft = gracePeriod;
+        submitIntervalRef.current = setInterval(() => {
+            secondsLeft -= 1;
+            if (secondsLeft <= 0) {
+                if (submitIntervalRef.current) clearInterval(submitIntervalRef.current);
+                submitIntervalRef.current = null; setUndoTimer(null); executeFinalSubmit();
+            } else setUndoTimer(secondsLeft);
+        }, 1000);
+    }, [advancedSettings.packagingGracePeriod, executeFinalSubmit]);
+
+    const handleUndo = () => {
+        if (submitTimeoutRef.current) clearTimeout(submitTimeoutRef.current);
+        if (submitIntervalRef.current) clearInterval(submitIntervalRef.current);
+        setIsUndoing(true); setTimeout(() => { setUndoTimer(null); setIsUndoing(false); }, 500);
     };
+
+    useEffect(() => {
+        const handlePrintSuccess = (e: any) => { 
+            if (e.detail?.target) {
+                setPrintTarget(e.detail.target);
+                if (e.detail.target === 'label') {
+                    setHasGeneratedLabel(true); 
+                    // Automatically advance to PHOTO step after a short delay if not in editor
+                    if (!showLabelEditor) {
+                        setTimeout(() => setStep('PHOTO'), 1500); 
+                    }
+                }
+            }
+        };
+        window.addEventListener('print-success', handlePrintSuccess);
+        return () => window.removeEventListener('print-success', handlePrintSuccess);
+    }, [showLabelEditor]);
 
     const capturePhotoFromStream = useCallback(async () => {
         const video = document.querySelector('#fastpack-scanner-container video') as HTMLVideoElement;
         if (!video || isCapturing || !order) return;
-
         setIsCapturing(true);
         try {
             const canvas = document.createElement('canvas');
-            const videoWidth = video.videoWidth;
+            const videoWidth = video.videoWidth; 
             const videoHeight = video.videoHeight;
-            const videoAspect = videoWidth / videoHeight;
-
-            const targetMax = 2560;
-            if (videoWidth > videoHeight) {
-                canvas.width = targetMax;
-                canvas.height = targetMax / videoAspect;
-            } else {
-                canvas.height = targetMax;
-                canvas.width = targetMax * videoAspect;
+            const targetMax = 2560; // Keep high resolution for detail
+            
+            // Maintain aspect ratio
+            if (videoWidth > videoHeight) { 
+                canvas.width = targetMax; 
+                canvas.height = targetMax / (videoWidth / videoHeight); 
+            } else { 
+                canvas.height = targetMax; 
+                canvas.width = targetMax * (videoWidth / videoHeight); 
             }
+            
+            const ctx = canvas.getContext('2d'); 
+            if (!ctx) throw new Error("Canvas Error");
 
-            const ctx = canvas.getContext('2d');
-            if (!ctx) throw new Error("Could not get canvas context");
-
+            // 1. Draw Video Frame
             ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-            const marginX = canvas.width * 0.08; 
-            const marginY = canvas.height * 0.12; 
-            const headerHeight = canvas.height * 0.35;
-            const footerHeight = canvas.height * 0.35;
-            const safeWidth = canvas.width - (marginX * 2);
+            // 2. Setup styles
+            const paddingX = canvas.width * 0.06;
+            const paddingY = canvas.height * 0.07;
 
-            const headGrad = ctx.createLinearGradient(0, 0, 0, headerHeight);
-            headGrad.addColorStop(0, 'rgba(0, 0, 0, 0.98)');
-            headGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
-            ctx.fillStyle = headGrad;
-            ctx.fillRect(0, 0, canvas.width, headerHeight);
+            // Helper for text with shadow
+            const drawTextWithShadow = (text: string, x: number, y: number, font: string, color: string, align: CanvasTextAlign = 'left', baseline: CanvasTextBaseline = 'top') => {
+                ctx.save();
+                ctx.textAlign = align;
+                ctx.textBaseline = baseline;
+                ctx.font = font;
+                ctx.shadowColor = 'rgba(0, 0, 0, 0.8)';
+                ctx.shadowBlur = 12;
+                ctx.shadowOffsetX = 3;
+                ctx.shadowOffsetY = 3;
+                ctx.fillStyle = color;
+                ctx.fillText(text, x, y);
+                ctx.restore();
+            };
 
-            const footGrad = ctx.createLinearGradient(0, canvas.height - footerHeight, 0, canvas.height);
-            footGrad.addColorStop(0, 'rgba(0, 0, 0, 0)');
-            footGrad.addColorStop(1, 'rgba(0, 0, 0, 0.98)');
-            ctx.fillStyle = footGrad;
-            ctx.fillRect(0, canvas.height - footerHeight, canvas.width, footerHeight);
+            // --- TOP LEFT INFO ---
+            // "CONSIGNMENT VERIFICATION PROOF"
+            drawTextWithShadow('CONSIGNMENT VERIFICATION PROOF', paddingX, paddingY, `bold ${Math.round(canvas.height * 0.02)}px Kantumruy Pro, Kantumruy, sans-serif`, '#FCD535');
 
-            ctx.textAlign = 'left';
-            ctx.textBaseline = 'top';
-            ctx.font = `bold ${Math.round(canvas.width * 0.014)}px Kantumruy Pro, sans-serif`;
-            ctx.fillStyle = 'rgba(252, 213, 53, 0.9)';
-            ctx.fillText('CONSIGNMENT VERIFICATION PROOF', marginX, marginY);
+            // "#ORDER_ID"
+            const orderIdShort = order['Order ID'].substring(0, 8).toUpperCase();
+            drawTextWithShadow(`#${orderIdShort}`, paddingX, paddingY + (canvas.height * 0.035), `bold ${Math.round(canvas.height * 0.075)}px Kantumruy Pro, Kantumruy, sans-serif`, '#FFFFFF');
 
-            ctx.font = `900 ${Math.round(canvas.width * 0.038)}px monospace`;
-            ctx.fillStyle = '#FFFFFF';
-            ctx.fillText(`#${order['Order ID']}`, marginX, marginY + (canvas.height * 0.04), safeWidth * 0.6);
+            // Customer Name
+            drawTextWithShadow(order['Customer Name'], paddingX, paddingY + (canvas.height * 0.12), `bold ${Math.round(canvas.height * 0.045)}px Kantumruy Pro, Kantumruy, sans-serif`, '#FCD535');
 
-            ctx.font = `bold ${Math.round(canvas.width * 0.024)}px Kantumruy Pro, sans-serif`;
-            ctx.fillStyle = '#FCD535';
-            ctx.fillText(`${order['Customer Name']}`, marginX, marginY + (canvas.height * 0.11), safeWidth * 0.6);
 
-            ctx.textAlign = 'right';
-            const statusLabel = 'SECURELY PACKED';
-            ctx.font = `bold ${Math.round(canvas.width * 0.015)}px Kantumruy Pro, sans-serif`;
-            const labelWidth = ctx.measureText(statusLabel).width + 60;
-            ctx.fillStyle = 'rgba(14, 203, 129, 0.98)';
-            const bx = canvas.width - labelWidth - marginX;
-            const by = marginY;
-            const bw = labelWidth;
-            const bh = canvas.height * 0.05;
+            // --- TOP RIGHT BADGE ---
+            const badgeText = 'SECURELY PACKED';
+            ctx.font = `bold ${Math.round(canvas.height * 0.025)}px Kantumruy Pro, Kantumruy, sans-serif`;
+            const textMetrics = ctx.measureText(badgeText);
+            const badgeW = textMetrics.width + 60;
+            const badgeH = canvas.height * 0.06;
+            const badgeX = canvas.width - paddingX - badgeW;
+            const badgeY = paddingY;
+
+            // Draw rounded rectangle for badge
+            ctx.fillStyle = '#0ECB81'; // Green
             ctx.beginPath();
-            ctx.roundRect(bx, by, bw, bh, 10);
+            ctx.roundRect(badgeX, badgeY, badgeW, badgeH, 8);
             ctx.fill();
-            ctx.fillStyle = '#000000';
-            ctx.fillText(statusLabel, canvas.width - marginX - 30, marginY + (canvas.height * 0.012));
-
-            const bottomTextX = marginX;
-            const bottomTextY = canvas.height - marginY;
-            ctx.textAlign = 'left';
-            ctx.textBaseline = 'bottom';
-            ctx.font = `900 ${Math.round(canvas.width * 0.03)}px monospace`;
-            ctx.fillStyle = '#0ECB81';
-            ctx.fillText(`តម្លៃ: $${(Number(order['Grand Total']) || 0).toFixed(2)}`, bottomTextX, bottomTextY, safeWidth * 0.5);
-
-            ctx.font = `bold ${Math.round(canvas.width * 0.015)}px Kantumruy Pro, sans-serif`;
-            ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
-            ctx.fillText(`អ្នកវេចខ្ចប់: ${currentUser?.FullName || order.User || 'System'}`, bottomTextX, bottomTextY - (canvas.height * 0.07), safeWidth * 0.5);
-
-            ctx.font = `bold ${Math.round(canvas.width * 0.015)}px Kantumruy Pro, sans-serif`;
-            ctx.fillStyle = '#FCD535';
-            ctx.fillText(`លេខទូរស័ព្ទ: ${order['Customer Phone']}`, bottomTextX, bottomTextY - (canvas.height * 0.12), safeWidth * 0.5);
             
-            ctx.font = `bold ${Math.round(canvas.width * 0.017)}px Kantumruy Pro, sans-serif`;
             ctx.fillStyle = '#FFFFFF';
-            ctx.fillText(`ទីតាំង: ${order.Location}`, bottomTextX, bottomTextY - (canvas.height * 0.17), safeWidth * 0.5);
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.font = `bold ${Math.round(canvas.height * 0.025)}px Kantumruy Pro, Kantumruy, sans-serif`;
+            ctx.fillText(badgeText, badgeX + badgeW/2, badgeY + badgeH/2);
 
-            const qrSize = Math.round(canvas.width * 0.11);
-            const qrX = canvas.width - qrSize - marginX;
-            const qrY = canvas.height - qrSize - marginY;
 
-            try {
-                const qrSvg = qrCodeRef.current?.querySelector('svg');
-                if (qrSvg) {
-                    const svgData = new XMLSerializer().serializeToString(qrSvg);
-                    const svgBlob = new Blob([svgData], { type: 'image/svg+xml;charset=utf-8' });
-                    const svgUrl = URL.createObjectURL(svgBlob);
-                    const qrImg = new Image();
-                    qrImg.src = svgUrl;
-                    await new Promise((resolve, reject) => { 
-                        qrImg.onload = resolve; 
-                        qrImg.onerror = reject;
-                        setTimeout(() => reject(new Error("QR Load Timeout")), 3000);
-                    });
-                    ctx.fillStyle = '#FFFFFF';
-                    ctx.beginPath();
-                    ctx.roundRect(qrX - 10, qrY - 10, qrSize + 20, qrSize + 20, 10);
-                    ctx.fill();
-                    ctx.drawImage(qrImg, qrX, qrY, qrSize, qrSize);
-                    URL.revokeObjectURL(svgUrl);
-                }
-            } catch (qrErr) { console.warn("QR Watermark failed", qrErr); }
+            // --- BOTTOM LEFT INFO ---
+            const botLeftY = canvas.height - paddingY;
+            const lineSpacing = canvas.height * 0.06;
 
-            ctx.textAlign = 'right';
-            ctx.textBaseline = 'bottom';
-            ctx.font = `bold ${Math.round(canvas.width * 0.018)}px monospace`;
-            ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
-            ctx.fillText(new Date().toLocaleString('km-KH'), qrX - 20, canvas.height - marginY);
-            ctx.fillText('SCAN TO VERIFY', qrX - 20, canvas.height - marginY - 40);
+            // Value formatting
+            const priceStr = `$${(Number(order['Grand Total']) || 0).toFixed(2)}`;
 
-            const blob = await new Promise<Blob | null>(res => canvas.toBlob(res, 'image/jpeg', 0.95));
-            if (!blob) throw new Error("Could not create blob");
+            // 4th line (bottom): "តម្លៃ: $Price"
+            drawTextWithShadow(`តម្លៃ:   ${priceStr}`, paddingX, botLeftY, `bold ${Math.round(canvas.height * 0.055)}px Kantumruy Pro, Kantumruy, sans-serif`, '#0ECB81', 'left', 'bottom');
 
-            const file = new File([blob], `Proof_${order['Order ID']}.jpg`, { type: 'image/jpeg' });
-            const compressed = await compressImage(file, 'high-detail');
-            const dataUrl = await fileToDataUrl(compressed);
+            // 3rd line: "អ្នកវេចខ្ចប់: Name"
+            drawTextWithShadow(`អ្នកវេចខ្ចប់: ${currentUser?.FullName || 'Admin'}`, paddingX, botLeftY - lineSpacing - 15, `bold ${Math.round(canvas.height * 0.03)}px Kantumruy Pro, Kantumruy, sans-serif`, '#FFFFFF', 'left', 'bottom');
+
+            // 2nd line: "លេខទូរស័ព្ទ: Phone"
+            drawTextWithShadow(`លេខទូរស័ព្ទ: ${order['Customer Phone']}`, paddingX, botLeftY - (lineSpacing * 2) - 30, `bold ${Math.round(canvas.height * 0.03)}px Kantumruy Pro, Kantumruy, sans-serif`, '#FCD535', 'left', 'bottom');
+
+            // 1st line: "ទីតាំង: Location"
+            drawTextWithShadow(`ទីតាំង: ${order.Location}`, paddingX, botLeftY - (lineSpacing * 3) - 45, `bold ${Math.round(canvas.height * 0.03)}px Kantumruy Pro, Kantumruy, sans-serif`, '#FFFFFF', 'left', 'bottom');
+
+
+            // --- BOTTOM RIGHT QR & TIMESTAMP ---
+            const qrSize = Math.round(canvas.height * 0.22);
+            const qrX = canvas.width - paddingX - qrSize;
+            const qrY = canvas.height - paddingY - qrSize;
+
+            // Draw QR Code from hidden element
+            const svg = qrCodeRef.current?.querySelector('svg');
+            if (svg) {
+                const svgData = new XMLSerializer().serializeToString(svg);
+                const img = new Image();
+                img.src = 'data:image/svg+xml;base64,' + btoa(svgData);
+                await img.decode();
+                
+                // Draw white background for QR
+                ctx.fillStyle = '#FFFFFF';
+                ctx.beginPath();
+                ctx.roundRect(qrX - 15, qrY - 15, qrSize + 30, qrSize + 30, 10);
+                ctx.fill();
+                ctx.drawImage(img, qrX, qrY, qrSize, qrSize);
+            }
+
+            // "SCAN TO VERIFY" and Timestamp (to the left of QR)
+            const textX = qrX - 40;
+            const textYOffset = qrY + (qrSize / 2);
             
-            setPackagePhoto(dataUrl);
-            localStorage.setItem(`package_photo_${order['Order ID']}`, dataUrl);
+            drawTextWithShadow('SCAN TO VERIFY', textX, textYOffset + 10, `bold ${Math.round(canvas.height * 0.022)}px Kantumruy Pro, Kantumruy, sans-serif`, 'rgba(255, 255, 255, 0.8)', 'right', 'bottom');
+            
+            const timestamp = new Date().toLocaleString('en-US', { hour12: true });
+            drawTextWithShadow(timestamp, textX, textYOffset + 40, `${Math.round(canvas.height * 0.022)}px Kantumruy Pro, Kantumruy, sans-serif`, 'rgba(255, 255, 255, 0.7)', 'right', 'bottom');
+
+            // Finalize
+            const blob = await new Promise<Blob | null>(res => canvas.toBlob(res, 'image/jpeg', 0.95)); 
+            if (!blob) throw new Error("Blob Error");
+            const compressed = await compressImage(new File([blob], 'proof.jpg', { type: 'image/jpeg' }), 'high-detail');
+            setPackagePhoto(await fileToDataUrl(compressed)); 
             setAutoCaptureCountdown(null);
-        } catch (err) {
-            console.error("Capture failed:", err);
-            alert("❌ ការថតរូបមានបញ្ហា (Capture Error)");
-        } finally {
-            setIsCapturing(false);
+        } catch (err) { 
+            console.error(err); 
+        } finally { 
+            setIsCapturing(false); 
         }
     }, [order, currentUser, isCapturing]);
 
-    const {
-        isInitializing: isScannerLoading, error: scannerError, switchCamera, toggleTorch, isTorchOn, isTorchSupported, handleZoomChange, stopScanner
+    const { 
+        isInitializing: isScannerLoading, 
+        switchCamera, 
+        toggleTorch, 
+        isTorchOn, 
+        isTorchSupported, 
+        stopScanner, 
+        trackingBox,
+        activeVideo
     } = useBarcodeScanner('fastpack-scanner-container', (decoded) => {
         if (step !== 'PHOTO' || packagePhoto || autoCaptureCountdown !== null || isCapturing) return;
         if (decoded === lastDetectedQR.current) return;
-        lastDetectedQR.current = decoded;
-        setAutoCaptureCountdown(3);
-    }, 'single', { disableScanner: step !== 'PHOTO' || !!packagePhoto });
+        lastDetectedQR.current = decoded; setAutoCaptureCountdown(3);
+    }, 'single', { disableScanner: step !== 'PHOTO' || (step === 'PHOTO' && !!packagePhoto) });
 
     useEffect(() => {
         if (autoCaptureCountdown === null) return;
-        if (autoCaptureCountdown === 0) {
-            capturePhotoFromStream();
-            return;
-        }
-        countdownTimerRef.current = setTimeout(() => {
-            setAutoCaptureCountdown(prev => (prev !== null ? prev - 1 : null));
-        }, 1000);
+        if (autoCaptureCountdown === 0) { capturePhotoFromStream(); return; }
+        countdownTimerRef.current = setTimeout(() => setAutoCaptureCountdown(prev => (prev !== null ? prev - 1 : null)), 1000);
         return () => { if (countdownTimerRef.current) clearTimeout(countdownTimerRef.current); };
     }, [autoCaptureCountdown, capturePhotoFromStream]);
 
-    // Speed up final submit after auto-capture (Reduce from 2s to 0.5s)
     useEffect(() => {
         if (packagePhoto && !hasAutoAdvanced.current.photo && step === 'PHOTO') {
-            hasAutoAdvanced.current.photo = true;
-            // Immediate stop of camera stream with safety check
-            try {
-                stopScanner();
-            } catch (e) {
-                console.warn("Scanner stop suppressed:", e);
-            }
-            // Start submission process sooner
-            const timer = setTimeout(() => { handleSubmit(); }, 800);
-            return () => clearTimeout(timer);
+            hasAutoAdvanced.current.photo = true; try { stopScanner(); } catch (e) {} 
+            // Give 3 seconds to preview the captured proof before initiating auto-submit
+            setTimeout(() => handleSubmit(), 3000);
         }
     }, [packagePhoto, step, handleSubmit, stopScanner]);
 
-    useEffect(() => {
-        if (step === 'VERIFYING' && isOrderVerified && !hasAutoAdvanced.current.verify) {
-            hasAutoAdvanced.current.verify = true;
-            const timer = setTimeout(() => { setStep('LABELING'); }, 600);
-            return () => clearTimeout(timer);
-        }
-    }, [step, isOrderVerified]);
 
-    useEffect(() => { if (step === 'PHOTO') handleZoomChange(1); }, [step, handleZoomChange]);
+
+    const handleDirectPrint = (target: 'label' | 'qr') => {
+        setPrintTarget(target);
+        // We need to wait a tiny bit for React to update the hidden component's prop
+        setTimeout(() => {
+            window.print();
+            if (target === 'label') {
+                setHasGeneratedLabel(true);
+                // Automatically advance to PHOTO step after a short delay
+                setTimeout(() => setStep('PHOTO'), 1000);
+            }
+        }, 50);
+    };
 
     if (!order) return null;
-
     const qrValue = `${window.location.origin}${window.location.pathname}?view=order_metadata&id=${encodeURIComponent(order['Order ID'])}`;
     
-    // Use import.meta.env.BASE_URL (always '/Order_System/') so the URL is correct
-    // even if window.location.pathname is temporarily wrong (e.g. assets/ sub-path).
-    const baseUrl = `${window.location.origin}${import.meta.env.BASE_URL}`;
-    const fullPrinterURL = `${baseUrl}?view=print_label&id=${encodeURIComponent(order['Order ID'])}&name=${encodeURIComponent(order['Customer Name'])}&phone=${encodeURIComponent(order['Customer Phone'])}&location=${encodeURIComponent(order.Location)}&address=${encodeURIComponent(order['Address Details'] || '')}&total=${order['Grand Total']}&store=${encodeURIComponent(order['Fulfillment Store'] || '')}&page=${encodeURIComponent(order.Page || '')}&user=${encodeURIComponent(order.User || '')}&shipping=${encodeURIComponent(order['Internal Shipping Method'] || '')}&payment=${encodeURIComponent(order['Payment Status'] || '')}&note=${encodeURIComponent(order.Note || '')}&autoPrint=true`;
-
     return (
-        <div className="fixed inset-0 z-[200] bg-[#0B0E11] flex flex-col animate-fade-in font-sans text-[#EAECEF]">
-            {/* Hidden QR for Watermark */}
-            <div ref={qrCodeRef} className="fixed -top-[1000px] -left-[1000px] opacity-0 pointer-events-none">
-                <ReactQRCode value={qrValue} size={512} level="H" />
-            </div>
+        <div className="fixed inset-0 z-[200] bg-[#08090a] flex flex-col animate-fade-in font-sans text-[#EAECEF] overflow-hidden">
+            {/* Main Terminal UI with no-print class */}
+            <div className="flex flex-col h-full no-print">
+                {/* Background elements */}
+                <div className="absolute inset-0 bg-[#08090a] z-0"></div>
+                <div className="absolute top-0 left-0 w-full h-[500px] bg-gradient-to-b from-[#FCD535]/5 to-transparent z-0 pointer-events-none"></div>
 
-            {showLabelEditor && (
-                <div className="fixed inset-0 z-[300] bg-[#0B0E11] overflow-hidden">
-                    <PrintLabelPage 
-                        standalone={false}
-                        onClose={() => setShowLabelEditor(false)}
-                        initialData={{
-                            id: order['Order ID'], name: order['Customer Name'], phone: order['Customer Phone'],
-                            location: order.Location, address: order['Address Details'] || '',
-                            total: String(order['Grand Total']), payment: order['Payment Status'] || '',
-                            shipping: order['Internal Shipping Method'] || '', user: order.User,
-                            page: order.Page, store: order['Fulfillment Store'], note: order.Note || ''
-                        }}
-                    />
-                </div>
-            )}
+                <div ref={qrCodeRef} className="fixed -top-[1000px] -left-[1000px] opacity-0 pointer-events-none"><ReactQRCode value={qrValue} size={512} level="H" /></div>
+                
+                {showLabelEditor && (
+                    <div className="fixed inset-0 z-[300] bg-[#08090a] overflow-hidden">
+                        <PrintLabelPage 
+                            standalone={false} 
+                            onClose={() => {
+                                setShowLabelEditor(false);
+                                setRefreshKey(prev => prev + 1);
+                            }} 
+                            initialData={{ id: order['Order ID'], name: order['Customer Name'], phone: order['Customer Phone'], location: order.Location, address: order['Address Details'] || '', total: String(order['Grand Total']), payment: order['Payment Status'] || '', shipping: order['Internal Shipping Method'] || '', user: order.User, page: order.Page, store: order['Fulfillment Store'], note: order.Note || '' }} 
+                        />
+                    </div>
+                )}
 
-            {/* Header */}
-            <header className="relative z-30 px-6 py-4 bg-[#181A20] border-b border-white/10 flex justify-between items-center flex-shrink-0 shadow-md">
-                <div className="flex items-center gap-6">
-                    <button 
-                        onClick={onClose} 
-                        className="text-gray-400 hover:text-[#FCD535] transition-colors p-2 -ml-2"
-                    >
-                        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M15 19l-7-7 7-7" /></svg>
-                    </button>
+                {/* HEADER - COMPACT PREMIUM SQUARED STYLE */}
+                <header className="relative z-30 bg-[#0B0E11] border-b border-white/10 px-8 py-3.5 flex justify-between items-center shadow-xl">
+                <div className="flex items-center gap-6 group cursor-pointer" onClick={onClose}>
+                    {/* Minimal Squared Back Button */}
+                    <div className="w-10 h-10 border border-white/20 flex items-center justify-center transition-all group-hover:bg-[#FCD535] group-hover:border-[#FCD535] active:scale-90">
+                        <svg className="w-5 h-5 text-white group-hover:text-black transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" /></svg>
+                    </div>
                     
-                    <div className="flex flex-col">
-                        <h1 className="text-xl font-bold text-white tracking-tight leading-none">Pack System</h1>
-                        <p className="text-xs font-medium text-gray-500 mt-1">Fulfillment Node: {order.Team}</p>
-                    </div>
-
-                    <div className="hidden lg:flex items-center gap-8 ml-8 border-l border-white/10 pl-8">
-                        <div className="flex flex-col">
-                            <span className="text-[11px] text-gray-500 font-bold uppercase tracking-wider">Order Reference</span>
-                            <span className="text-sm font-mono font-bold text-[#0ECB81] mt-0.5">#{order['Order ID'].substring(0, 16)}</span>
-                        </div>
-                        <div className="flex items-center gap-2 px-3 py-1.5 bg-[#0ECB81]/10 rounded-lg border border-[#0ECB81]/20">
-                            <div className="w-2 h-2 rounded-full bg-[#0ECB81] animate-pulse"></div>
-                            <span className="text-xs font-bold text-[#0ECB81] uppercase tracking-wider">System Online</span>
-                        </div>
+                    <div className="flex items-baseline gap-3">
+                        <h1 className="text-2xl font-black text-white tracking-tight uppercase">
+                            FASTPACK
+                        </h1>
+                        <span className="text-[#FCD535] font-light tracking-[0.4em] text-sm uppercase border-l border-white/20 pl-3">
+                            TERMINAL
+                        </span>
                     </div>
                 </div>
 
-                <div className="flex items-center gap-4">
-                    <div className="flex items-center gap-3 bg-white/5 px-4 py-2 rounded-xl border border-white/10">
-                        <div className="w-6 h-6 rounded-lg bg-[#FCD535] flex items-center justify-center text-xs font-black text-black">
-                            {currentUser?.FullName?.charAt(0) || 'P'}
-                        </div>
-                        <span className="text-sm font-bold text-white">{currentUser?.FullName || 'Packer'}</span>
+                <div className="flex items-center gap-6">
+                    <div className="hidden sm:flex flex-col items-end border-r border-white/10 pr-5">
+                        <span className="text-[9px] font-black text-[#FCD535] uppercase tracking-[0.3em] opacity-60">Operator</span>
+                        <span className="text-sm font-black text-white uppercase tracking-tighter">{currentUser?.FullName || 'Admin'}</span>
+                    </div>
+                    
+                    {/* Clean Squared Avatar */}
+                    <div className="w-10 h-10 bg-white/5 border border-white/10 p-0.5 relative">
+                        <UserAvatar 
+                            avatarUrl={currentUser?.ProfilePictureURL} 
+                            name={currentUser?.FullName || 'P'} 
+                            size="sm" 
+                            className="!rounded-none w-full h-full object-cover"
+                        />
+                        {/* Status corner accent */}
+                        <div className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-[#FCD535]"></div>
                     </div>
                 </div>
             </header>
 
-            <main className="flex-grow flex flex-col xl:flex-row overflow-hidden relative z-10 w-full">
-                <OrderSummaryPanel order={order} appData={appData} step={step} verifiedItems={verifiedItems} isOrderVerified={isOrderVerified} verifyItem={verifyItem} showFullImage={showFullImage} />
+            {/* SUB-HEADER: STEP PROGRESS BAR */}
+            <nav className="relative z-20 bg-[#0B0E11] border-b border-white/5 px-8 py-4 flex items-center overflow-hidden">
+                {/* Radial Gradient Background (Subtle) */}
+                <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,_rgba(252,213,53,0.05)_0%,_transparent_75%)] pointer-events-none"></div>
+                
+                <div className="flex items-center justify-between w-full relative z-10">
+                    {[
+                        { id: 'VERIFYING', label: '01. Verification' },
+                        { id: 'LABELING', label: '02. Thermal Label' },
+                        { id: 'PHOTO', label: '03. Visual Evidence' }
+                    ].map((s, idx, arr) => {
+                        const stepOrder = { 'VERIFYING': 0, 'LABELING': 1, 'PHOTO': 2 };
+                        const currentIdx = stepOrder[step as keyof typeof stepOrder] ?? 0;
+                        const isCompleted = idx < currentIdx;
+                        const isActive = idx === currentIdx;
+                        const isPending = idx > currentIdx;
 
-                <div className="flex-grow flex flex-col bg-[#0B0E11] relative">
-                    {/* Info Ticker */}
-                    <div className="px-8 py-4 bg-[#1e2329] border-b border-white/10 flex items-center gap-12 flex-shrink-0 overflow-x-auto no-scrollbar">
-                        <div className="flex flex-col">
-                            <span className="text-[11px] text-gray-500 font-bold uppercase tracking-wider">Total Collection</span>
-                            <span className="text-lg font-mono font-bold text-[#0ECB81]">${(Number(order['Grand Total']) || 0).toFixed(2)}</span>
-                        </div>
-                        <div className="flex flex-col">
-                            <span className="text-[11px] text-gray-500 font-bold uppercase tracking-wider">Customer Name</span>
-                            <span className="text-base font-bold text-white">{order['Customer Name']}</span>
-                        </div>
-                        <div className="flex flex-col">
-                            <span className="text-[11px] text-gray-500 font-bold uppercase tracking-wider">Contact Number</span>
-                            <span className="text-base font-mono font-bold text-[#FCD535]">{order['Customer Phone']}</span>
-                        </div>
-                        <div className="flex flex-col max-w-xs">
-                            <span className="text-[11px] text-gray-500 font-bold uppercase tracking-wider">Shipping Method</span>
-                            <span className="text-sm font-bold text-white truncate">{order['Internal Shipping Method'] || 'Standard'}</span>
-                        </div>
-                    </div>
-
-                    <div className="flex-grow flex flex-col p-8 overflow-y-auto">
-                        <div className="w-full h-full flex flex-col max-w-5xl mx-auto">
-                            {uploading && undoTimer === null && (
-                                <div className="bg-[#1E2329] border border-white/10 rounded-2xl p-6 mb-8 shadow-xl">
-                                    <div className="flex justify-between items-center mb-4">
-                                        <div className="flex items-center gap-3">
-                                            <div className="w-2.5 h-2.5 rounded-full bg-[#FCD535] animate-pulse"></div>
-                                            <span className="text-sm font-bold text-white">Uploading Packaging Evidence...</span>
-                                        </div>
-                                        <span className="text-base font-mono font-bold text-[#FCD535]">{uploadProgress}%</span>
+                        return (
+                            <React.Fragment key={s.id}>
+                                <div className={`relative flex items-center gap-4 transition-all duration-500 ${(isActive || isCompleted) ? 'opacity-100' : 'opacity-25'}`}>
+                                    <div className={`w-10 h-10 flex items-center justify-center border-2 transition-all duration-500 ${(isActive || isCompleted) ? 'bg-[#FCD535] border-[#FCD535] text-black' : 'border-white/10 text-white/30'}`}>
+                                        <span className="text-sm font-black">{isCompleted ? "✓" : idx + 1}</span>
                                     </div>
-                                    <div className="w-full h-2 bg-black/40 rounded-full overflow-hidden">
-                                        <div className="h-full bg-[#FCD535] transition-all duration-300 shadow-[0_0_10px_rgba(252,213,53,0.5)]" style={{ width: `${uploadProgress}%` }}></div>
+                                    <div className="flex flex-col">
+                                        <span className={`text-[12px] font-black uppercase tracking-[0.2em] ${(isActive || isCompleted) ? 'text-[#FCD535]' : 'text-white/30'}`}>{s.label}</span>
+                                        {isActive && <span className="text-[9px] text-[#FCD535] font-bold tracking-widest mt-0.5">ACTIVE</span>}
+                                        {isCompleted && <span className="text-[9px] text-[#FCD535]/60 font-bold tracking-widest mt-0.5">COMPLETED</span>}
                                     </div>
                                 </div>
-                            )}
+                                {idx < arr.length - 1 && (
+                                    <div className="flex-grow flex items-center justify-center px-4">
+                                        <div className={`h-[1px] flex-grow transition-colors duration-700 ${idx < currentIdx ? 'bg-[#FCD535]' : 'bg-white/10'}`}></div>
+                                        <svg className={`w-4 h-4 mx-3 transition-colors duration-700 ${idx < currentIdx ? 'text-[#FCD535]' : 'text-white/10'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M9 5l7 7-7 7" /></svg>
+                                        <div className="h-[1px] flex-grow bg-white/10"></div>
+                                    </div>
+                                )}
+                            </React.Fragment>
+                        );
+                    })}
+                </div>
+            </nav>
 
-                            <div className="flex-grow flex flex-col">
-                                {step === 'VERIFYING' && (
-                                    <div className="bg-[#181A20] border border-white/5 rounded-3xl flex-grow flex flex-col overflow-hidden shadow-2xl">
-                                        <div className="px-8 py-6 border-b border-white/5 flex items-center justify-between bg-white/[0.02]">
-                                            <h3 className="text-base font-bold text-white tracking-tight">Order Verification</h3>
-                                            <span className="text-[11px] font-bold text-gray-500 uppercase tracking-widest">Awaiting Manual Pack</span>
+            <main className="flex-grow flex flex-col lg:flex-row overflow-hidden relative z-10 w-full">
+                {/* LEFT SIDE: PACKING CHECKLIST - BINANCE THEME */}
+                <div className="w-full lg:w-[550px] xl:w-[620px] shrink-0 flex flex-col bg-[#181A20] p-6 lg:p-8 border-r border-[#2B3139] z-20 overflow-hidden">
+                    <OrderSummaryPanel order={order} appData={appData} verifiedItems={verifiedItems} verifyItem={verifyItem} />
+                </div>
+
+                {/* RIGHT SIDE: CONTENT AREA */}
+                <div className="flex-grow flex flex-col relative overflow-hidden bg-[#08090a]">
+                    
+                    <div className="flex-grow flex flex-col relative p-6 lg:p-10 overflow-hidden">
+                        <div className="bg-[#0B0E11] border border-white/5 rounded-none flex-grow flex flex-col overflow-hidden shadow-[0_30px_100px_rgba(0,0,0,0.5)] relative">
+                            <div className="flex-grow flex flex-col relative overflow-hidden">
+                                {uploading && (
+                                    <div className="absolute inset-0 z-[100] flex flex-col items-center justify-center bg-[#08090a]/98 backdrop-blur-2xl animate-in fade-in duration-300">
+                                        <div className="w-40 h-40 rounded-none border-[3px] border-[#FCD535]/10 flex items-center justify-center relative mb-10 overflow-hidden">
+                                            <div className="absolute bottom-0 left-0 w-full bg-[#FCD535] transition-all duration-300 shadow-[0_0_30px_#FCD535]" style={{ height: `${uploadProgress}%` }}></div>
+                                            <span className="text-5xl font-black text-white mix-blend-difference">{uploadProgress}%</span>
                                         </div>
-                                        
-                                        <div className="p-10 grid grid-cols-1 md:grid-cols-2 gap-10">
-                                            <div className="space-y-8">
-                                                <div className="flex flex-col gap-2">
-                                                    <span className="text-xs font-bold text-gray-500 uppercase tracking-widest">Shipping Service</span>
-                                                    <div className="bg-black/40 p-5 rounded-2xl border border-white/5 flex items-center justify-between">
-                                                        <span className="text-base font-bold text-white">{order?.['Internal Shipping Method'] || 'Regular'}</span>
-                                                        <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
+                                        <h3 className="text-2xl font-black text-white tracking-widest uppercase mb-2">Syncing Data</h3>
+                                        <p className="text-xs font-bold text-gray-600 uppercase tracking-[0.6em] animate-pulse">Updating Central Logistics Ledger</p>
+                                    </div>
+                                )}
+
+                                {(step === 'VERIFYING' || step === 'LABELING') && (
+                                    <div className="h-full flex flex-col p-6 lg:p-8 animate-in fade-in zoom-in-95 duration-700 overflow-hidden bg-[#181A20]">
+                                        <div className="flex-grow flex flex-col gap-6 overflow-hidden">
+                                            {/* --- Header matching Check List --- */}
+                                            <div className="shrink-0 space-y-4 px-1">
+                                                <div className="flex items-center justify-between">
+                                                    <div className="flex flex-col">
+                                                        <h2 className="text-xl font-bold tracking-tight text-white flex items-center gap-2">
+                                                            Order Information <span className="text-xs font-normal text-[#848E9C] px-2 py-0.5 bg-[#2B3139] rounded">DETAILS</span>
+                                                        </h2>
+                                                        <span className="text-[11px] font-medium text-[#848E9C] mt-1">Order Logistics & Entity Data</span>
+                                                    </div>
+                                                    <div className="flex flex-col items-end">
+                                                        <span className="text-sm font-mono font-bold text-[#FCD535] bg-[#2B3139] px-3 py-1 rounded tracking-widest">
+                                                            #{order['Order ID'].substring(0, 12)}
+                                                        </span>
+                                                        <span className="text-[11px] text-[#848E9C] mt-1">Reference ID</span>
                                                     </div>
                                                 </div>
-                                                <div className="flex flex-col gap-2">
-                                                    <span className="text-xs font-bold text-gray-500 uppercase tracking-widest">Customer Details</span>
-                                                    <div className="bg-black/40 p-5 rounded-2xl border border-white/5 space-y-3">
-                                                        <div className="flex justify-between items-center">
-                                                            <span className="text-xs text-gray-500 font-bold">Name</span>
-                                                            <span className="text-base text-white font-bold">{order?.['Customer Name']}</span>
+                                                <div className="w-full h-px bg-[#2B3139]"></div>
+                                            </div>
+
+                                            {/* --- List Content --- */}
+                                            <div className="flex-grow overflow-y-auto custom-scrollbar-terminal space-y-1 pr-2">
+                                                {/* 2. CUSTOMER & LOGISTICS ROW */}
+                                                <div className="flex items-center gap-4 px-4 py-5 hover:bg-[#1E2329] transition-colors border-b border-white/5">
+                                                    <div className="w-12 h-12 shrink-0 bg-[#2B3139] rounded-full flex items-center justify-center border border-[#363C44]">
+                                                        <svg className="w-6 h-6 text-white/60" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
+                                                    </div>
+                                                    <div className="flex-grow min-w-0 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+                                                        <div>
+                                                            <span className="text-[10px] font-black text-[#848E9C] uppercase tracking-[0.2em]">Customer Information | ព័ត៌មានអតិថិជន</span>
+                                                            <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-6 mt-1">
+                                                                <h4 className="text-xl font-black text-white truncate leading-tight">{order['Customer Name']}</h4>
+                                                                <div className="h-4 w-px bg-white/10 hidden sm:block"></div>
+                                                                <div className="flex items-center gap-3">
+                                                                    <span className="text-xl font-mono font-black text-[#FCD535] tracking-[0.05em]">{order['Customer Phone']}</span>
+                                                                    {(() => {
+                                                                        const carrier = appData.phoneCarriers?.find(c => order['Customer Phone']?.startsWith(c.Prefixes.split(',')[0]));
+                                                                        if (!carrier) return null;
+                                                                        return (
+                                                                            <div className="w-6 h-6 flex items-center justify-center">
+                                                                                <img 
+                                                                                    src={convertGoogleDriveUrl(carrier.CarrierLogoURL || '')} 
+                                                                                    className="w-full h-full object-contain" 
+                                                                                    alt="Carrier"
+                                                                                    onError={(e) => (e.currentTarget.style.display = 'none')}
+                                                                                />
+                                                                            </div>
+                                                                        );
+                                                                    })()}
+                                                                </div>
+                                                            </div>
                                                         </div>
-                                                        <div className="flex justify-between items-center">
-                                                            <span className="text-xs text-gray-500 font-bold">Phone</span>
-                                                            <span className="text-base text-[#FCD535] font-mono font-bold">{order?.['Customer Phone']}</span>
+
+                                                        {/* Operational Source integrated on the right */}
+                                                        <div className="flex items-center gap-3 lg:border-l lg:border-white/10 lg:pl-6">
+                                                            <div className="w-10 h-10 shrink-0 flex items-center justify-center">
+                                                                <img 
+                                                                    src={convertGoogleDriveUrl(appData.pages?.find(p => p.PageName === order.Page)?.PageLogoURL || '')} 
+                                                                    className="w-full h-full object-contain" 
+                                                                    alt="Page"
+                                                                    onError={(e) => (e.currentTarget.src = 'https://ui-avatars.com/api/?name=' + encodeURIComponent(order.Page || 'P'))}
+                                                                />
+                                                            </div>
+                                                            <div className="flex flex-col">
+                                                                <span className="text-[10px] font-black text-[#848E9C] uppercase tracking-[0.2em]">Operational Source</span>
+                                                                <div className="flex items-center gap-2 mt-0.5">
+                                                                    <h4 className="text-sm font-black text-white truncate uppercase">{order.Page || 'Direct'}</h4>
+                                                                    <span className="px-1.5 py-0.5 bg-[#FCD535]/10 border border-[#FCD535]/20 text-[#FCD535] text-[9px] font-black uppercase rounded">Team {order.Team || 'General'}</span>
+                                                                </div>
+                                                            </div>
                                                         </div>
                                                     </div>
+                                                </div>
+
+                                                {/* 3. LOGISTICS & DISPATCH PROTOCOL */}
+                                                <div className="border border-white/5 bg-[#1E2329]/30 rounded-none overflow-hidden mt-2">
+                                                    <div className="flex flex-col lg:flex-row items-stretch gap-0 border-b border-white/5">
+                                                        {/* Logistics Method */}
+                                                        <div className="flex-1 flex items-center gap-4 px-5 py-6 border-r border-white/5 hover:bg-[#1E2329] transition-colors group">
+                                                            <div className="w-11 h-11 shrink-0 flex items-center justify-center">
+                                                                <img 
+                                                                    src={convertGoogleDriveUrl(appData.shippingMethods?.find(m => m.MethodName === order['Internal Shipping Method'])?.LogoURL || '')} 
+                                                                    className="w-full h-full object-contain" 
+                                                                    alt="Shipping" 
+                                                                    onError={(e) => (e.currentTarget.src = 'https://ui-avatars.com/api/?name=' + encodeURIComponent(order['Internal Shipping Method'] || 'S'))}
+                                                                />
+                                                            </div>
+                                                            <div className="flex-grow min-w-0">
+                                                                <span className="text-[9px] font-black text-[#848E9C] uppercase tracking-[0.2em] mb-1 block">Logistics Method</span>
+                                                                <h4 className="text-[15px] font-black text-white uppercase truncate tracking-tight">{order['Internal Shipping Method']}</h4>
+                                                                <span className="text-[10px] text-[#848E9C] font-bold truncate block mt-0.5">Authorized Carrier</span>
+                                                            </div>
+                                                        </div>
+
+                                                        {/* Field Driver & Pay Protocol */}
+                                                        <div className="flex-[2] flex items-center justify-between gap-4 px-5 py-6 hover:bg-[#1E2329] transition-colors group">
+                                                            {(() => {
+                                                                const driverName = order['Internal Shipping Details'] || order['Driver Name'];
+                                                                const driverInfo = appData.drivers?.find(d => d.DriverName === driverName);
+                                                                return (
+                                                                    <>
+                                                                        <div className="flex items-center gap-4">
+                                                                            <div className="w-11 h-11 shrink-0 bg-[#1E2329] border border-[#363C44] overflow-hidden flex items-center justify-center shadow-lg">
+                                                                                {driverInfo?.ImageURL ? (
+                                                                                    <img 
+                                                                                        src={convertGoogleDriveUrl(driverInfo.ImageURL)} 
+                                                                                        className="w-full h-full object-cover" 
+                                                                                        alt="Driver" 
+                                                                                    />
+                                                                                ) : (
+                                                                                    <span className="text-[10px] font-black text-[#848E9C] tracking-widest">{driverName ? driverName.substring(0,2).toUpperCase() : 'N/A'}</span>
+                                                                                )}
+                                                                            </div>
+                                                                            <div className="flex-grow min-w-0 flex flex-col justify-center">
+                                                                                <span className="text-[9px] font-black text-[#848E9C] uppercase tracking-[0.2em] mb-1 block">Field Driver</span>
+                                                                                <h4 className="text-[15px] font-black text-white uppercase truncate tracking-tight">{driverName || 'Not Assigned'}</h4>
+                                                                                {driverName ? (
+                                                                                    <span className="text-[9px] text-[#FCD535] font-black uppercase tracking-widest mt-0.5">Verified Agent</span>
+                                                                                ) : (
+                                                                                    <span className="text-[9px] text-[#848E9C]/70 font-black uppercase tracking-widest mt-0.5">Pending Assignment</span>
+                                                                                )}
+                                                                            </div>
+                                                                        </div>
+
+                                                                        {/* Integrated Pay Info on the right of the cell */}
+                                                                        <div className="flex flex-col items-end pl-6 border-l border-white/5">
+                                                                            <span className="text-[9px] font-black text-[#848E9C] uppercase tracking-[0.2em] mb-1 block text-right">Internal Cost<br/>(ថ្លៃដឹកដើម)</span>
+                                                                            <div className="flex items-baseline gap-1">
+                                                                                <span className="text-xl font-mono font-black text-[#FCD535]">${(Number(order['Internal Shipping Fee']) || 0).toFixed(2)}</span>
+                                                                                <span className="text-[9px] font-black text-[#848E9C] tracking-tighter uppercase">USD</span>
+                                                                            </div>
+                                                                        </div>
+                                                                    </>
+                                                                );
+                                                            })()}
+                                                        </div>
+                                                    </div>
+                                                </div>
+
+                                                {/* 4. PAYMENT METHOD ROW */}
+                                                <div className="flex items-center justify-between gap-4 px-4 py-5 hover:bg-[#1E2329] transition-colors border-b border-white/5">
+                                                    {(() => {
+                                                        const bankName = order['Payment Info']?.split(' ')[0];
+                                                        const bank = appData.bankAccounts?.find(b => b.BankName.includes(bankName || 'Unknown'));
+                                                        const isPaid = order['Payment Status']?.toUpperCase() === 'PAID';
+                                                        return (
+                                                            <>
+                                                                <div className="flex items-center gap-4">
+                                                                    <div className="w-12 h-12 shrink-0 flex items-center justify-center">
+                                                                        <img 
+                                                                            src={convertGoogleDriveUrl(bank?.LogoURL || '')} 
+                                                                            className="w-full h-full object-contain" 
+                                                                            alt="Bank" 
+                                                                            onError={(e) => (e.currentTarget.src = 'https://ui-avatars.com/api/?name=' + encodeURIComponent(bankName || 'B'))}
+                                                                        />
+                                                                    </div>
+                                                                    <div className="min-w-0">
+                                                                        <span className="text-[10px] font-black text-[#848E9C] uppercase tracking-[0.2em]">Payment Info | ព័ត៌មានការបង់ប្រាក់</span>
+                                                                        <h4 className="text-lg font-black text-white mt-1 truncate">
+                                                                            {order['Payment Info'] || (isPaid ? 'ការទូទាត់ត្រូវបានបញ្ជាក់ (Confirmed)' : 'កំពុងរង់ចាំការបង់ប្រាក់ (Pending)')}
+                                                                        </h4>
+                                                                    </div>
+                                                                </div>
+                                                                
+                                                                {/* Integrated Status Badge - Enlarged */}
+                                                                <div className={`flex items-center gap-2.5 px-5 py-2.5 rounded-sm text-[12px] font-black border ${isPaid ? 'text-[#02C076] bg-[#02C076]/10 border-[#02C076]/20' : 'text-red-500 bg-red-500/10 border-red-500/20 animate-pulse'}`}>
+                                                                    <div className={`w-2 h-2 rounded-full ${isPaid ? 'bg-[#02C076]' : 'bg-red-500'}`}></div>
+                                                                    {isPaid ? 'បង់ប្រាក់រួចរាល់ (PAID)' : 'មិនទាន់បង់ប្រាក់ (UNPAID)'}
+                                                                </div>
+                                                            </>
+                                                        );
+                                                    })()}
                                                 </div>
                                             </div>
 
-                                            <div className="space-y-8">
-                                                <div className="flex flex-col gap-2">
-                                                    <span className="text-xs font-bold text-gray-500 uppercase tracking-widest">Financial Summary</span>
-                                                    <div className="bg-black/40 p-5 rounded-2xl border border-white/5 space-y-4">
-                                                        <div className="flex justify-between items-center">
-                                                            <span className="text-xs text-gray-500 font-bold uppercase">Payment Mode</span>
-                                                            <span className="text-sm text-white font-bold bg-white/5 px-3 py-1 rounded-lg uppercase">{order?.['Payment Info'] || 'Cash'}</span>
-                                                        </div>
-                                                        <div className="flex justify-between items-center pt-3 border-t border-white/10">
-                                                            <span className="text-sm text-gray-500 font-bold uppercase">Grand Total</span>
-                                                            <span className="text-2xl font-mono font-bold text-[#0ECB81]">${(Number(order?.['Grand Total']) || 0).toFixed(2)}</span>
-                                                        </div>
-                                                    </div>
+                                            {/* --- Action Buttons Contextual to Step --- */}
+                                            {step === 'VERIFYING' ? (
+                                                <div className="shrink-0 pt-2">
+                                                    <button 
+                                                        onClick={() => setStep('LABELING')}
+                                                        disabled={!isOrderVerified}
+                                                        className={`w-full py-6 rounded-xl font-black text-xl uppercase tracking-[0.2em] transition-all duration-500 flex items-center justify-center gap-4 shadow-2xl ${
+                                                            isOrderVerified 
+                                                                ? 'bg-[#FCD535] text-black hover:scale-[1.02] active:scale-95 shadow-[0_0_50px_rgba(252,213,53,0.3)]' 
+                                                                : 'bg-[#2B3139] text-[#848E9C]/30 border border-white/5 cursor-not-allowed opacity-50'
+                                                        }`}
+                                                    >
+                                                        {isOrderVerified ? (
+                                                            <>
+                                                                <span>Verify & Proceed</span>
+                                                                <svg className="w-7 h-7 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" /></svg>
+                                                            </>
+                                                        ) : (
+                                                            <span>Awaiting Checklist Completion</span>
+                                                        )}
+                                                    </button>
                                                 </div>
-                                                {order.Note && (
-                                                    <div className="bg-red-500/10 border border-red-500/20 p-5 rounded-2xl">
-                                                        <div className="flex items-center gap-2 mb-2">
-                                                            <div className="w-1.5 h-4 bg-red-500 rounded-full"></div>
-                                                            <span className="text-[11px] font-bold text-red-500 uppercase tracking-wider">Instruction</span>
-                                                        </div>
-                                                        <p className="text-sm text-red-100/80 font-medium italic leading-relaxed">"{order.Note}"</p>
-                                                    </div>
-                                                )}
-                                            </div>
-                                        </div>
+                                            ) : (
+                                                <div className="shrink-0 pt-2 flex flex-col gap-4">
+                                                    <div className="flex gap-4">
+                                                        {/* Print Label Button */}
+                                                        <button 
+                                                            onClick={() => handleDirectPrint('label')}
+                                                            className="flex-[2] py-6 bg-[#FCD535] hover:bg-[#FCD535]/90 text-black rounded-xl font-black text-xl uppercase tracking-[0.2em] transition-all active:scale-95 shadow-2xl flex items-center justify-center gap-4"
+                                                        >
+                                                            <Printer className="w-7 h-7" />
+                                                            <span>Print Label</span>
+                                                        </button>
 
-                                        <div className="mt-auto bg-white/[0.03] px-10 py-6 border-t border-white/5 flex items-center justify-center gap-4">
-                                            <div className="w-2 h-2 rounded-full bg-[#FCD535] animate-ping"></div>
-                                            <span className="text-sm font-bold text-gray-400">Please pack items and verify counts on the left...</span>
+                                                        {/* Order Information (QR) Button */}
+                                                        <button 
+                                                            onClick={() => handleDirectPrint('qr')}
+                                                            className="flex-1 py-6 bg-[#2B3139] hover:bg-gray-700 text-white rounded-xl font-bold text-sm uppercase tracking-widest transition-all active:scale-95 border border-white/5 flex items-center justify-center gap-3"
+                                                        >
+                                                            <MapPin className="w-5 h-5 text-[#FCD535]" />
+                                                            <span>Order Info</span>
+                                                        </button>
+                                                    </div>
+
+                                                    {/* Edit Label Button */}
+                                                    <button 
+                                                        onClick={() => setShowLabelEditor(true)}
+                                                        className="w-full py-4 bg-white/5 hover:bg-white/10 text-[#848E9C] rounded-lg font-bold text-[11px] uppercase tracking-[0.3em] transition-all border border-white/10 flex items-center justify-center gap-3"
+                                                    >
+                                                        <Edit3 className="w-4 h-4" />
+                                                        <span>Edit Label Metadata</span>
+                                                    </button>
+                                                </div>
+                                            )}
                                         </div>
                                     </div>
                                 )}
 
-                                {step === 'LABELING' && (
-                                    <div className="bg-[#181A20] rounded-[2.5rem] p-20 border border-white/5 flex-grow flex flex-col items-center justify-center gap-12 shadow-2xl relative">
-                                        <div className="w-28 h-28 bg-white/5 rounded-3xl flex items-center justify-center text-[#FCD535] shadow-inner border border-white/10">
-                                            <svg className="w-16 h-16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2-2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/></svg>
-                                        </div>
-                                        <div className="text-center space-y-2">
-                                            <h3 className="text-3xl font-bold text-white tracking-tight">Generate Shipping Label</h3>
-                                            <p className="text-sm text-gray-500 font-medium">Connect thermal printer for best results</p>
-                                        </div>
+                                {step === 'PHOTO' && (
+                                    <div className="h-full w-full animate-in fade-in zoom-in-95 duration-700 relative overflow-hidden flex flex-col">
+                                        {/* Main Camera/Photo Canvas Area */}
+                                        <div className="flex-grow relative overflow-hidden bg-black">
+                                            <div id="fastpack-scanner-container" className="absolute inset-0 z-0 transition-opacity duration-700"></div>
 
-                                        <div className="flex flex-col sm:flex-row items-center gap-6 w-full max-w-xl">
-                                            <button 
-                                                onClick={() => { printViaIframe(fullPrinterURL || ''); setHasGeneratedLabel(true); }} 
-                                                className={`relative overflow-hidden w-full py-6 rounded-2xl font-bold text-lg transition-all active:scale-95 flex items-center justify-center gap-4 ${
-                                                    hasGeneratedLabel ? 'bg-[#0ECB81] text-white shadow-xl shadow-[#0ECB81]/20' : 
-                                                    'bg-[#FCD535] text-black shadow-xl shadow-[#FCD535]/20'
-                                                }`}
-                                            >
-                                                <span className="relative z-10 flex items-center gap-3">
-                                                    {hasGeneratedLabel ? 'Label Printed ✓' : 'Print Thermal Label'}
-                                                </span>
-                                            </button>
-                                            <button 
-                                                onClick={() => setShowLabelEditor(true)} 
-                                                className="w-full py-6 bg-white/5 hover:bg-white/10 text-white rounded-2xl font-bold text-lg transition-all border border-white/10 flex items-center justify-center gap-3"
-                                            >
-                                                Edit Details
-                                            </button>
-                                        </div>
-                                    </div>
-                                )}
+                                            {/* DIGITAL TRACKING OVERLAY */}
+                                            {trackingBox && !packagePhoto && (
+                                                <div 
+                                                    className="absolute border-2 border-[#FCD535]/60 z-30 pointer-events-none transition-all duration-300"
+                                                    style={{
+                                                        left: `${(trackingBox.x / (activeVideo?.videoWidth || 1)) * 100}%`,
+                                                        top: `${(trackingBox.y / (activeVideo?.videoHeight || 1)) * 100}%`,
+                                                        width: `${(trackingBox.w / (activeVideo?.videoWidth || 1)) * 100}%`,
+                                                        height: `${(trackingBox.h / (activeVideo?.videoHeight || 1)) * 100}%`,
+                                                        boxShadow: '0 0 20px rgba(252, 213, 53, 0.3), inset 0 0 20px rgba(252, 213, 53, 0.3)'
+                                                    }}
+                                                >
+                                                    {/* Corner Accents */}
+                                                    <div className="absolute -top-1 -left-1 w-4 h-4 border-t-4 border-l-4 border-[#FCD535]"></div>
+                                                    <div className="absolute -top-1 -right-1 w-4 h-4 border-t-4 border-r-4 border-[#FCD535]"></div>
+                                                    <div className="absolute -bottom-1 -left-1 w-4 h-4 border-b-4 border-l-4 border-[#FCD535]"></div>
+                                                    <div className="absolute -bottom-1 -right-1 w-4 h-4 border-b-4 border-r-4 border-[#FCD535]"></div>
 
-                                <div className={`bg-[#181A20] rounded-[2.5rem] p-8 sm:p-12 flex-grow flex flex-col items-center justify-center gap-10 animate-fade-in border border-white/5 shadow-2xl relative overflow-hidden ${step === 'PHOTO' ? 'flex' : 'hidden'}`}>
-                                    <div className="relative group w-full max-w-4xl aspect-video">
-                                        <div className={`w-full h-full bg-black rounded-3xl flex items-center justify-center border-[3px] transition-all duration-500 overflow-hidden relative ${packagePhoto ? 'border-[#0ECB81]' : autoCaptureCountdown !== null ? 'border-[#FCD535]' : 'border-white/10'}`}>
-                                            <div id="fastpack-scanner-container" className={`absolute inset-0 z-0 transition-opacity duration-700 ${packagePhoto ? 'opacity-0' : 'opacity-100'}`}></div>
-                                            
+                                                    {/* Tracking Label */}
+                                                    <div className="absolute -top-8 left-1/2 -translate-x-1/2 bg-[#FCD535] text-black text-[10px] font-black px-2 py-0.5 uppercase tracking-widest whitespace-nowrap">
+                                                        Tracking QR
+                                                    </div>
+                                                </div>
+                                            )}
+
+                                            {/* PROCESSING OVERLAY */}
+                                            {isCapturing && (
+                                                <div className="absolute inset-0 z-50 flex flex-col items-center justify-center bg-black/60 backdrop-blur-sm animate-in fade-in duration-300">
+                                                    <div className="w-20 h-20 border-4 border-[#FCD535]/20 border-t-[#FCD535] rounded-none animate-spin mb-6"></div>
+                                                    <span className="text-xl font-black text-white uppercase tracking-[0.3em]">Processing Proof</span>
+                                                    <span className="text-[10px] text-[#FCD535] font-bold mt-2 animate-pulse uppercase tracking-[0.5em]">Optimizing Visual Details</span>
+                                                </div>
+                                            )}
+
+                                            {/* PHOTO PREVIEW */}
                                             {packagePhoto && (
-                                                <div className="absolute inset-0 z-10 animate-in zoom-in-105 duration-500 bg-[#0B0E11]">
+                                                <div className="absolute inset-0 z-20 bg-[#08090a] animate-in zoom-in-105 duration-700">
                                                     <img src={packagePhoto} className="w-full h-full object-contain" alt="Package" />
                                                 </div>
                                             )}
 
+                                            {/* CAMERA VIEW - CLEAR & MINIMAL */}
+                                            {!packagePhoto && (
+                                                <div className="absolute inset-0 z-10 pointer-events-none">
+                                                    <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,_transparent_50%,_rgba(0,0,0,0.3)_100%)]"></div>
+                                                </div>
+                                            )}
+
+                                            {/* COUNTDOWN */}
                                             {autoCaptureCountdown !== null && !packagePhoto && (
-                                                <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-black/70 backdrop-blur-sm animate-fade-in">
-                                                    <div className="text-[12rem] font-black text-[#FCD535] animate-pulse drop-shadow-[0_0_50px_rgba(252,213,53,0.5)]">
+                                                <div className="absolute inset-0 z-30 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+                                                    <div className="text-[22rem] font-black text-white drop-shadow-[0_0_80px_rgba(252,213,53,0.5)]">
                                                         {autoCaptureCountdown}
                                                     </div>
-                                                    <p className="text-xs font-bold text-[#FCD535] uppercase tracking-[0.5em] mt-4 animate-pulse">Capturing Evidence...</p>
                                                 </div>
                                             )}
 
-                                            {!packagePhoto && !isScannerLoading && autoCaptureCountdown === null && (
-                                                <div className="absolute inset-0 z-10 pointer-events-none flex items-center justify-center">
-                                                    <div className="w-full h-full max-w-[400px] max-h-[400px] relative">
-                                                        <div className="absolute top-0 left-0 w-12 h-12 border-t-[4px] border-l-[4px] border-[#FCD535]/50 rounded-tl-2xl"></div>
-                                                        <div className="absolute top-0 right-0 w-12 h-12 border-t-[4px] border-r-[4px] border-[#FCD535]/50 rounded-tr-2xl"></div>
-                                                        <div className="absolute bottom-0 left-0 w-12 h-12 border-b-[4px] border-l-[4px] border-[#FCD535]/50 rounded-bl-2xl"></div>
-                                                        <div className="absolute bottom-0 right-0 w-12 h-12 border-b-[4px] border-r-[4px] border-[#FCD535]/50 rounded-br-2xl"></div>
-                                                        <div className="absolute inset-x-0 h-1 bg-gradient-to-r from-transparent via-[#FCD535]/40 to-transparent animate-scan-line z-20"></div>
+                                            {/* CAMERA CONTROLS - Perfectly centered relative to the preview panel */}
+                                            {!packagePhoto && !isScannerLoading && !isCapturing && (
+                                                <div className="absolute bottom-12 inset-x-0 flex justify-center z-40 pointer-events-none">
+                                                    <div className="flex items-center gap-12 p-5 bg-black/60 backdrop-blur-3xl border border-white/10 rounded-none shadow-[0_40px_80px_rgba(0,0,0,0.8)] animate-in slide-in-from-bottom-10 duration-700 pointer-events-auto">
+                                                        {/* Switch Camera */}
+                                                        <button onClick={switchCamera} className="w-14 h-14 rounded-none text-white/40 hover:text-white flex items-center justify-center transition-all hover:bg-white/5 group border border-white/5">
+                                                            <svg className="w-7 h-7 group-hover:rotate-180 transition-transform duration-700" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" /></svg>
+                                                        </button>
+
+                                                        {/* MAIN CAPTURE BUTTON - SQUARED & YELLOW */}
+                                                        <button 
+                                                            onClick={capturePhotoFromStream} 
+                                                            className="w-24 h-24 bg-[#FCD535] hover:bg-[#FCD535]/90 flex items-center justify-center transition-all active:scale-95 shadow-[0_0_40px_rgba(252,213,53,0.4)] group border-4 border-black/10"
+                                                        >
+                                                            <div className="w-16 h-16 border-[4px] border-black/80 flex items-center justify-center">
+                                                                <div className="w-4 h-4 bg-black/80"></div>
+                                                            </div>
+                                                        </button>
+
+                                                        {/* Torch Toggle */}
+                                                        {isTorchSupported ? (
+                                                            <button onClick={toggleTorch} className={`w-14 h-14 rounded-none flex items-center justify-center transition-all border border-white/5 ${isTorchOn ? 'text-[#FCD535] bg-[#FCD535]/10' : 'text-white/40 hover:text-white hover:bg-white/5'}`}>
+                                                                <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z" /></svg>
+                                                            </button>
+                                                        ) : <div className="w-14 h-14"></div>}
                                                     </div>
                                                 </div>
                                             )}
 
-                                            {!packagePhoto && !isScannerLoading && (
-                                                <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-30 flex items-center gap-6 p-3 bg-black/60 backdrop-blur-2xl border border-white/10 rounded-[2rem] shadow-2xl">
-                                                    <button onClick={switchCamera} className="p-4 bg-white/10 hover:bg-[#FCD535] text-white hover:text-black rounded-2xl transition-all active:scale-90 group">
-                                                        <svg className="w-6 h-6 group-hover:rotate-180 transition-transform duration-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
-                                                    </button>
-                                                    {isTorchSupported && (
-                                                        <button onClick={toggleTorch} className={`p-4 rounded-2xl transition-all active:scale-90 flex items-center justify-center border-2 ${isTorchOn ? 'bg-[#FCD535] text-black border-[#FCD535]' : 'bg-white/10 text-white border-white/10'}`}>
-                                                            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" /></svg>
-                                                        </button>
-                                                    )}
-                                                </div>
-                                            )}
-
+                                            {/* RETAKE - Integrated into preview */}
                                             {packagePhoto && (
-                                                <button onClick={() => setPackagePhoto(null)} className="absolute top-6 right-6 z-30 bg-red-500 text-white p-4 rounded-2xl shadow-xl hover:scale-110 active:scale-95 transition-all flex items-center justify-center">
-                                                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+                                                <button onClick={() => setPackagePhoto(null)} className="absolute top-8 right-8 z-40 bg-red-600/80 hover:bg-red-600 text-white px-6 py-3 rounded-lg font-black text-xs uppercase tracking-[0.2em] shadow-2xl backdrop-blur-md transition-all active:scale-95 flex items-center gap-3">
+                                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+                                                    <span>Retake Photo</span>
                                                 </button>
                                             )}
                                         </div>
                                     </div>
-
-                                    <div className="flex flex-col items-center gap-8 w-full relative">
-                                        <button 
-                                            onClick={capturePhotoFromStream}
-                                            disabled={isCapturing || !!packagePhoto || isScannerLoading}
-                                            className={`w-full max-w-xl py-6 rounded-3xl font-bold text-lg transition-all duration-300 active:scale-95 shadow-2xl flex items-center justify-center gap-4 ${
-                                                packagePhoto ? 'bg-[#0ECB81]/10 text-[#0ECB81] border-2 border-[#0ECB81]/20 cursor-default' : 
-                                                'bg-[#FCD535] hover:shadow-[0_20px_40px_rgba(252,213,53,0.3)] text-black'
-                                            }`}
-                                        >
-                                            {isCapturing ? (
-                                                <><Spinner size="sm" />Capturing...</>
-                                            ) : packagePhoto ? (
-                                                <><svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>Photo Saved Successfully</>
-                                            ) : (
-                                                <><svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" /></svg>Capture Evidence Photo</>
-                                            )}
-                                        </button>
-                                        
-                                        <div className="flex items-center gap-10 px-8 py-4 bg-white/5 rounded-2xl border border-white/10">
-                                            <div className="flex items-center gap-3"><div className={`w-2 h-2 rounded-full ${packagePhoto ? 'bg-gray-600' : 'bg-[#0ECB81] animate-pulse'}`}></div><span className="text-xs font-bold text-gray-400">Camera Active</span></div>
-                                            <div className="flex items-center gap-3"><div className={`w-2 h-2 rounded-full ${packagePhoto ? 'bg-gray-600' : 'bg-[#FCD535] animate-pulse'}`}></div><span className="text-xs font-bold text-gray-400">QR Auto-Scan</span></div>
-                                        </div>
-                                    </div>
-
-                                    <style>{`
-                                        #fastpack-scanner-container video { object-fit: cover !important; width: 100% !important; height: 100% !important; }
-                                        @keyframes scan-line { 0% { top: 0%; opacity: 0; } 10% { opacity: 1; } 90% { opacity: 1; } 100% { top: 100%; opacity: 0; } }
-                                        .animate-scan-line { position: absolute; animation: scan-line 3.5s cubic-bezier(0.4, 0, 0.2, 1) infinite; }
-                                    `}</style>
-                                </div>
+                                )}
                             </div>
+                            <div className="absolute bottom-0 left-0 w-full h-[2px] bg-white/5 overflow-hidden"><div className={`h-full transition-all duration-1000 ${step === 'VERIFYING' ? 'w-1/3 bg-[#FCD535] shadow-[0_0_15px_#FCD535]' : step === 'LABELING' ? 'w-2/3 bg-[#FCD535] shadow-[0_0_15px_#FCD535]' : 'w-full bg-[#0ECB81] shadow-[0_0_15px_#0ECB81]'}`}></div></div>
                         </div>
                     </div>
                 </div>
             </main>
 
             <ActionControls step={step} isOrderVerified={isOrderVerified} hasGeneratedLabel={hasGeneratedLabel} packagePhoto={packagePhoto} uploading={uploading} undoTimer={undoTimer} onClose={onClose} setStep={setStep} handleSubmit={handleSubmit} />
-
             {undoTimer !== null && (
-                <OrderGracePeriod timer={undoTimer} maxTimer={maxUndoTimer} onUndo={handleUndo} isUndoing={isUndoing} accentColor="yellow" title="BROADCASTING TRANSACTION..." subtitle="Metadata is being committed to the system. Undo to halt." />
+                <OrderGracePeriod timer={undoTimer} maxTimer={maxUndoTimer} onUndo={handleUndo} isUndoing={isUndoing} accentColor="yellow" title="SECURITY BROADCAST IN PROGRESS..." subtitle="Metadata is being permanently committed. Use UNDO to abort immediately." />
+            )}
+
+            <style>{`
+                /* Hide built-in library scanner UI elements */
+                #fastpack-scanner-container div[style*="position: absolute"] {
+                    display: none !important;
+                }
+                #fastpack-scanner-container #qr-shaded-region {
+                    display: none !important;
+                }
+                #fastpack-scanner-container video {
+                    object-fit: contain !important;
+                    width: 100% !important;
+                    height: 100% !important;
+                }
+                
+                @keyframes scan-slow {
+                    0% { top: 0%; opacity: 0; }
+                    10% { opacity: 0.4; }
+                    90% { opacity: 0.4; }
+                    100% { top: 100%; opacity: 0; }
+                }
+                .animate-scan-slow {
+                    position: absolute;
+                    animation: scan-slow 3s linear infinite;
+                }
+                @keyframes spin-slow {
+                    from { transform: rotate(0deg); }
+                    to { transform: rotate(360deg); }
+                }
+                .animate-spin-slow {
+                    animation: spin-slow 4s linear infinite;
+                }
+                .custom-scrollbar-terminal::-webkit-scrollbar { width: 4px; }
+                .custom-scrollbar-terminal::-webkit-scrollbar-track { background: transparent; }
+                .custom-scrollbar-terminal::-webkit-scrollbar-thumb { background: #2B3139; border-radius: 10px; }
+                .custom-scrollbar-terminal::-webkit-scrollbar-thumb:hover { background: #FCD535; }
+            `}</style>
+            </div>
+
+            {/* Hidden Print Content - Only visible to printer */}
+            {/* We hide this background printer if the interactive editor is open, to prevent collisions */}
+            {!showLabelEditor && (
+                <div className="hidden print:block">
+                    <PrintLabelPage 
+                        key={refreshKey}
+                        printOnly 
+                        printTarget={printTarget}
+                        initialData={{ 
+                            id: order['Order ID'], 
+                            name: order['Customer Name'], 
+                            phone: order['Customer Phone'], 
+                            location: order.Location, 
+                            address: order['Address Details'] || '', 
+                            total: String(order['Grand Total']), 
+                            payment: order['Payment Status'] || '', 
+                            shipping: order['Internal Shipping Method'] || '', 
+                            user: order.User, 
+                            page: order.Page, 
+                            store: order['Fulfillment Store'], 
+                            note: order.Note || '' 
+                        }} 
+                    />
+                </div>
             )}
         </div>
     );
