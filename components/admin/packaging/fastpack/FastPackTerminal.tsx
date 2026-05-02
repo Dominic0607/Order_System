@@ -144,22 +144,76 @@ const FastPackTerminal: React.FC<FastPackTerminalProps> = ({ order, onClose, onS
             const token = session?.token || '';
             const packTime = new Date().toLocaleString('km-KH');
             const newData = { 'Fulfillment Status': 'Ready to Ship', 'Packed By': currentUser?.FullName || 'Packer', 'Packed Time': packTime };
+            
             setUploadProgress(20);
+            
+            // 1. ALWAYS update status synchronously first to ensure it appears in "Ready for Dispatch" immediately
+            const statusResponse = await fetch(`${WEB_APP_URL}/api/admin/update-order`, { 
+                method: 'POST', 
+                headers: { 
+                    'Content-Type': 'application/json', 
+                    'Authorization': `Bearer ${token}` 
+                }, 
+                body: JSON.stringify({ 
+                    orderId: order['Order ID'], 
+                    team: order.Team, 
+                    userName: currentUser?.FullName || 'System', 
+                    newData: newData 
+                }) 
+            });
+            
+            if (!statusResponse.ok) {
+                const errorData = await statusResponse.json().catch(() => ({}));
+                throw new Error(errorData.message || "Status update failed");
+            }
+            
+            setUploadProgress(60);
+
+            // 2. Start Image Upload in background (if photo exists) - do NOT wait for this to finish
             if (packagePhoto) {
                 const base64Data = packagePhoto.includes(',') ? packagePhoto.split(',')[1] : packagePhoto;
-                const uploadData = { action: 'uploadImage', fileData: base64Data, fileName: `Package_${order['Order ID'].substring(0,8)}_${Date.now()}.jpg`, mimeType: 'image/jpeg', orderId: order['Order ID'], team: order.Team, targetColumn: 'Package Photo', newData: newData, isAsync: true };
-                setUploadProgress(40);
-                fetch(`${WEB_APP_URL}/api/upload-image`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }, body: JSON.stringify(uploadData) }).catch(err => console.error("Background upload failed:", err));
-                setUploadProgress(100);
-            } else {
-                const statusResponse = await fetch(`${WEB_APP_URL}/api/admin/update-order`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }, body: JSON.stringify({ orderId: order['Order ID'], team: order.Team, userName: currentUser?.FullName || 'System', newData: newData }) });
-                if (!statusResponse.ok) throw new Error("Status update failed");
-                setUploadProgress(85);
+                // Note: We don't pass newData here because we already updated it above
+                const uploadData = { 
+                    action: 'uploadImage', 
+                    fileData: base64Data, 
+                    fileName: `Package_${order['Order ID'].substring(0,8)}_${Date.now()}.jpg`, 
+                    mimeType: 'image/jpeg', 
+                    orderId: order['Order ID'], 
+                    team: order.Team, 
+                    targetColumn: 'Package Photo', 
+                    isAsync: true 
+                };
+                
+                fetch(`${WEB_APP_URL}/api/upload-image`, { 
+                    method: 'POST', 
+                    headers: { 
+                        'Content-Type': 'application/json', 
+                        'Authorization': `Bearer ${token}` 
+                    }, 
+                    body: JSON.stringify(uploadData) 
+                }).catch(err => console.error("Background upload failed:", err));
             }
-            setOrders(prev => prev.map(o => o['Order ID'] === order['Order ID'] ? { ...o, 'Fulfillment Status': 'Ready to Ship', FulfillmentStatus: 'Ready to Ship', 'Packed By': currentUser?.FullName || 'Packer', 'Packed Time': packTime, 'Package Photo': packagePhoto || o['Package Photo'] } : o));
+            
+            setUploadProgress(90);
+
+            // 3. Update local state and trigger success
+            setOrders(prev => prev.map(o => o['Order ID'] === order['Order ID'] ? { 
+                ...o, 
+                'Fulfillment Status': 'Ready to Ship', 
+                FulfillmentStatus: 'Ready to Ship', 
+                'Packed By': currentUser?.FullName || 'Packer', 
+                'Packed Time': packTime, 
+                'Package Photo': packagePhoto || o['Package Photo'] 
+            } : o));
+            
             setUploadProgress(100);
             onSuccess(packagePhoto || 'manual_sync_ok');
-        } catch (err: any) { alert("❌ បញ្ជូនបរាជ័យ: " + err.message); } finally { setUploading(false); setUploadProgress(0); }
+        } catch (err: any) { 
+            alert("❌ បញ្ជូនបរាជ័យ: " + err.message); 
+        } finally { 
+            setUploading(false); 
+            setUploadProgress(0); 
+        }
     }, [order, currentUser, onSuccess, packagePhoto, setOrders]);
 
     const handleSubmit = useCallback(() => {

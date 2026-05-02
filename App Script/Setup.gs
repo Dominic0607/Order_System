@@ -32,7 +32,7 @@ const SYSTEM_STRUCTURE = {
   
   // ប្រព័ន្ធគ្រប់គ្រងសិទ្ធិ (RBAC)
   "Roles": ["ID", "RoleName", "Description"],
-  "RolePermissions": ["ID", "Role", "Feature", "IsEnabled"],
+  "RolePermissions": ["ID", "RoleID", "Role", "Feature", "IsEnabled"],
 
   // Driver Recommendation Setup
   "DriverRecommendations": ["ID", "DayOfWeek", "StoreName", "Province", "DriverName", "ShippingMethod"],
