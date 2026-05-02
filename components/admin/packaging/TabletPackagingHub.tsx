@@ -186,7 +186,7 @@ const TabletPackagingHub: React.FC<TabletPackagingHubProps> = ({
             {/* Main Content */}
             <main className="flex-1 flex flex-col overflow-hidden relative">
                 <header className={`flex-shrink-0 h-14 px-4 flex items-center justify-between ${B_BG_PANEL} border-b ${B_BORDER}`}>
-                    <div className="flex items-center gap-3 flex-grow max-w-xl">
+                    <div className="flex items-center gap-3 flex-grow max-w-sm">
                         <div className="relative w-full max-w-xs">
                             <input 
                                 type="text" 

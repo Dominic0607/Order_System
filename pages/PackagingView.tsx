@@ -41,6 +41,9 @@ const PackagingView: React.FC<{ orders?: ParsedOrder[] }> = ({ orders: propOrder
     const [deviceType, setDeviceType] = useState<'mobile' | 'tablet' | 'desktop'>('desktop');
     const [isBulkProcessing, setIsBulkProcessing] = useState(false);
     const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
+    const [undoTarget, setUndoConfirmation] = useState<{ order: ParsedOrder, type: 'pending' | 'ready', isOpen: boolean } | null>(null);
+    const [undoPassword, setUndoPassword] = useState('');
+    const [isUndoVerifying, setIsUndoVerifying] = useState(false);
 
     const checkActiveShift = async (store: string) => {
         setIsShiftLoading(true);
@@ -156,6 +159,47 @@ const PackagingView: React.FC<{ orders?: ParsedOrder[] }> = ({ orders: propOrder
             alert("មានបញ្ហាពេលបិទវេន");
         } finally {
             setIsShiftLoading(false);
+        }
+    };
+
+    const handleUndoConfirm = async () => {
+        if (!undoTarget || !activeShift) return;
+        if (!undoPassword) {
+            alert("សូមបញ្ចូលលេខសម្ងាត់");
+            return;
+        }
+
+        setIsUndoVerifying(true);
+        try {
+            // Find the actual UserName from the FullName stored in activeShift.OpenedBy
+            const shiftOwner = appData.users?.find(u => u.FullName === activeShift.OpenedBy);
+            const verifyUsername = shiftOwner?.UserName || activeShift.OpenedBy;
+
+            // Verify password using login endpoint
+            const res = await fetch(`${WEB_APP_URL}/api/login`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ userName: verifyUsername, password: undoPassword })
+            });
+            const data = await res.json();
+            
+            if (data.status === 'success') {
+                const { order, type } = undoTarget;
+                if (type === 'pending') {
+                    await executeAction(order, 'Pending', { 'Packed By': '', 'Packed Time': '', 'Package Photo': '' });
+                } else {
+                    await executeAction(order, 'Ready to Ship', { 'Dispatched Time': '', 'Dispatched By': '' });
+                }
+                setUndoConfirmation(null);
+                setUndoPassword('');
+            } else {
+                alert("លេខសម្ងាត់មិនត្រឹមត្រូវ! មិនអាច Undo បានទេ។");
+            }
+        } catch (error) {
+            console.error("Undo verification error:", error);
+            alert("មានបញ្ហាពេលផ្ទៀងផ្ទាត់លេខសម្ងាត់");
+        } finally {
+            setIsUndoVerifying(false);
         }
     };
 
@@ -387,8 +431,8 @@ const PackagingView: React.FC<{ orders?: ParsedOrder[] }> = ({ orders: propOrder
         orders: filteredOrders, activeTab, setActiveTab, searchTerm, setSearchTerm,
         onPack: (order: ParsedOrder) => !isViewOnly && setPackingOrder(order),
         onShip: (order: ParsedOrder) => !isViewOnly && executeAction(order, 'Shipped', { 'Dispatched Time': new Date().toLocaleString('km-KH'), 'Dispatched By': currentUser?.FullName || 'Packer' }),
-        onUndo: (o: ParsedOrder) => !isViewOnly && executeAction(o, 'Pending', { 'Packed By': '', 'Packed Time': '', 'Package Photo': '' }),
-        onUndoShipped: (o: ParsedOrder) => !isViewOnly && executeAction(o, 'Ready to Ship', { 'Dispatched Time': '', 'Dispatched By': '' }),
+        onUndo: (o: ParsedOrder) => !isViewOnly && setUndoConfirmation({ order: o, type: 'pending', isOpen: true }),
+        onUndoShipped: (o: ParsedOrder) => !isViewOnly && setUndoConfirmation({ order: o, type: 'ready', isOpen: true }),
         onView: (order: ParsedOrder) => setViewingOrder(order),
         onPrintManifest: () => {
             const printWindow = window.open('', '_blank');
@@ -539,6 +583,52 @@ const PackagingView: React.FC<{ orders?: ParsedOrder[] }> = ({ orders: propOrder
                         </div>
                         </Modal>
                         )}
+            {undoTarget && undoTarget.isOpen && (
+                <Modal isOpen={true} onClose={() => { setUndoConfirmation(null); setUndoPassword(''); }} maxWidth="max-w-md">
+                    <div className="bg-[#1E2329] border border-[#2B3139] p-8 space-y-8 rounded-2xl animate-in fade-in zoom-in duration-300">
+                        <div className="text-center space-y-4">
+                            <div className="w-16 h-16 bg-red-500/10 rounded-full flex items-center justify-center mx-auto">
+                                <svg className="w-8 h-8 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
+                            </div>
+                            <h3 className="text-xl font-black text-white uppercase tracking-wider">បញ្ជាក់ការ Undo</h3>
+                            <p className="text-gray-400 text-sm">សូមបញ្ចូលលេខសម្ងាត់របស់ <span className="text-[#FCD535] font-bold">@{activeShift?.OpenedBy}</span> ដើម្បីបន្ត។</p>
+                        </div>
+
+                        <div className="space-y-4">
+                            <input 
+                                type="password" 
+                                placeholder="លេខសម្ងាត់ (Shift Password)" 
+                                value={undoPassword} 
+                                onChange={e => setUndoPassword(e.target.value)}
+                                onKeyDown={e => e.key === 'Enter' && handleUndoConfirm()}
+                                className="w-full bg-[#0B0E11] border border-[#2B3139] rounded-xl px-5 py-4 text-white focus:border-[#FCD535] outline-none transition-all font-mono"
+                                autoFocus
+                            />
+                            <div className="flex gap-3 pt-4">
+                                <button 
+                                    onClick={() => { setUndoConfirmation(null); setUndoPassword(''); }} 
+                                    className="flex-1 py-4 bg-white/5 text-gray-400 font-bold rounded-xl hover:bg-white/10 transition-all"
+                                >
+                                    បោះបង់
+                                </button>
+                                <button
+                                    onClick={handleUndoConfirm}
+                                    disabled={isUndoVerifying}
+                                    className="flex-grow py-4 bg-[#FCD535] text-black font-bold rounded-xl hover:bg-[#FCD535]/90 transition-all shadow-lg flex items-center justify-center"
+                                >
+                                    {isUndoVerifying ? (
+                                        <div className="flex items-center gap-2">
+                                            <div className="w-4 h-4 border-2 border-black/20 border-t-black rounded-full animate-spin"></div>
+                                            <span>កំពុងផ្ទៀងផ្ទាត់...</span>
+                                        </div>
+                                    ) : 'បញ្ជាក់ Undo'}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </Modal>
+            )}
+
             {packingOrder && (
                 <FastPackTerminal 
                     order={packingOrder} onClose={() => setPackingOrder(null)} 
