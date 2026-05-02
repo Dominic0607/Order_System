@@ -29,5 +29,8 @@ export const FEATURES = {
     
     // Performance
     VIEW_TEAM_LEADERBOARD: "view_team_leaderboard",
-    SET_TARGETS: "set_targets"
+    SET_TARGETS: "set_targets",
+    
+    // Multi-Team Access
+    VIEW_GLOBAL_ORDERS: "view_global_orders"
 };
