@@ -676,7 +676,7 @@ const PackagingView: React.FC<{ orders?: ParsedOrder[], onExit?: () => void }> =
             {deviceType === 'desktop' && <DesktopPackagingHub {...hubProps} />}
 
             {isShiftModalOpen && (
-                <Modal isOpen={true} onClose={() => setSelectedStore('')} maxWidth="max-w-md">
+                <Modal isOpen={true} onClose={() => {/* prevent accidental close */}} maxWidth="max-w-md">
                     <div className="bg-[#1E2329] border border-[#2B3139] p-8 space-y-8 rounded-2xl animate-in fade-in zoom-in duration-300">
                         {shiftStep === 'options' && (
                             <div className="space-y-6 text-center">
@@ -686,6 +686,7 @@ const PackagingView: React.FC<{ orders?: ParsedOrder[], onExit?: () => void }> =
                                 <div className="grid grid-cols-1 gap-4 pt-4">
                                     <button onClick={() => { setIsViewOnly(true); setIsShiftModalOpen(false); }} className="w-full py-4 bg-white/5 hover:bg-white/10 text-white font-bold rounded-xl transition-all border border-white/10">👀 ចូលមើល (View Only)</button>
                                     <button onClick={() => setShiftStep('login')} className="w-full py-4 bg-[#FCD535] hover:bg-[#FCD535]/90 text-black font-bold rounded-xl transition-all shadow-xl shadow-[#FCD535]/10">🔑 បើកវេន (Open Shift)</button>
+                                    <button onClick={() => { setIsShiftModalOpen(false); setSelectedStore(''); }} className="w-full py-3 bg-transparent text-gray-500 hover:text-gray-300 font-bold rounded-xl transition-all border border-white/5 hover:border-white/10 text-sm">← ត្រឡប់ (ជ្រើសឃ្លាំងផ្សេង)</button>
                                 </div>
                             </div>
                         )}
