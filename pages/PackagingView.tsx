@@ -68,6 +68,7 @@ const PackagingView: React.FC<{ orders?: ParsedOrder[], onExit?: () => void }> =
     const [serverTabCounts, setServerTabCounts] = useState({ pending: 0, ready: 0, shipped: 0, returned: 0, cancelled: 0 });
     const [isLocalOrdersLoading, setIsLocalOrdersLoading] = useState(false);
     const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
+    const [localRefreshTick, setLocalRefreshTick] = useState(0);
 
     // Debounce search term to avoid hammering backend
     useEffect(() => {
@@ -155,7 +156,8 @@ const PackagingView: React.FC<{ orders?: ParsedOrder[], onExit?: () => void }> =
         return () => {
             isMounted = false;
         };
-    }, [selectedStore, activeTab, debouncedSearchTerm, teamFilter, shippingFilter, currentPage, pageSize, fetchOrders, refreshTimestamp]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [selectedStore, activeTab, debouncedSearchTerm, teamFilter, shippingFilter, currentPage, pageSize, fetchOrders, localRefreshTick]);
 
     // 2. Memos
     const allOrdersMapped = useMemo(() => {
@@ -448,7 +450,7 @@ const PackagingView: React.FC<{ orders?: ParsedOrder[], onExit?: () => void }> =
                 });
             }));
             setSelectedOrderIds(new Set());
-            refreshData();
+            setLocalRefreshTick(t => t + 1);
         } catch (error) {
             console.error("Bulk ship failed", error);
             alert("Some orders failed to ship. Please try again.");
@@ -470,7 +472,7 @@ const PackagingView: React.FC<{ orders?: ParsedOrder[], onExit?: () => void }> =
                 headers: { 'Content-Type': 'application/json', ...(token ? { 'Authorization': `Bearer ${token}` } : {}) },
                 body: JSON.stringify({ orderId: order['Order ID'], team: order.Team, userName: currentUser?.FullName || 'System', newData: { 'Fulfillment Status': newStatus, ...extraData } })
             });
-            refreshData();
+            setLocalRefreshTick(t => t + 1);
         } finally { setLoadingActionId(null); }
     };
 
