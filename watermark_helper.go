@@ -1,3 +1,6 @@
+//go:build ignore
+// +build ignore
+
 package main
 
 import (
@@ -14,7 +17,7 @@ import (
 	"net/textproto"
 
 	"github.com/fogleman/gg"
-	backend "github.com/samnangh849-source/Oder_Backend-2-/Backend"
+	backend "github.com/samnangh849-source/Oder_Backend/Backend"
 )
 
 // AddWatermarkAndEditTelegramMedia modifies the message by adding a watermark to the photo
@@ -84,7 +87,7 @@ func AddWatermarkAndEditTelegramMedia(order Order, newStatus string) {
 	if fontSize < 20 {
 		fontSize = 20
 	}
-	
+
 	// Load a basic font (we'll just use a basic internal font if no TTF is loaded)
 	// We can use the default font provided by gg, which might be basic but works
 	// Wait, fogleman/gg's default font doesn't scale. Let's draw it using basic shapes or try to load a font.

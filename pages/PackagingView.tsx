@@ -22,7 +22,7 @@ const bClasses = {
 
 const PackagingView: React.FC<{ orders?: ParsedOrder[], onExit?: () => void }> = ({ orders: propOrders, onExit }) => {
     // 1. Context & States
-    const { appData, refreshData, currentUser, setMobilePageTitle, appState, setAppState, setIsShiftOpener, setActiveShiftStore, logout } = useContext(AppContext);
+    const { appData, refreshData, refreshTimestamp, fetchOrders, currentUser, setMobilePageTitle, appState, setAppState, setIsShiftOpener, setActiveShiftStore, logout } = useContext(AppContext);
 
     const [selectedStore, setSelectedStore] = useState<string>('');
     const [activeShift, setActiveShift] = useState<Shift | null>(null);
@@ -58,17 +58,115 @@ const PackagingView: React.FC<{ orders?: ParsedOrder[], onExit?: () => void }> =
     const [isCloseShiftConfirmOpen, setIsCloseShiftConfirmOpen] = useState(false);
     const [closeShiftStats, setCloseShiftStats] = useState<{ packed: number, shipped: number, shippingCounts: Record<string, number>, summaryText: string } | null>(null);
 
+    // --- Pagination and server-side states ---
+    const [localOrders, setLocalOrders] = useState<ParsedOrder[]>([]);
+    const [currentPage, setCurrentPage] = useState(1);
+    const [pageSize, setPageSize] = useState(50);
+    const [totalOrdersCount, setTotalOrdersCount] = useState(0);
+    const [serverShippingCounts, setServerShippingCounts] = useState<Record<string, number>>({});
+    const [serverProgressStats, setServerProgressStats] = useState({ packedByUserToday: 0, storeTotalToday: 0, progressPercentage: 0 });
+    const [serverTabCounts, setServerTabCounts] = useState({ pending: 0, ready: 0, shipped: 0, returned: 0, cancelled: 0 });
+    const [isLocalOrdersLoading, setIsLocalOrdersLoading] = useState(false);
+    const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
+
+    // Debounce search term to avoid hammering backend
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            setDebouncedSearchTerm(searchTerm);
+            setCurrentPage(1);
+        }, 500);
+        return () => clearTimeout(timer);
+    }, [searchTerm]);
+
+    // Reset pagination page on filter/tab changes
+    useEffect(() => {
+        setCurrentPage(1);
+    }, [activeTab, teamFilter, shippingFilter, selectedStore]);
+
+    // Fetch packaging orders with pagination & filters
+    useEffect(() => {
+        if (!selectedStore) return;
+        
+        let isMounted = true;
+        const loadOrders = async () => {
+            setIsLocalOrdersLoading(true);
+            try {
+                const statusMap: Record<string, string> = {
+                    'Pending': 'Pending,Scheduled',
+                    'Ready to Ship': 'Ready to Ship',
+                    'Shipped': 'Shipped',
+                    'Returned': 'Returned',
+                    'Cancelled': 'Cancelled'
+                };
+                
+                const params: Record<string, string | number> = {
+                    limit: pageSize,
+                    offset: (currentPage - 1) * pageSize,
+                    search: debouncedSearchTerm,
+                    fulfillmentStore: selectedStore,
+                    fulfillmentStatus: statusMap[activeTab] || activeTab,
+                    datePreset: 'all', // Show all history for packaging search
+                    view: 'compact'
+                };
+                
+                if (teamFilter) {
+                    params.team = teamFilter;
+                }
+                if (shippingFilter) {
+                    params.internalShippingMethod = shippingFilter;
+                }
+                
+                const result = await fetchOrders(false, params);
+                if (isMounted && result) {
+                    setLocalOrders(result.orders || []);
+                    setTotalOrdersCount(result.total || 0);
+                    if (result.shippingCounts) {
+                        setServerShippingCounts(result.shippingCounts);
+                    }
+                    if (result.progressStats) {
+                        const packed = result.progressStats.packedByUserToday || 0;
+                        const total = result.progressStats.storeTotalToday || 0;
+                        const percentage = total > 0 ? Math.round((packed / total) * 100) : 0;
+                        setServerProgressStats({
+                            packedByUserToday: packed,
+                            storeTotalToday: total,
+                            progressPercentage: percentage
+                        });
+                    }
+                    if (result.tabCounts) {
+                        setServerTabCounts({
+                            pending: result.tabCounts.pending || 0,
+                            ready: result.tabCounts.ready || 0,
+                            shipped: result.tabCounts.shipped || 0,
+                            returned: result.tabCounts.returned || 0,
+                            cancelled: result.tabCounts.cancelled || 0
+                        });
+                    }
+                }
+            } catch (error) {
+                console.error("Failed to fetch paginated packaging orders:", error);
+            } finally {
+                if (isMounted) setIsLocalOrdersLoading(false);
+            }
+        };
+        
+        loadOrders();
+        
+        return () => {
+            isMounted = false;
+        };
+    }, [selectedStore, activeTab, debouncedSearchTerm, teamFilter, shippingFilter, currentPage, pageSize, fetchOrders, refreshTimestamp]);
+
     // 2. Memos
     const allOrdersMapped = useMemo(() => {
-        const rawData = propOrders || (Array.isArray((appData as any).orders) ? (appData as any).orders : []);
-        return rawData
+        return localOrders
             .filter((o: any) => o && o['Order ID'] && o['Order ID'] !== 'Opening_Balance')
             .map((o: any) => ({ 
                 ...o, 
                 Products: Array.isArray(o.Products) ? o.Products : [], 
                 FulfillmentStatus: (o['Fulfillment Status'] || o.FulfillmentStatus || 'Pending') as any
             })) as ParsedOrder[];
-    }, [appData.orders, propOrders]);
+    }, [localOrders]);
 
     const availableStores = useMemo(() => appData.stores ? appData.stores.map((s: any) => s.StoreName) : [], [appData.stores]);
     
@@ -86,97 +184,16 @@ const PackagingView: React.FC<{ orders?: ParsedOrder[], onExit?: () => void }> =
         return Array.from(teams).sort();
     }, [appData.pages, allOrdersMapped]);
 
-    const allFilteredOrdersBase = useMemo(() => {
-        if (!selectedStore) return [];
-        let filtered = allOrdersMapped.filter(o => (o['Fulfillment Store'] || 'Unassigned').trim().toLowerCase() === selectedStore.trim().toLowerCase());
-        
-        if (searchTerm.trim()) {
-            const q = searchTerm.toLowerCase();
-            filtered = filtered.filter(o => 
-                o['Order ID'].toLowerCase().includes(q) || 
-                (o['Customer Name'] || '').toLowerCase().includes(q) ||
-                (o['Internal Shipping Method'] || '').toLowerCase().includes(q)
-            );
-        }
+    const allFilteredOrdersBase = allOrdersMapped;
+    const allFilteredOrders = allOrdersMapped;
+    const filteredOrdersForCounts = allOrdersMapped;
+    const filteredOrders = allOrdersMapped;
 
-        if (teamFilter) {
-            filtered = filtered.filter(o => o.Team === teamFilter);
-        }
+    const tabCounts = serverTabCounts;
+    const progressStats = serverProgressStats;
+    const shippingCounts = serverShippingCounts;
 
-        return filtered;
-    }, [allOrdersMapped, selectedStore, searchTerm, teamFilter]);
-
-    const allFilteredOrders = useMemo(() => {
-        if (!shippingFilter) return allFilteredOrdersBase;
-        return allFilteredOrdersBase.filter(o => o['Internal Shipping Method'] === shippingFilter);
-    }, [allFilteredOrdersBase, shippingFilter]);
-
-    const filteredOrdersForCounts = useMemo(() => {
-        return allFilteredOrdersBase.filter(o => {
-            const fs = o.FulfillmentStatus;
-            const isPacked = !!(o['Packed By'] || o['Packed Time']);
-            const isUnpacked = !!o['Return Received By'];
-            if (activeTab === 'Cancelled') return fs === 'Cancelled' && isUnpacked;
-            if (fs === activeTab || (activeTab === 'Pending' && fs === 'Scheduled')) return true;
-            if (fs === 'Cancelled' && !isUnpacked) {
-                if (activeTab === 'Pending' && !isPacked) return true;
-                if (activeTab === 'Ready to Ship' && isPacked) return true;
-            }
-            return false;
-        });
-    }, [allFilteredOrdersBase, activeTab]);
-
-    const filteredOrders = useMemo(() => {
-        if (!shippingFilter) return filteredOrdersForCounts;
-        return filteredOrdersForCounts.filter(o => o['Internal Shipping Method'] === shippingFilter);
-    }, [filteredOrdersForCounts, shippingFilter]);
-
-    const tabCounts = useMemo(() => {
-        const counts = { pending: 0, ready: 0, shipped: 0, returned: 0, cancelled: 0 };
-        allFilteredOrdersBase.forEach(o => {
-            const fs = o.FulfillmentStatus;
-            const isPacked = !!(o['Packed By'] || o['Packed Time']);
-            const isUnpacked = !!o['Return Received By'];
-
-            if (fs === 'Pending' || fs === 'Scheduled') counts.pending++;
-            else if (fs === 'Ready to Ship') counts.ready++;
-            else if (fs === 'Shipped') counts.shipped++;
-            else if (fs === 'Returned') counts.returned++;
-            else if (fs === 'Cancelled') {
-                if (isUnpacked) {
-                    counts.cancelled++;
-                } else {
-                    if (!isPacked) counts.pending++;
-                    else counts.ready++;
-                }
-            }
-        });
-        return counts;
-    }, [allFilteredOrdersBase]);
-
-    const progressStats = useMemo(() => {
-        const todayStr = new Date().toLocaleDateString('km-KH');
-        const packedByUserToday = allFilteredOrdersBase.filter(o => {
-            const isPackedByMe = (o['Packed By'] || '') === (currentUser?.FullName || '');
-            const isToday = (o['Packed Time'] || '').startsWith(todayStr.split(',')[0]);
-            return isPackedByMe && isToday &&
-                (o.FulfillmentStatus === 'Ready to Ship' || o.FulfillmentStatus === 'Shipped');
-        }).length;
-        const storeTotalToday = allFilteredOrdersBase.length;
-        const progressPercentage = storeTotalToday > 0
-            ? Math.round((packedByUserToday / storeTotalToday) * 100)
-            : 0;
-        return { packedByUserToday, storeTotalToday, progressPercentage };
-    }, [allFilteredOrdersBase, currentUser]);
-
-    const shippingCounts = useMemo(() => {
-        const counts: { [key: string]: number } = { 'all': filteredOrdersForCounts.length };
-        filteredOrdersForCounts.forEach(o => {
-            const method = o['Internal Shipping Method'] || 'Unassigned';
-            counts[method] = (counts[method] || 0) + 1;
-        });
-        return counts;
-    }, [filteredOrdersForCounts]);
+    const totalPages = Math.ceil(totalOrdersCount / pageSize) || 1;
 
     // 3. Effects
     useEffect(() => {
@@ -298,19 +315,19 @@ const PackagingView: React.FC<{ orders?: ParsedOrder[], onExit?: () => void }> =
 
         const shippedOrders = myPackedOrders.filter(o => o.FulfillmentStatus === 'Shipped');
         
-        const shippingCounts: Record<string, number> = {};
+        const shippingCountsMap: Record<string, number> = {};
         myPackedOrders.forEach(o => {
             const method = o['Internal Shipping Method'] || 'ផ្សេងៗ (Other)';
-            shippingCounts[method] = (shippingCounts[method] || 0) + 1;
+            shippingCountsMap[method] = (shippingCountsMap[method] || 0) + 1;
         });
 
-        const lines = Object.entries(shippingCounts).map(([method, count]) => `• ${method}: *${count}*`);
+        const lines = Object.entries(shippingCountsMap).map(([method, count]) => `• ${method}: *${count}*`);
         const summary = `📦 វេចខ្ចប់សរុប៖ *${myPackedOrders.length}* កញ្ចប់\n🚚 បញ្ជូនចេញរួច៖ *${shippedOrders.length}* កញ្ចប់\n\n📋 *តាមក្រុមហ៊ុនដឹកជញ្ជូន៖*\n${lines.join('\n')}`;
 
         setCloseShiftStats({
             packed: myPackedOrders.length,
             shipped: shippedOrders.length,
-            shippingCounts,
+            shippingCounts: shippingCountsMap,
             summaryText: summary
         });
         setIsCloseShiftConfirmOpen(true);
@@ -643,12 +660,13 @@ const PackagingView: React.FC<{ orders?: ParsedOrder[], onExit?: () => void }> =
         },
         onCloseShift: handleCloseShift,
         shippingFilter, setShippingFilter, teamFilter, setTeamFilter,
-        selectedStore, tabCounts, viewMode, setViewMode, loadingActionId: isShiftLoading ? 'shift-loading' : loadingActionId,
+        selectedStore, tabCounts, viewMode, setViewMode, loadingActionId: isShiftLoading ? 'shift-loading' : (isLocalOrdersLoading ? 'orders-loading' : loadingActionId),
         selectedOrderIds, toggleOrderSelection: (id: string) => !isViewOnly && setSelectedOrderIds(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; }),
         clearSelection: () => setSelectedOrderIds(new Set()),
         onToggleSelectAll: (orders: ParsedOrder[]) => !isViewOnly && onToggleSelectAll(orders),
         onBulkShip: () => !isViewOnly && onBulkShip(),
-        isBulkProcessing, progressStats, isFilterModalOpen, setIsFilterModalOpen, isViewOnly, activeShift
+        isBulkProcessing, progressStats, isFilterModalOpen, setIsFilterModalOpen, isViewOnly, activeShift,
+        currentPage, totalPages, setCurrentPage
     };
 
     return (

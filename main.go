@@ -36,7 +36,7 @@ import (
 	// Import GORM
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
-	)
+)
 
 // GenerateSecureToken creates a cryptographically secure random token
 func GenerateSecureToken(length int) string {
@@ -144,6 +144,7 @@ type IncentiveResult = backend.IncentiveResult
 type IncentiveManualData = backend.IncentiveManualData
 type IncentiveCustomPayout = backend.IncentiveCustomPayout
 type DeleteOrderRequest = backend.DeleteOrderRequest
+type Promotion = backend.Promotion
 
 type IncentiveRules = backend.IncentiveRules
 type IncentiveTier = backend.IncentiveTier
@@ -432,6 +433,53 @@ func ErrorHandlingMiddleware() gin.HandlerFunc {
 				})
 			}
 		}
+	}
+}
+
+func buildCORSConfig() cors.Config {
+	allowedOrigins := map[string]bool{
+		"https://dominic0607.github.io": true,
+		"http://localhost:3000":         true,
+		"http://localhost:4173":         true,
+		"http://localhost:5173":         true,
+		"http://127.0.0.1:3000":         true,
+		"http://127.0.0.1:4173":         true,
+		"http://127.0.0.1:5173":         true,
+	}
+
+	if envOrigins := os.Getenv("CORS_ALLOWED_ORIGINS"); envOrigins != "" {
+		allowedOrigins = map[string]bool{}
+		for _, origin := range strings.Split(envOrigins, ",") {
+			origin = strings.TrimSpace(origin)
+			if origin != "" {
+				allowedOrigins[origin] = true
+			}
+		}
+	}
+
+	return cors.Config{
+		AllowOriginFunc: func(origin string) bool {
+			if allowedOrigins["*"] {
+				return true
+			}
+			return allowedOrigins[origin]
+		},
+		AllowMethods: []string{"GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"},
+		AllowHeaders: []string{
+			"Origin",
+			"Content-Type",
+			"Authorization",
+			"X-Requested-With",
+			"Accept",
+			"Cache-Control",
+			"Pragma",
+			"X-API-Key",
+			"X-Internal-Secret",
+		},
+		ExposeHeaders:             []string{"Content-Length"},
+		AllowCredentials:          true,
+		MaxAge:                    12 * time.Hour,
+		OptionsResponseStatusCode: http.StatusNoContent,
 	}
 }
 
@@ -1279,6 +1327,136 @@ func handleGetAllOrders(c *gin.Context) {
 		}
 	}
 
+
+	// 4. Calculate Shipping Counts (before applying the internalShippingMethod filter)
+	shippingCounts := make(map[string]int64)
+	if storeQuery != "" {
+		type ShippingCount struct {
+			Method string `gorm:"column:internal_shipping_method"`
+			Count  int64  `gorm:"column:count"`
+		}
+		var sCounts []ShippingCount
+		// Use a session clone to avoid mutating countQuery
+		countQuery.Session(&gorm.Session{}).
+			Select("internal_shipping_method, count(*) as count").
+			Group("internal_shipping_method").
+			Scan(&sCounts)
+
+		var totalCount int64 = 0
+		for _, sc := range sCounts {
+			method := sc.Method
+			if method == "" {
+				method = "Unassigned"
+			}
+			shippingCounts[method] = sc.Count
+			totalCount += sc.Count
+		}
+		shippingCounts["all"] = totalCount
+	}
+
+	// 5. Calculate Packaging Progress Stats & Tab Counts (if storeQuery is specified)
+	var packedByUserToday int64 = 0
+	var storeTotalToday int64 = 0
+	tabCounts := map[string]int64{
+		"pending":   0,
+		"ready":     0,
+		"shipped":   0,
+		"returned":  0,
+		"cancelled": 0,
+	}
+	if storeQuery != "" {
+		userName, _ := c.Get("userName")
+		var user User
+		fullName := ""
+		if err := backend.DB.Where("user_name = ?", userName).First(&user).Error; err == nil {
+			fullName = user.FullName
+		}
+
+		// Format today's date in Cambodia timezone (ICT)
+		loc := time.FixedZone("ICT", 7*3600)
+		now := time.Now().In(loc)
+		todayISO := now.Format("2006-01-02")
+		dStr1 := fmt.Sprintf("%d/%d/%d", now.Day(), int(now.Month()), now.Year())
+		dStr2 := fmt.Sprintf("%02d/%02d/%d", now.Day(), int(now.Month()), now.Year())
+
+		// Total store orders today
+		backend.DB.Model(&Order{}).
+			Where("LOWER(fulfillment_store) = LOWER(?) AND (timestamp LIKE ? OR timestamp LIKE ?)", 
+				storeQuery, todayISO+"%", todayISO+"T%").
+			Count(&storeTotalToday)
+
+		// Total packed by user today
+		if fullName != "" {
+			backend.DB.Model(&Order{}).
+				Where("LOWER(fulfillment_store) = LOWER(?) AND packed_by = ? AND (packed_time LIKE ? OR packed_time LIKE ?)", 
+					storeQuery, fullName, dStr1+"%", dStr2+"%").
+				Count(&packedByUserToday)
+		}
+
+		// Total counts per tab for the current store
+		var allStoreOrders []struct {
+			FulfillmentStatus string `gorm:"column:fulfillment_status"`
+			PackedBy          string `gorm:"column:packed_by"`
+			PackedTime        string `gorm:"column:packed_time"`
+			ReturnReceivedBy  string `gorm:"column:return_received_by"`
+		}
+		backend.DB.Model(&Order{}).
+			Select("fulfillment_status, packed_by, packed_time, return_received_by").
+			Where("LOWER(fulfillment_store) = LOWER(?)", storeQuery).
+			Scan(&allStoreOrders)
+
+		for _, o := range allStoreOrders {
+			fs := o.FulfillmentStatus
+			isPacked := o.PackedBy != "" || o.PackedTime != ""
+			isUnpacked := o.ReturnReceivedBy != ""
+
+			if fs == "Pending" || fs == "Scheduled" {
+				tabCounts["pending"]++
+			} else if fs == "Ready to Ship" {
+				tabCounts["ready"]++
+			} else if fs == "Shipped" {
+				tabCounts["shipped"]++
+			} else if fs == "Returned" {
+				tabCounts["returned"]++
+			} else if fs == "Cancelled" {
+				if isUnpacked {
+					tabCounts["cancelled"]++
+				} else {
+					if !isPacked {
+						tabCounts["pending"]++
+					} else {
+						tabCounts["ready"]++
+					}
+				}
+			}
+		}
+	}
+
+	// 6. Apply Internal Shipping Method Filter
+	shippingMethodQuery := c.Query("internalShippingMethod")
+	if shippingMethodQuery != "" {
+		methods := strings.Split(shippingMethodQuery, ",")
+		var conditions []string
+		var args []interface{}
+		for _, m := range methods {
+			m = strings.TrimSpace(m)
+			if m != "" {
+				if strings.EqualFold(m, "Unassigned") {
+					conditions = append(conditions, "internal_shipping_method = ? OR internal_shipping_method IS NULL")
+					args = append(args, "")
+				} else {
+					conditions = append(conditions, "LOWER(internal_shipping_method) = LOWER(?)")
+					args = append(args, m)
+				}
+			}
+		}
+		if len(conditions) > 0 {
+			condition := "(" + strings.Join(conditions, " OR ") + ")"
+			query = query.Where(condition, args...)
+			countQuery = countQuery.Where(condition, args...)
+		}
+	}
+
 	// Field Selection
 	if view == "compact" {
 		// Include products_json as it's needed for the dashboard display
@@ -1297,11 +1475,17 @@ func handleGetAllOrders(c *gin.Context) {
 	var total int64
 	countQuery.Count(&total)
 	c.JSON(200, gin.H{
-		"status": "success",
-		"data":   orders,
-		"total":  total,
-		"limit":  limit,
-		"offset": offset,
+		"status":         "success",
+		"data":           orders,
+		"total":          total,
+		"limit":          limit,
+		"offset":         offset,
+		"shippingCounts": shippingCounts,
+		"progressStats": gin.H{
+			"packedByUserToday": packedByUserToday,
+			"storeTotalToday":   storeTotalToday,
+		},
+		"tabCounts":      tabCounts,
 	})
 }
 
@@ -2045,6 +2229,54 @@ func handleAdminUpdateSheet(c *gin.Context) {
 		modelInstance = &Order{}
 	case "Users":
 		modelInstance = &User{}
+	case "Products":
+		modelInstance = &Product{}
+	case "Stores":
+		modelInstance = &Store{}
+	case "Settings":
+		modelInstance = &Setting{}
+	case "TeamsPages":
+		modelInstance = &TeamPage{}
+	case "Locations":
+		modelInstance = &Location{}
+	case "ShippingMethods":
+		modelInstance = &ShippingMethod{}
+	case "DeliveryGroups":
+		modelInstance = &DeliveryGroup{}
+	case "Colors":
+		modelInstance = &Color{}
+	case "Drivers":
+		modelInstance = &Driver{}
+	case "BankAccounts":
+		modelInstance = &BankAccount{}
+	case "PhoneCarriers":
+		modelInstance = &PhoneCarrier{}
+	case "Inventory":
+		modelInstance = &Inventory{}
+	case "StockTransfers":
+		modelInstance = &StockTransfer{}
+	case "Returns":
+		modelInstance = &ReturnItem{}
+	case "Roles":
+		modelInstance = &Role{}
+	case "RolePermissions":
+		modelInstance = &RolePermission{}
+	case "DriverRecommendations":
+		modelInstance = &DriverRecommendation{}
+	case "Movies":
+		modelInstance = &Movie{}
+	case "Promotions":
+		modelInstance = &Promotion{}
+	case "RevenueDashboard":
+		modelInstance = &RevenueEntry{}
+	case "ChatMessages":
+		modelInstance = &ChatMessage{}
+	case "EditLogs":
+		modelInstance = &EditLog{}
+	case "UserActivityLogs":
+		modelInstance = &UserActivityLog{}
+	case "TelegramTemplates":
+		modelInstance = &TelegramTemplate{}
 	}
 
 	pkCol := ""
@@ -2229,6 +2461,54 @@ func handleAdminAddRow(c *gin.Context) {
 			modelInstance = &Order{}
 		case "Users":
 			modelInstance = &User{}
+		case "Products":
+			modelInstance = &Product{}
+		case "Stores":
+			modelInstance = &Store{}
+		case "Settings":
+			modelInstance = &Setting{}
+		case "TeamsPages":
+			modelInstance = &TeamPage{}
+		case "Locations":
+			modelInstance = &Location{}
+		case "ShippingMethods":
+			modelInstance = &ShippingMethod{}
+		case "DeliveryGroups":
+			modelInstance = &DeliveryGroup{}
+		case "Colors":
+			modelInstance = &Color{}
+		case "Drivers":
+			modelInstance = &Driver{}
+		case "BankAccounts":
+			modelInstance = &BankAccount{}
+		case "PhoneCarriers":
+			modelInstance = &PhoneCarrier{}
+		case "Inventory":
+			modelInstance = &Inventory{}
+		case "StockTransfers":
+			modelInstance = &StockTransfer{}
+		case "Returns":
+			modelInstance = &ReturnItem{}
+		case "Roles":
+			modelInstance = &Role{}
+		case "RolePermissions":
+			modelInstance = &RolePermission{}
+		case "DriverRecommendations":
+			modelInstance = &DriverRecommendation{}
+		case "Movies":
+			modelInstance = &Movie{}
+		case "Promotions":
+			modelInstance = &Promotion{}
+		case "RevenueDashboard":
+			modelInstance = &RevenueEntry{}
+		case "ChatMessages":
+			modelInstance = &ChatMessage{}
+		case "EditLogs":
+			modelInstance = &EditLog{}
+		case "UserActivityLogs":
+			modelInstance = &UserActivityLog{}
+		case "TelegramTemplates":
+			modelInstance = &TelegramTemplate{}
 		}
 
 		mappedData := make(map[string]interface{})
@@ -2647,7 +2927,7 @@ func handleTelegramWebhook(c *gin.Context) {
 
 			// Edit Message Caption
 			newCaption := update.CallbackQuery.Message.Caption + fmt.Sprintf("\n\n✅ *បានមកយកដោយ:* %s\n👤 អ្នកដឹក: %s\n⏰ ម៉ោង: %s", driverName, driverUser, now)
-			
+
 			// Answer callback first to stop loading
 			answerURL := fmt.Sprintf("https://api.telegram.org/bot%s/answerCallbackQuery", token)
 			answerPayload := map[string]interface{}{
@@ -3274,45 +3554,10 @@ func main() {
 	backend.HubGlobal = hub
 	go hub.Run()
 
-	// Initialize backend.DB
-	initDB()
-
-	// Initialize background processes
-	go func() {
-		// Start Background Workers ONLY after backend.DB is ready
-		startSyncManager(2)
-		go startOrderWorker()
-		startScheduler()
-		backend.CreateGoogleAPIClient(context.Background())
-
-		// Auto-migrate if DB is empty
-		var userCount int64
-		if err := backend.DB.Model(&User{}).Count(&userCount).Error; err == nil && userCount == 0 {
-			log.Println("Empty database detected. Starting automatic data migration...")
-			backend.PerformDataMigration()
-		} else if os.Getenv("AUTO_MIGRATE") == "true" {
-			log.Println("🚀 Starting forced automatic data migration on startup...")
-			backend.PerformDataMigration()
-		} else {
-			log.Println("ℹ️ Automatic migration skipped (DB not empty). Set AUTO_MIGRATE=true if you want to wipe and re-sync.")
-		}
-	}()
-
 	r := gin.Default()
+	r.Use(cors.New(buildCORSConfig()))
 	r.Use(gzip.Gzip(gzip.DefaultCompression))
 	r.Use(ErrorHandlingMiddleware())
-
-	// Enhanced CORS Configuration
-	r.Use(cors.New(cors.Config{
-		AllowOriginFunc: func(origin string) bool {
-			return true
-		},
-		AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"},
-		AllowHeaders:     []string{"Origin", "Content-Type", "Authorization", "X-Requested-With", "Accept"},
-		ExposeHeaders:    []string{"Content-Length"},
-		AllowCredentials: true,
-		MaxAge:           12 * time.Hour,
-	}))
 
 	r.GET("/ping", func(c *gin.Context) {
 		c.JSON(200, gin.H{"status": "ok", "message": "pong"})
@@ -3420,7 +3665,28 @@ func main() {
 	}
 	api.GET("/chat/ws", AuthMiddleware(), serveWs)
 	api.GET("/chat/audio/:fileID", backend.HandleGetAudioProxy)
+	go initializeDatabaseAndWorkers()
 	r.Run("0.0.0.0:" + port)
+}
+
+func initializeDatabaseAndWorkers() {
+	initDB()
+
+	startSyncManager(2)
+	go startOrderWorker()
+	startScheduler()
+	backend.CreateGoogleAPIClient(context.Background())
+
+	var userCount int64
+	if err := backend.DB.Model(&User{}).Count(&userCount).Error; err == nil && userCount == 0 {
+		log.Println("Empty database detected. Starting automatic data migration...")
+		backend.PerformDataMigration()
+	} else if os.Getenv("AUTO_MIGRATE") == "true" {
+		log.Println("🚀 Starting forced automatic data migration on startup...")
+		backend.PerformDataMigration()
+	} else {
+		log.Println("ℹ️ Automatic migration skipped (DB not empty). Set AUTO_MIGRATE=true if you want to wipe and re-sync.")
+	}
 }
 
 // ── Shift Management Handlers ──────────────────────────────────────────────
@@ -3684,11 +3950,11 @@ func handleSendDeliveryTelegram(c *gin.Context) {
 				return err
 			}
 			dailySeq = int(count) + 1
-			
+
 			// Mark sequence immediately to prevent others from taking it
 			return tx.Model(&Order{}).Where("order_id = ?", order.OrderID).Updates(map[string]interface{}{
 				"delivery_daily_sequence": dailySeq,
-				"delivery_telegram_date":   todayStr,
+				"delivery_telegram_date":  todayStr,
 			}).Error
 		})
 		if txErr != nil {
@@ -3723,7 +3989,7 @@ func handleSendDeliveryTelegram(c *gin.Context) {
 
 	// Build inline keyboard
 	var inlineKeyboard [][]map[string]interface{}
-	
+
 	// 1. Map Link Button (Top Priority)
 	mapLink := extractMapLink(order.Location + " " + order.AddressDetails + " " + order.Note)
 	if mapLink != "" {

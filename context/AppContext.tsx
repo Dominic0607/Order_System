@@ -45,7 +45,7 @@ export interface AppContextType {
     setAppState: (newState: 'login' | 'role_selection' | 'admin_dashboard' | 'user_journey' | 'confirm_delivery' | 'fulfillment' | 'create_order' | 'entertainment' | 'watch' | 'series_player') => void;
     setOriginalAdminUser: React.Dispatch<React.SetStateAction<User | null>>;
     fetchData: (force?: boolean) => Promise<Record<string, any> | null>;
-    fetchOrders: (force?: boolean) => Promise<void>;
+    fetchOrders: (force?: boolean, params?: Record<string, string | number>) => Promise<any>;
     setCurrentUser: React.Dispatch<React.SetStateAction<User | null>>;
     setChatVisibility: (visible: boolean) => void;
     hasPermission: (feature: string) => boolean;

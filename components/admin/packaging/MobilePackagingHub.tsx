@@ -53,6 +53,9 @@ interface MobilePackagingHubProps {
     onCloseShift?: () => void;
     isViewOnly?: boolean;
     activeShift?: any;
+    currentPage: number;
+    totalPages: number;
+    setCurrentPage: React.Dispatch<React.SetStateAction<number>>;
 }
 
 const MobilePackagingHub: React.FC<MobilePackagingHubProps> = ({
@@ -63,7 +66,8 @@ const MobilePackagingHub: React.FC<MobilePackagingHubProps> = ({
     selectedStore,
     progressStats, setIsFilterModalOpen, loadingActionId, tabCounts,
     selectedOrderIds, toggleOrderSelection, clearSelection, onBulkShip, isBulkProcessing,
-    onToggleSelectAll, onConfirmReturn, onCloseShift, isViewOnly, activeShift, onUnpack
+    onToggleSelectAll, onConfirmReturn, onCloseShift, isViewOnly, activeShift, onUnpack,
+    currentPage, totalPages, setCurrentPage
 }) => {
     const { previewImage: showFullImage, appData, isShiftOpener, activeShiftStore, currentUser } = useContext(AppContext);
     const [unpackTarget, setUnpackTarget] = useState<ParsedOrder | null>(null);
@@ -635,6 +639,30 @@ const MobilePackagingHub: React.FC<MobilePackagingHubProps> = ({
                         </div>
                     </div>
                 ))}
+
+                {totalPages > 1 && (
+                    <div className={`flex items-center justify-between pt-4 pb-8 border-t ${B_BORDER} mt-4`}>
+                        <span className={`text-xs ${B_TEXT_SECONDARY}`}>
+                            Page <span className={`${B_TEXT_PRIMARY} font-bold`}>{currentPage}</span> of <span className={`${B_TEXT_PRIMARY} font-bold`}>{totalPages}</span>
+                        </span>
+                        <div className="flex gap-2">
+                            <button
+                                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                                disabled={currentPage === 1}
+                                className={`px-4 py-1.5 border ${B_BORDER} rounded-sm text-xs font-bold uppercase transition-colors select-none ${currentPage === 1 ? 'opacity-30 cursor-not-allowed text-[#848E9C]' : `${B_BG_PANEL} ${B_TEXT_PRIMARY} active:border-[#FCD535]/50`}`}
+                            >
+                                Prev
+                            </button>
+                            <button
+                                onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                                disabled={currentPage === totalPages}
+                                className={`px-4 py-1.5 border ${B_BORDER} rounded-sm text-xs font-bold uppercase transition-colors select-none ${currentPage === totalPages ? 'opacity-30 cursor-not-allowed text-[#848E9C]' : `${B_BG_PANEL} ${B_TEXT_PRIMARY} active:border-[#FCD535]/50`}`}
+                            >
+                                Next
+                            </button>
+                        </div>
+                    </div>
+                )}
             </div>
 
             {/* Sticky Bottom Stats Nav */}

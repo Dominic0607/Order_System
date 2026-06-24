@@ -52,6 +52,9 @@ interface TabletPackagingHubProps {
     onCloseShift?: () => void;
     isViewOnly?: boolean;
     activeShift?: any;
+    currentPage: number;
+    totalPages: number;
+    setCurrentPage: React.Dispatch<React.SetStateAction<number>>;
 }
 
 const TabletPackagingHub: React.FC<TabletPackagingHubProps> = ({
@@ -62,7 +65,8 @@ const TabletPackagingHub: React.FC<TabletPackagingHubProps> = ({
     selectedStore,
     progressStats, setIsFilterModalOpen, loadingActionId, tabCounts,
     selectedOrderIds, toggleOrderSelection, clearSelection, onBulkShip, isBulkProcessing,
-    onToggleSelectAll, onConfirmReturn, onCloseShift, isViewOnly, activeShift, onUnpack
+    onToggleSelectAll, onConfirmReturn, onCloseShift, isViewOnly, activeShift, onUnpack,
+    currentPage, totalPages, setCurrentPage
 }) => {
     const { previewImage: showFullImage, appData, isShiftOpener, activeShiftStore, currentUser } = useContext(AppContext);
     const [unpackTarget, setUnpackTarget] = useState<ParsedOrder | null>(null);
@@ -648,6 +652,29 @@ const TabletPackagingHub: React.FC<TabletPackagingHubProps> = ({
                     ))}
                     </div>
                 </div>
+                {totalPages > 1 && (
+                    <div className={`flex-shrink-0 px-8 py-3 bg-[#181A20] border-t ${B_BORDER} flex items-center justify-between`}>
+                        <span className={`text-xs ${B_TEXT_SECONDARY}`}>
+                            Showing Page <span className={`${B_TEXT_PRIMARY} font-bold`}>{currentPage}</span> of <span className={`${B_TEXT_PRIMARY} font-bold`}>{totalPages}</span>
+                        </span>
+                        <div className="flex gap-2">
+                            <button
+                                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                                disabled={currentPage === 1}
+                                className={`px-4 py-1.5 border ${B_BORDER} rounded-sm text-xs font-bold uppercase transition-colors select-none ${currentPage === 1 ? 'opacity-30 cursor-not-allowed text-[#848E9C]' : `${B_BG_MAIN} ${B_TEXT_PRIMARY} hover:border-[#FCD535]/50`}`}
+                            >
+                                Prev
+                            </button>
+                            <button
+                                onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                                disabled={currentPage === totalPages}
+                                className={`px-4 py-1.5 border ${B_BORDER} rounded-sm text-xs font-bold uppercase transition-colors select-none ${currentPage === totalPages ? 'opacity-30 cursor-not-allowed text-[#848E9C]' : `${B_BG_MAIN} ${B_TEXT_PRIMARY} hover:border-[#FCD535]/50`}`}
+                            >
+                                Next
+                            </button>
+                        </div>
+                    </div>
+                )}
             </main>
 
             {unpackTarget && (
