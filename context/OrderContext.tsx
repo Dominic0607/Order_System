@@ -178,7 +178,10 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
                         orders: parsedOrders,
                         total: result.total || parsedOrders.length,
                         limit: result.limit,
-                        offset: result.offset
+                        offset: result.offset,
+                        shippingCounts: result.shippingCounts,
+                        progressStats: result.progressStats,
+                        tabCounts: result.tabCounts
                     };
                 }
             } else {
