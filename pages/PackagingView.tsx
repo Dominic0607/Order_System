@@ -357,7 +357,7 @@ const PackagingView: React.FC<{ orders?: ParsedOrder[], onExit?: () => void }> =
                 setIsShiftModalOpen(false);
                 setIsCloseShiftConfirmOpen(false);
                 alert("បិទវេនជោគជ័យ!");
-                logout(); // Immediately trigger a complete logout
+                // Stay logged in — user returns to store selection
             } else {
                 alert(data.message || "មិនអាចបិទវេនបានទេ");
             }
