@@ -142,6 +142,7 @@ const PackagingView: React.FC<{ orders?: ParsedOrder[], onExit?: () => void }> =
 
     // For "Ready to Ship", load all orders at once (up to 500) so Select All / Bulk Ship works correctly
     const effectivePageSize = activeTab === 'Ready to Ship' ? 500 : pageSize;
+    const totalPages = activeTab === 'Ready to Ship' ? 1 : (Math.ceil(totalOrdersCount / pageSize) || 1);
 
     // Debounce search term to avoid hammering backend
     useEffect(() => {
@@ -346,8 +347,6 @@ const PackagingView: React.FC<{ orders?: ParsedOrder[], onExit?: () => void }> =
     const tabCounts = serverTabCounts;
     const progressStats = serverProgressStats;
     const shippingCounts = serverShippingCounts;
-
-    const totalPages = activeTab === 'Ready to Ship' ? 1 : (Math.ceil(totalOrdersCount / pageSize) || 1);
 
     // 3. Effects
     useEffect(() => {
