@@ -69,7 +69,7 @@ const MobilePackagingHub: React.FC<MobilePackagingHubProps> = ({
     onToggleSelectAll, onConfirmReturn, onCloseShift, isViewOnly, activeShift, onUnpack,
     currentPage, totalPages, setCurrentPage
 }) => {
-    const { previewImage: showFullImage, appData, isShiftOpener, activeShiftStore, currentUser } = useContext(AppContext);
+    const { previewImage: showFullImage, appData, isShiftOpener, activeShiftStore, currentUser, hasPermission } = useContext(AppContext);
     const [unpackTarget, setUnpackTarget] = useState<ParsedOrder | null>(null);
     const [sendingOrderId, setSendingOrderId] = useState<string | null>(null);
 
@@ -138,6 +138,11 @@ const MobilePackagingHub: React.FC<MobilePackagingHubProps> = ({
         if (!isReadyForDispatch) return false;
         if (!currentUser) return false;
         
+        // If they have edit_order permission or are admin, they can always send
+        const userRoles = (currentUser.Role || '').split(',').map(r => r.trim().toLowerCase());
+        const isAdmin = currentUser.IsSystemAdmin || userRoles.includes('admin') || hasPermission?.('edit_order');
+        if (isAdmin) return true;
+
         const orderStore = (order['Fulfillment Store'] || '').trim().toLowerCase();
         const myShiftStore = (activeShiftStore || '').trim().toLowerCase();
         

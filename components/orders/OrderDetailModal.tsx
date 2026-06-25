@@ -165,7 +165,7 @@ const JsonValueRenderer: React.FC<{ value: string; field: string; type: 'old' | 
 };
 
 const OrderDetailModal: React.FC<OrderDetailModalProps> = ({ order, onClose, inline = false }) => {
-    const { previewImage, appData, isShiftOpener, activeShiftStore, currentUser } = useContext(AppContext);
+    const { previewImage, appData, isShiftOpener, activeShiftStore, currentUser, hasPermission } = useContext(AppContext);
     const [copiedField, setCopiedField] = useState<string | null>(null);
     const [isSendingTelegram, setIsSendingTelegram] = useState(false);
 
@@ -179,12 +179,17 @@ const OrderDetailModal: React.FC<OrderDetailModalProps> = ({ order, onClose, inl
         if (!isReadyForDispatch) return false;
         if (!currentUser) return false;
         
+        // If they have edit_order permission or are admin, they can always send
+        const userRoles = (currentUser.Role || '').split(',').map(r => r.trim().toLowerCase());
+        const isAdmin = currentUser.IsSystemAdmin || userRoles.includes('admin') || hasPermission?.('edit_order');
+        if (isAdmin) return true;
+
         const orderStore = (order['Fulfillment Store'] || '').trim().toLowerCase();
         const myShiftStore = (activeShiftStore || '').trim().toLowerCase();
         
         // Strict: Only the person who opened the packaging shift for this store can send
         return isShiftOpener && orderStore === myShiftStore;
-    }, [isShiftOpener, activeShiftStore, order, currentUser]);
+    }, [isShiftOpener, activeShiftStore, order, currentUser, hasPermission]);
 
     const [editLogs, setEditLogs] = useState<EditLog[]>([]);
     const [activityLogs, setActivityLogs] = useState<UserActivityLog[]>([]);
