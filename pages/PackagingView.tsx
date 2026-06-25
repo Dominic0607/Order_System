@@ -1340,7 +1340,6 @@ const PackagingView: React.FC<{ orders?: ParsedOrder[], onExit?: () => void }> =
                 orders={deliveryOrders} 
                 appData={appData}
                 initialStore={selectedStore} 
-                ignoreDateFilter={true} 
             />
         </div>
     );
