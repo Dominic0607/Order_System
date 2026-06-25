@@ -519,8 +519,8 @@ const DeliveryListGeneratorModal: React.FC<DeliveryListGeneratorModalProps> = ({
                                                     </div>
                                                     
                                                     {/* Location indicator */}
-                                                    <div className="mb-4 text-[10px] font-medium text-gray-400 bg-[#0B0E11]/80 p-2 rounded-lg border border-[#2B3139]/50 truncate relative z-10 flex items-center gap-1.5 shadow-inner">
-                                                        <svg className="w-3.5 h-3.5 shrink-0 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                                                    <div className="mb-4 text-xs font-medium text-gray-300 bg-[#0B0E11]/80 p-2.5 rounded-lg border border-[#2B3139]/50 truncate relative z-10 flex items-center gap-1.5 shadow-inner">
+                                                        <svg className="w-4 h-4 shrink-0 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
                                                         {order.Location || 'No location'} {order['Address Details'] ? `- ${order['Address Details']}` : ''}
                                                     </div>
 
@@ -572,9 +572,9 @@ const DeliveryListGeneratorModal: React.FC<DeliveryListGeneratorModalProps> = ({
                                                         <div className={`w-10 h-10 rounded-lg flex items-center justify-center text-[11px] font-black shrink-0 border shadow-sm transition-colors ${isChecked ? 'bg-[#FCD535] text-black border-[#FCD535]' : 'bg-[#0B0E11] border-[#2B3139] text-gray-500'}`}>{idx + 1}</div>
                                                         <div className="min-w-0">
                                                             <h4 className={`text-sm font-bold uppercase truncate transition-colors ${isChecked ? 'text-gray-200' : 'text-gray-500'}`}>{order['Customer Name']}</h4>
-                                                            <div className="flex items-center gap-3 mt-1">
-                                                                <span className="text-[10px] font-bold text-gray-500 font-mono">{order['Customer Phone']}</span>
-                                                                <span className="text-[9px] font-bold text-gray-400 bg-[#0B0E11] px-2 py-0.5 rounded-md border border-[#2B3139] uppercase tracking-widest truncate max-w-[150px] shadow-inner">{order.Location}</span>
+                                                            <div className="flex items-center gap-3 mt-1.5">
+                                                                <span className="text-[11px] font-bold text-gray-500 font-mono">{order['Customer Phone']}</span>
+                                                                <span className="text-[10px] font-bold text-gray-300 bg-[#0B0E11] px-2.5 py-1 rounded-md border border-[#2B3139] uppercase tracking-widest truncate max-w-[200px] shadow-inner">{order.Location}</span>
                                                             </div>
                                                         </div>
                                                     </div>
