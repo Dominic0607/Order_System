@@ -123,6 +123,7 @@ const MobilePackagingHub: React.FC<MobilePackagingHubProps> = ({
     };
 
     const isAnyFilterActive = !!(shippingFilter || teamFilter);
+    const isPageLoading = loadingActionId === 'orders-loading' || loadingActionId === 'shift-loading';
 
     const getDeliveryGroup = (order: ParsedOrder) => {
         if (!order['Internal Shipping Method'] || !order['Fulfillment Store']) return null;
@@ -690,17 +691,17 @@ const MobilePackagingHub: React.FC<MobilePackagingHubProps> = ({
                         <div className="flex gap-2">
                             <button
                                 onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-                                disabled={currentPage === 1}
-                                className={`px-4 py-1.5 border ${B_BORDER} rounded-sm text-xs font-bold uppercase transition-colors select-none ${currentPage === 1 ? 'opacity-30 cursor-not-allowed text-[#848E9C]' : `${B_BG_PANEL} ${B_TEXT_PRIMARY} active:border-[#FCD535]/50`}`}
+                                disabled={isPageLoading || currentPage <= 1}
+                                className={`px-4 py-1.5 border ${B_BORDER} rounded-sm text-xs font-bold uppercase transition-colors select-none ${isPageLoading || currentPage <= 1 ? 'opacity-30 cursor-not-allowed text-[#848E9C]' : `${B_BG_PANEL} ${B_TEXT_PRIMARY} active:border-[#FCD535]/50`}`}
                             >
-                                Prev
+                                {isPageLoading ? 'Loading...' : 'Prev'}
                             </button>
                             <button
                                 onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-                                disabled={currentPage === totalPages}
-                                className={`px-4 py-1.5 border ${B_BORDER} rounded-sm text-xs font-bold uppercase transition-colors select-none ${currentPage === totalPages ? 'opacity-30 cursor-not-allowed text-[#848E9C]' : `${B_BG_PANEL} ${B_TEXT_PRIMARY} active:border-[#FCD535]/50`}`}
+                                disabled={isPageLoading || currentPage >= totalPages}
+                                className={`px-4 py-1.5 border ${B_BORDER} rounded-sm text-xs font-bold uppercase transition-colors select-none ${isPageLoading || currentPage >= totalPages ? 'opacity-30 cursor-not-allowed text-[#848E9C]' : `${B_BG_PANEL} ${B_TEXT_PRIMARY} active:border-[#FCD535]/50`}`}
                             >
-                                Next
+                                {isPageLoading ? 'Loading...' : 'Next'}
                             </button>
                         </div>
                     </div>

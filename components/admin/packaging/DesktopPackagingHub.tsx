@@ -134,6 +134,7 @@ const DesktopPackagingHub: React.FC<DesktopPackagingHubProps> = ({
     };
 
     const activeFilterCount = (shippingFilter ? 1 : 0) + (teamFilter ? 1 : 0);
+    const isPageLoading = loadingActionId === 'orders-loading' || loadingActionId === 'shift-loading';
 
     const getDeliveryGroup = (order: ParsedOrder) => {
         if (!order['Internal Shipping Method'] || !order['Fulfillment Store']) return null;
@@ -943,6 +944,7 @@ const DesktopPackagingHub: React.FC<DesktopPackagingHubProps> = ({
                                 <button
                                     key={size}
                                     onClick={() => { setPageSize(size); setCurrentPage(1 as any); }}
+                                    disabled={isPageLoading || pageSize === size}
                                     className={`px-3 py-1 rounded-sm text-[11px] font-black uppercase border transition-all ${
                                         pageSize === size
                                             ? 'bg-[#FCD535] border-[#FCD535] text-black shadow-[0_0_10px_rgba(252,213,53,0.2)]'
@@ -960,10 +962,10 @@ const DesktopPackagingHub: React.FC<DesktopPackagingHubProps> = ({
                         <div className="flex gap-1.5 flex-shrink-0">
                             <button
                                 onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-                                disabled={currentPage === 1}
-                                className={`px-3 py-1.5 border ${B_BORDER} rounded-sm text-xs font-bold uppercase transition-colors select-none ${currentPage === 1 ? 'opacity-30 cursor-not-allowed text-[#848E9C]' : `${B_BG_MAIN} ${B_TEXT_PRIMARY} hover:border-[#FCD535]/50`}`}
+                                disabled={isPageLoading || currentPage <= 1}
+                                className={`px-3 py-1.5 border ${B_BORDER} rounded-sm text-xs font-bold uppercase transition-colors select-none ${isPageLoading || currentPage <= 1 ? 'opacity-30 cursor-not-allowed text-[#848E9C]' : `${B_BG_MAIN} ${B_TEXT_PRIMARY} hover:border-[#FCD535]/50`}`}
                             >
-                                ‹ Prev
+                                {isPageLoading ? 'Loading...' : '‹ Prev'}
                             </button>
                             {/* Page number pills */}
                             {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
@@ -981,6 +983,7 @@ const DesktopPackagingHub: React.FC<DesktopPackagingHubProps> = ({
                                     <button
                                         key={page}
                                         onClick={() => setCurrentPage(page)}
+                                        disabled={isPageLoading || currentPage === page}
                                         className={`w-8 py-1.5 rounded-sm text-xs font-bold border transition-all ${
                                             currentPage === page
                                                 ? 'bg-[#FCD535] border-[#FCD535] text-black'
@@ -993,10 +996,10 @@ const DesktopPackagingHub: React.FC<DesktopPackagingHubProps> = ({
                             })}
                             <button
                                 onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-                                disabled={currentPage === totalPages}
-                                className={`px-3 py-1.5 border ${B_BORDER} rounded-sm text-xs font-bold uppercase transition-colors select-none ${currentPage === totalPages ? 'opacity-30 cursor-not-allowed text-[#848E9C]' : `${B_BG_MAIN} ${B_TEXT_PRIMARY} hover:border-[#FCD535]/50`}`}
+                                disabled={isPageLoading || currentPage >= totalPages}
+                                className={`px-3 py-1.5 border ${B_BORDER} rounded-sm text-xs font-bold uppercase transition-colors select-none ${isPageLoading || currentPage >= totalPages ? 'opacity-30 cursor-not-allowed text-[#848E9C]' : `${B_BG_MAIN} ${B_TEXT_PRIMARY} hover:border-[#FCD535]/50`}`}
                             >
-                                Next ›
+                                {isPageLoading ? 'Loading...' : 'Next ›'}
                             </button>
                         </div>
                     ) : activeTab === 'Ready to Ship' ? (

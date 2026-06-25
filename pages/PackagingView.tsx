@@ -21,9 +21,54 @@ const bClasses = {
     btnYellow: 'bg-[#FCD535] hover:bg-[#FCD535]/90 text-[#0B0E11] font-bold rounded-[4px] px-4 py-2 transition-all active:scale-[0.98]',
 };
 
+const statusMap: Record<string, string> = {
+    'Pending': 'Pending,Scheduled',
+    'Ready to Ship': 'Ready to Ship',
+    'Shipped': 'Shipped',
+    'Returned': 'Returned',
+    'Cancelled': 'Cancelled'
+};
+
+const packagingTabMap: Record<string, string> = {
+    'Pending': 'pending',
+    'Ready to Ship': 'ready',
+    'Shipped': 'shipped',
+    'Returned': 'returned',
+    'Cancelled': 'cancelled'
+};
+
+const parseApiOrders = (rawList: any[]): ParsedOrder[] => {
+    return rawList
+        .filter((o: any) => o && o['Order ID'] && o['Order ID'] !== 'Opening_Balance')
+        .map((o: any) => {
+            let products: any[] = [];
+            try {
+                const rawProducts = o['Products (JSON)'] || o.Products;
+                const parsed = typeof rawProducts === 'string' ? JSON.parse(rawProducts) : (rawProducts || []);
+                products = (Array.isArray(parsed) ? parsed : []).map((p: any) => ({
+                    ...p,
+                    name: p.name || p.productName || p.ProductName || '',
+                    quantity: Number(p.quantity ?? p.Quantity ?? 1) || 1,
+                    image: p.image || p.imageUrl || p.ImageURL || '',
+                    cost: Number(p.cost ?? p.Cost ?? 0),
+                    finalPrice: Number(p.finalPrice ?? p.FinalPrice ?? p.price ?? p.Price ?? 0),
+                }));
+            } catch (e) {
+                products = [];
+            }
+
+            return {
+                ...o,
+                Products: products,
+                FulfillmentStatus: (o['Fulfillment Status'] || o.FulfillmentStatus || 'Pending') as any,
+                IsVerified: String(o.IsVerified).toUpperCase() === 'TRUE' || o.IsVerified === 'A'
+            } as ParsedOrder;
+        });
+};
+
 const PackagingView: React.FC<{ orders?: ParsedOrder[], onExit?: () => void }> = ({ orders: propOrders, onExit }) => {
     // 1. Context & States
-    const { appData, refreshData, refreshTimestamp, fetchOrders, currentUser, setMobilePageTitle, appState, setAppState, setIsShiftOpener, setActiveShiftStore, logout, lastMessage, ordersFetchError } = useContext(AppContext);
+    const { appData, refreshData, refreshTimestamp, currentUser, setMobilePageTitle, appState, setAppState, setIsShiftOpener, setActiveShiftStore, logout, lastMessage, ordersFetchError } = useContext(AppContext);
 
     const [selectedStore, setSelectedStore] = useState<string>(() => {
         return localStorage.getItem('selectedStore') || '';
@@ -89,9 +134,11 @@ const PackagingView: React.FC<{ orders?: ParsedOrder[], onExit?: () => void }> =
     const [serverProgressStats, setServerProgressStats] = useState({ packedByUserToday: 0, storeTotalToday: 0, progressPercentage: 0 });
     const [serverTabCounts, setServerTabCounts] = useState({ pending: 0, ready: 0, shipped: 0, returned: 0, cancelled: 0 });
     const [isLocalOrdersLoading, setIsLocalOrdersLoading] = useState(false);
+    const [localOrdersFetchError, setLocalOrdersFetchError] = useState<'permission_denied' | 'network_error' | null>(null);
     const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
     const [localRefreshTick, setLocalRefreshTick] = useState(0);
     const wsRefreshThrottleRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+    const packagingRequestSeqRef = React.useRef(0);
 
     // For "Ready to Ship", load all orders at once (up to 500) so Select All / Bulk Ship works correctly
     const effectivePageSize = activeTab === 'Ready to Ship' ? 500 : pageSize;
@@ -110,43 +157,115 @@ const PackagingView: React.FC<{ orders?: ParsedOrder[], onExit?: () => void }> =
         setCurrentPage(1);
         setLocalOrders([]);
         setTotalOrdersCount(0);
+        setSelectedOrderIds(new Set());
     }, [activeTab, teamFilter, shippingFilter, selectedStore, debouncedSearchTerm]);
+
+    useEffect(() => {
+        setSelectedOrderIds(new Set());
+    }, [currentPage, pageSize]);
+
+    useEffect(() => {
+        if (activeTab !== 'Ready to Ship' && currentPage > totalPages) {
+            setCurrentPage(totalPages);
+        }
+    }, [activeTab, currentPage, totalPages]);
+
+    const buildPackagingOrderParams = (limit: number, offset: number, search: string): Record<string, string | number> => {
+        const params: Record<string, string | number> = {
+            limit,
+            offset,
+            search,
+            fulfillmentStore: selectedStore,
+            fulfillmentStatus: statusMap[activeTab] || activeTab,
+            packagingTab: packagingTabMap[activeTab] || activeTab.toLowerCase(),
+            datePreset: 'all',
+            view: 'compact'
+        };
+
+        if (teamFilter) {
+            params.team = teamFilter;
+        }
+        if (shippingFilter) {
+            params.internalShippingMethod = shippingFilter;
+        }
+
+        return params;
+    };
+
+    const fetchPackagingOrders = async (
+        params: Record<string, string | number>,
+        signal?: AbortSignal,
+        canApplyResult: () => boolean = () => true
+    ) => {
+        const session = await CacheService.get<{ token: string }>(CACHE_KEYS.SESSION);
+        const token = session?.token || localStorage.getItem('token') || '';
+        if (!token) {
+            if (canApplyResult()) setLocalOrdersFetchError('network_error');
+            return null;
+        }
+
+        const queryParams = new URLSearchParams();
+        Object.entries(params).forEach(([key, val]) => {
+            if (val !== undefined && val !== null && val !== '') {
+                queryParams.append(key, String(val));
+            }
+        });
+
+        const response = await fetch(`${WEB_APP_URL}/api/admin/orders?${queryParams.toString()}`, {
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+            cache: 'no-store',
+            signal
+        });
+
+        if (response.status === 401) {
+            if (canApplyResult()) logout();
+            return null;
+        }
+
+        if (response.status === 403) {
+            if (canApplyResult()) setLocalOrdersFetchError('permission_denied');
+            return null;
+        }
+
+        if (!response.ok) {
+            if (canApplyResult()) setLocalOrdersFetchError('network_error');
+            return null;
+        }
+
+        const result = await response.json();
+        if (canApplyResult()) setLocalOrdersFetchError(null);
+        return {
+            orders: parseApiOrders(result.data || result.orders || result.Data || []),
+            total: result.total || 0,
+            limit: result.limit,
+            offset: result.offset,
+            shippingCounts: result.shippingCounts,
+            progressStats: result.progressStats,
+            tabCounts: result.tabCounts
+        };
+    };
 
     // Fetch packaging orders with pagination & filters
     useEffect(() => {
         if (!selectedStore) return;
-        
+        const requestId = ++packagingRequestSeqRef.current;
+        const controller = new AbortController();
         let isMounted = true;
+
         const loadOrders = async () => {
             setIsLocalOrdersLoading(true);
             try {
-                const statusMap: Record<string, string> = {
-                    'Pending': 'Pending,Scheduled',
-                    'Ready to Ship': 'Ready to Ship',
-                    'Shipped': 'Shipped',
-                    'Returned': 'Returned',
-                    'Cancelled': 'Cancelled'
-                };
-                
-                const params: Record<string, string | number> = {
-                    limit: effectivePageSize,
-                    offset: activeTab === 'Ready to Ship' ? 0 : (currentPage - 1) * effectivePageSize,
-                    search: debouncedSearchTerm,
-                    fulfillmentStore: selectedStore,
-                    fulfillmentStatus: statusMap[activeTab] || activeTab,
-                    datePreset: 'all', // Show all history for packaging search
-                    view: 'compact'
-                };
-                
-                if (teamFilter) {
-                    params.team = teamFilter;
-                }
-                if (shippingFilter) {
-                    params.internalShippingMethod = shippingFilter;
-                }
-                
-                const result = await fetchOrders(false, params);
-                if (isMounted && result) {
+                const params = buildPackagingOrderParams(
+                    effectivePageSize,
+                    activeTab === 'Ready to Ship' ? 0 : (currentPage - 1) * effectivePageSize,
+                    debouncedSearchTerm
+                );
+                const result = await fetchPackagingOrders(
+                    params,
+                    controller.signal,
+                    () => isMounted && requestId === packagingRequestSeqRef.current
+                );
+                if (isMounted && requestId === packagingRequestSeqRef.current && result) {
                     setLocalOrders(result.orders || []);
                     setTotalOrdersCount(result.total || 0);
                     if (result.shippingCounts) {
@@ -172,10 +291,14 @@ const PackagingView: React.FC<{ orders?: ParsedOrder[], onExit?: () => void }> =
                         });
                     }
                 }
-            } catch (error) {
+            } catch (error: any) {
+                if (error?.name === 'AbortError') return;
                 console.error("Failed to fetch paginated packaging orders:", error);
+                if (isMounted && requestId === packagingRequestSeqRef.current) {
+                    setLocalOrdersFetchError('network_error');
+                }
             } finally {
-                if (isMounted) setIsLocalOrdersLoading(false);
+                if (isMounted && requestId === packagingRequestSeqRef.current) setIsLocalOrdersLoading(false);
             }
         };
         
@@ -183,9 +306,10 @@ const PackagingView: React.FC<{ orders?: ParsedOrder[], onExit?: () => void }> =
         
         return () => {
             isMounted = false;
+            controller.abort();
         };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [selectedStore, activeTab, debouncedSearchTerm, teamFilter, shippingFilter, currentPage, effectivePageSize, fetchOrders, localRefreshTick]);
+    }, [selectedStore, activeTab, debouncedSearchTerm, teamFilter, shippingFilter, currentPage, effectivePageSize, localRefreshTick]);
 
     // 2. Memos
     const allOrdersMapped = useMemo(() => {
@@ -678,39 +802,9 @@ const PackagingView: React.FC<{ orders?: ParsedOrder[], onExit?: () => void }> =
     // 6. Hub Props & Main Render
     const fetchAllFilteredOrders = async () => {
         try {
-            const statusMap: Record<string, string> = {
-                'Pending': 'Pending,Scheduled',
-                'Ready to Ship': 'Ready to Ship',
-                'Shipped': 'Shipped',
-                'Returned': 'Returned',
-                'Cancelled': 'Cancelled'
-            };
-            
-            const params: Record<string, string | number> = {
-                limit: 10000, // Fetch all matching orders
-                offset: 0,
-                search: searchTerm,
-                fulfillmentStore: selectedStore,
-                fulfillmentStatus: statusMap[activeTab] || activeTab,
-                datePreset: 'all', // Show all history for packaging search
-                view: 'compact'
-            };
-            
-            if (teamFilter) {
-                params.team = teamFilter;
-            }
-            if (shippingFilter) {
-                params.internalShippingMethod = shippingFilter;
-            }
-            
-            const result = await fetchOrders(false, params);
+            const result = await fetchPackagingOrders(buildPackagingOrderParams(10000, 0, debouncedSearchTerm));
             if (result && result.orders) {
-                return result.orders.filter((o: any) => o && o['Order ID'] && o['Order ID'] !== 'Opening_Balance')
-                    .map((o: any) => ({ 
-                        ...o, 
-                        Products: Array.isArray(o.Products) ? o.Products : [], 
-                        FulfillmentStatus: (o['Fulfillment Status'] || o.FulfillmentStatus || 'Pending') as any
-                    })) as ParsedOrder[];
+                return result.orders;
             }
         } catch (error) {
             console.error("Failed to fetch all orders for export/print:", error);
@@ -809,12 +903,12 @@ const PackagingView: React.FC<{ orders?: ParsedOrder[], onExit?: () => void }> =
 
     return (
         <div className="fixed inset-0 z-[150] bg-[#0B0E11] overflow-hidden flex flex-col font-sans">
-            {ordersFetchError && (
+            {(ordersFetchError || localOrdersFetchError) && (
                 <div className="absolute top-0 inset-x-0 z-[210] bg-[#F6465D] text-white py-3.5 px-6 flex items-center justify-between shadow-2xl border-b border-[#F6465D] animate-in slide-in-from-top duration-300">
                     <div className="flex items-center gap-3">
                         <span className="text-xl">⚠️</span>
                         <div className="text-sm font-bold tracking-wide">
-                            {ordersFetchError === 'permission_denied' 
+                            {(ordersFetchError || localOrdersFetchError) === 'permission_denied' 
                                 ? 'គ្មានសិទ្ធិចូលប្រើប្រាស់ទិន្នន័យនេះទេ (Permission Denied)' 
                                 : 'មានបញ្ហាក្នុងការតភ្ជាប់ទៅកាន់ម៉ាស៊ីនមេ (Network Connection Error)'}
                         </div>
