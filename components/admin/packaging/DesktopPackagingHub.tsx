@@ -62,6 +62,8 @@ interface DesktopPackagingHubProps {
     currentPage: number;
     totalPages: number;
     setCurrentPage: React.Dispatch<React.SetStateAction<number>>;
+    onExportPdf?: () => void;
+    isExportLoading?: boolean;
 }
 
 const DesktopPackagingHub: React.FC<DesktopPackagingHubProps> = ({
@@ -72,7 +74,7 @@ const DesktopPackagingHub: React.FC<DesktopPackagingHubProps> = ({
     progressStats, viewMode, setViewMode, setIsFilterModalOpen, loadingActionId, tabCounts,
     selectedOrderIds, toggleOrderSelection, clearSelection, onBulkShip, isBulkProcessing,
     onToggleSelectAll, onConfirmReturn, onCloseShift, isViewOnly, activeShift, onUnpack,
-    currentPage, totalPages, setCurrentPage
+    currentPage, totalPages, setCurrentPage, onExportPdf, isExportLoading
 }) => {
     const { appData, previewImage: showFullImage, isShiftOpener, activeShiftStore, currentUser, hasPermission } = useContext(AppContext);
     const [unpackTarget, setUnpackTarget] = useState<ParsedOrder | null>(null);
@@ -394,6 +396,16 @@ const DesktopPackagingHub: React.FC<DesktopPackagingHubProps> = ({
                                     </button>
                                 )}
                             </div>
+                        )}
+                        {onExportPdf && orders.length > 0 && (
+                            <button 
+                                onClick={onExportPdf} 
+                                disabled={isExportLoading}
+                                className={`px-4 py-2 mr-2 border border-[#FCD535]/50 hover:bg-[#FCD535] group transition-all rounded-sm flex items-center gap-2 whitespace-nowrap disabled:opacity-30 disabled:cursor-not-allowed`}
+                            >
+                                {isExportLoading ? <Spinner size="xs" /> : <svg className="w-4 h-4 text-[#FCD535] group-hover:text-[#0B0E11]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>}
+                                <span className="text-[#FCD535] group-hover:text-[#0B0E11] text-sm font-bold uppercase tracking-wider">Export PDF</span>
+                            </button>
                         )}
                         <div className="flex bg-[#0B0E11] p-0.5 border border-[#2B3139] rounded-sm">
                             <button onClick={() => setViewMode('card')} className={`p-2 rounded-sm transition-all ${viewMode === 'card' ? 'bg-[#2B3139] text-[#EAECEF]' : 'text-[#848E9C] hover:text-[#EAECEF]'}`}><svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><rect x="3" y="3" width="7" height="7" /><rect x="14" y="3" width="7" height="7" /><rect x="14" y="14" width="7" height="7" /><rect x="3" y="14" width="7" height="7" /></svg></button>

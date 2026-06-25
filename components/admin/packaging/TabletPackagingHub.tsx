@@ -55,6 +55,8 @@ interface TabletPackagingHubProps {
     currentPage: number;
     totalPages: number;
     setCurrentPage: React.Dispatch<React.SetStateAction<number>>;
+    onExportPdf?: () => void;
+    isExportLoading?: boolean;
 }
 
 const TabletPackagingHub: React.FC<TabletPackagingHubProps> = ({
@@ -66,7 +68,7 @@ const TabletPackagingHub: React.FC<TabletPackagingHubProps> = ({
     progressStats, setIsFilterModalOpen, loadingActionId, tabCounts,
     selectedOrderIds, toggleOrderSelection, clearSelection, onBulkShip, isBulkProcessing,
     onToggleSelectAll, onConfirmReturn, onCloseShift, isViewOnly, activeShift, onUnpack,
-    currentPage, totalPages, setCurrentPage
+    currentPage, totalPages, setCurrentPage, onExportPdf, isExportLoading
 }) => {
     const { previewImage: showFullImage, appData, isShiftOpener, activeShiftStore, currentUser, hasPermission } = useContext(AppContext);
     const [unpackTarget, setUnpackTarget] = useState<ParsedOrder | null>(null);

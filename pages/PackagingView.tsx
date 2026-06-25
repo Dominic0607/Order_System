@@ -12,6 +12,7 @@ import MobilePackagingHub from '@/components/admin/packaging/MobilePackagingHub'
 import TabletPackagingHub from '@/components/admin/packaging/TabletPackagingHub';
 import DesktopPackagingHub from '@/components/admin/packaging/DesktopPackagingHub';
 import OrderDetailModal from '@/components/orders/OrderDetailModal';
+import PdfExportModal from '@/components/admin/PdfExportModal';
 import { Shift } from '@/types';
 
 const bClasses = {
@@ -73,6 +74,11 @@ const PackagingView: React.FC<{ orders?: ParsedOrder[], onExit?: () => void }> =
     // Close Shift Modal State
     const [isCloseShiftConfirmOpen, setIsCloseShiftConfirmOpen] = useState(false);
     const [closeShiftStats, setCloseShiftStats] = useState<{ packed: number, shipped: number, shippingCounts: Record<string, number>, summaryText: string } | null>(null);
+
+    // Export PDF States
+    const [isExportModalOpen, setIsExportModalOpen] = useState(false);
+    const [exportOrders, setExportOrders] = useState<ParsedOrder[]>([]);
+    const [isExportLoading, setIsExportLoading] = useState(false);
 
     // --- Pagination and server-side states ---
     const [localOrders, setLocalOrders] = useState<ParsedOrder[]>([]);
@@ -649,6 +655,48 @@ const PackagingView: React.FC<{ orders?: ParsedOrder[], onExit?: () => void }> =
     }
 
     // 6. Hub Props & Main Render
+    const fetchAllFilteredOrders = async () => {
+        try {
+            const statusMap: Record<string, string> = {
+                'Pending': 'Pending,Scheduled',
+                'Ready to Ship': 'Ready to Ship',
+                'Shipped': 'Shipped',
+                'Returned': 'Returned',
+                'Cancelled': 'Cancelled'
+            };
+            
+            const params: Record<string, string | number> = {
+                limit: 10000, // Fetch all matching orders
+                offset: 0,
+                search: searchTerm,
+                fulfillmentStore: selectedStore,
+                fulfillmentStatus: statusMap[activeTab] || activeTab,
+                datePreset: 'all', // Show all history for packaging search
+                view: 'compact'
+            };
+            
+            if (teamFilter) {
+                params.team = teamFilter;
+            }
+            if (shippingFilter) {
+                params.internalShippingMethod = shippingFilter;
+            }
+            
+            const result = await fetchOrders(false, params);
+            if (result && result.orders) {
+                return result.orders.filter((o: any) => o && o['Order ID'] && o['Order ID'] !== 'Opening_Balance')
+                    .map((o: any) => ({ 
+                        ...o, 
+                        Products: Array.isArray(o.Products) ? o.Products : [], 
+                        FulfillmentStatus: (o['Fulfillment Status'] || o.FulfillmentStatus || 'Pending') as any
+                    })) as ParsedOrder[];
+            }
+        } catch (error) {
+            console.error("Failed to fetch all orders for export/print:", error);
+        }
+        return [];
+    };
+
     const hubProps = {
         orders: filteredOrders, 
         shippingCounts,
@@ -690,14 +738,38 @@ const PackagingView: React.FC<{ orders?: ParsedOrder[], onExit?: () => void }> =
             setReturningOrder(order);
             setIsReturnPhotoModalOpen(true);
         },
-        onPrintManifest: () => {
+        onPrintManifest: async () => {
             const printWindow = window.open('', '_blank');
-            if (!printWindow) return;
-            const manifestOrders = filteredOrders;
-            const html = `<html><head><title>Dispatch Manifest - ${selectedStore}</title><style>body { font-family: sans-serif; padding: 20px; } table { width: 100%; border-collapse: collapse; margin-top: 20px; } th, td { border: 1px solid #ddd; padding: 8px; text-align: left; font-size: 12px; } th { background-color: #f2f2f2; } h1 { font-size: 18px; margin-bottom: 5px; } .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #000; padding-bottom: 10px; }</style></head><body><div class="header"><h1>Dispatch Manifest: ${selectedStore}</h1><p>Date: ${new Date().toLocaleString('km-KH')}</p></div><table><thead><tr><th>#</th><th>Order ID</th><th>Customer</th><th>Phone</th><th>Location</th><th>Driver</th><th>Total</th></tr></thead><tbody>${manifestOrders.map((o, i) => `<tr><td>${i + 1}</td><td>${o['Order ID']}</td><td>${o['Customer Name']}</td><td>${o['Customer Phone']}</td><td>${o.Location}</td><td>${o['Driver Name'] || 'TBD'}</td><td>$${(Number(o['Grand Total']) || 0).toFixed(2)}</td></tr>`).join('')}</tbody></table><script>window.onload = () => { window.print(); window.close(); }</script></body></html>`;
+            if (!printWindow) {
+                alert("សូមអនុញ្ញាតឲ្យបើក Popups ដើម្បីបោះពុម្ព Manifest");
+                return;
+            }
+            printWindow.document.write('<html><head><title>Loading Manifest...</title><style>body{font-family:sans-serif;display:flex;justify-content:center;align-items:center;height:100vh;margin:0;background:#0B0E11;color:#fff;}</style></head><body><div><h2>កំពុងទាញយកទិន្នន័យ Manifest... (Loading...)</h2></div></body></html>');
+            
+            const allOrders = await fetchAllFilteredOrders();
+            if (allOrders.length === 0) {
+                printWindow.document.body.innerHTML = '<h2>មិនមានទិន្នន័យត្រូវបោះពុម្ពទេ (No orders to print)</h2>';
+                setTimeout(() => printWindow.close(), 2000);
+                return;
+            }
+
+            const html = `<html><head><title>Dispatch Manifest - ${selectedStore}</title><style>body { font-family: sans-serif; padding: 20px; } table { width: 100%; border-collapse: collapse; margin-top: 20px; } th, td { border: 1px solid #ddd; padding: 8px; text-align: left; font-size: 12px; } th { background-color: #f2f2f2; } h1 { font-size: 18px; margin-bottom: 5px; } .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #000; padding-bottom: 10px; }</style></head><body><div class="header"><h1>Dispatch Manifest: ${selectedStore}</h1><p>Date: ${new Date().toLocaleString('km-KH')}</p></div><table><thead><tr><th>#</th><th>Order ID</th><th>Customer</th><th>Phone</th><th>Location</th><th>Driver</th><th>Total</th></tr></thead><tbody>${allOrders.map((o, i) => `<tr><td>${i + 1}</td><td>${o['Order ID']}</td><td>${o['Customer Name']}</td><td>${o['Customer Phone']}</td><td>${o.Location}</td><td>${o['Driver Name'] || 'TBD'}</td><td>$${(Number(o['Grand Total']) || 0).toFixed(2)}</td></tr>`).join('')}</tbody></table><script>window.onload = () => { window.print(); window.close(); }</script></body></html>`;
+            printWindow.document.open();
             printWindow.document.write(html);
             printWindow.document.close();
         },
+        onExportPdf: async () => {
+            setIsExportLoading(true);
+            const allOrders = await fetchAllFilteredOrders();
+            setExportOrders(allOrders);
+            setIsExportLoading(false);
+            if (allOrders.length > 0) {
+                setIsExportModalOpen(true);
+            } else {
+                alert("មិនមានទិន្នន័យសម្រាប់ទាញយកទេ (No data to export)");
+            }
+        },
+        isExportLoading,
         onSwitchHub: () => setSelectedStore(''),
         onExit: () => {
             if (onExit) onExit();
@@ -1036,22 +1108,16 @@ const PackagingView: React.FC<{ orders?: ParsedOrder[], onExit?: () => void }> =
                             </div>
 
                             <div className="space-y-3">
-                                <h4 className="text-xs font-black text-[#EAECEF] uppercase tracking-wider border-b border-[#2B3139] pb-2 flex items-center gap-2">
-                                    <svg className="w-4 h-4 text-[#FCD535]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" /></svg>
-                                    តាមក្រុមហ៊ុនដឹកជញ្ជូន (By Carrier)
-                                </h4>
-                                <div className="bg-[#0B0E11] border border-[#2B3139] rounded-xl overflow-hidden shadow-inner">
-                                    {Object.keys(closeShiftStats.shippingCounts).length > 0 ? (
-                                        <div className="divide-y divide-[#2B3139]">
-                                            {Object.entries(closeShiftStats.shippingCounts).map(([method, count]) => (
-                                                <div key={method} className="flex justify-between items-center p-3 hover:bg-[#2B3139]/50 transition-colors">
-                                                    <span className="text-sm font-bold text-[#EAECEF] uppercase">{method}</span>
-                                                    <span className="text-sm font-mono font-black text-[#FCD535] bg-[#FCD535]/10 px-3 py-1 rounded-lg border border-[#FCD535]/20">{count}</span>
-                                                </div>
-                                            ))}
+                                <span className="text-[10px] font-black text-[#848E9C] uppercase tracking-widest block mb-2 px-1">បែងចែកតាមក្រុមហ៊ុនដឹកជញ្ជូន</span>
+                                <div className="border border-[#2B3139] rounded-xl divide-y divide-[#2B3139] bg-[#0B0E11]/40 overflow-hidden">
+                                    {Object.entries(closeShiftStats.shippingCounts).map(([method, count]) => (
+                                        <div key={method} className="flex justify-between items-center p-3.5 hover:bg-[#2B3139]/20 transition-colors">
+                                            <span className="text-xs text-[#EAECEF] font-bold">{method}</span>
+                                            <span className="text-xs font-mono font-bold text-[#FCD535] bg-[#FCD535]/15 border border-[#FCD535]/20 px-2 py-0.5 rounded-md">{count}</span>
                                         </div>
-                                    ) : (
-                                        <div className="p-4 text-center text-sm text-[#848E9C] italic">គ្មានទិន្នន័យ (No Data)</div>
+                                    ))}
+                                    {Object.keys(closeShiftStats.shippingCounts).length === 0 && (
+                                        <div className="p-4 text-center text-[#848E9C] text-xs">មិនមានទិន្នន័យដឹកជញ្ជូនទេ</div>
                                     )}
                                 </div>
                             </div>
@@ -1081,6 +1147,15 @@ const PackagingView: React.FC<{ orders?: ParsedOrder[], onExit?: () => void }> =
                         </div>
                     </div>
                 </Modal>
+            )}
+
+            {isExportModalOpen && (
+                <PdfExportModal 
+                    isOpen={true} 
+                    onClose={() => setIsExportModalOpen(false)} 
+                    orders={exportOrders} 
+                    appData={appData} 
+                />
             )}
         </div>
     );
