@@ -152,6 +152,51 @@ self.addEventListener('fetch', (event) => {
   if (event.request.url.includes('soundhelix.com')) {
     return; // Let the browser handle it natively
   }
+
+  // 1. Navigation requests (HTML pages) -> Network-First to ensure we always get latest index.html when online
+  if (event.request.mode === 'navigate' || event.request.url.endsWith('index.html') || event.request.url === self.registration.scope) {
+    event.respondWith(
+      fetch(event.request)
+        .then((response) => {
+          if (response.ok) {
+            const copy = response.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put('./index.html', copy));
+          }
+          return response;
+        })
+        .catch(() => {
+          return caches.match('./index.html');
+        })
+    );
+    return;
+  }
+
+  // 2. Static assets -> Cache-First with dynamic caching so app works offline and new builds with new hashes are cached
+  const isStaticAsset = url.pathname.includes('/assets/') || 
+                        url.pathname.endsWith('.js') || 
+                        url.pathname.endsWith('.css') || 
+                        url.pathname.endsWith('.png') || 
+                        url.pathname.endsWith('.jpg') || 
+                        url.pathname.endsWith('.ttf') || 
+                        url.pathname.endsWith('.woff2');
+
+  if (isStaticAsset) {
+    event.respondWith(
+      caches.match(event.request).then((cachedResponse) => {
+        if (cachedResponse) {
+          return cachedResponse;
+        }
+        return fetch(event.request).then((response) => {
+          if (response.ok) {
+            const copy = response.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put(event.request, copy));
+          }
+          return response;
+        });
+      })
+    );
+    return;
+  }
   
   event.respondWith(
     caches.match(event.request)
@@ -159,17 +204,7 @@ self.addEventListener('fetch', (event) => {
         if (response) {
           return response;
         }
-        return fetch(event.request).catch((err) => {
-          // SPA fallback: if a navigation request fails (e.g. assets/?view=... 404),
-          // serve the cached index.html so the app can handle the route itself.
-          if (event.request.mode === 'navigate') {
-            return caches.match('./index.html').then((cachedIndex) => {
-              if (cachedIndex) return cachedIndex;
-              throw err;
-            });
-          }
-          throw err;
-        });
+        return fetch(event.request);
       })
   );
 });
