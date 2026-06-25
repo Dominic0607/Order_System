@@ -1,4 +1,4 @@
-import React, { useState, useContext } from 'react';
+import React, { useState, useContext, useEffect } from 'react';
 import { AppContext } from '@/context/AppContext';
 import Spinner from '@/components/common/Spinner';
 import FulfillmentDashboard from '@/pages/FulfillmentDashboard';
@@ -26,8 +26,14 @@ const themeVars: React.CSSProperties = {
 
 const FulfillmentPage: React.FC = () => {
     const { orders, isOrdersLoading, appData, setAppState } = useContext(AppContext);
-    const [activeTab, setActiveTab] = useState<'hub' | 'pack' | 'ship' | 'stock'>('pack');
+    const [activeTab, setActiveTab] = useState<'hub' | 'pack' | 'ship' | 'stock'>(() => {
+        return (localStorage.getItem('activeFulfillmentTab') as any) || 'pack';
+    });
     const [isDeliveryModalOpen, setIsDeliveryModalOpen] = useState(false);
+
+    useEffect(() => {
+        localStorage.setItem('activeFulfillmentTab', activeTab);
+    }, [activeTab]);
 
     if (isOrdersLoading && orders.length === 0) {
         return (

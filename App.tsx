@@ -493,9 +493,15 @@ const AppContent: React.FC = () => {
                     setCurrentUser(userWithPerms);
                     
                     const currentView = new URLSearchParams(window.location.search).get('view');
-                    if (currentView === 'order_metadata') {
-                        setAppState('order_metadata');
-                    } else if (currentView !== 'series_player' && currentView !== 'watch' && currentView !== 'confirm_delivery' && currentView !== 'entertainment' && currentView !== 'short_player' && currentView !== 'long_player' && currentView !== 'print_label') {
+                    const validViews = [
+                        'user_journey', 'admin_dashboard', 'create_order', 'fulfillment', 
+                        'role_selection', 'confirm_delivery', 'entertainment', 'watch', 
+                        'series_player', 'long_player', 'short_player', 'cambodia_map', 
+                        'print_label', 'order_metadata'
+                    ];
+                    if (currentView && validViews.includes(currentView)) {
+                        setAppState(currentView as any);
+                    } else {
                         setAppState('role_selection');
                     }
                 } else {

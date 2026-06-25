@@ -24,7 +24,9 @@ const PackagingView: React.FC<{ orders?: ParsedOrder[], onExit?: () => void }> =
     // 1. Context & States
     const { appData, refreshData, refreshTimestamp, fetchOrders, currentUser, setMobilePageTitle, appState, setAppState, setIsShiftOpener, setActiveShiftStore, logout } = useContext(AppContext);
 
-    const [selectedStore, setSelectedStore] = useState<string>('');
+    const [selectedStore, setSelectedStore] = useState<string>(() => {
+        return localStorage.getItem('selectedStore') || '';
+    });
     const [activeShift, setActiveShift] = useState<Shift | null>(null);
     const [isViewOnly, setIsViewOnly] = useState(false);
     const [isShiftModalOpen, setIsShiftModalOpen] = useState(false);
@@ -33,7 +35,21 @@ const PackagingView: React.FC<{ orders?: ParsedOrder[], onExit?: () => void }> =
     const [capturedPhoto, setCapturedPhoto] = useState<string | null>(null);
     const [isShiftLoading, setIsShiftLoading] = useState(false);
 
-    const [activeTab, setActiveTab] = useState<'Pending' | 'Ready to Ship' | 'Shipped' | 'Returned' | 'Cancelled'>('Pending');
+    const [activeTab, setActiveTab] = useState<'Pending' | 'Ready to Ship' | 'Shipped' | 'Returned' | 'Cancelled'>(() => {
+        return (localStorage.getItem('activePackagingTab') as any) || 'Pending';
+    });
+
+    useEffect(() => {
+        if (selectedStore) {
+            localStorage.setItem('selectedStore', selectedStore);
+        } else {
+            localStorage.removeItem('selectedStore');
+        }
+    }, [selectedStore]);
+
+    useEffect(() => {
+        localStorage.setItem('activePackagingTab', activeTab);
+    }, [activeTab]);
     const [packingOrder, setPackingOrder] = useState<ParsedOrder | null>(null);
     const [returningOrder, setReturningOrder] = useState<ParsedOrder | null>(null);
     const [isReturnPhotoModalOpen, setIsReturnPhotoModalOpen] = useState(false);
