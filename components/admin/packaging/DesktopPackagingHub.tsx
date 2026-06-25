@@ -452,7 +452,12 @@ const DesktopPackagingHub: React.FC<DesktopPackagingHubProps> = ({
                 )}
 
                 <div className="flex-1 overflow-y-auto custom-scrollbar p-4 md:p-6 lg:p-8 pt-4 pb-24">
-                    {orders.length === 0 ? (
+                    {isPageLoading && orders.length === 0 ? (
+                        <div className={`flex flex-col items-center justify-center p-10 ${B_TEXT_SECONDARY} text-sm mt-10`}>
+                            <Spinner size="md" className="mb-4" />
+                            <div className="font-bold text-lg animate-pulse">Loading...</div>
+                        </div>
+                    ) : orders.length === 0 ? (
                         <div className={`flex flex-col items-center justify-center p-10 ${B_TEXT_SECONDARY} text-sm mt-10`}><span className="text-3xl mb-2 opacity-50">📂</span>No Operations in Queue</div>
                     ) : (
                         <div className="space-y-8 pb-20">
@@ -703,10 +708,11 @@ const DesktopPackagingHub: React.FC<DesktopPackagingHubProps> = ({
                                                                     <div className="flex gap-2 w-full">
                                                                         <button 
                                                                             onClick={(e) => { e.stopPropagation(); onDeliver(order); }} 
-                                                                            className={`flex-1 py-1.5 bg-gradient-to-r from-[#0ECB81] to-[#0CA66B] hover:from-[#0CA66B] hover:to-[#0A8F5C] text-[#0B0E11] text-xs font-black uppercase transition-all duration-300 rounded-sm flex items-center justify-center gap-1.5 shadow-[0_4px_12px_rgba(14,203,129,0.15)] hover:shadow-[0_6px_20px_rgba(14,203,129,0.3)] hover:scale-[1.02] active:scale-[0.97] border border-[#0ECB81]/25`}
+                                                                            className={`flex-1 relative overflow-hidden group py-1.5 bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 hover:from-blue-500 hover:via-indigo-500 hover:to-purple-500 text-white text-xs font-black uppercase transition-all duration-300 rounded-sm flex items-center justify-center gap-1.5 shadow-[0_0_15px_rgba(79,70,229,0.3)] hover:shadow-[0_0_25px_rgba(79,70,229,0.5)] hover:scale-[1.02] active:scale-[0.97] border border-indigo-400/30`}
                                                                         >
-                                                                            <Check size={14} strokeWidth={3} />
-                                                                            ដឹកជោគជ័យ (Done)
+                                                                            <div className="absolute inset-0 -translate-x-full group-hover:translate-x-[200%] transition-transform duration-1000 ease-in-out bg-gradient-to-r from-transparent via-white/20 to-transparent skew-x-12"></div>
+                                                                            <Check size={14} strokeWidth={3} className="relative z-10" />
+                                                                            <span className="relative z-10">ដឹកជោគជ័យ (Done)</span>
                                                                         </button>
                                                                         <button onClick={(e) => { e.stopPropagation(); onUndoShipped(order); }} className={`w-20 py-1.5 bg-[#F6465D]/10 hover:bg-[#F6465D]/20 ${B_RED} text-xs font-bold uppercase transition-colors rounded-sm`}>Undo</button>
                                                                     </div>

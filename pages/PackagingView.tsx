@@ -921,12 +921,7 @@ const PackagingView: React.FC<{ orders?: ParsedOrder[], onExit?: () => void }> =
                 </div>
             )}
 
-            {isLocalOrdersLoading && localOrders.length === 0 && (
-                <div className="absolute inset-0 z-[200] bg-[#0B0E11]/85 backdrop-blur-md flex flex-col items-center justify-center space-y-4 animate-in fade-in duration-200">
-                    <Spinner size="lg" />
-                    <p className="text-sm font-bold text-gray-400 uppercase tracking-[0.2em] animate-pulse">កំពុងទាញយកទិន្នន័យ... (Loading...)</p>
-                </div>
-            )}
+
 
             {deviceType === 'mobile' && <MobilePackagingHub {...hubProps} />}
             {deviceType === 'tablet' && <TabletPackagingHub {...hubProps} />}

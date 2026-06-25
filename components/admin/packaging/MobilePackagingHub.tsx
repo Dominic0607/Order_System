@@ -398,7 +398,18 @@ const MobilePackagingHub: React.FC<MobilePackagingHubProps> = ({
 
             {/* Scrollable Order List */}
             <div className={`flex-1 overflow-y-auto custom-scrollbar p-3 relative z-10 space-y-4 pb-24`}>
-                {Object.entries(groups).map(([date, groupOrders]: [string, any]) => (
+                {isPageLoading && orders.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center py-12 text-gray-500">
+                        <Spinner size="md" className="mb-4" />
+                        <div className="font-bold text-sm animate-pulse">Loading...</div>
+                    </div>
+                ) : orders.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center py-12 text-gray-500">
+                        <span className="text-3xl mb-2 opacity-50">📂</span>
+                        <div className="font-bold text-sm">No Operations in Queue</div>
+                    </div>
+                ) : (
+                    Object.entries(groups).map(([date, groupOrders]: [string, any]) => (
                     <div key={date}>
                         <h3 className={`text-xs font-bold ${B_TEXT_SECONDARY} uppercase border-b ${B_BORDER} pb-1 mb-2 px-1`}>{date}</h3>
                         <div className="space-y-2">
@@ -650,10 +661,11 @@ const MobilePackagingHub: React.FC<MobilePackagingHubProps> = ({
                                                      <div className="flex gap-2 w-full">
                                                          <button 
                                                              onClick={(e) => { e.stopPropagation(); onDeliver(order); }} 
-                                                             className="flex-1 py-2 bg-gradient-to-r from-[#0ECB81] to-[#0CA66B] hover:from-[#0CA66B] hover:to-[#0A8F5C] text-[#0B0E11] text-xs font-black uppercase transition-all duration-300 rounded-xl flex items-center justify-center gap-1.5 shadow-[0_4px_12px_rgba(14,203,129,0.15)] active:scale-[0.97] border border-[#0ECB81]/25"
+                                                             className="flex-1 relative overflow-hidden group py-2 bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 hover:from-blue-500 hover:via-indigo-500 hover:to-purple-500 text-white text-xs font-black uppercase transition-all duration-300 rounded-xl flex items-center justify-center gap-1.5 shadow-[0_0_15px_rgba(79,70,229,0.3)] hover:shadow-[0_0_25px_rgba(79,70,229,0.5)] active:scale-[0.97] border border-indigo-400/30"
                                                          >
-                                                             <Check size={14} strokeWidth={3} />
-                                                             ដឹកជោគជ័យ (Done)
+                                                             <div className="absolute inset-0 -translate-x-full group-hover:translate-x-[200%] transition-transform duration-1000 ease-in-out bg-gradient-to-r from-transparent via-white/20 to-transparent skew-x-12"></div>
+                                                             <Check size={14} strokeWidth={3} className="relative z-10" />
+                                                             <span className="relative z-10">ដឹកជោគជ័យ (Done)</span>
                                                          </button>
                                                          <button onClick={(e) => { e.stopPropagation(); onUndoShipped(order); }} className="w-20 py-2 bg-[#F6465D]/10 text-[#F6465D] border border-[#F6465D]/20 rounded-xl text-xs font-bold uppercase active:scale-[0.97] transition-all duration-300">Undo</button>
                                                      </div>
@@ -676,7 +688,7 @@ const MobilePackagingHub: React.FC<MobilePackagingHubProps> = ({
                             })}
                         </div>
                     </div>
-                ))}
+                )))}
 
                 {totalPages > 1 && (
                     <div className={`flex items-center justify-between pt-4 pb-8 border-t ${B_BORDER} mt-4`}>
