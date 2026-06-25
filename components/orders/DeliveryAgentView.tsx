@@ -45,7 +45,9 @@ const DeliveryAgentView: React.FC<DeliveryAgentViewProps> = ({ orderIds, returnO
 
         const fetchOrders = async () => {
             try {
-                const res = await fetch(`${WEB_APP_URL}/api/admin/all-orders?days=30`);
+                const token = localStorage.getItem('token');
+                const headers = token ? { 'Authorization': `Bearer ${token}` } : {};
+                const res = await fetch(`${WEB_APP_URL}/api/admin/all-orders?days=30`, { headers });
                 const result = await res.json();
                 if (result.status === 'success') {
                     const allTargetIds = new Set([...orderIds, ...returnOrderIds, ...failedOrderIds]);
@@ -146,13 +148,19 @@ const DeliveryAgentView: React.FC<DeliveryAgentViewProps> = ({ orderIds, returnO
                 let success = false;
                 let attempts = 0;
                 const maxAttempts = 3; // Reduced for faster failure detection, backend has its own retries
+                
+                const token = localStorage.getItem('token');
+                const headers: HeadersInit = { 'Content-Type': 'application/json' };
+                if (token) {
+                    headers['Authorization'] = `Bearer ${token}`;
+                }
 
                 while (!success && attempts < maxAttempts) {
                     attempts++;
                     try {
                         const response = await fetch(`${WEB_APP_URL}/api/admin/update-order`, {
                             method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
+                            headers,
                             body: JSON.stringify(payload)
                         });
 
