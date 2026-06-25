@@ -1,6 +1,5 @@
 import React, { useState, useContext, useEffect } from 'react';
 import { AppContext } from '@/context/AppContext';
-import Spinner from '@/components/common/Spinner';
 import FulfillmentDashboard from '@/pages/FulfillmentDashboard';
 import PackagingView from '@/pages/PackagingView';
 import DriverDeliveryView from '@/pages/DriverDeliveryView';
@@ -34,14 +33,6 @@ const FulfillmentPage: React.FC = () => {
     useEffect(() => {
         localStorage.setItem('activeFulfillmentTab', activeTab);
     }, [activeTab]);
-
-    if (isOrdersLoading && orders.length === 0) {
-        return (
-            <div className="flex h-screen items-center justify-center bg-[#0B0E11]">
-                <div className="w-10 h-10 border-2 border-[#FCD535] border-t-transparent rounded-full animate-spin"></div>
-            </div>
-        );
-    }
 
     return (
         <div className="terminal-root flex flex-col h-full overflow-hidden" style={themeVars}>
@@ -145,6 +136,7 @@ const FulfillmentPage: React.FC = () => {
                 {activeTab === 'hub' && (
                     <FulfillmentDashboard
                         orders={orders}
+                        isLoading={isOrdersLoading}
                         onOpenDeliveryList={() => setIsDeliveryModalOpen(true)}
                         onExit={() => setAppState('role_selection')}
                     />

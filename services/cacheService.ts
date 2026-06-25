@@ -78,13 +78,20 @@ export const CacheService = {
      */
     get: async <T>(key: string): Promise<T | null> => {
         try {
-            const db = await dbPromise;
+            const db = await Promise.race([
+                dbPromise,
+                new Promise<IDBDatabase>((_, reject) => setTimeout(() => reject(new Error("IDB Timeout")), 3000))
+            ]);
             return new Promise<T | null>((resolve, reject) => {
+                const timeoutId = setTimeout(() => {
+                    resolve(null); // Resolve with null on timeout to allow app to continue
+                }, 3000);
                 const tx = db.transaction(STORE_NAME, 'readonly');
                 const store = tx.objectStore(STORE_NAME);
                 const req = store.get(key);
                 
                 req.onsuccess = () => {
+                    clearTimeout(timeoutId);
                     const result = req.result;
                     if (!result) {
                         resolve(null);
@@ -102,7 +109,10 @@ export const CacheService = {
                         resolve(result.value as T);
                     }
                 };
-                req.onerror = () => reject(req.error);
+                req.onerror = () => {
+                    clearTimeout(timeoutId);
+                    reject(req.error);
+                };
             });
         } catch (e) {
             console.warn("Cache read failed:", e);

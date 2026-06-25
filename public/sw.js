@@ -187,9 +187,9 @@ self.addEventListener('fetch', (event) => {
           return cachedResponse;
         }
         return fetch(event.request).then((response) => {
-          if (response.ok) {
+          if (response.ok && event.request.url.startsWith('http')) {
             const copy = response.clone();
-            caches.open(CACHE_NAME).then((cache) => cache.put(event.request, copy));
+            caches.open(CACHE_NAME).then((cache) => cache.put(event.request, copy)).catch(err => console.warn('Cache put error:', err));
           }
           return response;
         });

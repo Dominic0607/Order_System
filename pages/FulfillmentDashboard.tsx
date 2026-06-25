@@ -91,11 +91,12 @@ const actionForStatus = (status: HubStatus) => {
 
 interface FulfillmentDashboardProps {
     orders: ParsedOrder[];
+    isLoading?: boolean;
     onOpenDeliveryList?: () => void;
     onExit?: () => void;
 }
 
-const FulfillmentDashboard: React.FC<FulfillmentDashboardProps> = ({ orders, onOpenDeliveryList, onExit }) => {
+const FulfillmentDashboard: React.FC<FulfillmentDashboardProps> = ({ orders, isLoading = false, onOpenDeliveryList, onExit }) => {
     const { refreshData, appData, currentUser } = useContext(AppContext);
     const [selectedFacility, setSelectedFacility] = useState('');
     const [activeStatus, setActiveStatus] = useState<HubStatus>('Pending');
