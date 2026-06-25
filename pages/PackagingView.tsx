@@ -93,6 +93,9 @@ const PackagingView: React.FC<{ orders?: ParsedOrder[], onExit?: () => void }> =
     const [localRefreshTick, setLocalRefreshTick] = useState(0);
     const wsRefreshThrottleRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
 
+    // For "Ready to Ship", load all orders at once (up to 500) so Select All / Bulk Ship works correctly
+    const effectivePageSize = activeTab === 'Ready to Ship' ? 500 : pageSize;
+
     // Debounce search term to avoid hammering backend
     useEffect(() => {
         const timer = setTimeout(() => {
@@ -126,8 +129,8 @@ const PackagingView: React.FC<{ orders?: ParsedOrder[], onExit?: () => void }> =
                 };
                 
                 const params: Record<string, string | number> = {
-                    limit: pageSize,
-                    offset: (currentPage - 1) * pageSize,
+                    limit: effectivePageSize,
+                    offset: activeTab === 'Ready to Ship' ? 0 : (currentPage - 1) * effectivePageSize,
                     search: debouncedSearchTerm,
                     fulfillmentStore: selectedStore,
                     fulfillmentStatus: statusMap[activeTab] || activeTab,
@@ -182,7 +185,7 @@ const PackagingView: React.FC<{ orders?: ParsedOrder[], onExit?: () => void }> =
             isMounted = false;
         };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [selectedStore, activeTab, debouncedSearchTerm, teamFilter, shippingFilter, currentPage, pageSize, fetchOrders, localRefreshTick]);
+    }, [selectedStore, activeTab, debouncedSearchTerm, teamFilter, shippingFilter, currentPage, effectivePageSize, fetchOrders, localRefreshTick]);
 
     // 2. Memos
     const allOrdersMapped = useMemo(() => {
@@ -220,7 +223,7 @@ const PackagingView: React.FC<{ orders?: ParsedOrder[], onExit?: () => void }> =
     const progressStats = serverProgressStats;
     const shippingCounts = serverShippingCounts;
 
-    const totalPages = Math.ceil(totalOrdersCount / pageSize) || 1;
+    const totalPages = activeTab === 'Ready to Ship' ? 1 : (Math.ceil(totalOrdersCount / pageSize) || 1);
 
     // 3. Effects
     useEffect(() => {
@@ -801,7 +804,7 @@ const PackagingView: React.FC<{ orders?: ParsedOrder[], onExit?: () => void }> =
         onToggleSelectAll: (orders: ParsedOrder[]) => !isViewOnly && onToggleSelectAll(orders),
         onBulkShip: () => !isViewOnly && onBulkShip(),
         isBulkProcessing, progressStats, isFilterModalOpen, setIsFilterModalOpen, isViewOnly, activeShift,
-        currentPage, totalPages, setCurrentPage
+        currentPage, totalPages, setCurrentPage, pageSize, setPageSize, totalOrdersCount
     };
 
     return (

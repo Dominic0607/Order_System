@@ -64,6 +64,9 @@ interface DesktopPackagingHubProps {
     setCurrentPage: React.Dispatch<React.SetStateAction<number>>;
     onExportPdf?: () => void;
     isExportLoading?: boolean;
+    pageSize?: number;
+    setPageSize?: (size: number) => void;
+    totalOrdersCount?: number;
 }
 
 const DesktopPackagingHub: React.FC<DesktopPackagingHubProps> = ({
@@ -74,7 +77,8 @@ const DesktopPackagingHub: React.FC<DesktopPackagingHubProps> = ({
     progressStats, viewMode, setViewMode, setIsFilterModalOpen, loadingActionId, tabCounts,
     selectedOrderIds, toggleOrderSelection, clearSelection, onBulkShip, isBulkProcessing,
     onToggleSelectAll, onConfirmReturn, onCloseShift, isViewOnly, activeShift, onUnpack,
-    currentPage, totalPages, setCurrentPage, onExportPdf, isExportLoading
+    currentPage, totalPages, setCurrentPage, onExportPdf, isExportLoading,
+    pageSize, setPageSize, totalOrdersCount
 }) => {
     const { appData, previewImage: showFullImage, isShiftOpener, activeShiftStore, currentUser, hasPermission } = useContext(AppContext);
     const [unpackTarget, setUnpackTarget] = useState<ParsedOrder | null>(null);
@@ -451,7 +455,7 @@ const DesktopPackagingHub: React.FC<DesktopPackagingHubProps> = ({
                     </div>
                 )}
 
-                <div className="flex-1 overflow-y-auto custom-scrollbar p-4 md:p-6 lg:p-8 pt-4">
+                <div className="flex-1 overflow-y-auto custom-scrollbar p-4 md:p-6 lg:p-8 pt-4 pb-24">
                     {orders.length === 0 ? (
                         <div className={`flex flex-col items-center justify-center p-10 ${B_TEXT_SECONDARY} text-sm mt-10`}><span className="text-3xl mb-2 opacity-50">📂</span>No Operations in Queue</div>
                     ) : (
@@ -907,29 +911,101 @@ const DesktopPackagingHub: React.FC<DesktopPackagingHubProps> = ({
                         </div>
                     )}
                 </div>
-                {totalPages > 1 && (
-                    <div className={`flex-shrink-0 px-8 py-3 bg-[#181A20] border-t ${B_BORDER} flex items-center justify-between`}>
-                        <span className={`text-xs ${B_TEXT_SECONDARY}`}>
-                            Showing Page <span className={`${B_TEXT_PRIMARY} font-bold`}>{currentPage}</span> of <span className={`${B_TEXT_PRIMARY} font-bold`}>{totalPages}</span>
-                        </span>
-                        <div className="flex gap-2">
+                {/* Pagination Footer — always visible at bottom */}
+                <div className={`flex-shrink-0 px-6 py-2.5 bg-[#181A20] border-t ${B_BORDER} flex items-center justify-between gap-4`}>
+                    {/* Left: Total count info */}
+                    <div className="flex items-center gap-3 min-w-0">
+                        {activeTab === 'Ready to Ship' ? (
+                            <div className="flex items-center gap-2">
+                                <div className="w-2 h-2 rounded-full bg-[#0ECB81] animate-pulse" />
+                                <span className={`text-xs font-bold text-[#0ECB81]`}>
+                                    បង្ហាញ Order ទាំង {orders.length} / {totalOrdersCount ?? orders.length} 
+                                    <span className="text-[#848E9C] font-normal ml-1">(ទាញ​ទាំងអស់)</span>
+                                </span>
+                            </div>
+                        ) : (
+                            <span className={`text-xs ${B_TEXT_SECONDARY} font-mono`}>
+                                <span className={`${B_TEXT_PRIMARY} font-bold`}>{orders.length}</span>
+                                {' '}/ <span className={`${B_TEXT_PRIMARY} font-bold`}>{totalOrdersCount ?? '?'}</span>
+                                {' '}records · Page{' '}
+                                <span className={`${B_ACCENT} font-bold`}>{currentPage}</span>
+                                {' '}of{' '}
+                                <span className={`${B_TEXT_PRIMARY} font-bold`}>{totalPages}</span>
+                            </span>
+                        )}
+                    </div>
+
+                    {/* Center: Page size selector (hidden for Ready to Ship) */}
+                    {activeTab !== 'Ready to Ship' && setPageSize && (
+                        <div className="flex items-center gap-2">
+                            <span className={`text-[10px] uppercase font-bold ${B_TEXT_SECONDARY} tracking-wider hidden sm:block`}>Rows:</span>
+                            {[50, 100, 200].map(size => (
+                                <button
+                                    key={size}
+                                    onClick={() => { setPageSize(size); setCurrentPage(1 as any); }}
+                                    className={`px-3 py-1 rounded-sm text-[11px] font-black uppercase border transition-all ${
+                                        pageSize === size
+                                            ? 'bg-[#FCD535] border-[#FCD535] text-black shadow-[0_0_10px_rgba(252,213,53,0.2)]'
+                                            : `${B_BG_MAIN} border-[#2B3139] ${B_TEXT_SECONDARY} hover:border-[#FCD535]/40 hover:text-white`
+                                    }`}
+                                >
+                                    {size}
+                                </button>
+                            ))}
+                        </div>
+                    )}
+
+                    {/* Right: Prev/Next navigation (hidden for Ready to Ship since all loaded) */}
+                    {activeTab !== 'Ready to Ship' && totalPages > 1 ? (
+                        <div className="flex gap-1.5 flex-shrink-0">
                             <button
                                 onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
                                 disabled={currentPage === 1}
-                                className={`px-4 py-1.5 border ${B_BORDER} rounded-sm text-xs font-bold uppercase transition-colors select-none ${currentPage === 1 ? 'opacity-30 cursor-not-allowed text-[#848E9C]' : `${B_BG_MAIN} ${B_TEXT_PRIMARY} hover:border-[#FCD535]/50`}`}
+                                className={`px-3 py-1.5 border ${B_BORDER} rounded-sm text-xs font-bold uppercase transition-colors select-none ${currentPage === 1 ? 'opacity-30 cursor-not-allowed text-[#848E9C]' : `${B_BG_MAIN} ${B_TEXT_PRIMARY} hover:border-[#FCD535]/50`}`}
                             >
-                                Prev
+                                ‹ Prev
                             </button>
+                            {/* Page number pills */}
+                            {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
+                                let page: number;
+                                if (totalPages <= 5) {
+                                    page = i + 1;
+                                } else if (currentPage <= 3) {
+                                    page = i + 1;
+                                } else if (currentPage >= totalPages - 2) {
+                                    page = totalPages - 4 + i;
+                                } else {
+                                    page = currentPage - 2 + i;
+                                }
+                                return (
+                                    <button
+                                        key={page}
+                                        onClick={() => setCurrentPage(page)}
+                                        className={`w-8 py-1.5 rounded-sm text-xs font-bold border transition-all ${
+                                            currentPage === page
+                                                ? 'bg-[#FCD535] border-[#FCD535] text-black'
+                                                : `${B_BG_MAIN} ${B_BORDER} ${B_TEXT_SECONDARY} hover:border-[#FCD535]/40 hover:text-white`
+                                        }`}
+                                    >
+                                        {page}
+                                    </button>
+                                );
+                            })}
                             <button
                                 onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
                                 disabled={currentPage === totalPages}
-                                className={`px-4 py-1.5 border ${B_BORDER} rounded-sm text-xs font-bold uppercase transition-colors select-none ${currentPage === totalPages ? 'opacity-30 cursor-not-allowed text-[#848E9C]' : `${B_BG_MAIN} ${B_TEXT_PRIMARY} hover:border-[#FCD535]/50`}`}
+                                className={`px-3 py-1.5 border ${B_BORDER} rounded-sm text-xs font-bold uppercase transition-colors select-none ${currentPage === totalPages ? 'opacity-30 cursor-not-allowed text-[#848E9C]' : `${B_BG_MAIN} ${B_TEXT_PRIMARY} hover:border-[#FCD535]/50`}`}
                             >
-                                Next
+                                Next ›
                             </button>
                         </div>
-                    </div>
-                )}
+                    ) : activeTab === 'Ready to Ship' ? (
+                        <div className={`text-[10px] font-bold ${B_TEXT_SECONDARY} uppercase tracking-widest`}>No Pagination</div>
+                    ) : (
+                        <div className={`text-[10px] font-bold ${B_TEXT_SECONDARY} uppercase tracking-widest`}>Single Page</div>
+                    )}
+                </div>
+
             </main>
 
             {unpackTarget && (
