@@ -57,7 +57,7 @@ const AppContent: React.FC = () => {
     } = useUser();
 
     const {
-        orders, setOrders, appData, isOrdersLoading, isSyncing, refreshTimestamp, fetchData, fetchOrders, refreshData
+        orders, setOrders, appData, isOrdersLoading, isSyncing, refreshTimestamp, fetchData, fetchOrders, refreshData, ordersFetchError
     } = useOrder();
 
     const [appState, setAppState] = useUrlState<'login' | 'user_journey' | 'admin_dashboard' | 'create_order' | 'fulfillment' | 'role_selection' | 'confirm_delivery' | 'entertainment' | 'watch' | 'series_player' | 'long_player' | 'short_player' | 'cambodia_map' | 'print_label' | 'order_metadata'>('view', 'login');
@@ -647,7 +647,7 @@ const AppContent: React.FC = () => {
         selectedMovieId, setSelectedMovieId,
         isShiftOpener, setIsShiftOpener,
         activeShiftStore, setActiveShiftStore,
-        lastMessage, setOrders
+        lastMessage, setOrders, ordersFetchError
     }), [
         currentUser, appData, orders, isOrdersLoading, isSyncing, login, logout, refreshData, refreshTimestamp,
         originalAdminUser, setUnreadCount, unreadCount, appState, setAppState, setOriginalAdminUser,
@@ -655,7 +655,7 @@ const AppContent: React.FC = () => {
         isSidebarCollapsed, setIsSidebarCollapsed, setIsChatOpen, isMobileMenuOpen, 
         setIsMobileMenuOpen, language, setLanguage, showNotification, mobilePageTitle, 
         setMobilePageTitle, advancedSettings, setAdvancedSettings, selectedTeam, setSelectedTeam,
-        selectedMovieId, setSelectedMovieId, isShiftOpener, activeShiftStore, lastMessage, setOrders
+        selectedMovieId, setSelectedMovieId, isShiftOpener, activeShiftStore, lastMessage, setOrders, ordersFetchError
     ]);
 
     if (isGlobalLoading) return <div className="flex h-screen items-center justify-center bg-dark" style={{ backgroundColor: 'var(--bg-dark)' }}><Spinner size="lg" /></div>;

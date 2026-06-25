@@ -23,7 +23,7 @@ const bClasses = {
 
 const PackagingView: React.FC<{ orders?: ParsedOrder[], onExit?: () => void }> = ({ orders: propOrders, onExit }) => {
     // 1. Context & States
-    const { appData, refreshData, refreshTimestamp, fetchOrders, currentUser, setMobilePageTitle, appState, setAppState, setIsShiftOpener, setActiveShiftStore, logout, lastMessage } = useContext(AppContext);
+    const { appData, refreshData, refreshTimestamp, fetchOrders, currentUser, setMobilePageTitle, appState, setAppState, setIsShiftOpener, setActiveShiftStore, logout, lastMessage, ordersFetchError } = useContext(AppContext);
 
     const [selectedStore, setSelectedStore] = useState<string>(() => {
         return localStorage.getItem('selectedStore') || '';
@@ -113,6 +113,8 @@ const PackagingView: React.FC<{ orders?: ParsedOrder[], onExit?: () => void }> =
         let isMounted = true;
         const loadOrders = async () => {
             setIsLocalOrdersLoading(true);
+            setLocalOrders([]); // Clear old list to avoid displaying incorrect stale data!
+            setTotalOrdersCount(0); // Clear old count
             try {
                 const statusMap: Record<string, string> = {
                     'Pending': 'Pending,Scheduled',
@@ -788,6 +790,32 @@ const PackagingView: React.FC<{ orders?: ParsedOrder[], onExit?: () => void }> =
 
     return (
         <div className="fixed inset-0 z-[150] bg-[#0B0E11] overflow-hidden flex flex-col font-sans">
+            {ordersFetchError && (
+                <div className="absolute top-0 inset-x-0 z-[210] bg-[#F6465D] text-white py-3.5 px-6 flex items-center justify-between shadow-2xl border-b border-[#F6465D] animate-in slide-in-from-top duration-300">
+                    <div className="flex items-center gap-3">
+                        <span className="text-xl">⚠️</span>
+                        <div className="text-sm font-bold tracking-wide">
+                            {ordersFetchError === 'permission_denied' 
+                                ? 'គ្មានសិទ្ធិចូលប្រើប្រាស់ទិន្នន័យនេះទេ (Permission Denied)' 
+                                : 'មានបញ្ហាក្នុងការតភ្ជាប់ទៅកាន់ម៉ាស៊ីនមេ (Network Connection Error)'}
+                        </div>
+                    </div>
+                    <button 
+                        onClick={() => setLocalRefreshTick(t => t + 1)}
+                        className="px-4 py-1.5 bg-white text-[#F6465D] font-bold text-xs uppercase tracking-wider rounded-xl hover:bg-white/90 active:scale-95 transition-all shadow-md"
+                    >
+                        ព្យាយាមម្តងទៀត (Retry)
+                    </button>
+                </div>
+            )}
+
+            {isLocalOrdersLoading && localOrders.length === 0 && (
+                <div className="absolute inset-0 z-[200] bg-[#0B0E11]/85 backdrop-blur-md flex flex-col items-center justify-center space-y-4 animate-in fade-in duration-200">
+                    <Spinner size="lg" />
+                    <p className="text-sm font-bold text-gray-400 uppercase tracking-[0.2em] animate-pulse">កំពុងទាញយកទិន្នន័យ... (Loading...)</p>
+                </div>
+            )}
+
             {deviceType === 'mobile' && <MobilePackagingHub {...hubProps} />}
             {deviceType === 'tablet' && <TabletPackagingHub {...hubProps} />}
             {deviceType === 'desktop' && <DesktopPackagingHub {...hubProps} />}

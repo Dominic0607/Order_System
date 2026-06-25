@@ -71,6 +71,7 @@ export interface AppContextType {
     activeShiftStore: string;
     setActiveShiftStore: (val: string) => void;
     lastMessage: any;
+    ordersFetchError: 'permission_denied' | 'network_error' | null;
 }
 
 export const AppContext = createContext<AppContextType>({} as AppContextType);
