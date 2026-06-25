@@ -139,11 +139,6 @@ const TabletPackagingHub: React.FC<TabletPackagingHubProps> = ({
         const isReadyForDispatch = fs === 'Ready to Ship';
         if (!isReadyForDispatch) return false;
         if (!currentUser) return false;
-        
-        // If they have edit_order permission or are admin, they can always send
-        const userRoles = (currentUser.Role || '').split(',').map(r => r.trim().toLowerCase());
-        const isAdmin = currentUser.IsSystemAdmin || userRoles.includes('admin') || hasPermission?.('edit_order');
-        if (isAdmin) return true;
 
         const orderStore = (order['Fulfillment Store'] || '').trim().toLowerCase();
         const myShiftStore = (activeShiftStore || '').trim().toLowerCase();
@@ -628,7 +623,7 @@ const TabletPackagingHub: React.FC<TabletPackagingHubProps> = ({
                                                                         {activeTab === 'Pending' && <button onClick={(e) => { e.stopPropagation(); onPack(order); }} className={`px-3 py-1 bg-[#FCD535] text-[#0B0E11] rounded-sm text-xs font-bold uppercase`}>Pack</button>}
                                                                     </>
                                                                 )}
-                                                                {isCancelled && activeTab !== 'Cancelled' && (
+                                                                {!isViewOnly && isCancelled && activeTab !== 'Cancelled' && (
                                                                     <button 
                                                                         onClick={(e) => { e.stopPropagation(); setUnpackTarget(order); }} 
                                                                         className={`px-3 py-1 bg-red-600 text-white rounded-sm text-[10px] font-bold uppercase shadow-lg shadow-red-600/20 transition-all active:scale-95`}

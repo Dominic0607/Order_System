@@ -149,11 +149,6 @@ const DesktopPackagingHub: React.FC<DesktopPackagingHubProps> = ({
         const isReadyForDispatch = fs === 'Ready to Ship';
         if (!isReadyForDispatch) return false;
         if (!currentUser) return false;
-        
-        // If they have edit_order permission or are admin, they can always send
-        const userRoles = (currentUser.Role || '').split(',').map(r => r.trim().toLowerCase());
-        const isAdmin = currentUser.IsSystemAdmin || userRoles.includes('admin') || hasPermission?.('edit_order');
-        if (isAdmin) return true;
 
         const orderStore = (order['Fulfillment Store'] || '').trim().toLowerCase();
         const myShiftStore = (activeShiftStore || '').trim().toLowerCase();
@@ -696,7 +691,7 @@ const DesktopPackagingHub: React.FC<DesktopPackagingHubProps> = ({
                                                                         {activeTab === 'Pending' && <button onClick={(e) => { e.stopPropagation(); onPack(order); }} className={`w-full py-1.5 ${B_ACCENT_BG} text-xs font-bold uppercase transition-colors rounded-sm`}>Pack</button>}
                                                                     </>
                                                                 )}
-                                                                {isCancelled && activeTab !== 'Cancelled' && (
+                                                                {!isViewOnly && isCancelled && activeTab !== 'Cancelled' && (
                                                                     <button 
                                                                         onClick={(e) => { e.stopPropagation(); setUnpackTarget(order); }} 
                                                                         className={`w-full py-1.5 bg-red-600 hover:bg-red-700 text-white text-xs font-bold uppercase transition-colors rounded-sm shadow-lg shadow-red-600/20`}
@@ -881,7 +876,7 @@ const DesktopPackagingHub: React.FC<DesktopPackagingHubProps> = ({
                                                                 )}
                                                             </>
                                                         )}
-                                                        {isCancelled && activeTab !== 'Cancelled' && (
+                                                        {!isViewOnly && isCancelled && activeTab !== 'Cancelled' && (
                                                             <button 
                                                                 onClick={(e) => { e.stopPropagation(); setUnpackTarget(order); }} 
                                                                 className={`px-3 py-1 bg-red-600 hover:bg-red-700 text-white text-xs font-bold uppercase rounded-sm shadow-lg shadow-red-600/20`}

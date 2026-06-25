@@ -138,11 +138,6 @@ const MobilePackagingHub: React.FC<MobilePackagingHubProps> = ({
         const isReadyForDispatch = fs === 'Ready to Ship';
         if (!isReadyForDispatch) return false;
         if (!currentUser) return false;
-        
-        // If they have edit_order permission or are admin, they can always send
-        const userRoles = (currentUser.Role || '').split(',').map(r => r.trim().toLowerCase());
-        const isAdmin = currentUser.IsSystemAdmin || userRoles.includes('admin') || hasPermission?.('edit_order');
-        if (isAdmin) return true;
 
         const orderStore = (order['Fulfillment Store'] || '').trim().toLowerCase();
         const myShiftStore = (activeShiftStore || '').trim().toLowerCase();
@@ -643,7 +638,7 @@ const MobilePackagingHub: React.FC<MobilePackagingHubProps> = ({
                                                          )}
                                                      </>
                                                  )}
-                                                 {isCancelled && activeTab !== 'Cancelled' && (
+                                                 {!isViewOnly && isCancelled && activeTab !== 'Cancelled' && (
                                                      <button
                                                          onClick={(e) => { e.stopPropagation(); setUnpackTarget(order); }}
                                                          className="flex-1 py-2 bg-gradient-to-r from-red-600 to-red-700 text-white rounded-xl text-xs font-bold uppercase shadow-[0_4px_12px_rgba(220,38,38,0.15)] active:scale-[0.97] transition-all"
