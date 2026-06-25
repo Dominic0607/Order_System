@@ -582,33 +582,36 @@ const MobilePackagingHub: React.FC<MobilePackagingHubProps> = ({
                                                 </button>
 
                                                 {/* Photo Action */}
-                                                {getDeliveryGroup(order)?.TelegramGroupID && (
-                                                    <div className="w-full">
-                                                        {!!(order['Delivery Telegram Message ID'] || (order as any)['Delivery Telegram Message ID']) ? (
-                                                            <div className="flex items-center gap-2">
-                                                                 <div className="flex-grow flex items-center justify-center gap-2 py-2 bg-[#0ECB81]/10 border border-[#0ECB81]/20 rounded-xl">
-                                                                     <Check size={12} className="text-[#0ECB81]" />
-                                                                     <span className="text-[10px] font-black text-[#0ECB81] uppercase tracking-widest">Photo Sent to Driver</span>
-                                                                 </div>
-                                                                 <button 
-                                                                     onClick={(e) => { e.stopPropagation(); handleDeleteFromDeliveryTelegram(order); }}
-                                                                     disabled={sendingOrderId === order['Order ID'] || !getCanSendToDriver(order)}
-                                                                     className={`w-10 h-10 flex items-center justify-center ${!getCanSendToDriver(order) ? 'bg-[#2B3139] text-gray-600' : 'bg-red-500/10 text-red-500 border border-red-500/20 active:scale-95'} rounded-xl transition-all disabled:opacity-50`}
-                                                                 >
-                                                                     {sendingOrderId === order['Order ID'] ? <Spinner size="xs" /> : <Trash size={16} />}
-                                                                 </button>
-                                                            </div>
-                                                        ) : (
-                                                            <button 
-                                                                onClick={(e) => { e.stopPropagation(); handleSendToDeliveryTelegram(order); }}
-                                                                disabled={sendingOrderId === order['Order ID'] || !getCanSendToDriver(order)}
-                                                                className={`w-full flex items-center justify-center gap-2.5 py-2 ${!getCanSendToDriver(order) ? 'bg-[#2B3139] text-gray-500 border border-white/5 cursor-not-allowed' : 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-[0_4px_12px_rgba(37,99,235,0.15)] border border-blue-500/25 active:scale-[0.97]'} rounded-xl text-[10px] font-black uppercase tracking-widest transition-all duration-300 disabled:opacity-50`}
+                                                {/* Show sent-status + delete if photo was already sent (regardless of group config) */}
+                                                {!!(order['Delivery Telegram Message ID'] || (order as any)['Delivery Telegram Message ID']) ? (
+                                                    <div className="flex items-center gap-2">
+                                                        <div className="flex-grow flex items-center justify-center gap-2 py-2 bg-[#0ECB81]/10 border border-[#0ECB81]/20 rounded-xl">
+                                                            <Check size={12} className="text-[#0ECB81]" />
+                                                            <span className="text-[10px] font-black text-[#0ECB81] uppercase tracking-widest">Photo Sent to Driver ✓</span>
+                                                        </div>
+                                                        {/* Only show delete button to authorized users */}
+                                                        {getCanSendToDriver(order) && (
+                                                            <button
+                                                                onClick={(e) => { e.stopPropagation(); handleDeleteFromDeliveryTelegram(order); }}
+                                                                disabled={sendingOrderId === order['Order ID']}
+                                                                className="w-10 h-10 flex items-center justify-center bg-red-500/10 text-red-500 border border-red-500/20 active:scale-95 rounded-xl transition-all disabled:opacity-50"
                                                             >
-                                                                {sendingOrderId === order['Order ID'] ? <Spinner size="xs" /> : <ImageIcon size={15} />}
-                                                                {sendingOrderId === order['Order ID'] ? 'Processing...' : 'បញ្ជូនរូបភាពកញ្ចប់ (Send Photo)'}
+                                                                {sendingOrderId === order['Order ID'] ? <Spinner size="xs" /> : <Trash size={16} />}
                                                             </button>
                                                         )}
                                                     </div>
+                                                ) : (
+                                                    /* Show send button only if delivery group has a Telegram group configured */
+                                                    getDeliveryGroup(order)?.TelegramGroupID ? (
+                                                        <button
+                                                            onClick={(e) => { e.stopPropagation(); handleSendToDeliveryTelegram(order); }}
+                                                            disabled={sendingOrderId === order['Order ID'] || !getCanSendToDriver(order)}
+                                                            className={`w-full flex items-center justify-center gap-2.5 py-2 ${!getCanSendToDriver(order) ? 'bg-[#2B3139] text-gray-500 border border-white/5 cursor-not-allowed' : 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-[0_4px_12px_rgba(37,99,235,0.15)] border border-blue-500/25 active:scale-[0.97]'} rounded-xl text-[10px] font-black uppercase tracking-widest transition-all duration-300 disabled:opacity-50`}
+                                                        >
+                                                            {sendingOrderId === order['Order ID'] ? <Spinner size="xs" /> : <ImageIcon size={15} />}
+                                                            {sendingOrderId === order['Order ID'] ? 'Processing...' : 'បញ្ជូនរូបភាពកញ្ចប់ (Send Photo)'}
+                                                        </button>
+                                                    ) : null
                                                 )}
 
                                                 {/* Secondary Utility Row */}

@@ -631,36 +631,39 @@ const DesktopPackagingHub: React.FC<DesktopPackagingHubProps> = ({
                                                                     Confirm Shipping (Ship)
                                                                 </button>
 
-                                                                {/* Secondary Action Row (Telegram) */}
-                                                                {getDeliveryGroup(order)?.TelegramGroupID && (
-                                                                    <div className="w-full">
-                                                                        {!!(order['Delivery Telegram Message ID'] || (order as any)['Delivery Telegram Message ID']) ? (
-                                                                            <div className="flex items-center gap-1.5">
-                                                                                <div className="flex-grow flex items-center justify-center gap-2 py-1.5 bg-[#0ECB81]/10 border border-[#0ECB81]/20 rounded-sm">
-                                                                                    <Check size={12} className="text-[#0ECB81]" />
-                                                                                    <span className="text-[10px] font-black text-[#0ECB81] uppercase tracking-wider">Sent to Driver</span>
-                                                                                </div>
-                                                                                <button 
-                                                                                    onClick={(e) => { e.stopPropagation(); handleDeleteFromDeliveryTelegram(order); }}
-                                                                                    disabled={sendingOrderId === order['Order ID'] || !getCanSendToDriver(order)}
-                                                                                    className={`w-9 h-9 flex items-center justify-center ${!getCanSendToDriver(order) ? 'bg-[#2B3139] text-gray-600' : 'bg-red-500/10 hover:bg-red-500/20 text-red-500'} rounded-sm border border-red-500/20 transition-all active:scale-95 disabled:opacity-50`}
-                                                                                    title="Delete from Telegram"
-                                                                                >
-                                                                                    {sendingOrderId === order['Order ID'] ? <Spinner size="xs" /> : <Trash size={12} />}
-                                                                                </button>
-                                                                            </div>
-                                                                        ) : (
-                                                                            <button 
-                                                                                onClick={(e) => { e.stopPropagation(); handleSendToDeliveryTelegram(order); }}
-                                                                                disabled={sendingOrderId === order['Order ID'] || !getCanSendToDriver(order)}
-                                                                                className={`w-full flex items-center justify-center gap-2 py-2 ${!getCanSendToDriver(order) ? 'bg-[#2B3139] text-gray-500 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-500 text-white shadow-blue-600/20 shadow-lg'} rounded-sm text-[10px] font-black uppercase tracking-widest transition-all active:scale-95 disabled:opacity-50`}
-                                                                            >
-                                                                                {sendingOrderId === order['Order ID'] ? <Spinner size="xs" /> : <ImageIcon size={14} />}
-                                                                                {sendingOrderId === order['Order ID'] ? 'Processing...' : 'បញ្ជូនរូបភាពកញ្ចប់'}
-                                                                            </button>
-                                                                        )}
-                                                                    </div>
-                                                                )}
+                                                {/* Telegram Photo Section */}
+                                                {/* Sent badge + delete shown regardless of group config (photo is already sent) */}
+                                                {!!(order['Delivery Telegram Message ID'] || (order as any)['Delivery Telegram Message ID']) ? (
+                                                    <div className="flex items-center gap-1.5">
+                                                        <div className="flex-grow flex items-center justify-center gap-2 py-1.5 bg-[#0ECB81]/10 border border-[#0ECB81]/20 rounded-sm">
+                                                            <Check size={12} className="text-[#0ECB81]" />
+                                                            <span className="text-[10px] font-black text-[#0ECB81] uppercase tracking-wider">Photo Sent to Driver ✓</span>
+                                                        </div>
+                                                        {/* Only show delete to authorized users */}
+                                                        {getCanSendToDriver(order) && (
+                                                            <button
+                                                                onClick={(e) => { e.stopPropagation(); handleDeleteFromDeliveryTelegram(order); }}
+                                                                disabled={sendingOrderId === order['Order ID']}
+                                                                className="w-9 h-9 flex items-center justify-center bg-red-500/10 hover:bg-red-500/20 text-red-500 rounded-sm border border-red-500/20 transition-all active:scale-95 disabled:opacity-50"
+                                                                title="Delete from Telegram"
+                                                            >
+                                                                {sendingOrderId === order['Order ID'] ? <Spinner size="xs" /> : <Trash size={12} />}
+                                                            </button>
+                                                        )}
+                                                    </div>
+                                                ) : (
+                                                    /* Show send button only if group has Telegram configured */
+                                                    getDeliveryGroup(order)?.TelegramGroupID ? (
+                                                        <button
+                                                            onClick={(e) => { e.stopPropagation(); handleSendToDeliveryTelegram(order); }}
+                                                            disabled={sendingOrderId === order['Order ID'] || !getCanSendToDriver(order)}
+                                                            className={`w-full flex items-center justify-center gap-2 py-2 ${!getCanSendToDriver(order) ? 'bg-[#2B3139] text-gray-500 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-500 text-white shadow-blue-600/20 shadow-lg'} rounded-sm text-[10px] font-black uppercase tracking-widest transition-all active:scale-95 disabled:opacity-50`}
+                                                        >
+                                                            {sendingOrderId === order['Order ID'] ? <Spinner size="xs" /> : <ImageIcon size={14} />}
+                                                            {sendingOrderId === order['Order ID'] ? 'Processing...' : 'បញ្ជូនរូបភាពកញ្ចប់'}
+                                                        </button>
+                                                    ) : null
+                                                )}
 
                                                                 {/* Utility Row */}
                                                                 <div className="grid grid-cols-2 gap-2">
