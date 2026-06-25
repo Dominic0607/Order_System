@@ -683,7 +683,7 @@ const DesktopPackagingHub: React.FC<DesktopPackagingHubProps> = ({
                                                                     <div className="flex gap-2 w-full">
                                                                         <button 
                                                                             onClick={(e) => { e.stopPropagation(); onDeliver(order); }} 
-                                                                            className={`flex-1 py-1.5 bg-[#0ECB81] hover:bg-[#0CA66B] text-[#0B0E11] text-xs font-black uppercase transition-colors rounded-sm flex items-center justify-center gap-1.5 shadow-lg shadow-[#0ECB81]/10`}
+                                                                            className={`flex-1 py-1.5 bg-gradient-to-r from-[#0ECB81] to-[#0CA66B] hover:from-[#0CA66B] hover:to-[#0A8F5C] text-[#0B0E11] text-xs font-black uppercase transition-all duration-300 rounded-sm flex items-center justify-center gap-1.5 shadow-[0_4px_12px_rgba(14,203,129,0.15)] hover:shadow-[0_6px_20px_rgba(14,203,129,0.3)] hover:scale-[1.02] active:scale-[0.97] border border-[#0ECB81]/25`}
                                                                         >
                                                                             <Check size={14} strokeWidth={3} />
                                                                             ដឹកជោគជ័យ (Done)

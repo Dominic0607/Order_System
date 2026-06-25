@@ -361,7 +361,7 @@ const FulfillmentDashboard: React.FC<FulfillmentDashboardProps> = ({ orders, onO
         const gridClass = buttonCount >= 3 ? 'grid-cols-3' : buttonCount === 2 ? 'grid-cols-2' : 'grid-cols-1';
         
         const actionBg = activeAction?.color === 'success' 
-            ? 'bg-[#0ECB81] hover:bg-[#0CA66B] text-[#0B0E11] shadow-lg shadow-[#0ECB81]/10' 
+            ? 'bg-gradient-to-r from-[#0ECB81] to-[#0CA66B] hover:from-[#0CA66B] hover:to-[#0A8F5C] text-[#0B0E11] shadow-[0_4px_12px_rgba(14,203,129,0.15)] hover:shadow-[0_6px_20px_rgba(14,203,129,0.3)] border border-[#0ECB81]/25' 
             : B_ACCENT_BG;
 
         return (
@@ -377,7 +377,7 @@ const FulfillmentDashboard: React.FC<FulfillmentDashboardProps> = ({ orders, onO
                     <button
                         onClick={(e) => { e.stopPropagation(); applyStatus(order, activeAction.next); }}
                         disabled={loadingId === order['Order ID']}
-                        className={`py-1.5 ${actionBg} text-xs font-bold uppercase transition-colors rounded-sm flex items-center justify-center gap-1.5 disabled:opacity-60`}
+                        className={`py-1.5 ${actionBg} text-xs font-bold uppercase transition-all duration-300 rounded-sm flex items-center justify-center gap-1.5 hover:scale-[1.02] active:scale-[0.97] disabled:opacity-60`}
                     >
                         {loadingId === order['Order ID'] ? <Spinner size="sm" /> : ActionIcon && <ActionIcon className="w-3.5 h-3.5" />}
                         {activeAction.label}
@@ -539,7 +539,7 @@ const FulfillmentDashboard: React.FC<FulfillmentDashboardProps> = ({ orders, onO
                             <button
                                 onClick={handleBulkAdvance}
                                 disabled={bulkLoading}
-                                className="px-4 py-2 bg-[#0ECB81] hover:bg-[#0CA66B] text-[#0B0E11] text-[11px] font-bold rounded-sm flex items-center gap-2 transition-all whitespace-nowrap disabled:opacity-60"
+                                className={`px-4 py-2 ${activeAction.color === 'success' ? 'bg-gradient-to-r from-[#0ECB81] to-[#0CA66B] hover:from-[#0CA66B] hover:to-[#0A8F5C] text-[#0B0E11] shadow-[0_4px_12px_rgba(14,203,129,0.15)] hover:shadow-[0_6px_20px_rgba(14,203,129,0.3)] border border-[#0ECB81]/25' : 'bg-[#FCD535] hover:bg-[#E5C02A] text-black shadow-[0_4px_12px_rgba(252,213,53,0.15)]'} text-[11px] font-bold rounded-sm flex items-center gap-2 transition-all hover:scale-[1.02] active:scale-[0.97] whitespace-nowrap disabled:opacity-60`}
                             >
                                 {bulkLoading ? <Spinner size="sm" /> : <activeAction.icon className="w-4 h-4" />}
                                 {activeAction.label} Selected ({selectedOrders.length})

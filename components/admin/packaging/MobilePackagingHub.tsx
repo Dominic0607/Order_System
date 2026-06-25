@@ -272,7 +272,7 @@ const MobilePackagingHub: React.FC<MobilePackagingHubProps> = ({
                     </div>
                 </div>
 
-                <div className="flex">
+                <div className="flex p-1.5 bg-[#0B0E11]/60 gap-1 rounded-xl mx-2.5 my-1.5 border border-[#2B3139]/40">
                     {[
                         { id: 'Pending', label: 'Pending', count: tabCounts.pending },
                         { id: 'Ready to Ship', label: 'Ready', count: tabCounts.ready },
@@ -283,10 +283,10 @@ const MobilePackagingHub: React.FC<MobilePackagingHubProps> = ({
                         <button 
                             key={tab.id}
                             onClick={() => setActiveTab(tab.id)}
-                            className={`flex flex-col items-center justify-center flex-1 py-1 border-b-2 transition-colors ${activeTab === tab.id ? `border-[#FCD535] text-[#FCD535]` : `border-transparent ${B_TEXT_SECONDARY}`}`}
+                            className={`flex flex-col items-center justify-center flex-1 py-2 rounded-lg transition-all duration-300 relative ${activeTab === tab.id ? 'bg-[#FCD535]/15 border border-[#FCD535]/25 text-[#FCD535] shadow-[0_4px_12px_rgba(252,213,53,0.06)] scale-[1.02]' : `border border-transparent ${B_TEXT_SECONDARY} hover:text-white`}`}
                         >
-                            <span className="text-[10px] font-bold uppercase">{tab.label}</span>
-                            <span className={`text-[10px] font-mono mt-0.5 ${activeTab === tab.id ? 'text-[#FCD535]' : 'text-[#848E9C]'}`}>
+                            <span className="text-[9px] font-black uppercase tracking-tight">{tab.label}</span>
+                            <span className={`text-[10px] font-black font-mono mt-0.5 ${activeTab === tab.id ? 'text-[#FCD535]' : 'text-[#848E9C]'}`}>
                                 {tab.count}
                             </span>
                         </button>
@@ -405,11 +405,18 @@ const MobilePackagingHub: React.FC<MobilePackagingHubProps> = ({
                                 const fs = order.FulfillmentStatus || order['Fulfillment Status'] || 'Pending';
                                 const isCancelled = fs === 'Cancelled';
                                 const isReturned = fs === 'Returned';
+                                const statusBorderLeft = 
+                                    fs === 'Pending' ? 'border-l-4 border-l-[#FCD535]' :
+                                    fs === 'Ready to Ship' ? 'border-l-4 border-l-[#0ECB81]' :
+                                    fs === 'Shipped' ? 'border-l-4 border-l-blue-500' :
+                                    fs === 'Returned' ? 'border-l-4 border-l-purple-500' :
+                                    fs === 'Cancelled' ? 'border-l-4 border-l-[#F6465D]' :
+                                    'border-l-4 border-l-gray-600';
                                 
                                 return (
                                 <div 
                                     key={order['Order ID']} 
-                                    className={`${B_BG_PANEL} border ${B_BORDER} flex flex-col relative transition-all ${selectedOrderIds.has(order['Order ID']) ? 'border-[#FCD535]/50 bg-[#FCD535]/5 shadow-[0_4px_12px_rgba(252,213,53,0.05)]' : ''} ${isCancelled ? 'bg-red-950/20 border-red-500/30' : isReturned ? 'bg-purple-950/20 border-purple-500/30' : ''}`}
+                                    className={`${B_BG_PANEL} border ${B_BORDER} ${statusBorderLeft} flex flex-col relative transition-all duration-300 rounded-xl overflow-hidden hover:scale-[1.01] active:scale-[0.99] ${selectedOrderIds.has(order['Order ID']) ? 'border-[#FCD535]/60 bg-[#FCD535]/[0.03] shadow-[0_6px_20px_rgba(252,213,53,0.06)]' : 'shadow-lg shadow-black/10'} ${isCancelled ? 'bg-red-950/10 border-red-500/20' : isReturned ? 'bg-purple-950/10 border-purple-500/20' : ''}`}
                                     onClick={() => onView(order)}
                                 >
                                     {/* Watermark Overlay */}
@@ -429,41 +436,45 @@ const MobilePackagingHub: React.FC<MobilePackagingHubProps> = ({
                                         <div className={`absolute inset-0 ${B_BG_MAIN}/80 z-50 flex items-center justify-center`}><Spinner size="sm" /></div>
                                     )}
                                     
-                                    {activeTab === 'Ready to Ship' && (
-                                        <div className="absolute top-3 left-3 z-10" onClick={(e) => { e.stopPropagation(); toggleOrderSelection(order['Order ID']); }}>
-                                            <div className={`w-5 h-5 border-2 rounded-sm transition-colors flex items-center justify-center ${selectedOrderIds.has(order['Order ID']) ? 'bg-[#FCD535] border-[#FCD535]' : 'border-gray-600 bg-black/20'}`}>
-                                                {selectedOrderIds.has(order['Order ID']) && (
-                                                    <svg className="w-3.5 h-3.5 text-black" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={4}><path d="M5 13l4 4L19 7" /></svg>
-                                                )}
-                                            </div>
+                                    <div className="px-3 py-2.5 border-b border-[#2B3139]/40 flex justify-between items-center bg-white/[0.01]">
+                                        <div className="flex items-center gap-2">
+                                            {activeTab === 'Ready to Ship' && (
+                                                <div 
+                                                    onClick={(e) => { e.stopPropagation(); toggleOrderSelection(order['Order ID']); }}
+                                                    className="p-1 -ml-1 flex items-center justify-center"
+                                                >
+                                                    <div className={`w-5 h-5 border-2 rounded-md transition-all flex items-center justify-center ${selectedOrderIds.has(order['Order ID']) ? 'bg-[#FCD535] border-[#FCD535] scale-110' : 'border-gray-500 bg-black/20'}`}>
+                                                        {selectedOrderIds.has(order['Order ID']) && (
+                                                            <svg className="w-3 h-3 text-black" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={4.5}><path d="M5 13l4 4L19 7" /></svg>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            )}
+                                            <span 
+                                                onClick={(e) => { e.stopPropagation(); handleCopy(order['Order ID'], 'ID'); }}
+                                                className={`text-xs font-mono font-bold ${B_TEXT_PRIMARY} cursor-pointer hover:text-[#FCD535] transition-colors`}
+                                            >
+                                                #{order['Order ID'].substring(0, 10)}
+                                            </span>
                                         </div>
-                                    )}
-
-                                    <div className={`px-3 py-1.5 border-b ${B_BORDER} flex justify-between items-center ${activeTab === 'Ready to Ship' ? 'pt-10' : ''}`}>
-                                        <span 
-                                            onClick={(e) => { e.stopPropagation(); handleCopy(order['Order ID'], 'ID'); }}
-                                            className={`text-sm font-mono font-medium ${B_TEXT_PRIMARY} cursor-pointer hover:text-[#FCD535] transition-colors`}
-                                        >
-                                            {order['Order ID'].substring(0, 10)}
-                                        </span>
                                         <div className="flex items-center gap-2">
                                             {activeTab === 'Pending' && (
-                                                <div className="flex items-center gap-1 bg-white/5 px-2 py-0.5 rounded-sm">
+                                                <div className="flex items-center gap-1 bg-white/5 px-2 py-0.5 rounded-full">
                                                     <span className={`text-[8px] font-bold ${B_TEXT_SECONDARY} uppercase tracking-tight`}>Order: {extractTime(order.Timestamp)}</span>
                                                 </div>
                                             )}
                                             {activeTab === 'Ready to Ship' && order['Packed Time'] && (
-                                                <div className="flex items-center gap-1 bg-[#0ECB81]/5 px-2 py-0.5 rounded-sm border border-[#0ECB81]/10">
+                                                <div className="flex items-center gap-1 bg-[#0ECB81]/5 px-2 py-0.5 rounded-full border border-[#0ECB81]/15">
                                                     <span className={`text-[8px] font-black text-[#0ECB81] uppercase tracking-tight`}>Packed: {extractTime(order['Packed Time'])}</span>
                                                 </div>
                                             )}
                                             {activeTab === 'Shipped' && order['Dispatched Time'] && (
-                                                <div className="flex items-center gap-1 bg-blue-500/5 px-2 py-0.5 rounded-sm border border-blue-500/10">
+                                                <div className="flex items-center gap-1 bg-blue-500/5 px-2 py-0.5 rounded-full border border-blue-500/15">
                                                     <span className={`text-[8px] font-black text-blue-400 uppercase tracking-tight`}>Shipped: {extractTime(order['Dispatched Time'])}</span>
                                                 </div>
                                             )}
                                             {activeTab === 'Returned' && (
-                                                <div className="flex items-center gap-1 bg-purple-500/5 px-2 py-0.5 rounded-sm border border-purple-500/10">
+                                                <div className="flex items-center gap-1 bg-purple-500/5 px-2 py-0.5 rounded-full border border-purple-500/15">
                                                     <span className={`text-[8px] font-black text-purple-400 uppercase tracking-tight`}>Returned</span>
                                                 </div>
                                             )}
@@ -481,71 +492,87 @@ const MobilePackagingHub: React.FC<MobilePackagingHubProps> = ({
                                             <div className="flex flex-col flex-1 min-w-0">
                                                 <h4 
                                                     onClick={(e) => { e.stopPropagation(); handleCopy(order['Customer Name'], 'Customer Name'); }}
-                                                    className={`text-sm font-bold ${B_TEXT_PRIMARY} truncate uppercase flex items-center gap-1 cursor-pointer hover:text-[#FCD535] transition-colors`}
+                                                    className={`text-sm font-bold ${B_TEXT_PRIMARY} truncate uppercase flex items-center gap-1.5 cursor-pointer hover:text-[#FCD535] transition-colors`}
                                                 >
                                                     {order['Customer Name']}
                                                     {getOptimisticPackagePhoto(order['Order ID'], order['Package Photo']) && <span title="Photo Verified" className="text-xs">📸</span>}
                                                 </h4>
-                                                <div className="flex justify-between items-center mt-0.5">
+                                                
+                                                <div className="flex items-center gap-2 mt-1">
                                                     <div 
                                                         onClick={(e) => { e.stopPropagation(); handleCopy(formatPhoneNumber(order['Customer Phone']), 'Phone'); }}
-                                                        className="flex items-center gap-1.5 cursor-pointer hover:text-[#FCD535] transition-colors group"
+                                                        className="flex items-center gap-1.5 cursor-pointer hover:text-[#FCD535] transition-colors group bg-white/[0.03] px-2 py-0.5 rounded-full border border-white/5"
                                                     >
                                                         {getCarrierLogo(order['Customer Phone']) && (
-                                                            <img src={getCarrierLogo(order['Customer Phone'])!} className="w-4 h-4 object-contain rounded-full bg-white/10" alt="" />
+                                                            <img src={getCarrierLogo(order['Customer Phone'])!} className="w-3.5 h-3.5 object-contain rounded-full" alt="" />
                                                         )}
-                                                        <p className={`text-sm ${B_TEXT_PRIMARY} font-mono font-bold group-hover:text-[#FCD535]`}>{formatPhoneNumber(order['Customer Phone'])}</p>
+                                                        <p className="text-xs font-mono font-bold text-gray-300 group-hover:text-[#FCD535]">{formatPhoneNumber(order['Customer Phone'])}</p>
                                                     </div>
-                                                    {(activeTab === 'Ready to Ship' || activeTab === 'Shipped') && (
-                                                        <div className="flex flex-col items-end gap-1.5 max-w-[140px]">
-                                                            <div className="flex items-center gap-2 w-full justify-end">
-                                                                {order['Driver Name'] ? (
-                                                                    <>
-                                                                        {getDriverImage(order['Driver Name']) && (
-                                                                            <img src={getDriverImage(order['Driver Name'])!} className="w-4 h-4 object-cover rounded-full border border-white/10" alt="" />
-                                                                        )}
-                                                                        <p className={`text-xs ${B_ACCENT} font-black uppercase truncate`}>{order['Driver Name']}</p>
-                                                                    </>
-                                                                ) : order['Internal Shipping Details'] ? (
-                                                                    <p className={`text-[10px] ${B_TEXT_SECONDARY} font-black italic uppercase truncate`}>ដឹកដោយ: {order['Internal Shipping Details']}</p>
-                                                                ) : null}
-                                                            </div>
-                                                            <div className="bg-[#FCD535]/10 px-2.5 py-1 rounded-sm border border-[#FCD535]/20 shadow-sm">
-                                                                <p className={`text-xs font-black text-[#FCD535] uppercase truncate w-full text-right`}>P: {order['Packed By'] || 'N/A'}</p>
-                                                            </div>
+                                                </div>
+
+                                                <div className="mt-3 flex flex-col gap-1 bg-[#0B0E11]/40 p-2.5 rounded-lg border border-[#2B3139]/30">
+                                                    <div className="flex items-start gap-1.5">
+                                                        <span className="text-xs text-gray-500 mt-0.5">📍</span>
+                                                        <div className="min-w-0">
+                                                            <p className={`text-xs font-bold ${B_TEXT_PRIMARY} truncate`}>{order.Location}</p>
+                                                            <p className="text-[10px] text-gray-400 truncate mt-0.5">{order['Address Details']}</p>
                                                         </div>
-                                                    )}
-                                                </div>
-                                                <div className="mt-2.5 flex flex-col gap-1">
-                                                    <p className={`text-sm font-bold ${B_TEXT_PRIMARY} truncate`}>{order.Location}</p>
-                                                    <p className={`text-xs ${B_TEXT_SECONDARY} font-medium truncate`}>{order['Address Details']}</p>
+                                                    </div>
                                                     {order.Note && (
-                                                        <p className="text-[10px] text-[#FCD535] font-black italic truncate mt-0.5">Note: {order.Note}</p>
+                                                        <p className="text-[9px] text-[#FCD535] font-black italic mt-1.5 border-t border-[#2B3139]/20 pt-1">Note: {order.Note}</p>
                                                     )}
                                                 </div>
+
+                                                {(activeTab === 'Ready to Ship' || activeTab === 'Shipped') && (
+                                                    <div className="mt-2.5 flex items-center gap-2 flex-wrap">
+                                                         {order['Driver Name'] && (
+                                                             <div className="inline-flex items-center gap-1 bg-blue-500/10 border border-blue-500/20 px-2.5 py-0.5 rounded-full">
+                                                                 {getDriverImage(order['Driver Name']) && (
+                                                                     <img src={getDriverImage(order['Driver Name'])!} className="w-3.5 h-3.5 object-cover rounded-full" alt="" />
+                                                                 )}
+                                                                 <span className="text-[9px] font-black text-blue-400 uppercase">Driver: {order['Driver Name']}</span>
+                                                             </div>
+                                                         )}
+                                                         {order['Internal Shipping Details'] && !order['Driver Name'] && (
+                                                             <div className="inline-flex items-center gap-1 bg-gray-500/10 border border-gray-500/20 px-2.5 py-0.5 rounded-full">
+                                                                 <span className="text-[9px] font-black text-gray-400 uppercase">ដឹកដោយ: {order['Internal Shipping Details']}</span>
+                                                             </div>
+                                                         )}
+                                                         {order['Packed By'] && (
+                                                             <div className="inline-flex items-center gap-1 bg-[#FCD535]/10 border border-[#FCD535]/20 px-2.5 py-0.5 rounded-full">
+                                                                 <span className="text-[9px] font-black text-[#FCD535] uppercase">Packer: {order['Packed By']}</span>
+                                                             </div>
+                                                         )}
+                                                    </div>
+                                                )}
                                             </div>
-                                            <div className="text-right flex flex-col items-end">
-                                                <p className={`text-sm font-mono font-bold ${B_GREEN}`}>${(Number(order['Grand Total']) || 0).toFixed(2)}</p>
-                                                <div className="flex items-center gap-1.5 mt-1">
-                                                    {getBankLogo(order['Payment Info']) && (
-                                                        <img src={getBankLogo(order['Payment Info'])!} className="w-3.5 h-3.5 object-contain rounded-sm bg-white" alt="" />
-                                                    )}
-                                                    <span className={`text-[10px] font-bold uppercase rounded-sm border ${B_BORDER} px-1 text-center min-w-[50px]
-                                                        ${order['Payment Status']?.toLowerCase() === 'paid' ? 'text-[#0ECB81]' : 'text-[#FCD535]'}
-                                                    `}>
-                                                        {order['Payment Status'] || 'Unpaid'}
-                                                    </span>
-                                                </div>
+                                            <div className="text-right flex flex-col justify-between items-end">
+                                                <div>
+                                                    <p className={`text-base font-mono font-black ${B_GREEN}`}>${(Number(order['Grand Total']) || 0).toFixed(2)}</p>
+                                                    <div className="flex items-center gap-1.5 mt-1 justify-end">
+                                                        {getBankLogo(order['Payment Info']) && (
+                                                            <img src={getBankLogo(order['Payment Info'])!} className="w-3.5 h-3.5 object-contain rounded-sm bg-white" alt="" />
+                                                        )}
+                                                        <span className={`text-[9px] font-black uppercase rounded-full border px-2 py-0.5 text-center min-w-[50px]
+                                                            ${order['Payment Status']?.toLowerCase() === 'paid' ? 'bg-[#0ECB81]/10 border-[#0ECB81]/30 text-[#0ECB81]' : 'bg-[#FCD535]/10 border-[#FCD535]/30 text-[#FCD535]'}
+                                                        `}>
+                                                            {order['Payment Status'] || 'Unpaid'}
+                                                        </span>
+                                                     </div>
+                                                 </div>
                                             </div>
                                         </div>
                                     </div>
 
-                                    <div className={`p-2 border-t ${B_BORDER} flex flex-col gap-2`}>
+                                    <div className={`p-2 border-t border-[#2B3139]/40 flex flex-col gap-2 bg-[#0B0E11]/20`}>
                                         {!isCancelled && activeTab === 'Ready to Ship' ? (
                                             <div className="space-y-2">
                                                 {/* Primary Ship Action */}
-                                                <button onClick={(e) => { e.stopPropagation(); onShip(order); }} className={`w-full py-2.5 bg-[#0ECB81] text-[#0B0E11] rounded-sm text-sm font-black uppercase tracking-widest flex items-center justify-center gap-2 shadow-lg shadow-[#0ECB81]/10`}>
-                                                    <Check size={16} strokeWidth={3} />
+                                                <button 
+                                                    onClick={(e) => { e.stopPropagation(); onShip(order); }} 
+                                                    className="w-full py-2.5 bg-gradient-to-r from-[#0ECB81] to-[#0CA66B] hover:from-[#0CA66B] hover:to-[#0A8F5C] text-[#0B0E11] rounded-xl text-xs font-black uppercase tracking-wider flex items-center justify-center gap-2 shadow-[0_4px_12px_rgba(14,203,129,0.15)] active:scale-[0.97] transition-all duration-300 border border-[#0ECB81]/25"
+                                                >
+                                                    <Check size={15} strokeWidth={3.5} />
                                                     Confirm Shipping (Ship)
                                                 </button>
 
@@ -554,25 +581,25 @@ const MobilePackagingHub: React.FC<MobilePackagingHubProps> = ({
                                                     <div className="w-full">
                                                         {!!(order['Delivery Telegram Message ID'] || (order as any)['Delivery Telegram Message ID']) ? (
                                                             <div className="flex items-center gap-2">
-                                                                <div className="flex-grow flex items-center justify-center gap-2 py-2 bg-[#0ECB81]/10 border border-[#0ECB81]/20 rounded-sm">
-                                                                    <Check size={12} className="text-[#0ECB81]" />
-                                                                    <span className="text-[10px] font-black text-[#0ECB81] uppercase tracking-widest">Photo Sent to Driver</span>
-                                                                </div>
-                                                                <button 
-                                                                    onClick={(e) => { e.stopPropagation(); handleDeleteFromDeliveryTelegram(order); }}
-                                                                    disabled={sendingOrderId === order['Order ID'] || !getCanSendToDriver(order)}
-                                                                    className={`w-10 h-10 flex items-center justify-center ${!getCanSendToDriver(order) ? 'bg-[#2B3139] text-gray-600' : 'bg-red-500/10 hover:bg-red-500/20 text-red-500'} rounded-sm border border-red-500/20 transition-all active:scale-95 disabled:opacity-50`}
-                                                                >
-                                                                    {sendingOrderId === order['Order ID'] ? <Spinner size="xs" /> : <Trash size={16} />}
-                                                                </button>
+                                                                 <div className="flex-grow flex items-center justify-center gap-2 py-2 bg-[#0ECB81]/10 border border-[#0ECB81]/20 rounded-xl">
+                                                                     <Check size={12} className="text-[#0ECB81]" />
+                                                                     <span className="text-[10px] font-black text-[#0ECB81] uppercase tracking-widest">Photo Sent to Driver</span>
+                                                                 </div>
+                                                                 <button 
+                                                                     onClick={(e) => { e.stopPropagation(); handleDeleteFromDeliveryTelegram(order); }}
+                                                                     disabled={sendingOrderId === order['Order ID'] || !getCanSendToDriver(order)}
+                                                                     className={`w-10 h-10 flex items-center justify-center ${!getCanSendToDriver(order) ? 'bg-[#2B3139] text-gray-600' : 'bg-red-500/10 text-red-500 border border-red-500/20 active:scale-95'} rounded-xl transition-all disabled:opacity-50`}
+                                                                 >
+                                                                     {sendingOrderId === order['Order ID'] ? <Spinner size="xs" /> : <Trash size={16} />}
+                                                                 </button>
                                                             </div>
                                                         ) : (
                                                             <button 
                                                                 onClick={(e) => { e.stopPropagation(); handleSendToDeliveryTelegram(order); }}
                                                                 disabled={sendingOrderId === order['Order ID'] || !getCanSendToDriver(order)}
-                                                                className={`w-full flex items-center justify-center gap-3 py-2 ${!getCanSendToDriver(order) ? 'bg-[#2B3139] text-gray-500 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-500 text-white'} rounded-sm text-[11px] font-black uppercase tracking-widest transition-all shadow-lg active:scale-95 disabled:opacity-50`}
+                                                                className={`w-full flex items-center justify-center gap-2.5 py-2 ${!getCanSendToDriver(order) ? 'bg-[#2B3139] text-gray-500 border border-white/5 cursor-not-allowed' : 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-[0_4px_12px_rgba(37,99,235,0.15)] border border-blue-500/25 active:scale-[0.97]'} rounded-xl text-[10px] font-black uppercase tracking-widest transition-all duration-300 disabled:opacity-50`}
                                                             >
-                                                                {sendingOrderId === order['Order ID'] ? <Spinner size="xs" /> : <ImageIcon size={16} />}
+                                                                {sendingOrderId === order['Order ID'] ? <Spinner size="xs" /> : <ImageIcon size={15} />}
                                                                 {sendingOrderId === order['Order ID'] ? 'Processing...' : 'បញ្ជូនរូបភាពកញ្ចប់ (Send Photo)'}
                                                             </button>
                                                         )}
@@ -581,57 +608,64 @@ const MobilePackagingHub: React.FC<MobilePackagingHubProps> = ({
 
                                                 {/* Secondary Utility Row */}
                                                 <div className="flex gap-2">
-                                                    <button onClick={(e) => { e.stopPropagation(); onView(order); }} className={`flex-1 py-1.5 bg-[#2B3139] text-[#EAECEF] rounded-sm text-xs font-bold uppercase`}>View Info</button>
-                                                    <button onClick={(e) => { e.stopPropagation(); onUndo(order); }} className={`w-24 py-1.5 bg-red-500/5 text-[#F6465D] rounded-sm text-xs font-bold uppercase border border-red-500/10`}>Undo Pack</button>
+                                                    <button onClick={(e) => { e.stopPropagation(); onView(order); }} className="flex-1 py-2 bg-[#2B3139]/80 border border-[#2B3139] text-[#EAECEF] rounded-xl text-xs font-bold uppercase active:scale-[0.97] transition-all duration-300">View Info</button>
+                                                    <button onClick={(e) => { e.stopPropagation(); onUndo(order); }} className="w-24 py-2 bg-[#F6465D]/5 text-[#F6465D] rounded-xl text-xs font-bold uppercase border border-[#F6465D]/20 active:scale-[0.97] transition-all duration-300">Undo Pack</button>
                                                 </div>
                                             </div>
                                         ) : (
-                                            <div className="flex gap-2 w-full">
-                                                <button onClick={(e) => { e.stopPropagation(); onView(order); }} className={`flex-1 py-1.5 bg-[#2B3139] text-[#EAECEF] rounded-sm text-sm font-medium`}>View Info</button>
-                                                {activeTab === 'Cancelled' && order['Return Received By'] && (
-                                                    <div className="flex-[1.5] flex items-center justify-center border border-[#FCD535]/20 bg-[#FCD535]/5 rounded-sm px-2 overflow-hidden">
-                                                        <span className="text-[9px] font-black text-[#FCD535] uppercase truncate" title={order['Return Received By']}>
-                                                            Confirm by: {order['Return Received By']}
-                                                        </span>
-                                                    </div>
-                                                )}
-                                                {!isCancelled && (
-                                                    <>
-                                                        {activeTab === 'Pending' && <button onClick={(e) => { e.stopPropagation(); onPack(order); }} className={`flex-1 py-1.5 bg-[#FCD535] text-[#0B0E11] rounded-sm text-sm font-bold uppercase`}>Pack Order</button>}
-                                                    </>
-                                                )}
-                                                {isCancelled && activeTab !== 'Cancelled' && (
-                                                    <button
-                                                        onClick={(e) => { e.stopPropagation(); setUnpackTarget(order); }}
-                                                        className={`flex-1 py-1.5 bg-red-600 text-white rounded-sm text-sm font-bold uppercase shadow-lg shadow-red-600/20`}
-                                                    >
-                                                        {!!(order['Packed By'] || order['Packed Time']) ? 'ហែកកញ្ចប់' : 'បញ្ជាក់ការបោះបង់'}
-                                                    </button>
-                                                )}
-                                                {activeTab === 'Shipped' && (
-                                                    <div className="flex gap-2 w-full">
-                                                        <button 
-                                                            onClick={(e) => { e.stopPropagation(); onDeliver(order); }} 
-                                                            className={`flex-1 py-1.5 bg-[#0ECB81] hover:bg-[#0CA66B] text-[#0B0E11] text-xs font-black uppercase transition-colors rounded-sm flex items-center justify-center gap-1.5 shadow-lg shadow-[#0ECB81]/10`}
-                                                        >
-                                                            <Check size={14} strokeWidth={3} />
-                                                            ដឹកជោគជ័យ (Done)
-                                                        </button>
-                                                        <button onClick={(e) => { e.stopPropagation(); onUndoShipped(order); }} className={`w-20 py-1.5 bg-[#F6465D]/10 text-[#F6465D] rounded-sm text-xs font-bold uppercase`}>Undo</button>
-                                                    </div>
-                                                )}
-                                                {activeTab === 'Returned' && (
-                                                    <button
-                                                        onClick={(e) => { e.stopPropagation(); onConfirmReturn?.(order); }}
-                                                        disabled={!!order['Return Received By']}
-                                                        className={`flex-1 py-1.5 ${order['Return Received By'] ? 'bg-gray-500/20 text-gray-500' : 'bg-purple-500 text-white font-bold'} rounded-sm text-sm uppercase`}
-                                                    >
-                                                        {order['Return Received By'] ? 'Received' : 'Confirm Receipt'}
-                                                    </button>
-                                                )}
-                                            </div>
-                                        )}
-                                    </div>
+                                             <div className="flex gap-2 w-full">
+                                                 <button onClick={(e) => { e.stopPropagation(); onView(order); }} className="flex-1 py-2 bg-[#2B3139]/80 border border-[#2B3139] text-[#EAECEF] rounded-xl text-xs font-medium active:scale-[0.97] transition-all duration-300">View Info</button>
+                                                 {activeTab === 'Cancelled' && order['Return Received By'] && (
+                                                     <div className="flex-[1.5] flex items-center justify-center border border-[#FCD535]/20 bg-[#FCD535]/5 rounded-xl px-2 overflow-hidden">
+                                                         <span className="text-[9px] font-black text-[#FCD535] uppercase truncate" title={order['Return Received By']}>
+                                                             Confirm by: {order['Return Received By']}
+                                                         </span>
+                                                     </div>
+                                                 )}
+                                                 {!isCancelled && (
+                                                     <>
+                                                         {activeTab === 'Pending' && (
+                                                             <button 
+                                                                 onClick={(e) => { e.stopPropagation(); onPack(order); }} 
+                                                                 className="flex-1 py-2 bg-gradient-to-r from-[#FCD535] to-[#E5C02A] text-[#0B0E11] rounded-xl text-xs font-black uppercase tracking-wider shadow-[0_4px_12px_rgba(252,213,53,0.15)] active:scale-[0.97] transition-all duration-300"
+                                                             >
+                                                                 Pack Order
+                                                             </button>
+                                                         )}
+                                                     </>
+                                                 )}
+                                                 {isCancelled && activeTab !== 'Cancelled' && (
+                                                     <button
+                                                         onClick={(e) => { e.stopPropagation(); setUnpackTarget(order); }}
+                                                         className="flex-1 py-2 bg-gradient-to-r from-red-600 to-red-700 text-white rounded-xl text-xs font-bold uppercase shadow-[0_4px_12px_rgba(220,38,38,0.15)] active:scale-[0.97] transition-all"
+                                                     >
+                                                         {!!(order['Packed By'] || order['Packed Time']) ? 'ហែកកញ្ចប់' : 'បញ្ជាក់ការបោះបង់'}
+                                                     </button>
+                                                 )}
+                                                 {activeTab === 'Shipped' && (
+                                                     <div className="flex gap-2 w-full">
+                                                         <button 
+                                                             onClick={(e) => { e.stopPropagation(); onDeliver(order); }} 
+                                                             className="flex-1 py-2 bg-gradient-to-r from-[#0ECB81] to-[#0CA66B] hover:from-[#0CA66B] hover:to-[#0A8F5C] text-[#0B0E11] text-xs font-black uppercase transition-all duration-300 rounded-xl flex items-center justify-center gap-1.5 shadow-[0_4px_12px_rgba(14,203,129,0.15)] active:scale-[0.97] border border-[#0ECB81]/25"
+                                                         >
+                                                             <Check size={14} strokeWidth={3} />
+                                                             ដឹកជោគជ័យ (Done)
+                                                         </button>
+                                                         <button onClick={(e) => { e.stopPropagation(); onUndoShipped(order); }} className="w-20 py-2 bg-[#F6465D]/10 text-[#F6465D] border border-[#F6465D]/20 rounded-xl text-xs font-bold uppercase active:scale-[0.97] transition-all duration-300">Undo</button>
+                                                     </div>
+                                                 )}
+                                                 {activeTab === 'Returned' && (
+                                                     <button
+                                                         onClick={(e) => { e.stopPropagation(); onConfirmReturn?.(order); }}
+                                                         disabled={!!order['Return Received By']}
+                                                         className={`flex-1 py-2 ${order['Return Received By'] ? 'bg-gray-500/20 text-gray-500' : 'bg-gradient-to-r from-purple-600 to-purple-700 text-white shadow-[0_4px_12px_rgba(147,51,234,0.15)]'} rounded-xl text-xs font-bold uppercase transition-all duration-300 disabled:opacity-50`}
+                                                     >
+                                                         {order['Return Received By'] ? 'Received' : 'Confirm Receipt'}
+                                                     </button>
+                                                 )}
+                                             </div>
+                                         )}
+                                     </div>
 
                                 </div>
                                 );
