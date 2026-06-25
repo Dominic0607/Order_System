@@ -55,8 +55,9 @@ interface TabletPackagingHubProps {
     currentPage: number;
     totalPages: number;
     setCurrentPage: React.Dispatch<React.SetStateAction<number>>;
-    onExportPdf?: () => void;
     isExportLoading?: boolean;
+    onGenerateDispatchList?: () => void;
+    isDispatchLoading?: boolean;
 }
 
 const TabletPackagingHub: React.FC<TabletPackagingHubProps> = ({
@@ -68,7 +69,8 @@ const TabletPackagingHub: React.FC<TabletPackagingHubProps> = ({
     progressStats, setIsFilterModalOpen, loadingActionId, tabCounts,
     selectedOrderIds, toggleOrderSelection, clearSelection, onBulkShip, isBulkProcessing,
     onToggleSelectAll, onConfirmReturn, onCloseShift, isViewOnly, activeShift, onUnpack,
-    currentPage, totalPages, setCurrentPage, onExportPdf, isExportLoading
+    currentPage, totalPages, setCurrentPage, onExportPdf, isExportLoading,
+    onGenerateDispatchList, isDispatchLoading
 }) => {
     const { previewImage: showFullImage, appData, isShiftOpener, activeShiftStore, currentUser, hasPermission } = useContext(AppContext);
     const [unpackTarget, setUnpackTarget] = useState<ParsedOrder | null>(null);
@@ -359,6 +361,16 @@ const TabletPackagingHub: React.FC<TabletPackagingHubProps> = ({
                                     <svg className="w-4 h-4 text-[#FCD535] group-hover:text-[#0B0E11]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" /></svg>
                                     <span className="text-[#FCD535] group-hover:text-[#0B0E11] text-sm font-bold uppercase tracking-wider">Print Manifest</span>
                                 </button>
+                                {onGenerateDispatchList && orders.length > 0 && (
+                                    <button 
+                                        onClick={onGenerateDispatchList} 
+                                        disabled={isDispatchLoading}
+                                        className={`px-4 py-2 border border-[#FCD535]/50 hover:bg-[#FCD535] group transition-all rounded-sm flex items-center gap-2 whitespace-nowrap disabled:opacity-30 disabled:cursor-not-allowed`}
+                                    >
+                                        {isDispatchLoading ? <Spinner size="xs" /> : <svg className="w-4 h-4 text-[#FCD535] group-hover:text-[#0B0E11]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17v1a3 3 0 003 3h4a3 3 0 003-3V10l-4-4h-4a3 3 0 00-3 3v1m-4 0v7a2 2 0 002 2h4a2 2 0 002-2V10a2 2 0 00-2-2H7a2 2 0 00-2 2z" /></svg>}
+                                        <span className="text-[#FCD535] group-hover:text-[#0B0E11] text-sm font-bold uppercase tracking-wider">Dispatch List</span>
+                                    </button>
+                                )}
                                 {activeTab === 'Ready to Ship' && selectedOrderIds.size > 0 && (
                                     <button 
                                         onClick={onBulkShip}

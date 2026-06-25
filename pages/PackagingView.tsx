@@ -15,6 +15,7 @@ import OrderDetailModal from '@/components/orders/OrderDetailModal';
 import PdfExportModal from '@/components/admin/PdfExportModal';
 import { Shift } from '@/types';
 import DateRangeFilter, { DateRangePreset } from '@/components/common/DateRangeFilter';
+import DeliveryListGeneratorModal from '@/components/orders/DeliveryListGeneratorModal';
 
 const bClasses = {
     surface: 'bg-[#1E2329] border border-[#2B3139]',
@@ -116,6 +117,9 @@ const PackagingView: React.FC<{ orders?: ParsedOrder[], onExit?: () => void }> =
     const [datePreset, setDatePreset] = useState<DateRangePreset>('all');
     const [startDate, setStartDate] = useState('');
     const [endDate, setEndDate] = useState('');
+    const [isDeliveryModalOpen, setIsDeliveryModalOpen] = useState(false);
+    const [deliveryOrders, setDeliveryOrders] = useState<ParsedOrder[]>([]);
+    const [isDispatchLoading, setIsDispatchLoading] = useState(false);
     const [undoTarget, setUndoConfirmation] = useState<{ order: ParsedOrder, type: 'pending' | 'ready', isOpen: boolean } | null>(null);
     const [undoPassword, setUndoPassword] = useState('');
     const [isUndoVerifying, setIsUndoVerifying] = useState(false);
@@ -906,7 +910,19 @@ const PackagingView: React.FC<{ orders?: ParsedOrder[], onExit?: () => void }> =
         onToggleSelectAll: (orders: ParsedOrder[]) => !isViewOnly && onToggleSelectAll(orders),
         onBulkShip: () => !isViewOnly && onBulkShip(),
         isBulkProcessing, progressStats, isFilterModalOpen, setIsFilterModalOpen, isViewOnly, activeShift,
-        currentPage, totalPages, setCurrentPage, pageSize, setPageSize, totalOrdersCount
+        currentPage, totalPages, setCurrentPage, pageSize, setPageSize, totalOrdersCount,
+        onGenerateDispatchList: async () => {
+            setIsDispatchLoading(true);
+            const allOrders = await fetchAllFilteredOrders();
+            setDeliveryOrders(allOrders);
+            setIsDispatchLoading(false);
+            if (allOrders.length > 0) {
+                setIsDeliveryModalOpen(true);
+            } else {
+                alert("មិនមានទិន្នន័យដើម្បីបង្កើត Dispatch List ទេ / No orders found");
+            }
+        },
+        isDispatchLoading
     };
 
     return (
@@ -1317,6 +1333,15 @@ const PackagingView: React.FC<{ orders?: ParsedOrder[], onExit?: () => void }> =
                     appData={appData} 
                 />
             )}
+
+            <DeliveryListGeneratorModal 
+                isOpen={isDeliveryModalOpen} 
+                onClose={() => setIsDeliveryModalOpen(false)} 
+                orders={deliveryOrders} 
+                appData={appData}
+                initialStore={selectedStore} 
+                ignoreDateFilter={true} 
+            />
         </div>
     );
 };

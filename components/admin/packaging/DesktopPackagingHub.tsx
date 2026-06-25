@@ -64,6 +64,8 @@ interface DesktopPackagingHubProps {
     setCurrentPage: React.Dispatch<React.SetStateAction<number>>;
     onExportPdf?: () => void;
     isExportLoading?: boolean;
+    onGenerateDispatchList?: () => void;
+    isDispatchLoading?: boolean;
     pageSize?: number;
     setPageSize?: (size: number) => void;
     totalOrdersCount?: number;
@@ -78,6 +80,7 @@ const DesktopPackagingHub: React.FC<DesktopPackagingHubProps> = ({
     selectedOrderIds, toggleOrderSelection, clearSelection, onBulkShip, isBulkProcessing,
     onToggleSelectAll, onConfirmReturn, onCloseShift, isViewOnly, activeShift, onUnpack,
     currentPage, totalPages, setCurrentPage, onExportPdf, isExportLoading,
+    onGenerateDispatchList, isDispatchLoading,
     pageSize, setPageSize, totalOrdersCount
 }) => {
     const { appData, previewImage: showFullImage, isShiftOpener, activeShiftStore, currentUser, hasPermission } = useContext(AppContext);
@@ -405,6 +408,16 @@ const DesktopPackagingHub: React.FC<DesktopPackagingHubProps> = ({
                             >
                                 {isExportLoading ? <Spinner size="xs" /> : <svg className="w-4 h-4 text-[#FCD535] group-hover:text-[#0B0E11]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>}
                                 <span className="text-[#FCD535] group-hover:text-[#0B0E11] text-sm font-bold uppercase tracking-wider">Export PDF</span>
+                            </button>
+                        )}
+                        {onGenerateDispatchList && orders.length > 0 && (
+                            <button 
+                                onClick={onGenerateDispatchList} 
+                                disabled={isDispatchLoading}
+                                className={`px-4 py-2 mr-2 border border-[#FCD535]/50 hover:bg-[#FCD535] group transition-all rounded-sm flex items-center gap-2 whitespace-nowrap disabled:opacity-30 disabled:cursor-not-allowed`}
+                            >
+                                {isDispatchLoading ? <Spinner size="xs" /> : <svg className="w-4 h-4 text-[#FCD535] group-hover:text-[#0B0E11]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17v1a3 3 0 003 3h4a3 3 0 003-3V10l-4-4h-4a3 3 0 00-3 3v1m-4 0v7a2 2 0 002 2h4a2 2 0 002-2V10a2 2 0 00-2-2H7a2 2 0 00-2 2z" /></svg>}
+                                <span className="text-[#FCD535] group-hover:text-[#0B0E11] text-sm font-bold uppercase tracking-wider">Dispatch List</span>
                             </button>
                         )}
                         <div className="flex bg-[#0B0E11] p-0.5 border border-[#2B3139] rounded-sm">

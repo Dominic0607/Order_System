@@ -56,6 +56,8 @@ interface MobilePackagingHubProps {
     currentPage: number;
     totalPages: number;
     setCurrentPage: React.Dispatch<React.SetStateAction<number>>;
+    onGenerateDispatchList?: () => void;
+    isDispatchLoading?: boolean;
 }
 
 const MobilePackagingHub: React.FC<MobilePackagingHubProps> = ({
@@ -67,7 +69,7 @@ const MobilePackagingHub: React.FC<MobilePackagingHubProps> = ({
     progressStats, setIsFilterModalOpen, loadingActionId, tabCounts,
     selectedOrderIds, toggleOrderSelection, clearSelection, onBulkShip, isBulkProcessing,
     onToggleSelectAll, onConfirmReturn, onCloseShift, isViewOnly, activeShift, onUnpack,
-    currentPage, totalPages, setCurrentPage
+    currentPage, totalPages, setCurrentPage, onGenerateDispatchList, isDispatchLoading
 }) => {
     const { previewImage: showFullImage, appData, isShiftOpener, activeShiftStore, currentUser, hasPermission } = useContext(AppContext);
     const [unpackTarget, setUnpackTarget] = useState<ParsedOrder | null>(null);
@@ -328,6 +330,11 @@ const MobilePackagingHub: React.FC<MobilePackagingHubProps> = ({
                             <button onClick={onPrintManifest} className={`p-2 bg-[#181A20] border border-[#FCD535]/30 rounded-sm hover:border-[#FCD535] transition-all`}>
                                 <svg className="w-4 h-4 text-[#FCD535]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" /></svg>
                             </button>
+                            {onGenerateDispatchList && orders.length > 0 && (
+                                <button onClick={onGenerateDispatchList} disabled={isDispatchLoading} className={`p-2 bg-[#181A20] border border-[#FCD535]/30 rounded-sm hover:border-[#FCD535] transition-all disabled:opacity-30`}>
+                                    {isDispatchLoading ? <Spinner size="xs" /> : <svg className="w-4 h-4 text-[#FCD535]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17v1a3 3 0 003 3h4a3 3 0 003-3V10l-4-4h-4a3 3 0 00-3 3v1m-4 0v7a2 2 0 002 2h4a2 2 0 002-2V10a2 2 0 00-2-2H7a2 2 0 00-2 2z" /></svg>}
+                                </button>
+                            )}
                         </div>
                     )}
                 </div>
