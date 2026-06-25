@@ -61,8 +61,15 @@
         
         // Handle "Failed to fetch dynamically imported module" which usually happens
         // when a new version is deployed and the browser tries to load old chunks.
-        if (message.indexOf('dynamically imported module') > -1 || message.indexOf('Importing a module script failed') > -1) {
+        if (message && (message.indexOf('dynamically imported module') > -1 || message.indexOf('Importing a module script failed') > -1)) {
             console.warn("Dynamic import failed. Attempting to reload page...");
+            const lastReload = sessionStorage.getItem('last_chunk_reload');
+            const now = Date.now();
+            if (lastReload && (now - parseInt(lastReload)) < 8000) {
+                console.error("Infinite reload loop prevented.");
+                return;
+            }
+            sessionStorage.setItem('last_chunk_reload', now.toString());
             window.location.reload();
             return;
         }
@@ -78,7 +85,14 @@
 
       window.addEventListener('unhandledrejection', function(event) {
         console.error('Unhandled rejection:', event.reason);
-        if (event.reason && (event.reason.message.indexOf('dynamically imported module') > -1 || event.reason.name === 'ChunkLoadError')) {
+        if (event.reason && event.reason.message && (event.reason.message.indexOf('dynamically imported module') > -1 || event.reason.name === 'ChunkLoadError')) {
+            const lastReload = sessionStorage.getItem('last_chunk_reload');
+            const now = Date.now();
+            if (lastReload && (now - parseInt(lastReload)) < 8000) {
+                console.error("Infinite reload loop prevented.");
+                return;
+            }
+            sessionStorage.setItem('last_chunk_reload', now.toString());
             window.location.reload();
         }
       });
