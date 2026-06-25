@@ -14,6 +14,7 @@ import DesktopPackagingHub from '@/components/admin/packaging/DesktopPackagingHu
 import OrderDetailModal from '@/components/orders/OrderDetailModal';
 import PdfExportModal from '@/components/admin/PdfExportModal';
 import { Shift } from '@/types';
+import DateRangeFilter, { DateRangePreset } from '@/components/common/DateRangeFilter';
 
 const bClasses = {
     surface: 'bg-[#1E2329] border border-[#2B3139]',
@@ -112,6 +113,9 @@ const PackagingView: React.FC<{ orders?: ParsedOrder[], onExit?: () => void }> =
     const [deviceType, setDeviceType] = useState<'mobile' | 'tablet' | 'desktop'>('desktop');
     const [isBulkProcessing, setIsBulkProcessing] = useState(false);
     const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
+    const [datePreset, setDatePreset] = useState<DateRangePreset>('all');
+    const [startDate, setStartDate] = useState('');
+    const [endDate, setEndDate] = useState('');
     const [undoTarget, setUndoConfirmation] = useState<{ order: ParsedOrder, type: 'pending' | 'ready', isOpen: boolean } | null>(null);
     const [undoPassword, setUndoPassword] = useState('');
     const [isUndoVerifying, setIsUndoVerifying] = useState(false);
@@ -159,7 +163,7 @@ const PackagingView: React.FC<{ orders?: ParsedOrder[], onExit?: () => void }> =
         setLocalOrders([]);
         setTotalOrdersCount(0);
         setSelectedOrderIds(new Set());
-    }, [activeTab, teamFilter, shippingFilter, selectedStore, debouncedSearchTerm]);
+    }, [activeTab, teamFilter, shippingFilter, selectedStore, debouncedSearchTerm, datePreset, startDate, endDate]);
 
     useEffect(() => {
         setSelectedOrderIds(new Set());
@@ -179,9 +183,14 @@ const PackagingView: React.FC<{ orders?: ParsedOrder[], onExit?: () => void }> =
             fulfillmentStore: selectedStore,
             fulfillmentStatus: statusMap[activeTab] || activeTab,
             packagingTab: packagingTabMap[activeTab] || activeTab.toLowerCase(),
-            datePreset: 'all',
+            datePreset: datePreset,
             view: 'compact'
         };
+
+        if (datePreset === 'custom') {
+            if (startDate) params.startDate = startDate;
+            if (endDate) params.endDate = endDate;
+        }
 
         if (teamFilter) {
             params.team = teamFilter;
@@ -310,7 +319,7 @@ const PackagingView: React.FC<{ orders?: ParsedOrder[], onExit?: () => void }> =
             controller.abort();
         };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [selectedStore, activeTab, debouncedSearchTerm, teamFilter, shippingFilter, currentPage, effectivePageSize, localRefreshTick]);
+    }, [selectedStore, activeTab, debouncedSearchTerm, teamFilter, shippingFilter, datePreset, startDate, endDate, currentPage, effectivePageSize, localRefreshTick]);
 
     // 2. Memos
     const allOrdersMapped = useMemo(() => {
@@ -1177,6 +1186,19 @@ const PackagingView: React.FC<{ orders?: ParsedOrder[], onExit?: () => void }> =
                                 </div>
                             </div>
 
+                            {/* Date Filter */}
+                            <div className="space-y-3">
+                                <p className="text-[10px] font-black text-[#848E9C] uppercase tracking-[0.2em]">Date Range</p>
+                                <DateRangeFilter
+                                    dateRange={datePreset}
+                                    onRangeChange={setDatePreset}
+                                    customStart={startDate}
+                                    onCustomStartChange={setStartDate}
+                                    customEnd={endDate}
+                                    onCustomEndChange={setEndDate}
+                                />
+                            </div>
+
                             {/* Quick Actions */}
                             <div className="space-y-3">
                                 <p className="text-[10px] font-black text-[#848E9C] uppercase tracking-[0.2em]">Quick Actions</p>
@@ -1185,6 +1207,9 @@ const PackagingView: React.FC<{ orders?: ParsedOrder[], onExit?: () => void }> =
                                         setSearchTerm('');
                                         setShippingFilter('');
                                         setTeamFilter('');
+                                        setDatePreset('all');
+                                        setStartDate('');
+                                        setEndDate('');
                                         setIsFilterModalOpen(false);
                                     }}
                                     className="w-full py-4 bg-red-500/10 hover:bg-red-500/20 text-red-500 border border-red-500/20 rounded-xl text-xs font-black uppercase tracking-widest transition-all"
