@@ -44,15 +44,37 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     const lastRequestId = React.useRef<number>(0);
 
     const handleUnauthorized = useCallback(() => {
+        console.warn("[OrderContext] handleUnauthorized triggered. Clearing tokens and redirecting to login.");
         localStorage.removeItem('token');
         CacheService.remove(CACHE_KEYS.SESSION);
         window.location.href = window.location.origin + window.location.pathname + '?view=login';
     }, []);
 
+    const getValidToken = useCallback(async (): Promise<string | null> => {
+        let token = localStorage.getItem('token');
+        if (!token || token === 'undefined' || token === 'null') {
+            try {
+                const session = await CacheService.get<{ token: string }>(CACHE_KEYS.SESSION);
+                if (session && session.token) {
+                    token = session.token;
+                    localStorage.setItem('token', token);
+                } else {
+                    token = null;
+                }
+            } catch (e) {
+                token = null;
+            }
+        }
+        return token;
+    }, []);
+
     const fetchData = useCallback(async (force = false): Promise<Record<string, any> | null> => {
         try {
-            const token = localStorage.getItem('token');
-            if (!token) return null;
+            const token = await getValidToken();
+            if (!token) {
+                console.warn("[OrderContext] No valid token for static data fetch.");
+                return null;
+            }
             const headers: HeadersInit = { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` };
 
             // Retry on 503 (DB still initializing)
@@ -69,7 +91,8 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
             // Handle 401 Unauthorized globally
             if (response.status === 401) {
-                console.warn("Session expired during static-data fetch. Redirecting...");
+                const errorText = await response.text().catch(() => "");
+                console.warn(`Session expired during static-data fetch (401). Response: ${errorText}. Redirecting...`);
                 handleUnauthorized();
                 return null;
             }
@@ -95,7 +118,7 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
             console.error("Static data fetch failed", e);
         }
         return null;
-    }, [handleUnauthorized]);
+    }, [handleUnauthorized, getValidToken]);
 
     const fetchOrders = useCallback(async (force = false, params?: Record<string, string | number>) => {
         if (!force) setIsOrdersLoading(true);
@@ -110,8 +133,11 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         const activeParams = lastFetchParams.current;
 
         try {
-            const token = localStorage.getItem('token');
-            if (!token) return;
+            const token = await getValidToken();
+            if (!token) {
+                console.warn("[OrderContext] No valid token for fetchOrders.");
+                return;
+            }
             const headers: HeadersInit = { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` };
             
             // Build Query String
@@ -129,6 +155,8 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
             if (requestId !== lastRequestId.current) return;
 
             if (response.status === 401) {
+                const errorText = await response.text().catch(() => "");
+                console.warn(`Session expired during fetchOrders (401). Response: ${errorText}. Redirecting...`);
                 handleUnauthorized();
                 return;
             }
@@ -198,11 +226,11 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
                 setIsGlobalLoading(false);
             }
         }
-    }, [handleUnauthorized, fetchData]);
+    }, [handleUnauthorized, fetchData, getValidToken]);
 
     const fetchPromotions = useCallback(async (force = false) => {
         try {
-            const token = localStorage.getItem('token');
+            const token = await getValidToken();
             if (!token) return;
             const headers: HeadersInit = { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` };
             const url = force
@@ -218,7 +246,7 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         } catch (e) {
             console.error("Promotions fetch failed", e);
         }
-    }, []);
+    }, [getValidToken]);
 
     const refreshData = useCallback(async (): Promise<Record<string, any> | null> => {
         const [staticData] = await Promise.all([fetchData(true), fetchOrders(true), fetchPromotions(true)]);
