@@ -175,7 +175,7 @@ const DeliveryListGeneratorModal: React.FC<DeliveryListGeneratorModalProps> = ({
         
         if (selectedOrderIds.length > 0 || returnOrderIds.length > 0 || failedOrderIds.length > 0) {
             const confirmUrl = `${window.location.origin}${window.location.pathname}?v=cd&i=${selectedOrderIds.join(',')}&r=${returnOrderIds.join(',')}&f=${failedOrderIds.join(',')}&s=${encodeURIComponent(selectedStore)}&e=${Date.now() + (2 * 60 * 60 * 1000)}`;
-            text += `--------------------------------\n🔗 **តំណភ្ជាប់បញ្ជាក់ថ្លៃដឹក (Confirm Delivery Link):**\n👉 [ចុចទីនេះដើម្បីបញ្ជាក់ (Confirm Here)](${confirmUrl})\n\n*(⚠️ បញ្ជាក់៖ លីងនេះមានសុពលភាពត្រឹមតែ ២ ម៉ោងប៉ុណ្ណោះ)*`;
+            text += `--------------------------------\n🔗 **តំណភ្ជាប់បញ្ជាក់ថ្លៃដឹក (Confirm Delivery Link):**\n👉 ${confirmUrl}\n\n*(⚠️ បញ្ជាក់៖ លីងនេះមានសុពលភាពត្រឹមតែ ២ ម៉ោងប៉ុណ្ណោះ)*`;
         }
         setPreviewText(text); setIsPreviewing(true);
     };
@@ -338,19 +338,44 @@ const DeliveryListGeneratorModal: React.FC<DeliveryListGeneratorModalProps> = ({
     if (isPreviewing) {
         return (
             <Modal isOpen={true} onClose={() => setIsPreviewing(false)} maxWidth="max-w-xl">
-                <div className="flex flex-col h-full max-h-[90vh] bg-[#181A20] font-sans">
-                    <div className="px-6 py-4 border-b border-[#2B3139] flex justify-between items-center bg-[#0B0E11]/50">
-                        <h3 className="text-sm font-bold text-gray-200 uppercase tracking-widest">Delivery Roster Preview</h3>
-                        <button onClick={() => setIsPreviewing(false)} className="text-gray-500 hover:text-white transition-colors">
-                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                <div className="flex flex-col h-full max-h-[90vh] bg-[#0B0E11] font-sans relative overflow-hidden">
+                    {/* Background glow */}
+                    <div className="absolute top-0 right-0 w-[400px] h-[400px] bg-blue-600/5 blur-[100px] -mr-48 -mt-48 rounded-full pointer-events-none"></div>
+                    <div className="absolute bottom-0 left-0 w-[400px] h-[400px] bg-[#FCD535]/5 blur-[100px] -ml-48 -mb-48 rounded-full pointer-events-none"></div>
+                    
+                    <div className="px-6 py-5 border-b border-[#2B3139]/50 flex justify-between items-center bg-[#0B0E11]/80 backdrop-blur-md relative z-10">
+                        <div className="flex items-center gap-3">
+                            <div className="w-8 h-8 rounded-lg bg-[#FCD535]/10 border border-[#FCD535]/20 flex items-center justify-center text-[#FCD535]">
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+                            </div>
+                            <div>
+                                <h3 className="text-sm font-black text-gray-100 uppercase tracking-widest">Delivery Roster Preview</h3>
+                                <p className="text-[9px] text-gray-500 font-bold uppercase tracking-widest mt-0.5">Ready to Copy</p>
+                            </div>
+                        </div>
+                        <button onClick={() => setIsPreviewing(false)} className="w-8 h-8 flex items-center justify-center rounded-full bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white transition-all">
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" /></svg>
                         </button>
                     </div>
-                    <div className="flex-grow p-6 overflow-y-auto custom-scrollbar">
-                        <pre className="whitespace-pre-wrap font-mono text-[11px] text-gray-300 leading-relaxed bg-[#0B0E11] p-4 rounded-sm border border-[#2B3139]">{previewText}</pre>
+                    
+                    <div className="flex-grow p-6 overflow-y-auto custom-scrollbar relative z-10">
+                        <div className="relative group">
+                            <div className="absolute inset-0 bg-gradient-to-b from-[#FCD535]/5 to-transparent rounded-xl opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none"></div>
+                            <pre className="whitespace-pre-wrap font-mono text-[11px] sm:text-xs text-gray-300 leading-relaxed bg-[#181A20]/80 p-5 rounded-xl border border-[#2B3139] shadow-inner select-all relative z-10">
+                                {previewText}
+                            </pre>
+                        </div>
                     </div>
-                    <div className="px-6 py-4 border-t border-[#2B3139] bg-[#0B0E11]/50 flex gap-4">
-                        <button onClick={handleCopyAgentLink} className="flex-1 py-3 text-[10px] font-bold text-[#FCD535] bg-[#FCD535]/10 border border-[#FCD535]/20 hover:bg-[#FCD535] hover:text-black rounded-sm uppercase tracking-widest transition-colors text-center">Copy Agent Link</button>
-                        <button onClick={handleCopyAndSaveSession} className="flex-1 py-3 text-[10px] font-bold text-black bg-[#FCD535] hover:bg-[#FCD535]/90 rounded-sm uppercase tracking-widest transition-colors text-center">Copy & Proceed</button>
+                    
+                    <div className="px-6 py-5 border-t border-[#2B3139]/50 bg-[#0B0E11]/80 backdrop-blur-md flex flex-col sm:flex-row gap-4 relative z-10">
+                        <button onClick={handleCopyAgentLink} className="flex-1 py-3.5 text-[10px] font-black text-[#FCD535] bg-[#FCD535]/10 border border-[#FCD535]/20 hover:bg-[#FCD535]/20 rounded-xl uppercase tracking-[0.2em] transition-all flex items-center justify-center gap-2 active:scale-[0.98]">
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" /></svg>
+                            Copy Only Link
+                        </button>
+                        <button onClick={handleCopyAndSaveSession} className="flex-1 py-3.5 text-[10px] font-black text-black bg-gradient-to-r from-[#FCD535] to-[#f59e0b] hover:from-[#f59e0b] hover:to-[#d97706] rounded-xl shadow-[0_0_20px_rgba(252,213,53,0.3)] uppercase tracking-[0.2em] transition-all flex items-center justify-center gap-2 active:scale-[0.98]">
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" /></svg>
+                            Copy All & Proceed
+                        </button>
                     </div>
                 </div>
             </Modal>
@@ -572,9 +597,16 @@ const DeliveryListGeneratorModal: React.FC<DeliveryListGeneratorModalProps> = ({
                                                         <div className={`w-10 h-10 rounded-lg flex items-center justify-center text-[11px] font-black shrink-0 border shadow-sm transition-colors ${isChecked ? 'bg-[#FCD535] text-black border-[#FCD535]' : 'bg-[#0B0E11] border-[#2B3139] text-gray-500'}`}>{idx + 1}</div>
                                                         <div className="min-w-0">
                                                             <h4 className={`text-sm font-bold uppercase truncate transition-colors ${isChecked ? 'text-gray-200' : 'text-gray-500'}`}>{order['Customer Name']}</h4>
-                                                            <div className="flex items-center gap-3 mt-1.5">
-                                                                <span className="text-[11px] font-bold text-gray-500 font-mono">{order['Customer Phone']}</span>
-                                                                <span className="text-[10px] font-bold text-gray-300 bg-[#0B0E11] px-2.5 py-1 rounded-md border border-[#2B3139] uppercase tracking-widest truncate max-w-[200px] shadow-inner">{order.Location}</span>
+                                                            <div className="flex items-center gap-3 mt-1.5 min-w-0">
+                                                                <span className="text-[11px] font-bold text-gray-500 font-mono shrink-0">{order['Customer Phone']}</span>
+                                                                <div className="flex items-center gap-1.5 min-w-0">
+                                                                    <span className="text-[10px] font-bold text-gray-300 bg-[#0B0E11] px-2.5 py-1 rounded-md border border-[#2B3139] uppercase tracking-widest shrink-0 shadow-inner">{order.Location}</span>
+                                                                    {order['Address Details'] && (
+                                                                        <span className="text-[10px] font-bold text-gray-400 truncate italic bg-[#0B0E11]/50 px-2 py-0.5 rounded border border-[#2B3139]/50">
+                                                                            {order['Address Details']}
+                                                                        </span>
+                                                                    )}
+                                                                </div>
                                                             </div>
                                                         </div>
                                                     </div>
