@@ -101,10 +101,12 @@ const PackagingView: React.FC<{ orders?: ParsedOrder[], onExit?: () => void }> =
         return () => clearTimeout(timer);
     }, [searchTerm]);
 
-    // Reset pagination page on filter/tab changes
+    // Reset pagination page and clear data on filter/tab/store/search changes to prevent showing stale data
     useEffect(() => {
         setCurrentPage(1);
-    }, [activeTab, teamFilter, shippingFilter, selectedStore]);
+        setLocalOrders([]);
+        setTotalOrdersCount(0);
+    }, [activeTab, teamFilter, shippingFilter, selectedStore, debouncedSearchTerm]);
 
     // Fetch packaging orders with pagination & filters
     useEffect(() => {
@@ -113,8 +115,6 @@ const PackagingView: React.FC<{ orders?: ParsedOrder[], onExit?: () => void }> =
         let isMounted = true;
         const loadOrders = async () => {
             setIsLocalOrdersLoading(true);
-            setLocalOrders([]); // Clear old list to avoid displaying incorrect stale data!
-            setTotalOrdersCount(0); // Clear old count
             try {
                 const statusMap: Record<string, string> = {
                     'Pending': 'Pending,Scheduled',
