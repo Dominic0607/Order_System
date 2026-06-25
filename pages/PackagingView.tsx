@@ -91,6 +91,7 @@ const PackagingView: React.FC<{ orders?: ParsedOrder[], onExit?: () => void }> =
     const [isLocalOrdersLoading, setIsLocalOrdersLoading] = useState(false);
     const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
     const [localRefreshTick, setLocalRefreshTick] = useState(0);
+    const wsRefreshThrottleRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
 
     // Debounce search term to avoid hammering backend
     useEffect(() => {
@@ -312,10 +313,25 @@ const PackagingView: React.FC<{ orders?: ParsedOrder[], onExit?: () => void }> =
                 return;
             }
             
+            // Throttle WS-triggered refreshes to at most once every 3 seconds
+            // to prevent hammering the server during reconnect storms
+            if (wsRefreshThrottleRef.current) return;
+            wsRefreshThrottleRef.current = setTimeout(() => {
+                wsRefreshThrottleRef.current = null;
+            }, 3000);
+
             console.log(`[PackagingView] Real-time message detected (${lastMessage.type}). Refreshing local orders...`);
             setLocalRefreshTick(t => t + 1);
         }
     }, [lastMessage]);
+
+    // Also refresh when global refreshTimestamp changes (triggered by other parts of the app)
+    useEffect(() => {
+        if (refreshTimestamp && selectedStore) {
+            setLocalRefreshTick(t => t + 1);
+        }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [refreshTimestamp]);
 
     // 4. Helper Functions (Callables)
     const handleOpenShift = async () => {
@@ -877,7 +893,7 @@ const PackagingView: React.FC<{ orders?: ParsedOrder[], onExit?: () => void }> =
             {packingOrder && (
                 <FastPackTerminal 
                     order={packingOrder} onClose={() => setPackingOrder(null)} 
-                    onSuccess={() => { refreshData(); setPackingOrder(null); setActiveTab('Ready to Ship'); }} 
+                    onSuccess={() => { setPackingOrder(null); setActiveTab('Ready to Ship'); setLocalRefreshTick(t => t + 1); }} 
                 />
             )}
             
