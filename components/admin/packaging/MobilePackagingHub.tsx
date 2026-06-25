@@ -629,7 +629,7 @@ const MobilePackagingHub: React.FC<MobilePackagingHubProps> = ({
                                             </div>
                                         ) : (
                                              <div className="flex gap-2 w-full">
-                                                 <button onClick={(e) => { e.stopPropagation(); onView(order); }} className="flex-1 py-2 bg-[#2B3139]/80 border border-[#2B3139] text-[#EAECEF] rounded-xl text-xs font-medium active:scale-[0.97] transition-all duration-300">View Info</button>
+                                                 <button onClick={(e) => { e.stopPropagation(); onView(order); }} className={`${activeTab === 'Cancelled' || activeTab === 'Shipped' ? 'w-[75px] flex-shrink-0' : 'flex-1'} py-2 bg-[#2B3139]/80 border border-[#2B3139] text-[#EAECEF] rounded-xl text-xs font-medium active:scale-[0.97] transition-all duration-300`}>View</button>
                                                  {activeTab === 'Cancelled' && order['Return Received By'] && (
                                                      <div className="flex-[1.5] flex items-center justify-center border border-[#FCD535]/20 bg-[#FCD535]/5 rounded-xl px-2 overflow-hidden">
                                                          <span className="text-[9px] font-black text-[#FCD535] uppercase truncate" title={order['Return Received By']}>
@@ -658,7 +658,7 @@ const MobilePackagingHub: React.FC<MobilePackagingHubProps> = ({
                                                      </button>
                                                  )}
                                                  {activeTab === 'Shipped' && (
-                                                     <div className="flex gap-2 w-full">
+                                                     <div className="flex-1 flex gap-2 w-full">
                                                          <button 
                                                              onClick={(e) => { e.stopPropagation(); onDeliver(order); }} 
                                                              className="flex-1 relative overflow-hidden group py-2 bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 hover:from-blue-500 hover:via-indigo-500 hover:to-purple-500 text-white text-xs font-black uppercase transition-all duration-300 rounded-xl flex items-center justify-center gap-1.5 shadow-[0_0_15px_rgba(79,70,229,0.3)] hover:shadow-[0_0_25px_rgba(79,70,229,0.5)] active:scale-[0.97] border border-indigo-400/30"

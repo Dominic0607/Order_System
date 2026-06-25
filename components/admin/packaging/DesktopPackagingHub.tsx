@@ -689,7 +689,7 @@ const DesktopPackagingHub: React.FC<DesktopPackagingHubProps> = ({
                                                                 </div>
                                                             </div>
                                                         ) : (
-                                                            <div className={`grid ${activeTab === 'Cancelled' ? 'grid-cols-[80px_1fr]' : 'grid-cols-2'} gap-2`}>
+                                                            <div className={`grid ${activeTab === 'Cancelled' || activeTab === 'Shipped' ? 'grid-cols-[80px_1fr]' : 'grid-cols-2'} gap-2`}>
                                                                 <button onClick={(e) => { e.stopPropagation(); onView(order); }} className={`w-full py-1.5 bg-[#2B3139] hover:bg-[#3B424A] ${B_TEXT_PRIMARY} text-xs font-medium transition-colors rounded-sm`}>Details</button>
                                                                 {!isCancelled && (
                                                                     <>
