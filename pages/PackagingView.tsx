@@ -22,7 +22,7 @@ const bClasses = {
 
 const PackagingView: React.FC<{ orders?: ParsedOrder[], onExit?: () => void }> = ({ orders: propOrders, onExit }) => {
     // 1. Context & States
-    const { appData, refreshData, refreshTimestamp, fetchOrders, currentUser, setMobilePageTitle, appState, setAppState, setIsShiftOpener, setActiveShiftStore, logout } = useContext(AppContext);
+    const { appData, refreshData, refreshTimestamp, fetchOrders, currentUser, setMobilePageTitle, appState, setAppState, setIsShiftOpener, setActiveShiftStore, logout, lastMessage } = useContext(AppContext);
 
     const [selectedStore, setSelectedStore] = useState<string>(() => {
         return localStorage.getItem('selectedStore') || '';
@@ -281,6 +281,33 @@ const PackagingView: React.FC<{ orders?: ParsedOrder[], onExit?: () => void }> =
         window.addEventListener('resize', handleResize);
         return () => window.removeEventListener('resize', handleResize);
     }, []);
+
+    useEffect(() => {
+        if (!lastMessage) return;
+        
+        // Listen to WebSocket order updates or Google Sheets webhook updates
+        if (
+            lastMessage.type === 'new_order' ||
+            lastMessage.type === 'update_order' ||
+            lastMessage.type === 'delete_order' ||
+            lastMessage.type === 'sheet_webhook_sync' ||
+            lastMessage.type === 'update_sheet' ||
+            lastMessage.type === 'add_row' ||
+            lastMessage.type === 'delete_row'
+        ) {
+            // For sheet webhook updates, only refresh if it involves AllOrders
+            if (
+                (lastMessage.type === 'sheet_webhook_sync' || lastMessage.type === 'update_sheet') && 
+                lastMessage.sheetName !== 'AllOrders' && 
+                !lastMessage.sheetName?.startsWith('Orders_')
+            ) {
+                return;
+            }
+            
+            console.log(`[PackagingView] Real-time message detected (${lastMessage.type}). Refreshing local orders...`);
+            setLocalRefreshTick(t => t + 1);
+        }
+    }, [lastMessage]);
 
     // 4. Helper Functions (Callables)
     const handleOpenShift = async () => {
