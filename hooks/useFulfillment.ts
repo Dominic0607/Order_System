@@ -74,11 +74,11 @@ export const useFulfillment = (allOrders: ParsedOrder[], onUpdate?: () => void) 
                     else if (newStatus === 'Pending') chatMsg = `↩️ **[UNDO]** កញ្ចប់ #${id} ត្រូវបានត្រឡប់ទៅសភាពដើមវិញដោយ **${currentUser?.FullName || 'System'}**`;
 
                     if (chatMsg) {
-                        await fetch(`${WEB_APP_URL}/api/chat/send`, {
+                        fetch(`${WEB_APP_URL}/api/chat/send`, {
                             method: 'POST',
                             headers,
                             body: JSON.stringify({ UserName: 'System', MessageType: 'Text', Content: chatMsg })
-                        });
+                        }).catch(e => console.warn("Chat broadcast failed", e));
                     }
                 }
             } catch (e) { console.warn("Chat broadcast failed", e); }

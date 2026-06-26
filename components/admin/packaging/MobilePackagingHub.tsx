@@ -74,6 +74,7 @@ const MobilePackagingHub: React.FC<MobilePackagingHubProps> = ({
     const { previewImage: showFullImage, appData, isShiftOpener, activeShiftStore, currentUser, hasPermission } = useContext(AppContext);
     const [unpackTarget, setUnpackTarget] = useState<ParsedOrder | null>(null);
     const [sendingOrderId, setSendingOrderId] = useState<string | null>(null);
+    const [localSentIds, setLocalSentIds] = useState<Set<string>>(new Set());
 
     const handleSendToDeliveryTelegram = async (order: ParsedOrder) => {
         setSendingOrderId(order['Order ID']);
@@ -91,6 +92,13 @@ const MobilePackagingHub: React.FC<MobilePackagingHubProps> = ({
             const data = await res.json();
             if (data.status !== 'success') {
                 alert('បញ្ជូនបរាជ័យ: ' + (data.message || 'Unknown error'));
+            } else {
+                setLocalSentIds(prev => {
+                    const next = new Set(prev);
+                    next.add(order['Order ID']);
+                    return next;
+                });
+                sessionStorage.setItem(`telegram_sent_${order['Order ID']}`, 'true');
             }
         } catch (err: any) {
             alert('បញ្ជូនបរាជ័យ: ' + err.message);
@@ -116,6 +124,13 @@ const MobilePackagingHub: React.FC<MobilePackagingHubProps> = ({
             const data = await res.json();
             if (data.status !== 'success') {
                 alert('លុបបរាជ័យ: ' + (data.message || 'Unknown error'));
+            } else {
+                setLocalSentIds(prev => {
+                    const next = new Set(prev);
+                    next.delete(order['Order ID']);
+                    return next;
+                });
+                sessionStorage.removeItem(`telegram_sent_${order['Order ID']}`);
             }
         } catch (err: any) {
             alert('លុបបរាជ័យ: ' + err.message);
@@ -137,7 +152,7 @@ const MobilePackagingHub: React.FC<MobilePackagingHubProps> = ({
 
     const getCanSendToDriver = (order: ParsedOrder) => {
         const fs = (order as any).FulfillmentStatus || (order as any)['Fulfillment Status'] || 'Pending';
-        const isReadyForDispatch = fs === 'Ready to Ship';
+        const isReadyForDispatch = fs === 'Ready to Ship' || fs === 'Shipped';
         if (!isReadyForDispatch) return false;
         if (!currentUser) return false;
 
@@ -597,12 +612,12 @@ const MobilePackagingHub: React.FC<MobilePackagingHubProps> = ({
 
                                                 {/* Photo Action */}
                                                 {/* Show sent-status + delete if photo was already sent (regardless of group config) */}
-                                                {!!(order['Delivery Telegram Message ID'] || (order as any)['Delivery Telegram Message ID']) ? (
+                                                {(!!(order['Delivery Telegram Message ID'] || (order as any)['Delivery Telegram Message ID']) || localSentIds.has(order['Order ID']) || sessionStorage.getItem(`telegram_sent_${order['Order ID']}`) === 'true') ? (
                                                     <div className="flex items-center gap-2">
-                                                        <div className="flex-grow flex items-center justify-center gap-2 py-2 bg-[#0ECB81]/10 border border-[#0ECB81]/20 rounded-xl">
-                                                            <Check size={12} className="text-[#0ECB81]" />
-                                                            <span className="text-[10px] font-black text-[#0ECB81] uppercase tracking-widest">Photo Sent to Driver ✓</span>
-                                                        </div>
+                                                        <button disabled className="flex-grow flex items-center justify-center gap-2 py-1.5 bg-[#0ECB81]/10 border border-[#0ECB81]/20 rounded-sm text-[10px] font-black text-[#0ECB81] uppercase tracking-wider cursor-default">
+                                                            <Check size={12} />
+                                                            បញ្ជូនរួចរាល់
+                                                        </button>
                                                         {/* Only show delete button to authorized users */}
                                                         {getCanSendToDriver(order) && (
                                                             <button
@@ -635,15 +650,49 @@ const MobilePackagingHub: React.FC<MobilePackagingHubProps> = ({
                                                 </div>
                                             </div>
                                         ) : (
-                                             <div className="flex gap-2 w-full">
-                                                 <button onClick={(e) => { e.stopPropagation(); onView(order); }} className={`${activeTab === 'Cancelled' || activeTab === 'Shipped' ? 'w-[75px] flex-shrink-0' : 'flex-1'} py-2 bg-[#2B3139]/80 border border-[#2B3139] text-[#EAECEF] rounded-xl text-xs font-medium active:scale-[0.97] transition-all duration-300`}>View</button>
-                                                 {activeTab === 'Cancelled' && order['Return Received By'] && (
-                                                     <div className="flex-[1.5] flex items-center justify-center border border-[#FCD535]/20 bg-[#FCD535]/5 rounded-xl px-2 overflow-hidden">
-                                                         <span className="text-[9px] font-black text-[#FCD535] uppercase truncate" title={order['Return Received By']}>
-                                                             Confirm by: {order['Return Received By']}
-                                                         </span>
-                                                     </div>
-                                                 )}
+                                             <div className="flex flex-col gap-2 w-full">
+                                                {/* If Shipped, also show Telegram Photo Action so they can see sent status and delete */}
+                                                {activeTab === 'Shipped' && (
+                                                    <div className="w-full">
+                                                        {(!!(order['Delivery Telegram Message ID'] || (order as any)['Delivery Telegram Message ID']) || localSentIds.has(order['Order ID']) || sessionStorage.getItem(`telegram_sent_${order['Order ID']}`) === 'true') ? (
+                                                            <div className="flex items-center gap-2">
+                                                                <button disabled className="flex-grow flex items-center justify-center gap-2 py-1.5 bg-[#0ECB81]/10 border border-[#0ECB81]/20 rounded-sm text-[10px] font-black text-[#0ECB81] uppercase tracking-wider cursor-default">
+                                                            <Check size={12} />
+                                                            បញ្ជូនរួចរាល់
+                                                        </button>
+                                                                {getCanSendToDriver(order) && (
+                                                                    <button
+                                                                        onClick={(e) => { e.stopPropagation(); handleDeleteFromDeliveryTelegram(order); }}
+                                                                        disabled={sendingOrderId === order['Order ID']}
+                                                                        className="w-10 h-10 flex items-center justify-center bg-red-500/10 text-red-500 border border-red-500/20 active:scale-95 rounded-xl transition-all disabled:opacity-50"
+                                                                    >
+                                                                        {sendingOrderId === order['Order ID'] ? <Spinner size="xs" /> : <Trash size={16} />}
+                                                                    </button>
+                                                                )}
+                                                            </div>
+                                                        ) : (
+                                                            getDeliveryGroup(order)?.TelegramGroupID ? (
+                                                                <button
+                                                                    onClick={(e) => { e.stopPropagation(); handleSendToDeliveryTelegram(order); }}
+                                                                    disabled={sendingOrderId === order['Order ID'] || !getCanSendToDriver(order)}
+                                                                    className={`w-full flex items-center justify-center gap-2.5 py-2 ${!getCanSendToDriver(order) ? 'bg-[#2B3139] text-gray-500 border border-white/5 cursor-not-allowed' : 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-[0_4px_12px_rgba(37,99,235,0.15)] border border-blue-500/25 active:scale-[0.97]'} rounded-xl text-[10px] font-black uppercase tracking-widest transition-all duration-300 disabled:opacity-50`}
+                                                                >
+                                                                    {sendingOrderId === order['Order ID'] ? <Spinner size="xs" /> : <ImageIcon size={15} />}
+                                                                    {sendingOrderId === order['Order ID'] ? 'Processing...' : 'បញ្ជូនរូបភាពកញ្ចប់ (Send Photo)'}
+                                                                </button>
+                                                            ) : null
+                                                        )}
+                                                    </div>
+                                                )}
+                                                 <div className="flex gap-2 w-full">
+                                                     <button onClick={(e) => { e.stopPropagation(); onView(order); }} className={`${activeTab === 'Cancelled' || activeTab === 'Shipped' ? 'w-[75px] flex-shrink-0' : 'flex-1'} py-2 bg-[#2B3139]/80 border border-[#2B3139] text-[#EAECEF] rounded-xl text-xs font-medium active:scale-[0.97] transition-all duration-300`}>View</button>
+                                                     {activeTab === 'Cancelled' && order['Return Received By'] && (
+                                                         <div className="flex-[1.5] flex items-center justify-center border border-[#FCD535]/20 bg-[#FCD535]/5 rounded-xl px-2 overflow-hidden">
+                                                             <span className="text-[9px] font-black text-[#FCD535] uppercase truncate" title={order['Return Received By']}>
+                                                                 Confirm by: {order['Return Received By']}
+                                                             </span>
+                                                         </div>
+                                                     )}
                                                  {!isCancelled && (
                                                      <>
                                                          {activeTab === 'Pending' && (
@@ -687,7 +736,8 @@ const MobilePackagingHub: React.FC<MobilePackagingHubProps> = ({
                                                      </button>
                                                  )}
                                              </div>
-                                         )}
+                                         </div>
+                                           )}
                                      </div>
 
                                 </div>

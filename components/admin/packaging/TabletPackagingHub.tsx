@@ -75,6 +75,7 @@ const TabletPackagingHub: React.FC<TabletPackagingHubProps> = ({
     const { previewImage: showFullImage, appData, isShiftOpener, activeShiftStore, currentUser, hasPermission } = useContext(AppContext);
     const [unpackTarget, setUnpackTarget] = useState<ParsedOrder | null>(null);
     const [sendingOrderId, setSendingOrderId] = useState<string | null>(null);
+    const [localSentIds, setLocalSentIds] = useState<Set<string>>(new Set());
 
     const handleSendToDeliveryTelegram = async (order: ParsedOrder) => {
         setSendingOrderId(order['Order ID']);
@@ -92,6 +93,13 @@ const TabletPackagingHub: React.FC<TabletPackagingHubProps> = ({
             const data = await res.json();
             if (data.status !== 'success') {
                 alert('បញ្ជូនបរាជ័យ: ' + (data.message || 'Unknown error'));
+            } else {
+                setLocalSentIds(prev => {
+                    const next = new Set(prev);
+                    next.add(order['Order ID']);
+                    return next;
+                });
+                sessionStorage.setItem(`telegram_sent_${order['Order ID']}`, 'true');
             }
         } catch (err: any) {
             alert('បញ្ជូនបរាជ័យ: ' + err.message);
@@ -117,6 +125,13 @@ const TabletPackagingHub: React.FC<TabletPackagingHubProps> = ({
             const data = await res.json();
             if (data.status !== 'success') {
                 alert('លុបបរាជ័យ: ' + (data.message || 'Unknown error'));
+            } else {
+                setLocalSentIds(prev => {
+                    const next = new Set(prev);
+                    next.delete(order['Order ID']);
+                    return next;
+                });
+                sessionStorage.removeItem(`telegram_sent_${order['Order ID']}`);
             }
         } catch (err: any) {
             alert('លុបបរាជ័យ: ' + err.message);
@@ -550,7 +565,7 @@ const TabletPackagingHub: React.FC<TabletPackagingHubProps> = ({
                                                                 <div className="flex flex-col gap-1 min-w-[120px]">
                                                                     {/* Send Photo Action */}
                                                                     {/* Sent badge + delete shown regardless of group config */}
-                                                                    {!!(order['Delivery Telegram Message ID'] || (order as any)['Delivery Telegram Message ID']) ? (
+                                                                    {(!!(order['Delivery Telegram Message ID'] || (order as any)['Delivery Telegram Message ID']) || localSentIds.has(order['Order ID']) || sessionStorage.getItem(`telegram_sent_${order['Order ID']}`) === 'true') ? (
                                                                         <div className="flex items-center gap-1">
                                                                             <div className="flex-grow flex items-center justify-center gap-1 py-1.5 bg-[#0ECB81]/10 border border-[#0ECB81]/20 rounded-sm">
                                                                                 <Check size={10} className="text-[#0ECB81]" />
@@ -594,7 +609,7 @@ const TabletPackagingHub: React.FC<TabletPackagingHubProps> = ({
 
                                                                 {/* Send Photo Action */}
                                                                 {/* Sent badge + delete shown regardless of group config */}
-                                                                {!!(order['Delivery Telegram Message ID'] || (order as any)['Delivery Telegram Message ID']) ? (
+                                                                {(!!(order['Delivery Telegram Message ID'] || (order as any)['Delivery Telegram Message ID']) || localSentIds.has(order['Order ID']) || sessionStorage.getItem(`telegram_sent_${order['Order ID']}`) === 'true') ? (
                                                                     <div className="flex items-center gap-1">
                                                                         <div className="flex-grow flex items-center justify-center gap-1 py-1.5 bg-[#0ECB81]/10 border border-[#0ECB81]/20 rounded-sm">
                                                                             <Check size={10} className="text-[#0ECB81]" />
@@ -632,8 +647,41 @@ const TabletPackagingHub: React.FC<TabletPackagingHubProps> = ({
                                                                 </div>
                                                             </div>
                                                         ) : (
-                                                            <div className="flex gap-1 justify-end">
-                                                                <button onClick={(e) => { e.stopPropagation(); onView(order); }} className={`px-2 py-1 bg-[#2B3139] text-[#EAECEF] rounded-sm text-xs`}>View</button>
+                                                            <div className="flex flex-col gap-2 w-full">
+                                                                {activeTab === 'Shipped' && (
+                                                                    <div className="w-full">
+                                                                        {(!!(order['Delivery Telegram Message ID'] || (order as any)['Delivery Telegram Message ID']) || localSentIds.has(order['Order ID']) || sessionStorage.getItem(`telegram_sent_${order['Order ID']}`) === 'true') ? (
+                                                                            <div className="flex items-center gap-1">
+                                                                                <div className="flex-grow flex items-center justify-center gap-1 py-1.5 bg-[#0ECB81]/10 border border-[#0ECB81]/20 rounded-sm">
+                                                                                    <Check size={10} className="text-[#0ECB81]" />
+                                                                                    <span className="text-[9px] font-black text-[#0ECB81] uppercase tracking-tighter">Sent to Driver ✓</span>
+                                                                                </div>
+                                                                                {getCanSendToDriver(order) && (
+                                                                                    <button
+                                                                                        onClick={(e) => { e.stopPropagation(); handleDeleteFromDeliveryTelegram(order); }}
+                                                                                        disabled={sendingOrderId === order['Order ID']}
+                                                                                        className="w-8 h-8 flex items-center justify-center bg-red-500/10 hover:bg-red-500/20 text-red-500 rounded-sm border border-red-500/20 transition-all active:scale-95 disabled:opacity-50"
+                                                                                    >
+                                                                                        {sendingOrderId === order['Order ID'] ? <Spinner size="xs" /> : <Trash size={12} />}
+                                                                                    </button>
+                                                                                )}
+                                                                            </div>
+                                                                        ) : (
+                                                                            getDeliveryGroup(order)?.TelegramGroupID ? (
+                                                                                <button
+                                                                                    onClick={(e) => { e.stopPropagation(); handleSendToDeliveryTelegram(order); }}
+                                                                                    disabled={sendingOrderId === order['Order ID'] || !getCanSendToDriver(order)}
+                                                                                    className={`w-full flex items-center justify-center gap-1.5 py-1.5 ${!getCanSendToDriver(order) ? 'bg-[#2B3139] text-gray-500 cursor-not-allowed border-[#363C44]' : 'bg-blue-600 hover:bg-blue-500 text-white'} rounded-sm text-[9px] font-black uppercase tracking-tight transition-all active:scale-95 disabled:opacity-50`}
+                                                                                >
+                                                                                    {sendingOrderId === order['Order ID'] ? <Spinner size="xs" /> : <ImageIcon size={14} />}
+                                                                                    {sendingOrderId === order['Order ID'] ? 'Processing...' : 'បញ្ជូនរូបភាពកញ្ចប់'}
+                                                                                </button>
+                                                                            ) : null
+                                                                        )}
+                                                                    </div>
+                                                                )}
+                                                                <div className="flex gap-1 justify-end w-full">
+                                                                    <button onClick={(e) => { e.stopPropagation(); onView(order); }} className={`px-2 py-1 bg-[#2B3139] text-[#EAECEF] rounded-sm text-xs flex-1`}>View</button>
                                                                 {activeTab === 'Cancelled' && order['Return Received By'] && (
                                                                     <div className="flex items-center justify-center border border-[#FCD535]/20 bg-[#FCD535]/5 rounded-sm px-2 overflow-hidden">
                                                                         <span className="text-[9px] font-black text-[#FCD535] uppercase truncate" title={order['Return Received By']}>
@@ -677,6 +725,7 @@ const TabletPackagingHub: React.FC<TabletPackagingHubProps> = ({
                                                                     </button>
                                                                 )}
                                                             </div>
+                                                        </div>
                                                         )}
                                                     </div>
                                                 </div>

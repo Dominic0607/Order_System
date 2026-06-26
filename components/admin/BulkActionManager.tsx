@@ -100,8 +100,8 @@ const BulkActionManager: React.FC<BulkActionManagerProps> = ({ orders, selectedI
                 if (status === 'Returned') newData['Return Reason'] = reason;
                 else newData['Cancel Reason'] = reason;
 
-                // Log to Edit Logs before updating
-                await logOrderEdit(id, fullName, 'Fulfillment Status', order.FulfillmentStatus, status);
+                // Log to Edit Logs before updating (non-blocking)
+                logOrderEdit(id, fullName, 'Fulfillment Status', order.FulfillmentStatus, status);
 
                 return fetch(`${WEB_APP_URL}/api/admin/update-order`, {
                     method: 'POST',
@@ -168,9 +168,9 @@ const BulkActionManager: React.FC<BulkActionManagerProps> = ({ orders, selectedI
             const idArray = Array.from(selectedIds);
             const token = localStorage.getItem('token');
 
-            // Log deletions to Edit Logs first
+            // Log deletions to Edit Logs first (non-blocking)
             for (const id of idArray) {
-                await logOrderEdit(id, fullName, 'Order', 'Existing', 'DELETED (Bulk)');
+                logOrderEdit(id, fullName, 'Order', 'Existing', 'DELETED (Bulk)');
             }
 
             const deletePromises = idArray.map(async (id) => {
@@ -243,10 +243,10 @@ const BulkActionManager: React.FC<BulkActionManagerProps> = ({ orders, selectedI
 
                 const mergedData = { ...originalOrder, ...partialUpdate };
                 
-                // Log significant changes
+                // Log significant changes (non-blocking)
                 for (const key in partialUpdate) {
                     if (originalOrder[key as keyof ParsedOrder] !== partialUpdate[key]) {
-                        await logOrderEdit(id, fullName, key, String(originalOrder[key as keyof ParsedOrder] || ''), String(partialUpdate[key]));
+                        logOrderEdit(id, fullName, key, String(originalOrder[key as keyof ParsedOrder] || ''), String(partialUpdate[key]));
                     }
                 }
                 
@@ -334,7 +334,7 @@ const BulkActionManager: React.FC<BulkActionManagerProps> = ({ orders, selectedI
                 );
 
                 const newIso = newTimestamp.toISOString();
-                await logOrderEdit(id, fullName, 'Timestamp', originalOrder.Timestamp, newIso);
+                logOrderEdit(id, fullName, 'Timestamp', originalOrder.Timestamp, newIso);
 
                 const mergedData = { ...originalOrder, Timestamp: newIso };
                 

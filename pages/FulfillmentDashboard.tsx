@@ -274,9 +274,10 @@ const FulfillmentDashboard: React.FC<FulfillmentDashboardProps> = ({ orders, isL
         if (!confirmed) return;
         setBulkLoading(true);
         try {
-            for (const order of selectedOrders) {
-                await updateStatus(order['Order ID'], activeAction.next, extraDataForStatus(order, activeAction.next));
-            }
+            const promises = selectedOrders.map(order => 
+                updateStatus(order['Order ID'], activeAction.next, extraDataForStatus(order, activeAction.next))
+            );
+            await Promise.all(promises);
             setSelectedIds(new Set());
         } finally {
             setBulkLoading(false);

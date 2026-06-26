@@ -168,14 +168,19 @@ const OrderDetailModal: React.FC<OrderDetailModalProps> = ({ order, onClose, inl
     const { previewImage, appData, isShiftOpener, activeShiftStore, currentUser, hasPermission } = useContext(AppContext);
     const [copiedField, setCopiedField] = useState<string | null>(null);
     const [isSendingTelegram, setIsSendingTelegram] = useState(false);
+    const [localIsSent, setLocalIsSent] = useState(false);
+
+    useEffect(() => {
+        setLocalIsSent(false);
+    }, [order['Order ID']]);
 
     // Permission Check: Only the user who opened the packaging shift for this store can send to driver
     // AND it must be in the "Ready to Ship" (Ready for Dispatch) step.
     const canSendToDriver = useMemo(() => {
         const fs = (order as any).FulfillmentStatus || (order as any)['Fulfillment Status'] || 'Pending';
-        const isReadyForDispatch = fs === 'Ready to Ship';
+        const isReadyForDispatch = fs === 'Ready to Ship' || fs === 'Shipped';
 
-        // Global rule: Only allowed in "Ready to Ship" status
+        // Global rule: Only allowed in "Ready to Ship" or "Shipped" status
         if (!isReadyForDispatch) return false;
         if (!currentUser) return false;
         
@@ -238,7 +243,7 @@ const OrderDetailModal: React.FC<OrderDetailModalProps> = ({ order, onClose, inl
     }, [appData.deliveryGroups, order]);
 
     const hasTelegramGroup = !!deliveryGroup?.TelegramGroupID;
-    const isAlreadySent = !!(order['Delivery Telegram Message ID'] || (order as any)['Delivery Telegram Message ID']);
+    const isAlreadySent = !!(order['Delivery Telegram Message ID'] || (order as any)['Delivery Telegram Message ID']) || localIsSent || sessionStorage.getItem(`telegram_sent_${order['Order ID']}`) === 'true';
 
     const handleSendToDeliveryTelegram = async () => {
         setIsSendingTelegram(true);
@@ -260,6 +265,9 @@ const OrderDetailModal: React.FC<OrderDetailModalProps> = ({ order, onClose, inl
                     errorMsg += ` (${data.details.description})`;
                 }
                 alert('បរាជ័យ: ' + errorMsg);
+            } else {
+                setLocalIsSent(true);
+                sessionStorage.setItem(`telegram_sent_${order['Order ID']}`, 'true');
             }
         } catch (error) {
             console.error("Error sending to telegram:", error);
@@ -287,6 +295,9 @@ const OrderDetailModal: React.FC<OrderDetailModalProps> = ({ order, onClose, inl
             const data = await res.json();
             if (data.status !== 'success') {
                 alert('បរាជ័យ: ' + (data.message || 'មិនស្គាល់បញ្ហា'));
+            } else {
+                setLocalIsSent(false);
+                sessionStorage.removeItem(`telegram_sent_${order['Order ID']}`);
             }
         } catch (error) {
             console.error("Error deleting from telegram:", error);
@@ -789,10 +800,10 @@ const OrderDetailModal: React.FC<OrderDetailModalProps> = ({ order, onClose, inl
                                                             <div className="mt-2 pt-2 border-t border-[#2B3139] border-dashed">
                                                                 {isAlreadySent ? (
                                                                     <div className="flex items-center gap-2">
-                                                                        <div className="flex-grow flex items-center gap-2 px-3 py-1.5 bg-[#0ECB81]/10 border border-[#0ECB81]/20 rounded-lg">
-                                                                            <Check size={10} className="text-[#0ECB81]" />
-                                                                            <span className="text-[8px] font-black text-[#0ECB81] uppercase tracking-widest">បញ្ជូនរូបរួចរាល់ (Sent)</span>
-                                                                        </div>
+                                                                        <button disabled className="flex-grow flex items-center justify-center gap-2 px-3 py-2 bg-[#0ECB81]/10 border border-[#0ECB81]/20 rounded-lg text-[9px] font-black uppercase tracking-widest text-[#0ECB81] shadow-lg cursor-default">
+                                                                            <Check size={12} />
+                                                                            បញ្ជូនរួចរាល់
+                                                                        </button>
                                                                         {(order['Delivery Telegram Message ID'] || (order as any)['Delivery Telegram Message ID']) && (
                                                                             <button 
                                                                                 onClick={(e) => { e.stopPropagation(); handleDeleteFromDeliveryTelegram(); }}
@@ -804,12 +815,12 @@ const OrderDetailModal: React.FC<OrderDetailModalProps> = ({ order, onClose, inl
                                                                             </button>
                                                                         )}
                                                                     </div>
-                                                                ) : String(fs).trim() === 'Ready to Ship' ? (
+                                                                ) : (String(fs).trim() === 'Ready to Ship' || String(fs).trim() === 'Shipped') ? (
                                                                     <button 
                                                                         onClick={(e) => { e.stopPropagation(); handleSendToDeliveryTelegram(); }}
                                                                         disabled={isSendingTelegram || !canSendToDriver}
                                                                         className={`w-full flex items-center justify-center gap-2 px-3 py-2 ${!canSendToDriver ? 'bg-gray-800 text-gray-500 cursor-not-allowed border-gray-700' : 'bg-blue-600 hover:bg-blue-500 text-white'} rounded-lg text-[9px] font-black uppercase tracking-widest transition-all shadow-lg active:scale-95 disabled:opacity-50`}
-                                                                        title={!canSendToDriver ? "អាចផ្ញើបានតែក្នុងស្ថានភាព Ready for Dispatch និងដោយអ្នកបើកវេនប៉ុណ្ណោះ" : "បញ្ជូនរូបភាពកញ្ចប់ទៅ Telegram"}
+                                                                        title={!canSendToDriver ? "អាចផ្ញើបានតែក្នុងស្ថានភាព Ready for Dispatch/Shipped និងដោយអ្នកបើកវេនប៉ុណ្ណោះ" : "បញ្ជូនរូបភាពកញ្ចប់ទៅ Telegram"}
                                                                     >
                                                                         <ImageIcon size={12} className={canSendToDriver ? "text-white" : "text-gray-600"} />
                                                                         {isSendingTelegram ? 'Processing...' : 'បញ្ជូនរូបភាពកញ្ចប់'}
