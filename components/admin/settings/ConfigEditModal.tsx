@@ -386,7 +386,36 @@ const ConfigEditModal: React.FC<ConfigEditModalProps> = ({ section, item, onClos
                             <div className="flex-grow min-w-0">
                                 <p className="text-[#eaecef] font-black text-base truncate">{fullName || 'ឈ្មោះពេញ'}</p>
                                 <p className="text-[#5e6673] font-mono text-sm mt-0.5">@{userName || 'username'}</p>
-                                <p className="text-[10px] text-[#5e6673] mt-2 font-bold">ចុចប្រអប់ 📷 ដើម្បីប្តូររូបភាព</p>
+                                <p className="text-[10px] text-[#5e6673] mt-2 font-bold">📷 Upload ឬ 🔗 Paste URL ខាងក្រោម</p>
+                            </div>
+                        </div>
+
+                        {/* Profile Picture URL input */}
+                        <div>
+                            {renderLabel('🔗 URL រូបភាព Profile — ស្រេចចិត្ត')}
+                            <div className="flex items-center gap-2">
+                                <div className="relative flex-grow">
+                                    <div className="absolute inset-y-0 left-3.5 flex items-center pointer-events-none text-[#5e6673]">
+                                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.826L10.242 9.172a4 4 0 015.656 0l4 4a4 4 0 01-5.656 5.656l-1.102 1.101m-.758-4.826l1.281 1.281" /></svg>
+                                    </div>
+                                    <input
+                                        type="text"
+                                        value={formData['ProfilePictureURL'] || ''}
+                                        onChange={(e) => setFormData((prev: any) => ({ ...prev, ProfilePictureURL: e.target.value }))}
+                                        placeholder="https://... ឬ Google Drive URL"
+                                        className="form-input !py-2.5 !pl-9 !pr-4 text-sm w-full font-mono"
+                                    />
+                                </div>
+                                {formData['ProfilePictureURL'] && (
+                                    <button
+                                        type="button"
+                                        onClick={() => setFormData((prev: any) => ({ ...prev, ProfilePictureURL: '' }))}
+                                        className="flex-shrink-0 w-9 h-9 bg-red-500/10 text-red-400 rounded-xl hover:bg-red-500 hover:text-white transition-all flex items-center justify-center"
+                                        title="លុបរូបភាព"
+                                    >
+                                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" /></svg>
+                                    </button>
+                                )}
                             </div>
                         </div>
 
