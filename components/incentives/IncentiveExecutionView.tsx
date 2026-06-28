@@ -11,6 +11,31 @@ import {
     Trophy, Terminal, Calendar, Target, Layout, Cpu, Zap, ArrowRight, Layers
 } from 'lucide-react';
 
+const formatMonthKhmer = (monthStr: string, lang: 'en' | 'km') => {
+    if (!monthStr) return '';
+    const [year, month] = monthStr.split('-');
+    const monthsKh = [
+        "មករា", "កុម្ភៈ", "មីនា", "មេសា", "ឧសភា", "មិថុនា",
+        "កក្កដា", "សីហា", "កញ្ញា", "តុលា", "វិច្ឆិកា", "ធ្នូ"
+    ];
+    const monthsEn = [
+        "January", "February", "March", "April", "May", "June",
+        "July", "August", "September", "October", "November", "December"
+    ];
+    const mIndex = parseInt(month, 10) - 1;
+    if (lang === 'km') {
+        const yearKh = year.split('').map(char => {
+            const digits: Record<string, string> = {
+                '0': '០', '1': '១', '2': '២', '3': '៣', '4': '៤',
+                '5': '៥', '6': '៦', '7': '៧', '8': '៨', '9': '៩'
+            };
+            return digits[char] || char;
+        }).join('');
+        return `${monthsKh[mIndex]} ${yearKh}`;
+    }
+    return `${monthsEn[mIndex]} ${year}`;
+};
+
 interface IncentiveExecutionViewProps {
     projectId: string;
     orders: ParsedOrder[];
@@ -259,7 +284,11 @@ const IncentiveExecutionView: React.FC<IncentiveExecutionViewProps> = ({ project
                                 <div className="flex items-center gap-3">
                                     <div className="flex items-center gap-2">
                                         <Calendar className="w-3 h-3 text-white/20" />
-                                        <span className="text-[10px] font-black text-white/40 uppercase tracking-[0.2em]">{selectedMonth} PAYOUT_CYCLE</span>
+                                        <span className="text-[10px] font-black text-white/40 uppercase tracking-[0.2em]">
+                                            {language === 'km' 
+                                                ? `វដ្តទូទាត់៖ ${formatMonthKhmer(selectedMonth, 'km')}` 
+                                                : `${formatMonthKhmer(selectedMonth, 'en')} PAYOUT_CYCLE`}
+                                        </span>
                                     </div>
                                     {saveStatus !== 'idle' && (
                                         <div className={`flex items-center gap-2 px-2 py-0.5 rounded-full border text-[9px] font-black uppercase tracking-widest ${
@@ -291,7 +320,9 @@ const IncentiveExecutionView: React.FC<IncentiveExecutionViewProps> = ({ project
                             isLocked ? 'bg-red-500/10 border-red-500/20 text-red-500' : 'bg-white/5 border-white/10 text-white/40'
                         }`}>
                             <div className={`w-1.5 h-1.5 rounded-full ${isLocked ? 'bg-red-500 animate-pulse' : 'bg-white/10'}`} />
-                            {isLocked ? 'CYCLE_LOCKED' : 'CYCLE_OPEN'}
+                            {isLocked 
+                                ? (language === 'km' ? 'វដ្តត្រូវបានចាក់សោ' : 'CYCLE_LOCKED') 
+                                : (language === 'km' ? 'វដ្តកំពុងបើក' : 'CYCLE_OPEN')}
                         </div>
 
                         <button 

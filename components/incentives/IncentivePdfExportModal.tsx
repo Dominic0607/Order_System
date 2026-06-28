@@ -137,6 +137,31 @@ const placeKhmerImg = (
     doc.addImage(img.dataUrl, 'PNG', dx, y, w, h);
 };
 
+const formatMonthKhmer = (monthStr: string, lang: 'en' | 'km') => {
+    if (!monthStr) return '';
+    const [year, month] = monthStr.split('-');
+    const monthsKh = [
+        "មករា", "កុម្ភៈ", "មីនា", "មេសា", "ឧសភា", "មិថុនា",
+        "កក្កដា", "សីហា", "កញ្ញា", "តុលា", "វិច្ឆិកា", "ធ្នូ"
+    ];
+    const monthsEn = [
+        "January", "February", "March", "April", "May", "June",
+        "July", "August", "September", "October", "November", "December"
+    ];
+    const mIndex = parseInt(month, 10) - 1;
+    if (lang === 'km') {
+        const yearKh = year.split('').map(char => {
+            const digits: Record<string, string> = {
+                '0': '០', '1': '១', '2': '២', '3': '៣', '4': '៤',
+                '5': '៥', '6': '៦', '7': '៧', '8': '៨', '9': '៩'
+            };
+            return digits[char] || char;
+        }).join('');
+        return `${monthsKh[mIndex]} ${yearKh}`;
+    }
+    return `${monthsEn[mIndex]} ${year}`;
+};
+
 const IncentivePdfExportModal: React.FC<IncentivePdfExportModalProps> = ({ 
     isOpen, 
     onClose, 
@@ -199,8 +224,15 @@ const IncentivePdfExportModal: React.FC<IncentivePdfExportModalProps> = ({
                 addDocText(reportTitle, pageWidth / 2, 22, 18, [30, 41, 59], 'center', true);
                 addDocText(projectName, pageWidth / 2, 30, 13, [71, 85, 105], 'center', true);
 
-                const periodLabel = language === 'km' ? `គ្រាគណនា: ${selectedMonth}` : `Period: ${selectedMonth}`;
-                const genLabel = language === 'km' ? `កាលបរិច្ឆេទបង្កើត: ${new Date().toLocaleString()}` : `Generated on: ${new Date().toLocaleString()}`;
+                const periodLabel = language === 'km' 
+                    ? `គ្រាគណនា: ${formatMonthKhmer(selectedMonth, 'km')}` 
+                    : `Period: ${formatMonthKhmer(selectedMonth, 'en')}`;
+                
+                const formattedDate = language === 'km' 
+                    ? new Date().toLocaleDateString('km-KH', { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit' }) 
+                    : new Date().toLocaleString();
+                const genLabel = language === 'km' ? `កាលបរិច្ឆេទបង្កើត: ${formattedDate}` : `Generated on: ${new Date().toLocaleString()}`;
+                
                 addDocText(periodLabel, 14, 40, 10, [100, 116, 139]);
                 addDocText(genLabel, pageWidth - 14, 40, 10, [100, 116, 139], 'right');
 
