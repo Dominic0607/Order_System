@@ -555,9 +555,11 @@ func ProcessIncentiveCalculation(db *gorm.DB, projectID uint, month string) ([]I
 				groupSubPerfMap := make(map[string]float64)
 
 				for _, u := range groupUsers {
-					groupTotalPerf += individualPerfMap[u.UserName]
-					for sp, spVal := range individualSubPerfMap[u.UserName] {
-						groupSubPerfMap[sp] += spVal
+					if !rules.IsExcludedForTeam(u, teamName) {
+						groupTotalPerf += individualPerfMap[u.UserName]
+						for sp, spVal := range individualSubPerfMap[u.UserName] {
+							groupSubPerfMap[sp] += spVal
+						}
 					}
 				}
 				
@@ -680,6 +682,11 @@ func ProcessIncentiveCalculation(db *gorm.DB, projectID uint, month string) ([]I
 		}
 	}
 
+	userMap := make(map[string]User, len(allUsers))
+	for _, u := range allUsers {
+		userMap[u.UserName] = u
+	}
+
 	var results []IncentiveResult
 	uniqueUsers := make(map[string]bool)
 	for u := range userRewards {
@@ -696,6 +703,50 @@ func ProcessIncentiveCalculation(db *gorm.DB, projectID uint, month string) ([]I
 	}
 
 	for user := range uniqueUsers {
+		userObj, exists := userMap[user]
+		if !exists {
+			continue
+		}
+
+		// Check if user is excluded from all calculators in this project
+		isExcludedFromAll := true
+		hasApplicableCalc := false
+		for _, calc := range project.Calculators {
+			var rules IncentiveRules
+			if calc.RulesJSON != "" {
+				json.Unmarshal([]byte(calc.RulesJSON), &rules)
+			}
+			if rules.IsIncluded(userObj) {
+				hasApplicableCalc = true
+				if !rules.IsExcluded(userObj) {
+					// Check if they are excluded for all teams they belong to
+					if userObj.Team != "" {
+						userTeams := strings.Split(userObj.Team, ",")
+						teamExcludedCount := 0
+						applicableTeamCount := 0
+						for _, ut := range userTeams {
+							teamName := NormalizeTeamKey(ut)
+							if teamName != "" && rules.IsTeamApplicable(teamName) {
+								applicableTeamCount++
+								if rules.IsExcludedForTeam(userObj, teamName) {
+									teamExcludedCount++
+								}
+							}
+						}
+						if applicableTeamCount > 0 && teamExcludedCount < applicableTeamCount {
+							isExcludedFromAll = false
+						}
+					} else {
+						isExcludedFromAll = false
+					}
+				}
+			}
+		}
+
+		if hasApplicableCalc && isExcludedFromAll {
+			continue // Skip this user entirely from results as they are fully excluded
+		}
+
 		payout := userRewards[user]
 		isCustom := false
 		if customVal, exists := customPayoutMap[user]; exists {
