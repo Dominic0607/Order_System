@@ -117,7 +117,7 @@ const IncentiveExecutionView: React.FC<IncentiveExecutionViewProps> = ({ project
     const handleManualDataChange = (metric: string, tid: string, val: string, pk: string) => {
         if (isLocked || !project?.id) return;
         const valNum = Number(val) || 0;
-        const cellKey = `${pk}_${tid}`;
+        const cellKey = `${pk}_${entryMode === 'team' ? 'team:' : 'user:'}${tid}`;
 
         if (!pendingManual.current[metric]) pendingManual.current[metric] = {};
         pendingManual.current[metric][cellKey] = valNum;
@@ -148,7 +148,9 @@ const IncentiveExecutionView: React.FC<IncentiveExecutionViewProps> = ({ project
 
     const handleManualDataIncrement = (metric: string, tid: string, p: string, delta: number) => {
         if (isLocked || !project?.id) return;
-        const currentVal = pendingManual.current[metric]?.[`${p}_${tid}`]
+        const keyWithPrefix = `${p}_${entryMode === 'team' ? 'team:' : 'user:'}${tid}`;
+        const currentVal = pendingManual.current[metric]?.[keyWithPrefix]
+            ?? (manualDataMap[metric] || {})[keyWithPrefix]
             ?? (manualDataMap[metric] || {})[`${p}_${tid}`]
             ?? 0;
         handleManualDataChange(metric, tid, String(Math.max(0, currentVal + delta)), p);
@@ -484,7 +486,10 @@ const IncentiveExecutionView: React.FC<IncentiveExecutionViewProps> = ({ project
                                                     const id = typeof t === 'string' ? t : t.UserName;
                                                     const label = typeof t === 'string' ? t : t.FullName;
                                                     const rowData = manualDataMap[calc.metricType || ''] || {};
-                                                    const rowTotal = subPeriods.reduce((sum, p) => sum + (rowData[`${p}_${id}`] || 0), 0);
+                                                    const rowTotal = subPeriods.reduce((sum, p) => {
+                                                        const keyWithPrefix = `${p}_${entryMode === 'team' ? 'team:' : 'user:'}${id}`;
+                                                        return sum + (rowData[keyWithPrefix] ?? rowData[`${p}_${id}`] ?? 0);
+                                                    }, 0);
                                                     
                                                     return (
                                                         <tr key={id} className="hover:bg-white/[0.02] transition-colors group">
@@ -495,7 +500,8 @@ const IncentiveExecutionView: React.FC<IncentiveExecutionViewProps> = ({ project
                                                                 )}
                                                             </td>
                                                             {subPeriods.map(p => {
-                                                                const cellVal = rowData[`${p}_${id}`] || 0;
+                                                                const keyWithPrefix = `${p}_${entryMode === 'team' ? 'team:' : 'user:'}${id}`;
+                                                                const cellVal = rowData[keyWithPrefix] ?? rowData[`${p}_${id}`] ?? 0;
                                                                 let activeTier = null;
                                                                 if (calc.achievementTiers) {
                                                                     const tiers = [...calc.achievementTiers]
