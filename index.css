@@ -1348,3 +1348,92 @@ body {
     pointer-events: none !important;
     box-shadow: inset 1px 1px 3px #cbd5e1, inset -1px -1px 3px #ffffff !important;
 }
+
+/* Custom Header Improvements for Neumorphism & Default Themes */
+.incentive-surface .month-picker-wrapper {
+    background-color: #f1f5f9 !important;
+    box-shadow: inset 3px 3px 6px #cbd5e1, inset -3px -3px 6px #ffffff !important;
+    border: none !important;
+}
+
+.incentive-surface .month-picker-input {
+    color: #334155 !important;
+}
+
+.incentive-surface input[type="month"]::-webkit-calendar-picker-indicator {
+    display: none !important;
+}
+
+.incentive-surface .cycle-status-badge {
+    border-radius: 12px !important;
+}
+
+.incentive-surface .cycle-status-badge.status-open {
+    background-color: #e6fbf1 !important;
+    color: #047857 !important;
+    border: 1px solid rgba(4, 120, 87, 0.2) !important;
+    box-shadow: inset 2px 2px 4px #c6f6d5, inset -2px -2px 4px #ffffff !important;
+}
+
+.incentive-surface .cycle-status-badge.status-locked {
+    background-color: #fdf2f2 !important;
+    color: #b91c1c !important;
+    border: 1px solid rgba(185, 28, 28, 0.2) !important;
+    box-shadow: inset 2px 2px 4px #f5c2c2, inset -2px -2px 4px #ffffff !important;
+}
+
+/* Payout Ledger Table Contrast Improvements */
+.incentive-surface table .text-white\/10,
+.incentive-surface table [class*="text-white/10"] {
+    color: #64748b !important; /* Slate 500 for rank numbers (02, 03, etc.) */
+}
+
+.incentive-surface table .text-white\/20,
+.incentive-surface table [class*="text-white/20"] {
+    color: #475569 !important; /* Slate 600 for staff username/role secondary text */
+}
+
+.incentive-surface table .text-white\/30,
+.incentive-surface table [class*="text-white/30"] {
+    color: #334155 !important; /* Slate 700 for performance bar percentage text */
+}
+
+.incentive-surface p[class*="text-white/30"],
+.incentive-surface p.text-white\/30 {
+    color: #475569 !important; /* Slate 600 for section subheadings */
+}
+
+/* Progress Bar Track Contrast */
+.incentive-surface table div[class*="bg-white/5"] {
+    background-color: #cbd5e1 !important; /* Slate 300 track for readability */
+}
+
+/* Breakdown Badge Improvements (Light Theme Overrides) */
+.incentive-surface table .bg-black\/40,
+.incentive-surface table [class*="bg-black/40"] {
+    background-color: #f1f5f9 !important;
+    border-color: #cbd5e1 !important;
+    box-shadow: inset 1px 1px 2px rgba(255, 255, 255, 0.8), 2px 2px 5px rgba(0, 0, 0, 0.05) !important;
+}
+
+.incentive-surface table .bg-black\/40 span.text-white\/40,
+.incentive-surface table [class*="bg-black/40"] span[class*="text-white/40"],
+.incentive-surface table [class*="bg-black/40"] span.text-white\/40 {
+    color: #334155 !important; /* Slate 700 for badge label text */
+}
+
+.incentive-surface table .bg-black\/40 svg.text-white\/20,
+.incentive-surface table [class*="bg-black/40"] svg[class*="text-white/20"] {
+    color: #64748b !important; /* Slate 500 for badge icons (Cpu, etc.) */
+}
+
+.incentive-surface table .bg-black\/40 div.bg-white\/10,
+.incentive-surface table [class*="bg-black/40"] div[class*="bg-white/10"] {
+    background-color: #cbd5e1 !important; /* Slate 300 for badge dividers */
+}
+
+.incentive-surface table .bg-black\/40 span.text-emerald-400,
+.incentive-surface table [class*="bg-black/40"] span.text-emerald-400,
+.incentive-surface table [class*="bg-black/40"] span[class*="text-emerald-400"] {
+    color: #059669 !important; /* Emerald 600 for positive reward amount contrast */
+}

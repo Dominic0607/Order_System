@@ -24,7 +24,7 @@ import { ParsedOrder } from '../types';
 
 type ActiveDashboard = 'admin' | 'orders' | 'reports' | 'settings' | 'fulfillment' | 'packaging' | 'delivery' | 'inventory' | 'incentives' | 'audit';
 type AdminView = 'dashboard' | 'performance';
-type ReportType = 'overview' | 'performance' | 'profitability' | 'forecasting' | 'shipping' | 'sales_team' | 'sales_page';
+type ReportType = 'overview' | 'performance' | 'profitability' | 'forecasting' | 'shipping' | 'sales_team' | 'sales_page' | 'incentive';
 
 const MobileAdminDashboard: React.FC = () => {
     const { 

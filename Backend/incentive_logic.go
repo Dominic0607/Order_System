@@ -571,6 +571,27 @@ func ProcessIncentiveCalculation(db *gorm.DB, projectID uint, month string) ([]I
 					}
 				}
 
+				// Set display performance for team members to team's total performance (not divided)
+				mType := strings.ToLower(strings.TrimSpace(metricType))
+				for _, u := range groupUsers {
+					if !rules.IsExcludedForTeam(u, teamName) {
+						switch mType {
+						case "sales amount", "revenue":
+							if groupTotalPerf > userRevenue[u.UserName] {
+								userRevenue[u.UserName] = groupTotalPerf
+							}
+						case "profit":
+							if groupTotalPerf > userProfit[u.UserName] {
+								userProfit[u.UserName] = groupTotalPerf
+							}
+						case "orders", "order count", "number of orders":
+							if int(groupTotalPerf) > userOrders[u.UserName] {
+								userOrders[u.UserName] = int(groupTotalPerf)
+							}
+						}
+					}
+				}
+
 				// For group methods, calculate reward for this specific team group achievement
 				poolReward := CalculatePayout(calc, groupTotalPerf, "", groupSubPerfMap)
 				if poolReward <= 0 {
@@ -663,19 +684,22 @@ func ProcessIncentiveCalculation(db *gorm.DB, projectID uint, month string) ([]I
 			mType := strings.ToLower(strings.TrimSpace(metricType))
 			for _, u := range targetedUsers {
 				uName := u.UserName
-				val := fullPerfMap[uName] // This val now includes distributed team data
-				switch mType {
-				case "sales amount", "revenue":
-					if val > userRevenue[uName] {
-						userRevenue[uName] = val
-					}
-				case "profit":
-					if val > userProfit[uName] {
-						userProfit[uName] = val
-					}
-				case "orders", "order count", "number of orders":
-					if int(val) > userOrders[uName] {
-						userOrders[uName] = int(val)
+				// Only overwrite with individual/distributed manual performance if it's an individual calculator
+				if distMethod != DistEqualSplit && distMethod != DistPercentageAllocation {
+					val := fullPerfMap[uName]
+					switch mType {
+					case "sales amount", "revenue":
+						if val > userRevenue[uName] {
+							userRevenue[uName] = val
+						}
+					case "profit":
+						if val > userProfit[uName] {
+							userProfit[uName] = val
+						}
+					case "orders", "order count", "number of orders":
+						if int(val) > userOrders[uName] {
+							userOrders[uName] = int(val)
+						}
 					}
 				}
 			}

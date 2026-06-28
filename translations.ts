@@ -194,6 +194,7 @@ export const translations = {
     shipping_report: "ចំណាយដឹកជញ្ជូន",
     sales_team_report: "Sales Team Report",
     sales_page_report: "Sales Page Report",
+    incentive_report: "របាយការណ៍ប្រាក់លើកទឹកចិត្ត",
     apply_filters: "Apply Filters",
     export_pdf: "Export PDF",
 
@@ -708,6 +709,7 @@ export const translations = {
     shipping_report: "Shipping Cost",
     sales_team_report: "Sales Team Report",
     sales_page_report: "Sales Page Report",
+    incentive_report: "Incentive Report",
     apply_filters: "Apply Filters",
     export_pdf: "Export PDF",
 

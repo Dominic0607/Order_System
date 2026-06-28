@@ -8,12 +8,13 @@ import Spinner from '../components/common/Spinner';
 import { WEB_APP_URL } from '../constants';
 import SalesByTeamPage from './SalesByTeamPage';
 import SalesByPageReport from './SalesByPageReport';
+import IncentiveReport from '../components/reports/IncentiveReport';
 import Modal from '../components/common/Modal';
 import OrderFilters, { FilterState, initialFilterState } from '../components/orders/OrderFilters';
 import { useUrlState } from '../hooks/useUrlState';
 import { useFilterEngine } from '../hooks/useFilterEngine';
 
-type ReportType = 'overview' | 'performance' | 'profitability' | 'forecasting' | 'shipping' | 'sales_team' | 'sales_page';
+type ReportType = 'overview' | 'performance' | 'profitability' | 'forecasting' | 'shipping' | 'sales_team' | 'sales_page' | 'incentive';
 
 interface ReportDashboardProps {
     activeReport: ReportType;
@@ -22,7 +23,7 @@ interface ReportDashboardProps {
 }
 
 const ReportDashboard: React.FC<ReportDashboardProps> = ({ activeReport, onBack, onNavigate }) => {
-    const { appData, refreshTimestamp, setMobilePageTitle, orders, isOrdersLoading, fetchOrders, advancedSettings } = useContext(AppContext);
+    const { appData, refreshTimestamp, setMobilePageTitle, orders, isOrdersLoading, fetchOrders, advancedSettings, language } = useContext(AppContext);
     const [usersList, setUsersList] = useState<User[]>([]);
     const [isFilterOpen, setIsFilterOpen] = useState(false);
     
@@ -81,7 +82,8 @@ const ReportDashboard: React.FC<ReportDashboardProps> = ({ activeReport, onBack,
         performance: 'PERFORMANCE',
         profitability: 'PROFITABILITY',
         shipping: 'SHIPPING COST',
-        forecasting: 'FORECASTING'
+        forecasting: 'FORECASTING',
+        incentive: 'INCENTIVE REPORT'
     };
 
     // Update Mobile Header Title
@@ -276,19 +278,23 @@ const ReportDashboard: React.FC<ReportDashboardProps> = ({ activeReport, onBack,
                     <div className="flex items-center gap-2 mt-1">
                         <span className={`w-1.5 h-1.5 rounded-full ${styles.dotColor} animate-pulse`}></span>
                         <p className={`text-[9px] ${styles.accentText} font-black uppercase tracking-widest`}>
-                            {calculatedRange} {activeFilterCount > 0 && ` • ${activeFilterCount} Active`}
+                            {activeReport === 'incentive' 
+                                ? (language === 'km' ? 'របាយការណ៍ប្រាក់លើកទឹកចិត្តបុគ្គលិកប្រចាំខែ' : 'MONTHLY STAFF INCENTIVE AND PAYOUT RECORDS')
+                                : `${calculatedRange} ${activeFilterCount > 0 ? ` • ${activeFilterCount} Active` : ''}`}
                         </p>
                     </div>
                 </div>
                 <div className="flex gap-2 w-full sm:w-auto">
-                    <button 
-                        onClick={() => setIsFilterOpen(true)} 
-                        className={`relative flex-1 sm:flex-none py-2 px-4 rounded-md border ${styles.filterBtn} flex items-center justify-center gap-2 transition-all active:scale-95 text-[10px] font-black uppercase`}
-                    >
-                        <svg className={`w-3.5 h-3.5 ${styles.accentText}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" /></svg>
-                        Filters
-                        {activeFilterCount > 0 && <span className={`absolute -top-1 -right-1 w-4 h-4 ${styles.accentBg} text-white text-[8px] font-black rounded-full flex items-center justify-center border border-gray-900`}>{activeFilterCount}</span>}
-                    </button>
+                    {activeReport !== 'incentive' && (
+                        <button 
+                            onClick={() => setIsFilterOpen(true)} 
+                            className={`relative flex-1 sm:flex-none py-2 px-4 rounded-md border ${styles.filterBtn} flex items-center justify-center gap-2 transition-all active:scale-95 text-[10px] font-black uppercase`}
+                        >
+                            <svg className={`w-3.5 h-3.5 ${styles.accentText}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" /></svg>
+                            Filters
+                            {activeFilterCount > 0 && <span className={`absolute -top-1 -right-1 w-4 h-4 ${styles.accentBg} text-white text-[8px] font-black rounded-full flex items-center justify-center border border-gray-900`}>{activeFilterCount}</span>}
+                        </button>
+                    )}
                 </div>
             </div>
 
@@ -326,6 +332,7 @@ const ReportDashboard: React.FC<ReportDashboardProps> = ({ activeReport, onBack,
                 {activeReport === 'profitability' && <ReportsView orders={filteredOrders} reportType="profitability" allOrders={orders} dateFilter={filters.datePreset} onFilterChange={handleFilterChange} />}
                 {activeReport === 'performance' && <ReportsView orders={filteredOrders} reportType="performance" allOrders={orders} dateFilter={filters.datePreset} onFilterChange={handleFilterChange} />}
                 {activeReport === 'forecasting' && <ReportsView orders={orders} reportType="forecasting" allOrders={orders} dateFilter={filters.datePreset} onFilterChange={handleFilterChange} />}
+                {activeReport === 'incentive' && <IncentiveReport onBack={onBack} />}
             </div>
 
             {/* Global Filter Modal */}

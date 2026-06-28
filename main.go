@@ -756,8 +756,8 @@ func handleLockIncentivePayout(c *gin.Context) {
 		return
 	}
 
-	// 1. Delete existing results for this project/month (assuming results are stored per project, but model lacks month. Let's add month if needed, or rely on Project ID if project is 1 per month. For now, just replace).
-	backend.DB.Where("project_id = ?", req.ProjectID).Delete(&IncentiveResult{})
+	// 1. Delete existing results for this project/month
+	backend.DB.Where("project_id = ? AND (timestamp = ? OR timestamp = '')", req.ProjectID, req.Month).Delete(&IncentiveResult{})
 
 	// 2. Save new results
 	if len(req.Results) > 0 {
@@ -767,6 +767,7 @@ func handleLockIncentivePayout(c *gin.Context) {
 		for i := range req.Results {
 			maxID++
 			req.Results[i].ID = maxID
+			req.Results[i].Timestamp = req.Month
 		}
 		backend.DB.Create(&req.Results)
 

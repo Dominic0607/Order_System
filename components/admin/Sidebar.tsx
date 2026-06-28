@@ -84,6 +84,7 @@ const Sidebar: React.FC<SidebarProps> = ({
         { id: 'shipping', title: t.shipping_report, icon: <i className="fa-solid fa-truck-ramp-box"></i> },
         { id: 'sales_team', title: t.sales_team_report, icon: <i className="fa-solid fa-user-group"></i> },
         { id: 'sales_page', title: t.sales_page_report, icon: <i className="fa-solid fa-window-restore"></i> },
+        { id: 'incentive', title: t.incentive_report, icon: <i className="fa-solid fa-award"></i> },
     ], [t]);
 
     const getThemeStyles = () => {

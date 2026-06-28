@@ -8,7 +8,7 @@ import IncentivePdfExportModal from './IncentivePdfExportModal';
 import {
     ChevronLeft, FileText, Lock, Unlock, Search, CheckCircle, RefreshCw,
     AlertCircle, Activity, Coins, TrendingUp, ShieldCheck, MousePointer2,
-    Trophy, Terminal, Calendar, Target, Layout, Cpu, Zap, ArrowRight, Layers
+    Trophy, Calendar, Target, Layout, Cpu, Zap, ArrowRight, Layers
 } from 'lucide-react';
 
 const formatMonthKhmer = (monthStr: string, lang: 'en' | 'km') => {
@@ -83,6 +83,7 @@ const IncentiveExecutionView: React.FC<IncentiveExecutionViewProps> = ({ project
     const debounceTimer = useRef<NodeJS.Timeout | null>(null);
     const recalcTimer = useRef<NodeJS.Timeout | null>(null);
     const pendingManual = useRef<Record<string, Record<string, number>>>({});
+    const monthInputRef = useRef<HTMLInputElement>(null);
 
     useEffect(() => {
         const fetchProject = async () => {
@@ -95,10 +96,12 @@ const IncentiveExecutionView: React.FC<IncentiveExecutionViewProps> = ({ project
                         setActiveMetricTab(String(activeCalcs[0].id));
                     }
                 }
+            } else {
+                onBack();
             }
         };
         fetchProject();
-    }, [projectId]);
+    }, [projectId, onBack]);
 
     const loadDataAndCalculate = useCallback(async (isSilent = false) => {
         if (!project?.id) return;
@@ -258,7 +261,7 @@ const IncentiveExecutionView: React.FC<IncentiveExecutionViewProps> = ({ project
     return (
         <div className="incentive-surface w-full h-screen bg-[#050505] text-[#EAECEF] font-sans selection:bg-primary/30 flex flex-col overflow-hidden">
             
-            {/* Header: Engineered Protocol Theme */}
+            {/* Header */}
             <header className="bg-[#121212] border-b border-white/5 px-6 py-4 shrink-0 relative overflow-hidden group/header">
                 <div 
                     className="absolute -top-16 -left-16 w-32 h-32 rounded-full blur-[60px] opacity-[0.05] group-hover/header:opacity-[0.1] transition-all duration-700"
@@ -267,7 +270,7 @@ const IncentiveExecutionView: React.FC<IncentiveExecutionViewProps> = ({ project
 
                 <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-6 relative z-10">
                     <div className="flex items-center gap-6 min-w-0">
-                        <button onClick={onBack} className="w-11 h-11 flex items-center justify-center bg-white/5 hover:bg-white/10 border border-white/10 rounded-2xl transition-all text-[#B7BDC6] hover:text-white shrink-0 active:scale-90" title="Back">
+                        <button onClick={onBack} className="w-11 h-11 flex items-center justify-center bg-white/5 hover:bg-white/10 border border-white/10 rounded-2xl transition-all text-[#B7BDC6] hover:text-white shrink-0 active:scale-90" title={language === 'km' ? 'ត្រឡប់ក្រោយ' : 'Back'}>
                             <ChevronLeft className="w-6 h-6" />
                         </button>
                         <div className="h-10 w-px bg-white/10 hidden sm:block" />
@@ -277,27 +280,31 @@ const IncentiveExecutionView: React.FC<IncentiveExecutionViewProps> = ({ project
                                 style={{ boxShadow: `0 0 15px ${project.colorCode || '#F0B90B'}10` }}
                             >
                                 <div className="absolute inset-0 opacity-10 blur-xl" style={{ backgroundColor: project.colorCode || '#F0B90B' }}></div>
-                                <Terminal className="w-5 h-5 relative z-10" style={{ color: project.colorCode || '#F0B90B' }} />
+                                <Activity className="w-5 h-5 relative z-10" style={{ color: project.colorCode || '#F0B90B' }} />
                             </div>
                             <div className="min-w-0">
-                                <h1 className="text-2xl font-black text-white italic tracking-tighter leading-none mb-1.5 truncate">{project.projectName}</h1>
-                                <div className="flex items-center gap-3">
+                                <h1 className="text-2xl font-black text-white tracking-tight leading-none mb-1.5 truncate">{project.projectName}</h1>
+                                <div className="flex items-center gap-3 flex-wrap">
                                     <div className="flex items-center gap-2">
                                         <Calendar className="w-3 h-3 text-white/20" />
-                                        <span className="text-[10px] font-black text-white/40 uppercase tracking-[0.2em]">
+                                        <span className="text-[10px] font-bold text-white/40 tracking-wide">
                                             {language === 'km' 
                                                 ? `វដ្តទូទាត់៖ ${formatMonthKhmer(selectedMonth, 'km')}` 
-                                                : `${formatMonthKhmer(selectedMonth, 'en')} PAYOUT_CYCLE`}
+                                                : `Payout Cycle: ${formatMonthKhmer(selectedMonth, 'en')}`}
                                         </span>
                                     </div>
                                     {saveStatus !== 'idle' && (
-                                        <div className={`flex items-center gap-2 px-2 py-0.5 rounded-full border text-[9px] font-black uppercase tracking-widest ${
+                                        <div className={`flex items-center gap-1.5 px-2.5 py-0.5 rounded-full border text-[9px] font-bold tracking-wide ${
                                             saveStatus === 'saving' ? 'bg-primary/10 border-primary/20 text-primary' : 
                                             saveStatus === 'saved' ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400' : 
                                             'bg-red-500/10 border-red-500/20 text-red-500'
                                         }`}>
-                                            <div className={`w-1 h-1 rounded-full ${saveStatus === 'saving' ? 'bg-primary animate-pulse' : saveStatus === 'saved' ? 'bg-emerald-500' : 'bg-red-500'}`} />
-                                            {saveStatus === 'saving' ? 'SYNCING_DATA' : saveStatus === 'saved' ? 'DATA_COMMITTED' : 'SYNC_ERROR'}
+                                            <div className={`w-1.5 h-1.5 rounded-full ${saveStatus === 'saving' ? 'bg-primary animate-pulse' : saveStatus === 'saved' ? 'bg-emerald-500' : 'bg-red-500'}`} />
+                                            {saveStatus === 'saving' 
+                                                ? (language === 'km' ? 'កំពុងរក្សាទុក...' : 'Saving...') 
+                                                : saveStatus === 'saved' 
+                                                    ? (language === 'km' ? 'រក្សាទុកហើយ ✓' : 'Saved ✓') 
+                                                    : (language === 'km' ? 'កំហុស!' : 'Error!')}
                                         </div>
                                     )}
                                 </div>
@@ -305,65 +312,83 @@ const IncentiveExecutionView: React.FC<IncentiveExecutionViewProps> = ({ project
                         </div>
                     </div>
 
-                    <div className="flex items-center gap-3 overflow-x-auto no-scrollbar">
-                        <div className="flex items-center gap-3 bg-white/5 border border-white/10 rounded-2xl p-1 px-3 h-11 shrink-0">
-                            <Calendar className="w-4 h-4 text-white/20" />
+                    <div className="flex items-center gap-2.5 overflow-x-auto no-scrollbar">
+                        {/* Month Picker */}
+                        <div 
+                            onClick={() => monthInputRef.current?.showPicker()}
+                            className="flex items-center gap-2.5 bg-violet-500/5 border border-violet-500/15 rounded-2xl p-1 px-3 h-11 shrink-0 month-picker-wrapper hover:border-violet-500/30 transition-colors cursor-pointer"
+                        >
+                            <Calendar className="w-4 h-4 text-violet-400" />
                             <input
+                                ref={monthInputRef}
                                 type="month"
                                 value={selectedMonth}
                                 onChange={e => setSelectedMonth(e.target.value)}
-                                className="bg-transparent border-none p-0 text-white font-black text-[11px] tracking-[0.2em] uppercase focus:ring-0 cursor-pointer outline-none min-w-[120px]"
+                                className="bg-transparent border-none p-0 text-white font-bold text-[11px] tracking-wide focus:ring-0 cursor-pointer outline-none min-w-[120px] month-picker-input"
                             />
                         </div>
 
-                        <div className={`h-11 px-4 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] border transition-all duration-500 flex items-center gap-2.5 shrink-0 ${
-                            isLocked ? 'bg-red-500/10 border-red-500/20 text-red-500' : 'bg-white/5 border-white/10 text-white/40'
+                        {/* Cycle Status Badge */}
+                        <div className={`h-11 px-4 rounded-2xl text-[10px] font-bold tracking-wide border transition-all duration-500 flex items-center gap-2 shrink-0 cycle-status-badge ${
+                            isLocked ? 'bg-red-500/10 border-red-500/20 text-red-400 status-locked' : 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400 status-open'
                         }`}>
-                            <div className={`w-1.5 h-1.5 rounded-full ${isLocked ? 'bg-red-500 animate-pulse' : 'bg-white/10'}`} />
+                            <div className={`w-2 h-2 rounded-full ${isLocked ? 'bg-red-500 animate-pulse' : 'bg-emerald-500'}`} />
                             {isLocked 
-                                ? (language === 'km' ? 'វដ្តត្រូវបានចាក់សោ' : 'CYCLE_LOCKED') 
-                                : (language === 'km' ? 'វដ្តកំពុងបើក' : 'CYCLE_OPEN')}
+                                ? (language === 'km' ? 'បានចាក់សោ' : 'Locked') 
+                                : (language === 'km' ? 'កំពុងបើក' : 'Open')}
                         </div>
 
+                        {/* Divider */}
+                        <div className="h-7 w-px bg-white/10 shrink-0 hidden lg:block" />
+
+                        {/* Export PDF */}
                         <button 
                             onClick={() => setIsPdfModalOpen(true)} 
-                            className="h-11 px-5 bg-white/5 hover:bg-white/10 text-white/60 hover:text-white rounded-2xl text-[11px] font-black uppercase tracking-widest transition-all border border-white/10 flex items-center gap-3 active:scale-95 shrink-0"
+                            className="h-11 px-5 rounded-2xl text-[11px] font-bold tracking-wide bg-violet-500/8 border border-violet-500/20 text-violet-300 hover:text-violet-200 hover:bg-violet-500/15 transition-all flex items-center gap-2.5 active:scale-95 shrink-0 hover:border-violet-500/30"
                         >
-                            <FileText className="w-4 h-4" /> EXPORT_PDF
+                            <FileText className="w-4 h-4 text-violet-400 shrink-0" />
+                            {language === 'km' ? 'នាំចេញ PDF' : 'Export PDF'}
                         </button>
 
+                        {/* Commit / Unlock */}
                         <button 
                             onClick={toggleLock} 
-                            className={`h-11 px-5 rounded-2xl text-[11px] font-black uppercase tracking-widest transition-all border flex items-center gap-3 active:scale-95 shrink-0 ${
+                            className={`h-11 px-5 rounded-2xl text-[11px] font-bold tracking-wide transition-all border flex items-center gap-2.5 active:scale-95 shrink-0 ${
                                 isLocked 
-                                    ? 'bg-red-500/10 border-red-500/20 text-red-500 hover:bg-red-500/20' 
-                                    : 'bg-white/5 border-white/10 text-white/60 hover:text-white'
+                                    ? 'bg-red-500/10 border-red-500/20 text-red-400 hover:bg-red-500/20' 
+                                    : 'bg-amber-500/10 border-amber-500/20 text-amber-400 hover:bg-amber-500/15 hover:border-amber-500/30'
                             }`}
                         >
-                            {isLocked ? <><Lock className="w-4 h-4" /> UNLOCK_CYCLE</> : <><Unlock className="w-4 h-4" /> COMMIT_PAYOUT</>}
+                            {isLocked 
+                                ? <><Lock className="w-4 h-4 shrink-0" /> {language === 'km' ? 'ដោះសោ' : 'Unlock'}</> 
+                                : <><Unlock className="w-4 h-4 shrink-0" /> {language === 'km' ? 'បញ្ជាក់ការទូទាត់' : 'Commit Payout'}</>}
                         </button>
 
+                        {/* Manual Data Input Toggle */}
                         {project.dataSource === 'manual' && (
                             <button 
                                 onClick={() => setShowInputPanel(!showInputPanel)} 
-                                className={`h-11 px-5 rounded-2xl text-[11px] font-black uppercase tracking-widest transition-all border flex items-center gap-3 active:scale-95 shrink-0 ${
+                                className={`h-11 px-5 rounded-2xl text-[11px] font-bold tracking-wide transition-all border flex items-center gap-2.5 active:scale-95 shrink-0 ${
                                     showInputPanel 
-                                        ? 'bg-primary text-black border-primary shadow-lg shadow-primary/20' 
-                                        : 'bg-primary/5 border-primary/20 text-primary hover:bg-primary/10'
+                                        ? 'bg-gradient-to-r from-violet-600 to-purple-600 text-white border-violet-500 shadow-lg shadow-violet-500/25' 
+                                        : 'bg-violet-500/8 border-violet-500/20 text-violet-300 hover:bg-violet-500/15 hover:border-violet-500/30'
                                 }`}
                             >
-                                <Layout className="w-4 h-4" />
-                                {showInputPanel ? 'CLOSE_INPUT' : 'DATA_INPUT'}
+                                <Layout className="w-4 h-4 shrink-0" />
+                                {showInputPanel 
+                                    ? (language === 'km' ? 'បិទការបញ្ចូល' : 'Close Input') 
+                                    : (language === 'km' ? 'បញ្ចូលទិន្នន័យ' : 'Data Input')}
                             </button>
                         )}
 
+                        {/* Refresh / Recalculate */}
                         <button 
                             onClick={() => loadDataAndCalculate()} 
                             disabled={isCalculating} 
-                            className="w-11 h-11 bg-white/5 hover:bg-white/10 disabled:opacity-50 text-white/40 hover:text-white rounded-2xl border border-white/10 flex items-center justify-center transition-all shrink-0 active:scale-90" 
-                            title="Recalculate Protocol"
+                            className="w-11 h-11 bg-violet-500/8 hover:bg-violet-500/15 disabled:opacity-50 text-violet-300 hover:text-violet-200 rounded-2xl border border-violet-500/15 flex items-center justify-center transition-all shrink-0 active:scale-90 group hover:border-violet-500/30" 
+                            title={language === 'km' ? 'គណនាឡើងវិញ' : 'Recalculate'}
                         >
-                            <RefreshCw className={`w-5 h-5 ${isCalculating ? 'animate-spin text-primary' : ''}`} />
+                            <RefreshCw className={`w-5 h-5 group-hover:text-violet-300 ${isCalculating ? 'animate-spin text-violet-400' : 'text-violet-400/60'}`} />
                         </button>
                     </div>
                 </div>
@@ -371,27 +396,59 @@ const IncentiveExecutionView: React.FC<IncentiveExecutionViewProps> = ({ project
 
             <main className="flex-1 overflow-auto custom-scrollbar bg-[#050505] p-6 lg:p-8">
                 
-                {/* Protocol KPI Stats */}
+                {/* KPI Summary Cards */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-6 mb-8">
                     {[
-                        { label: 'TOTAL_PAYOUT_RESERVE', value: `$${totalPayout.toLocaleString(undefined, { maximumFractionDigits: 2 })}`, color: 'text-primary', accent: 'bg-primary', icon: Coins, detail: `${preparedResults.length} Qualified_Nodes` },
-                        { label: 'ALPHA_PERFORMER', value: topStaff?.fullName || 'N/A', detail: topStaff ? `$${topStaff.reward.toFixed(2)}_CREDITED` : 'PROTOCOL_PENDING', color: 'text-emerald-500', accent: 'bg-emerald-500', icon: Trophy },
-                        { label: 'MEDIAN_PAYOUT_VAL', value: `$${(totalPayout / (preparedResults.length || 1)).toLocaleString(undefined, { maximumFractionDigits: 0 })}`, color: 'text-white/60', accent: 'bg-white', icon: TrendingUp, detail: 'Average_Per_Entity' },
-                        { label: 'ACTIVE_DATA_NODES', value: String(preparedResults.length), color: 'text-primary', accent: 'bg-primary', icon: ShieldCheck, detail: isLocked ? 'STATE_IMMUTABLE' : 'STATE_VARIABLE' },
+                        { 
+                            label: language === 'km' ? 'ការទូទាត់សរុប' : 'Total Payout', 
+                            value: `$${totalPayout.toLocaleString(undefined, { maximumFractionDigits: 2 })}`, 
+                            color: 'text-amber-400', accent: 'bg-amber-400', icon: Coins, 
+                            borderGlow: 'hover:border-amber-500/20',
+                            iconBg: 'bg-amber-500/10 border-amber-500/15',
+                            detail: language === 'km' ? `${preparedResults.length} នាក់មានសិទ្ធិទទួល` : `${preparedResults.length} qualified staff` 
+                        },
+                        { 
+                            label: language === 'km' ? 'អ្នកឈានមុខគេ' : 'Top Performer', 
+                            value: topStaff?.fullName || 'N/A', 
+                            detail: topStaff 
+                                ? (language === 'km' ? `ទទួលបាន $${topStaff.reward.toFixed(2)}` : `Earned $${topStaff.reward.toFixed(2)}`) 
+                                : (language === 'km' ? 'រង់ចាំទិន្នន័យ' : 'Pending data'), 
+                            color: 'text-violet-400', accent: 'bg-violet-400', icon: Trophy,
+                            borderGlow: 'hover:border-violet-500/20',
+                            iconBg: 'bg-violet-500/10 border-violet-500/15'
+                        },
+                        { 
+                            label: language === 'km' ? 'ការទូទាត់មធ្យម' : 'Average Payout', 
+                            value: `$${(totalPayout / (preparedResults.length || 1)).toLocaleString(undefined, { maximumFractionDigits: 0 })}`, 
+                            color: 'text-purple-300', accent: 'bg-purple-400', icon: TrendingUp, 
+                            borderGlow: 'hover:border-purple-500/20',
+                            iconBg: 'bg-purple-500/10 border-purple-500/15',
+                            detail: language === 'km' ? 'ក្នុងមួយនាក់' : 'Per person' 
+                        },
+                        { 
+                            label: language === 'km' ? 'ចំនួនបុគ្គលិក' : 'Active Staff', 
+                            value: String(preparedResults.length), 
+                            color: 'text-fuchsia-400', accent: 'bg-fuchsia-400', icon: ShieldCheck, 
+                            borderGlow: 'hover:border-fuchsia-500/20',
+                            iconBg: 'bg-fuchsia-500/10 border-fuchsia-500/15',
+                            detail: isLocked 
+                                ? (language === 'km' ? 'ត្រូវបានចាក់សោ' : 'Locked') 
+                                : (language === 'km' ? 'អាចកែប្រែបាន' : 'Editable') 
+                        },
                     ].map((s, i) => (
-                        <div key={i} className="bg-[#121212] border border-white/5 rounded-[32px] p-6 flex flex-col justify-between gap-6 group hover:border-white/10 transition-all shadow-xl">
+                        <div key={i} className={`bg-[#121212] border border-white/5 rounded-[32px] p-6 flex flex-col justify-between gap-6 group ${s.borderGlow} transition-all shadow-xl`}>
                             <div className="flex justify-between items-start">
-                                <div className="space-y-1">
-                                    <p className="text-[9px] font-black text-white/20 uppercase tracking-[0.3em]">{s.label}</p>
+                                <div className="space-y-1.5">
+                                    <p className="text-[10px] font-bold text-white/30 uppercase tracking-wider">{s.label}</p>
                                     <h3 className={`text-2xl font-mono font-black ${s.color} truncate`}>{s.value}</h3>
                                 </div>
-                                <div className={`w-12 h-12 rounded-2xl bg-black border border-white/5 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform`}>
+                                <div className={`w-12 h-12 rounded-2xl ${s.iconBg} border flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform`}>
                                     <s.icon className={`w-6 h-6 ${s.color}`} />
                                 </div>
                             </div>
                             <div className="flex items-center gap-2">
-                                <div className={`w-1 h-1 rounded-full ${s.accent} opacity-40`} />
-                                <p className="text-[9px] font-black text-white/20 uppercase tracking-widest">{s.detail}</p>
+                                <div className={`w-1.5 h-1.5 rounded-full ${s.accent} opacity-40`} />
+                                <p className="text-[10px] font-medium text-white/25 tracking-wide">{s.detail}</p>
                             </div>
                         </div>
                     ))}
@@ -408,7 +465,7 @@ const IncentiveExecutionView: React.FC<IncentiveExecutionViewProps> = ({ project
                             <div className="flex flex-col sm:flex-row sm:items-center gap-4 min-w-0">
                                 <div className="flex items-center gap-2">
                                     <Layers className="w-3.5 h-3.5 text-white/20" />
-                                    <span className="text-[10px] font-black text-white/40 uppercase tracking-[0.2em]">Active_Module</span>
+                                    <span className="text-[10px] font-bold text-white/40 tracking-wide">{language === 'km' ? 'ម៉ូឌុលសកម្ម' : 'Active Module'}</span>
                                 </div>
                                 <div className="flex items-center gap-2 bg-black p-1 rounded-2xl border border-white/5 overflow-x-auto no-scrollbar">
                                     {project.calculators?.filter(c => c.status === 'Active').map(calc => (
@@ -428,7 +485,7 @@ const IncentiveExecutionView: React.FC<IncentiveExecutionViewProps> = ({ project
                             <div className="flex items-center gap-4">
                                 <div className="flex items-center gap-2">
                                     <Target className="w-3.5 h-3.5 text-white/20" />
-                                    <span className="text-[10px] font-black text-white/40 uppercase tracking-[0.2em]">Scale</span>
+                                    <span className="text-[10px] font-bold text-white/40 tracking-wide">{language === 'km' ? 'កម្រិត' : 'Scale'}</span>
                                 </div>
                                 <div className="flex items-center gap-1 bg-black p-1 rounded-2xl border border-white/5">
                                     {(['team', 'user'] as const).map(mode => (
@@ -441,7 +498,9 @@ const IncentiveExecutionView: React.FC<IncentiveExecutionViewProps> = ({ project
                                                     : 'text-white/20 hover:text-white/40'
                                             }`}
                                         >
-                                            {mode === 'team' ? 'TEAMS' : 'ENTITIES'}
+                                            {mode === 'team' 
+                                                ? (language === 'km' ? 'ក្រុម' : 'Teams') 
+                                                : (language === 'km' ? 'បុគ្គល' : 'Individual')}
                                         </button>
                                     ))}
                                 </div>
@@ -451,7 +510,7 @@ const IncentiveExecutionView: React.FC<IncentiveExecutionViewProps> = ({ project
                                 <Search className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-white/20 group-focus-within:text-primary transition-colors" />
                                 <input
                                     type="text"
-                                    placeholder="FILTER_ENGINE_NODES..."
+                                    placeholder={language === 'km' ? 'ស្វែងរក...' : 'Search...'}
                                     value={editorSearch}
                                     onChange={e => setEditorSearch(e.target.value)}
                                     className="w-full h-11 bg-black border border-white/10 rounded-2xl pl-11 pr-11 text-[11px] font-black text-white placeholder:text-white/10 focus:border-primary/50 focus:bg-white/[0.02] outline-none transition-all uppercase tracking-widest"
@@ -496,20 +555,24 @@ const IncentiveExecutionView: React.FC<IncentiveExecutionViewProps> = ({ project
                                     <div key={calc.id} className="relative">
                                         {calc.isMarathon && (
                                             <div className="px-8 py-3 bg-primary/5 border-y border-primary/10 flex items-center gap-4">
-                                                <Trophy className="w-4 h-4 text-primary shadow-[0_0_10px_rgba(252,213,53,0.5)]" />
-                                                <span className="text-[10px] font-black text-primary uppercase tracking-[0.2em] italic underline underline-offset-4 decoration-primary/30">Protocol_Marathon_Active: Cumulative reward aggregation per unique node interval</span>
+                                                <Trophy className="w-4 h-4 text-primary" />
+                                                <span className="text-[10px] font-bold text-primary tracking-wide">
+                                                    {language === 'km' 
+                                                        ? '🏆 Marathon សកម្ម: រង្វាន់បញ្ចូលគ្នាតាមអំឡុងពេល' 
+                                                        : '🏆 Marathon Active: Cumulative rewards per interval'}
+                                                </span>
                                             </div>
                                         )}
                                         <table className="w-full text-left border-collapse min-w-[800px]">
                                             <thead className="sticky top-0 z-20">
-                                                <tr className="bg-black/80 backdrop-blur-xl border-b border-white/10 text-[9px] text-white/30 font-black uppercase tracking-[0.3em]">
-                                                    <th className="px-8 py-4 min-w-[220px] border-r border-white/5">Engine_Node</th>
+                                                <tr className="bg-black/80 backdrop-blur-xl border-b border-white/10 text-[10px] text-white/30 font-bold tracking-wider">
+                                                    <th className="px-8 py-4 min-w-[220px] border-r border-white/5">{language === 'km' ? 'ឈ្មោះ' : 'Name'}</th>
                                                     {subPeriods.map(p => (
                                                         <th key={p} className="px-4 py-4 text-center border-r border-white/5 min-w-[180px]">
-                                                            {p === 'month' ? 'ACCUMULATED_KPI' : p}
+                                                            {p === 'month' ? (language === 'km' ? 'ប្រចាំខែ' : 'Monthly') : p}
                                                         </th>
                                                     ))}
-                                                    <th className="px-8 py-4 text-right text-primary bg-primary/5">Node_Total</th>
+                                                    <th className="px-8 py-4 text-right text-primary bg-primary/5">{language === 'km' ? 'សរុប' : 'Total'}</th>
                                                 </tr>
                                             </thead>
                                             <tbody className="divide-y divide-white/5">
@@ -527,7 +590,7 @@ const IncentiveExecutionView: React.FC<IncentiveExecutionViewProps> = ({ project
                                                             <td className="px-8 py-5 border-r border-white/5 font-black text-white text-xs italic tracking-tight group-hover:text-primary transition-colors">
                                                                 {label}
                                                                 {entryMode === 'user' && typeof t !== 'string' && (
-                                                                    <div className="text-[8px] text-white/20 font-black uppercase tracking-[0.2em] mt-1">{t.Team || 'GLOBAL'}</div>
+                                                                    <div className="text-[9px] text-white/20 font-medium tracking-wide mt-1">{t.Team || (language === 'km' ? 'គ្មានក្រុម' : 'No Team')}</div>
                                                                 )}
                                                             </td>
                                                             {subPeriods.map(p => {
@@ -570,7 +633,7 @@ const IncentiveExecutionView: React.FC<IncentiveExecutionViewProps> = ({ project
                                                                             {activeTier ? (
                                                                                 <div className="flex items-center justify-between px-2 py-1 bg-emerald-500/5 rounded-lg border border-emerald-500/10">
                                                                                     <span className="text-[8px] font-black text-emerald-400 uppercase tracking-tighter">
-                                                                                        {activeTier.name || 'TARGET_REACHED'}
+                                                                                        {activeTier.name || (language === 'km' ? 'គោលដៅសម្រេច' : 'Target Reached')}
                                                                                     </span>
                                                                                     <span className="text-[10px] font-mono font-black text-emerald-400">
                                                                                         +${activeTier.rewardAmount.toFixed(0)}
@@ -609,18 +672,20 @@ const IncentiveExecutionView: React.FC<IncentiveExecutionViewProps> = ({ project
                         <div className="flex items-center gap-5 min-w-0">
                             <div className="w-2 h-8 bg-primary rounded-full shadow-[0_0_15px_rgba(252,213,53,0.3)]" />
                             <div>
-                                <h2 className="text-3xl font-black text-white italic tracking-tighter uppercase leading-none mb-1.5">Payout_Ledger</h2>
-                                <p className="text-[10px] text-white/30 font-black uppercase tracking-[0.3em]">
+                                <h2 className="text-3xl font-black text-white tracking-tight leading-none mb-1.5">
+                                    {language === 'km' ? 'តារាងការទូទាត់' : 'Payout Ledger'}
+                                </h2>
+                                <p className="text-xs text-white/30 font-medium tracking-wide mt-1">
                                     {project?.calculators?.some(c => c.isMarathon) 
-                                        ? 'Aggregate Marathon Protocol Credits & Final Verification' 
-                                        : 'Verified Rewards aggregation and Manual Override Protocol'}
+                                        ? (language === 'km' ? 'ការគណនា Marathon និងផ្ទៀងផ្ទាត់ចុងក្រោយ' : 'Marathon credits & final verification') 
+                                        : (language === 'km' ? 'រង្វាន់ដែលបានផ្ទៀងផ្ទាត់ និងការកែសម្រួល' : 'Verified rewards & manual adjustments')}
                                 </p>
                             </div>
                         </div>
                         <button
                             onClick={() => setIsAdjustMode(!isAdjustMode)}
                             disabled={isLocked}
-                            className={`h-11 px-6 text-[10px] font-black uppercase tracking-widest rounded-2xl border transition-all flex items-center justify-center gap-3 active:scale-95 shadow-lg ${
+                            className={`h-11 px-6 text-[11px] font-bold tracking-wide rounded-2xl border transition-all flex items-center justify-center gap-2.5 active:scale-95 shadow-lg ${
                                 isLocked
                                     ? 'bg-white/5 text-white/20 border-white/5 opacity-50 cursor-not-allowed'
                                     : isAdjustMode
@@ -629,7 +694,9 @@ const IncentiveExecutionView: React.FC<IncentiveExecutionViewProps> = ({ project
                             }`}
                         >
                             <MousePointer2 className="w-4 h-4" />
-                            {isAdjustMode ? 'FINISH_ADJUSTMENTS' : 'INITIATE_OVERRIDE'}
+                            {isAdjustMode 
+                                ? (language === 'km' ? 'រួចរាល់' : 'Done') 
+                                : (language === 'km' ? 'កែសម្រួលការទូទាត់' : 'Adjust Payouts')}
                         </button>
                     </div>
 
@@ -637,12 +704,12 @@ const IncentiveExecutionView: React.FC<IncentiveExecutionViewProps> = ({ project
                         <div className="overflow-x-auto custom-scrollbar">
                             <table className="w-full text-left border-collapse min-w-[1000px]">
                                 <thead>
-                                    <tr className="bg-white/[0.02] border-b border-white/5 text-[9px] text-white/30 font-black uppercase tracking-[0.3em]">
-                                        <th className="px-8 py-5 w-20 text-center border-r border-white/5">RANK</th>
-                                        <th className="px-8 py-5 min-w-[280px] border-r border-white/5">ENTITY_IDENTITY</th>
-                                        <th className="px-8 py-5 border-r border-white/5">PERFORMANCE_INDEX</th>
-                                        <th className="px-8 py-5 border-r border-white/5">LOGIC_COMPONENTS</th>
-                                        <th className="px-8 py-5 text-right">CREDIT_VALUE (USD)</th>
+                                    <tr className="bg-white/[0.02] border-b border-white/5 text-xs text-white/30 font-bold tracking-wider">
+                                        <th className="px-8 py-5 w-20 text-center border-r border-white/5">{language === 'km' ? 'ចំណាត់' : 'Rank'}</th>
+                                        <th className="px-8 py-5 min-w-[280px] border-r border-white/5">{language === 'km' ? 'បុគ្គលិក' : 'Staff'}</th>
+                                        <th className="px-8 py-5 border-r border-white/5">{language === 'km' ? 'សមិទ្ធផល' : 'Performance'}</th>
+                                        <th className="px-8 py-5 border-r border-white/5">{language === 'km' ? 'ការគណនា' : 'Breakdown'}</th>
+                                        <th className="px-8 py-5 text-right">{language === 'km' ? 'រង្វាន់ (USD)' : 'Reward (USD)'}</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-white/5">
@@ -666,7 +733,7 @@ const IncentiveExecutionView: React.FC<IncentiveExecutionViewProps> = ({ project
                                                     </div>
                                                     <div className="min-w-0">
                                                         <p className="font-black text-white text-sm uppercase italic tracking-tight truncate group-hover:text-primary transition-colors">{u.fullName}</p>
-                                                        <p className="text-[9px] text-white/20 font-black uppercase tracking-[0.2em] mt-1">{u.username} // {u.role || 'STAFF_NODE'}</p>
+                                                        <p className="text-[11px] text-white/20 font-medium tracking-wide mt-1">{u.username} · {u.role || (language === 'km' ? 'បុគ្គលិក' : 'Staff')}</p>
                                                     </div>
                                                 </div>
                                             </td>
@@ -682,7 +749,7 @@ const IncentiveExecutionView: React.FC<IncentiveExecutionViewProps> = ({ project
                                                             style={{ width: `${Math.min(100, Math.round((u.performance / maxPerformance) * 100))}%` }}
                                                         />
                                                     </div>
-                                                    <span className="text-[9px] text-white/30 font-black uppercase tracking-widest">
+                                                    <span className="text-[10px] text-white/30 font-black uppercase tracking-wider">
                                                         {Math.round((u.performance / maxPerformance) * 100)}% {u.performanceMetric}
                                                     </span>
                                                 </div>
@@ -695,26 +762,26 @@ const IncentiveExecutionView: React.FC<IncentiveExecutionViewProps> = ({ project
                                                             const calc = project?.calculators?.find(c => c.id === b.calculatorId);
                                                             const isMarathonComponent = calc?.isMarathon;
                                                             return (
-                                                                <div key={i} className={`px-3 py-1.5 bg-black/40 border rounded-xl text-[10px] flex flex-col gap-1 transition-all duration-300 hover:scale-105 ${isMarathonComponent ? 'border-primary/40 bg-primary/5' : 'border-white/5 hover:border-white/20'}`} title={b.description}>
+                                                                <div key={i} className={`px-3 py-1.5 bg-black/40 border rounded-xl text-[11px] flex flex-col gap-1 transition-all duration-300 hover:scale-105 ${isMarathonComponent ? 'border-primary/40 bg-primary/5' : 'border-white/5 hover:border-white/20'}`} title={b.description}>
                                                                     <div className="flex items-center gap-2.5">
                                                                         {isMarathonComponent ? <Trophy className="w-3 h-3 text-primary" /> : <Cpu className="w-3 h-3 text-white/20" />}
-                                                                        <span className={`uppercase tracking-widest font-black text-[9px] ${isMarathonComponent ? 'text-primary' : 'text-white/40'}`}>
-                                                                            {isMarathonComponent ? 'MARATHON_CREDIT' : (b.name || b.calculatorName || 'BONUS_NODE')}
+                                                                        <span className={`uppercase tracking-wider font-black text-[10px] ${isMarathonComponent ? 'text-primary' : 'text-white/40'}`}>
+                                                                            {isMarathonComponent ? 'Marathon' : (b.name || b.calculatorName || (language === 'km' ? 'ប្រាក់រង្វាន់' : 'Bonus'))}
                                                                         </span>
                                                                         <div className="w-px h-3 bg-white/10" />
-                                                                        <span className="text-emerald-400 font-mono font-black">${(b.amount || 0).toFixed(2)}</span>
+                                                                        <span className="text-emerald-400 font-mono font-black text-[11px]">${(b.amount || 0).toFixed(2)}</span>
                                                                     </div>
                                                                 </div>
                                                             );
                                                         })}
                                                         {u.breakdown.length === 0 && (
-                                                            <span className="text-[9px] font-black text-white/10 uppercase tracking-[0.2em]">NO_DATA_BREAKDOWN</span>
+                                                            <span className="text-[9px] font-medium text-white/10 tracking-wide">{language === 'km' ? 'គ្មានទិន្នន័យ' : 'No breakdown'}</span>
                                                         )}
                                                     </div>
                                                 ) : (
                                                     <div className="flex items-center gap-2">
                                                         <Lock className="w-3 h-3 text-white/20" />
-                                                        <span className="text-[9px] font-black text-white/20 uppercase tracking-[0.2em]">CLASSIFIED_PROTOCOL</span>
+                                                        <span className="text-[9px] font-medium text-white/20 tracking-wide">{language === 'km' ? 'មិនអាចមើលបាន' : 'Restricted'}</span>
                                                     </div>
                                                 )}
                                             </td>
@@ -760,7 +827,7 @@ const IncentiveExecutionView: React.FC<IncentiveExecutionViewProps> = ({ project
                                                                     onClick={() => handleCustomPayoutChange(u.username, String(u.baseReward))}
                                                                     className="text-[9px] font-black text-white/20 hover:text-primary uppercase tracking-[0.2em] transition-all"
                                                                 >
-                                                                    RESET_ORIGINAL_${u.baseReward.toFixed(2)}
+                                                                    {language === 'km' ? `កំណត់ដើម $${u.baseReward.toFixed(2)}` : `Reset to $${u.baseReward.toFixed(2)}`}
                                                                 </button>
                                                             )}
                                                         </div>
@@ -773,7 +840,7 @@ const IncentiveExecutionView: React.FC<IncentiveExecutionViewProps> = ({ project
                                                                 {u.isCustom && (
                                                                     <div className="flex items-center gap-1.5 mt-1">
                                                                         <div className="w-1 h-1 rounded-full bg-primary animate-pulse" />
-                                                                        <span className="text-[9px] font-black text-white/30 uppercase tracking-[0.2em]">Manual_Override_Active</span>
+                                                                        <span className="text-[9px] font-medium text-white/30 tracking-wide">{language === 'km' ? 'បានកែសម្រួល' : 'Custom adjusted'}</span>
                                                                     </div>
                                                                 )}
                                                             </div>
@@ -784,7 +851,7 @@ const IncentiveExecutionView: React.FC<IncentiveExecutionViewProps> = ({ project
                                                         <span className="font-mono font-black text-xl text-white/10">
                                                             $***.**
                                                         </span>
-                                                        <span className="text-[9px] font-black text-white/20 uppercase tracking-[0.2em] mt-1">RESTRICTED_ACCESS</span>
+                                                        <span className="text-[9px] font-medium text-white/20 tracking-wide mt-1">{language === 'km' ? 'មិនអាចមើលបាន' : 'Restricted'}</span>
                                                     </div>
                                                 )}
                                             </td>
@@ -799,14 +866,20 @@ const IncentiveExecutionView: React.FC<IncentiveExecutionViewProps> = ({ project
                                 <div className="w-20 h-20 rounded-[32px] bg-black border border-white/5 flex items-center justify-center mx-auto mb-8 shadow-2xl group-hover/empty:scale-110 transition-transform">
                                     <Search className="w-10 h-10 text-white/10" />
                                 </div>
-                                <p className="text-xl font-black text-white italic tracking-tight uppercase mb-2">Null_Data_Detected</p>
-                                <p className="text-sm font-medium text-white/20 uppercase tracking-[0.2em]">No payout records found for the current protocol cycle</p>
+                                <p className="text-xl font-bold text-white tracking-tight mb-2">
+                                    {language === 'km' ? 'មិនមានទិន្នន័យ' : 'No Data Found'}
+                                </p>
+                                <p className="text-sm font-medium text-white/20 tracking-wide">
+                                    {language === 'km' ? 'មិនមានការទូទាត់សម្រាប់វដ្តនេះទេ' : 'No payout records found for this cycle'}
+                                </p>
                             </div>
                         )}
                         {isCalculating && (
                             <div className="py-20 text-center">
                                 <RefreshCw className="w-10 h-10 text-primary animate-spin mx-auto mb-4" />
-                                <p className="text-[10px] font-black text-primary uppercase tracking-[0.4em] animate-pulse">Processing_Protocol_Calculations...</p>
+                                <p className="text-[11px] font-bold text-primary tracking-wide animate-pulse">
+                                    {language === 'km' ? 'កំពុងគណនា...' : 'Calculating...'}
+                                </p>
                             </div>
                         )}
                     </div>

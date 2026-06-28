@@ -23,7 +23,7 @@ import { useUrlState } from '../hooks/useUrlState';
 
 type ActiveDashboard = 'admin' | 'orders' | 'reports' | 'settings' | 'fulfillment' | 'packaging' | 'delivery' | 'inventory' | 'incentives' | 'audit';
 type AdminView = 'dashboard' | 'performance';
-type ReportType = 'overview' | 'performance' | 'profitability' | 'forecasting' | 'shipping' | 'sales_team' | 'sales_page';
+type ReportType = 'overview' | 'performance' | 'profitability' | 'forecasting' | 'shipping' | 'sales_team' | 'sales_page' | 'incentive';
 
 const DesktopAdminDashboard: React.FC<{ isTablet?: boolean }> = ({ isTablet }) => {
     const { 
