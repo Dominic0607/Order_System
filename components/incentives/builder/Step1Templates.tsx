@@ -15,11 +15,12 @@ interface TemplateProps {
 interface Step1TemplatesProps {
     calcType: string;
     calcName: string;
+    selectedTemplateId: string | null;
     onApplyTemplate: (templateId: string) => void;
     onNameChange: (name: string) => void;
 }
 
-const Step1Templates: React.FC<Step1TemplatesProps> = ({ calcType, calcName, onApplyTemplate, onNameChange }) => {
+const Step1Templates: React.FC<Step1TemplatesProps> = ({ calcType, calcName, selectedTemplateId, onApplyTemplate, onNameChange }) => {
     const { language } = React.useContext(AppContext);
     const t = translations[language];
 
@@ -45,9 +46,19 @@ const Step1Templates: React.FC<Step1TemplatesProps> = ({ calcType, calcName, onA
                 <p className="text-white/30 text-[10px] font-black uppercase tracking-[0.3em]">Load template or manual configuration</p>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {templates.filter(tmp => tmp.type === calcType).map(tmp => (
-                    <button key={tmp.id} onClick={() => onApplyTemplate(tmp.id)} className="bg-black/40 border border-white/10 hover:border-[#F0B90B]/50 p-6 rounded-[32px] transition-all group text-left relative overflow-hidden backdrop-blur-xl">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+                {templates.filter(tmp => tmp.type === calcType).map(tmp => {
+                    const isSelected = selectedTemplateId === tmp.id;
+                    return (
+                        <button 
+                            key={tmp.id} 
+                            onClick={() => onApplyTemplate(tmp.id)} 
+                            className={`p-6 rounded-[32px] transition-all group text-left relative overflow-hidden backdrop-blur-xl border ${
+                                isSelected 
+                                    ? `selected-template-card ${calcType === 'Achievement' ? 'border-achievement' : 'border-commission'}` 
+                                    : 'border-white/10 hover:border-[#F0B90B]/50'
+                            }`}
+                        >
                         <div className={`mb-4 ${tmp.color} transition-transform group-hover:scale-110 duration-300`}>{tmp.icon}</div>
                         <div className="text-xs font-black text-white uppercase mb-1 tracking-[0.15em]">{tmp.title}</div>
                         <div className="text-[9px] text-white/40 font-black uppercase tracking-widest leading-relaxed">{tmp.desc}</div>
@@ -55,19 +66,21 @@ const Step1Templates: React.FC<Step1TemplatesProps> = ({ calcType, calcName, onA
                             <MousePointer2 className="w-4 h-4 text-[#F0B90B]" />
                         </div>
                     </button>
-                ))}
+                )})}
             </div>
 
             <div className="pt-8 border-t border-white/5">
-                <div className="flex items-center gap-2 mb-3">
-                    <Terminal className="w-3.5 h-3.5 text-white/30" />
-                    <label className="text-[9px] font-black text-white/30 uppercase tracking-[0.2em]">{t.calc_name}</label>
+                <div className="max-w-xl mx-auto">
+                    <div className="flex items-center gap-2 mb-3">
+                        <Terminal className="w-3.5 h-3.5 text-white/30" />
+                        <label className="text-[9px] font-black text-white/30 uppercase tracking-[0.2em]">{t.calc_name ? t.calc_name.replace(/_/g, ' ') : 'Rule Name'}</label>
+                    </div>
+                    <input 
+                        type="text" value={calcName} onChange={e => onNameChange(e.target.value)}
+                        className="w-full h-14 bg-black border border-white/10 rounded-2xl px-6 text-white font-black focus:border-[#F0B90B]/50 outline-none transition-all uppercase tracking-[0.2em] text-[11px]"
+                        placeholder="..."
+                    />
                 </div>
-                <input 
-                    type="text" value={calcName} onChange={e => onNameChange(e.target.value)}
-                    className="w-full h-14 bg-black border border-white/10 rounded-2xl px-6 text-white font-black focus:border-[#F0B90B]/50 outline-none transition-all uppercase tracking-[0.2em] text-[11px]"
-                    placeholder="..."
-                />
             </div>
         </div>
     );

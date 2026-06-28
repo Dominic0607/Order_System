@@ -64,13 +64,13 @@ const Step4Logic: React.FC<Step4LogicProps> = ({ calcData, updateField }) => {
                             <Target className="w-6 h-6 sm:w-7 sm:h-7 text-[#FCD535]" />
                         </div>
                         <div>
-                            <h3 className="text-lg sm:text-xl font-black text-[#EAECEF] uppercase tracking-[0.2em]">{t.milestone_architecture || 'Milestone_Architecture'}</h3>
+                            <h3 className="text-lg sm:text-xl font-black text-[#EAECEF] uppercase tracking-[0.2em]">{t.milestone_architecture || 'Milestone Architecture'}</h3>
                             <div className="flex flex-wrap items-center gap-2 mt-1">
                                 <span className="text-[9px] sm:text-[10px] font-black text-[#848E9C] uppercase tracking-widest sm:tracking-[0.3em]">{t.milestone_setup || 'Define progressive reward tiers'}</span>
                                 {calcData.isMarathon && (
                                     <div className="flex items-center gap-1.5 bg-[#FCD535]/10 border border-[#FCD535]/30 px-2 py-0.5 rounded-sm">
                                         <Zap className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-[#FCD535] fill-[#FCD535]" />
-                                        <span className="text-[8px] font-black text-[#FCD535] uppercase tracking-widest">Marathon_Active</span>
+                                        <span className="text-[8px] font-black text-[#FCD535] uppercase tracking-widest">Marathon Active</span>
                                     </div>
                                 )}
                             </div>
@@ -79,7 +79,7 @@ const Step4Logic: React.FC<Step4LogicProps> = ({ calcData, updateField }) => {
                     
                     <div className="flex items-center gap-4 bg-[#181A20] p-2 rounded-sm border border-[#2B3139]">
                         <div className="px-4 text-center">
-                            <p className="text-[8px] font-black text-[#848E9C] uppercase tracking-widest">Total_Steps</p>
+                            <p className="text-[8px] font-black text-[#848E9C] uppercase tracking-widest">Total Steps</p>
                             <p className="text-sm font-black text-[#EAECEF]">{tiers.length}</p>
                         </div>
                         <div className="w-px h-8 bg-[#2B3139]"></div>
@@ -103,7 +103,7 @@ const Step4Logic: React.FC<Step4LogicProps> = ({ calcData, updateField }) => {
                                     <div className="h-[2px] w-8 bg-[#FCD535] shadow-[0_0_10px_rgba(252,213,53,0.5)]"></div>
                                     <div className="flex items-baseline gap-3">
                                         <span className="text-xs font-black text-[#EAECEF] uppercase tracking-[0.4em]">
-                                            {groupKey === 'Default' ? 'GLOBAL_PROTOCOL' : groupKey}
+                                            {groupKey === 'Default' ? 'Global Protocol' : groupKey.replace(/_/g, ' ')}
                                         </span>
                                         <span className="text-[9px] font-bold text-[#848E9C] uppercase tracking-widest">{groupTiers.length} THRESHOLDS</span>
                                     </div>
@@ -132,7 +132,7 @@ const Step4Logic: React.FC<Step4LogicProps> = ({ calcData, updateField }) => {
                                                                 <label className="text-[8px] font-black text-[#848E9C] uppercase tracking-[0.2em]">IDENTIFIER</label>
                                                             </div>
                                                             <input 
-                                                                type="text" value={tier.name || ''} placeholder="RULE_NAME"
+                                                                type="text" value={tier.name || ''} placeholder="Rule Name"
                                                                 onChange={e => updateTier(tier.id, 'name', e.target.value)}
                                                                 className="w-full bg-[#0B0E11] border border-[#2B3139] rounded-sm h-11 px-4 text-[10px] font-bold text-[#EAECEF] focus:border-[#FCD535]/40 outline-none transition-all uppercase tracking-widest placeholder:text-[#848E9C]/30 focus:shadow-[0_0_10px_rgba(252,213,53,0.1)]"
                                                             />
@@ -142,7 +142,7 @@ const Step4Logic: React.FC<Step4LogicProps> = ({ calcData, updateField }) => {
                                                         <div className="space-y-2.5">
                                                             <div className="flex items-center gap-2 px-1">
                                                                 <Activity className="w-2.5 h-2.5 text-[#FCD535]/70" />
-                                                                <label className="text-[8px] font-black text-[#848E9C] uppercase tracking-[0.2em]">THRESHOLD_TARGET</label>
+                                                                <label className="text-[8px] font-black text-[#848E9C] uppercase tracking-[0.2em]">Threshold Target</label>
                                                             </div>
                                                             <div className="relative group/input">
                                                                 <div className="absolute left-4 top-1/2 -translate-y-1/2 text-[#FCD535] font-black text-[10px]">$</div>
@@ -158,7 +158,7 @@ const Step4Logic: React.FC<Step4LogicProps> = ({ calcData, updateField }) => {
                                                         <div className="space-y-2.5">
                                                             <div className="flex items-center gap-2 px-1">
                                                                 <Zap className="w-2.5 h-2.5 text-[#0ECB81]/70" />
-                                                                <label className="text-[8px] font-black text-[#848E9C] uppercase tracking-[0.2em]">REWARD_YIELD</label>
+                                                                <label className="text-[8px] font-black text-[#848E9C] uppercase tracking-[0.2em]">Reward Yield</label>
                                                             </div>
                                                             <div className="flex bg-[#0B0E11] border border-[#2B3139] rounded-sm overflow-hidden focus-within:border-[#0ECB81]/40 focus-within:shadow-[0_0_10px_rgba(14,203,129,0.1)] transition-all">
                                                                 <input 
@@ -207,7 +207,7 @@ const Step4Logic: React.FC<Step4LogicProps> = ({ calcData, updateField }) => {
                                             <div className="w-6 h-6 rounded-sm bg-[#181A20] flex items-center justify-center border border-[#2B3139] group-hover/add:bg-[#FCD535]/20 group-hover/add:border-[#FCD535]/30 transition-colors">
                                                 <Plus className="w-3 h-3 group-hover/add:scale-125 transition-transform" /> 
                                             </div>
-                                            APPEND_NEW_THRESHOLD_TO_{groupKey}
+                                            Append New Threshold To {groupKey === 'Default' ? 'Global Protocol' : groupKey.replace(/_/g, ' ')}
                                         </button>
                                     </div>
                                 </div>
@@ -225,7 +225,7 @@ const Step4Logic: React.FC<Step4LogicProps> = ({ calcData, updateField }) => {
                                 onClick={() => handleAddTier()}
                                 className="mt-8 h-12 px-10 bg-[#2B3139] hover:bg-[#FCD535] text-[#EAECEF] hover:text-[#0B0E11] rounded-sm text-[10px] font-black uppercase tracking-widest transition-all border border-transparent hover:shadow-[0_0_20px_rgba(252,213,53,0.3)] active:scale-95"
                             >
-                                Initialize_Logic_Stream
+                                Initialize Logic Stream
                             </button>
                         </div>
                     )}
@@ -241,7 +241,7 @@ const Step4Logic: React.FC<Step4LogicProps> = ({ calcData, updateField }) => {
                     <Layers className="w-6 h-6 sm:w-7 sm:h-7 text-[#0ECB81]" />
                 </div>
                 <div>
-                    <h3 className="text-lg sm:text-xl font-black text-[#EAECEF] uppercase tracking-[0.2em]">{t.commission_rule || 'Commission_Logic_Studio'}</h3>
+                    <h3 className="text-lg sm:text-xl font-black text-[#EAECEF] uppercase tracking-[0.2em]">{t.commission_rule || 'Commission Logic Studio'}</h3>
                     <p className="text-[9px] sm:text-[10px] font-mono font-black text-[#848E9C] uppercase tracking-widest mt-1">{t.calculators_engine_desc}</p>
                 </div>
             </div>
@@ -251,7 +251,7 @@ const Step4Logic: React.FC<Step4LogicProps> = ({ calcData, updateField }) => {
                     <div className="space-y-3">
                         <div className="flex items-center gap-2 px-1">
                             <Terminal className="w-3.5 h-3.5 text-[#848E9C]" />
-                            <label className="text-[8px] font-black text-[#848E9C] uppercase tracking-[0.2em]">{t.reward_method || 'Calculation_Method'}</label>
+                            <label className="text-[8px] font-black text-[#848E9C] uppercase tracking-[0.2em]">{t.reward_method || 'Calculation Method'}</label>
                         </div>
                         <div className="flex p-1 bg-[#181A20] rounded-sm border border-[#2B3139] shadow-inner">
                             {['Percentage', 'Fixed Amount'].map(m => (
@@ -263,7 +263,7 @@ const Step4Logic: React.FC<Step4LogicProps> = ({ calcData, updateField }) => {
                     <div className="space-y-3">
                         <div className="flex items-center gap-2 px-1">
                             <ShieldCheck className="w-3.5 h-3.5 text-[#848E9C]" />
-                            <label className="text-[8px] font-black text-[#848E9C] uppercase tracking-[0.2em]">Trigger_Condition</label>
+                            <label className="text-[8px] font-black text-[#848E9C] uppercase tracking-[0.2em]">Trigger Condition</label>
                         </div>
                         <div className="space-y-2">
                             {['On Total Sales', 'Above Target', 'Per Transaction'].map(c => (
@@ -281,17 +281,17 @@ const Step4Logic: React.FC<Step4LogicProps> = ({ calcData, updateField }) => {
                         <div className="space-y-3 p-5 bg-[#181A20] border border-[#2B3139] rounded-sm animate-in zoom-in-95 duration-300 shadow-[0_10px_30px_rgba(0,0,0,0.2)]">
                             <div className="flex items-center gap-2 px-1">
                                 <ArrowRight className="w-3.5 h-3.5 text-[#FCD535]" />
-                                <label className="text-[8px] font-black text-[#848E9C] uppercase tracking-[0.2em]">{t.target_threshold || 'Target_Threshold_Locked'}</label>
+                                <label className="text-[8px] font-black text-[#848E9C] uppercase tracking-[0.2em]">{t.target_threshold || 'Target Threshold'}</label>
                             </div>
                             <input type="number" value={calcData.targetAmount} onChange={e => updateField('targetAmount', Number(e.target.value))} className="w-full h-11 bg-[#0B0E11] border border-[#2B3139] rounded-sm px-4 text-[13px] font-mono font-black text-[#FCD535] outline-none focus:border-[#FCD535]/50 transition-all focus:shadow-[0_0_10px_rgba(252,213,53,0.1)]" />
-                            <p className="text-[8px] font-black text-[#848E9C] uppercase tracking-widest italic opacity-80 pt-1">Rule: (PERF_KPI - TARGET) × RATE_VAL</p>
+                            <p className="text-[8px] font-black text-[#848E9C] uppercase tracking-widest italic opacity-80 pt-1">Rule: (Perf KPI - Target) × Rate Value</p>
                         </div>
                     )}
 
                     <div className="space-y-3">
                         <div className="flex items-center gap-2 px-1">
                             <Activity className="w-3.5 h-3.5 text-[#848E9C]" />
-                            <label className="text-[8px] font-black text-[#848E9C] uppercase tracking-[0.2em]">{t.multiplier_value || 'Multiplier_Value'} ({calcData.commissionMethod === 'Percentage' ? '%' : '$'})</label>
+                            <label className="text-[8px] font-black text-[#848E9C] uppercase tracking-[0.2em]">{t.multiplier_value || 'Multiplier Value'} ({calcData.commissionMethod === 'Percentage' ? '%' : '$'})</label>
                         </div>
                         <input type="number" value={calcData.commissionRate} onChange={e => updateField('commissionRate', Number(e.target.value))} className="w-full h-14 bg-[#0B0E11] border border-[#2B3139] rounded-sm px-6 text-2xl font-mono font-black text-[#FCD535] outline-none focus:border-[#FCD535]/50 transition-all shadow-inner focus:shadow-[0_0_15px_rgba(252,213,53,0.15)]" />
                     </div>

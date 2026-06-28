@@ -55,10 +55,10 @@ const Step2Configuration: React.FC<Step2ConfigurationProps> = ({ calcData, updat
                                 value={calcData.commissionType} onChange={e => updateField('commissionType', e.target.value)}
                                 className="w-full h-11 bg-[#050505] border border-[#1A1A1A] rounded px-4 text-[11px] font-bold text-[#EAECEF] outline-none focus:border-[#F0B90B]/50 transition-all cursor-pointer uppercase tracking-widest"
                             >
-                                <option value="Flat Commission">{t.flat_commission || 'FLAT_COMMISSION'}</option>
-                                <option value="Above Target Commission">{t.above_target_protocol || 'ABOVE_TARGET_PROTOCOL'}</option>
-                                <option value="Tiered Commission">{t.tiered_distribution || 'TIERED_DISTRIBUTION'}</option>
-                                <option value="Product-Based Commission">PRODUCT_SPECIFIC_LOGIC</option>
+                                <option value="Flat Commission">{t.flat_commission || 'Flat Commission'}</option>
+                                <option value="Above Target Commission">{t.above_target_protocol || 'Above Target Commission'}</option>
+                                <option value="Tiered Commission">{t.tiered_distribution || 'Tiered Commission'}</option>
+                                <option value="Product-Based Commission">Product Specific Logic</option>
                             </select>
                         </div>
                     )}

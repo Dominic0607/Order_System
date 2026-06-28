@@ -10,7 +10,7 @@ import {
     Copy, Edit3, Trash2, Calendar, Database,
     Activity, AlertCircle, RefreshCw, TrendingUp,
     Target, Layers, ArrowRight,
-    Terminal, Box, Cpu, Plus
+    Terminal, Box, Cpu, Plus, Trophy
 } from 'lucide-react';
 
 interface IncentiveProjectDetailsProps {
@@ -97,7 +97,7 @@ const IncentiveProjectDetails: React.FC<IncentiveProjectDetailsProps> = ({ proje
 
     if (isLoading && !project) {
         return (
-            <div className="min-h-screen bg-[#050505] flex items-center justify-center text-[#EAECEF]">
+            <div className="incentive-surface min-h-screen bg-[#050505] flex items-center justify-center text-[#EAECEF]">
                 <div className="flex flex-col items-center gap-4">
                     <div className="w-8 h-8 border-2 border-[#F0B90B]/20 border-t-[#F0B90B] rounded-full animate-spin"></div>
                     <p className="text-xs text-[#707A8A] font-semibold">Loading project settings...</p>
@@ -108,7 +108,7 @@ const IncentiveProjectDetails: React.FC<IncentiveProjectDetailsProps> = ({ proje
 
     if (error || !project) {
         return (
-            <div className="min-h-screen bg-[#050505] p-8 flex flex-col items-center justify-center text-center">
+            <div className="incentive-surface min-h-screen bg-[#050505] p-8 flex flex-col items-center justify-center text-center">
                 <AlertCircle className="w-12 h-12 text-[#F6465D]/50 mb-4" />
                 <h2 className="text-lg font-bold text-[#EAECEF] mb-2">Project could not be loaded</h2>
                 <p className="text-[#707A8A] text-sm mb-8 max-w-xs">{error || 'Project data was unavailable.'}</p>
@@ -122,7 +122,7 @@ const IncentiveProjectDetails: React.FC<IncentiveProjectDetailsProps> = ({ proje
 
     if (isBuilderOpen) {
         return (
-            <div className="bg-[#050505] min-h-screen">
+            <div className="incentive-surface bg-[#050505] h-screen overflow-hidden">
                 <CalculatorBuilder 
                     projectId={project.id}
                     initialData={editingCalculator || undefined}
@@ -162,14 +162,14 @@ const IncentiveProjectDetails: React.FC<IncentiveProjectDetailsProps> = ({ proje
                                 style={{ boxShadow: `0 0 15px ${project.colorCode || '#F0B90B'}10` }}
                             >
                                 <div className="absolute inset-0 opacity-10 blur-xl" style={{ backgroundColor: project.colorCode || '#F0B90B' }}></div>
-                                <Terminal className="w-5 h-5 relative z-10" style={{ color: project.colorCode || '#F0B90B' }} />
+                                <Award className="w-5 h-5 relative z-10" style={{ color: project.colorCode || '#F0B90B' }} />
                             </div>
                             <div className="min-w-0">
                                 <h2 className="text-2xl font-black text-white italic tracking-tighter leading-none mb-1.5 truncate">
-                                    {project.projectName}
+                                    {project.projectName.replace(/_/g, ' ')}
                                 </h2>
                                 <div className="flex items-center gap-2">
-                                    <span className="text-[10px] font-black text-white/20 uppercase tracking-[0.2em]">Protocol_ID</span>
+                                    <span className="text-[10px] font-black text-white/20 uppercase tracking-[0.2em]">Protocol ID</span>
                                     <span className="text-[10px] font-mono font-bold text-white/40">#{String(project.id).padStart(4, '0')}</span>
                                 </div>
                             </div>
@@ -184,7 +184,7 @@ const IncentiveProjectDetails: React.FC<IncentiveProjectDetailsProps> = ({ proje
                         }`}>
                             <span className="flex items-center gap-2">
                                 <div className={`w-2 h-2 rounded-full animate-pulse ${project.status === 'Active' ? 'bg-[#0ECB81]' : 'bg-[#F0B90B]'}`}></div>
-                                {project.status === 'Active' ? 'PROTOCOL_ACTIVE' : 'SYSTEM_DRAFT'}
+                                {project.status === 'Active' ? 'Protocol Active' : 'System Draft'}
                             </span>
                         </div>
                         <button 
@@ -192,7 +192,7 @@ const IncentiveProjectDetails: React.FC<IncentiveProjectDetailsProps> = ({ proje
                             className="h-11 px-5 bg-white/5 hover:bg-white/10 text-white/60 hover:text-white rounded-2xl text-[11px] font-black uppercase tracking-widest transition-all border border-white/10 flex items-center gap-3 active:scale-95"
                         >
                             <Settings className="w-4 h-4" />
-                            CONFIG_PROJECT
+                            Config Project
                         </button>
                     </div>
                 </div>
@@ -206,14 +206,14 @@ const IncentiveProjectDetails: React.FC<IncentiveProjectDetailsProps> = ({ proje
                             <div className="flex items-center gap-3 mb-2">
                                 <div className="w-1.5 h-4 bg-primary rounded-full"></div>
                                 <h3 className="text-[10px] font-black text-white/40 uppercase tracking-[0.3em]">
-                                    CORE_OVERVIEW
+                                    Core Overview
                                 </h3>
                             </div>
                             <div className="space-y-4">
                                 {[
-                                    { icon: Database, label: 'DATA_SOURCE', value: project.dataSource || 'system', accent: 'text-primary' },
-                                    { icon: Calendar, label: 'INITIALIZED', value: formatDate(project.createdAt), accent: 'text-white/60' },
-                                    { icon: Target, label: 'TARGET_ENTITY', value: project.targetTeam || 'GLOBAL_PROTOCOL', accent: 'text-primary' }
+                                    { icon: Database, label: 'Data Source', value: String(project.dataSource || 'system').replace(/_/g, ' '), accent: 'text-primary' },
+                                    { icon: Calendar, label: 'Initialized', value: formatDate(project.createdAt), accent: 'text-white/60' },
+                                    { icon: Target, label: 'Target Entity', value: String(project.targetTeam || 'GLOBAL_PROTOCOL').replace(/_/g, ' '), accent: 'text-primary' }
                                 ].map((item, i) => (
                                     <div key={i} className="bg-white/[0.03] p-4 rounded-2xl border border-white/5 group/item hover:bg-white/[0.05] transition-all">
                                         <p className="text-[9px] font-black text-white/20 mb-2.5 flex items-center gap-2 tracking-widest">
@@ -229,7 +229,7 @@ const IncentiveProjectDetails: React.FC<IncentiveProjectDetailsProps> = ({ proje
                             <div className="flex items-center gap-3 mb-2">
                                 <div className="w-1.5 h-4 bg-emerald-500 rounded-full"></div>
                                 <h3 className="text-[10px] font-black text-white/40 uppercase tracking-[0.3em]">
-                                    LOGIC_MODULES
+                                    Logic Modules
                                 </h3>
                             </div>
                             <div className="grid grid-cols-2 gap-4">
@@ -256,16 +256,16 @@ const IncentiveProjectDetails: React.FC<IncentiveProjectDetailsProps> = ({ proje
                 </aside>
 
                 <main className="bg-[#050505] p-8 sm:p-12">
-                    <div className="max-w-5xl mx-auto space-y-12">
+                    <div className="max-w-none w-full space-y-12">
                         <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-8 border-b border-white/5 pb-10">
                             <div className="flex items-center gap-6 min-w-0">
                                 <div className="w-2 h-8 bg-primary rounded-full shadow-[0_0_15px_rgba(252,213,53,0.3)]"></div>
                                 <div>
                                     <h3 className="text-3xl font-black text-white italic tracking-tighter uppercase leading-none mb-2">
-                                        Logic_Studio
+                                        Logic Studio
                                     </h3>
                                     <p className="text-xs text-white/30 font-black uppercase tracking-[0.3em]">
-                                        {project.calculators?.length || 0} Modules_Deployed
+                                        {project.calculators?.length || 0} Modules Deployed
                                     </p>
                                 </div>
                             </div>
@@ -276,14 +276,14 @@ const IncentiveProjectDetails: React.FC<IncentiveProjectDetailsProps> = ({ proje
                                     className="h-12 px-6 bg-[#FCD535] hover:bg-[#FCD535]/90 text-black rounded-sm text-[11px] font-black transition-all flex items-center justify-center gap-3 active:scale-95 shadow-[0_0_20px_rgba(252,213,53,0.2)] hover:shadow-[0_0_30px_rgba(252,213,53,0.4)] uppercase tracking-[0.2em]"
                                 >
                                     <Award className="w-5 h-5" />
-                                    Deploy_Achievement
+                                    Deploy Achievement
                                 </button>
                                 <button
                                     onClick={() => openBuilderNew('Commission')}
                                     className="h-12 px-6 bg-[#0ECB81] hover:bg-[#0CA66B] text-[#0B0E11] rounded-sm text-[11px] font-black transition-all flex items-center justify-center gap-3 active:scale-95 shadow-[0_0_20px_rgba(14,203,129,0.2)] hover:shadow-[0_0_30px_rgba(14,203,129,0.4)] uppercase tracking-[0.2em]"
                                 >
                                     <DollarSign className="w-5 h-5" />
-                                    Deploy_Commission
+                                    Deploy Commission
                                 </button>
                             </div>                        </div>
 
@@ -310,12 +310,12 @@ const IncentiveProjectDetails: React.FC<IncentiveProjectDetailsProps> = ({ proje
                                             <div className="flex items-center gap-6 min-w-0">
                                                 <div 
                                                     className={`w-16 h-16 rounded-2xl bg-black border flex items-center justify-center shrink-0 transition-all duration-500 group-hover:scale-110 relative overflow-hidden ${
-                                                        calc.type === 'Achievement' ? 'border-primary/20 text-primary' : 'border-emerald-500/20 text-emerald-400'
+                                                        calc.type === 'Achievement' ? 'border-[#b45309]/20 text-[#b45309]' : 'border-[#047857]/20 text-[#047857]'
                                                     }`}
                                                     style={{ boxShadow: `0 0 20px ${calc.type === 'Achievement' ? '#FCD53510' : '#10B98110'}` }}
                                                 >
                                                     <div className="absolute inset-0 opacity-10 blur-xl" style={{ backgroundColor: calc.type === 'Achievement' ? '#FCD535' : '#10B981' }}></div>
-                                                    {calc.type === 'Achievement' ? <Zap className="w-8 h-8 relative z-10" /> : <TrendingUp className="w-8 h-8 relative z-10" />}
+                                                    {calc.type === 'Achievement' ? <Trophy className="w-8 h-8 relative z-10" /> : <TrendingUp className="w-8 h-8 relative z-10" />}
                                                 </div>
                                                 <div className="min-w-0">
                                                     <h4 className="text-xl font-black text-white truncate italic tracking-tight mb-2 group-hover:text-primary transition-colors">
@@ -323,7 +323,7 @@ const IncentiveProjectDetails: React.FC<IncentiveProjectDetailsProps> = ({ proje
                                                     </h4>
                                                     <div className="flex items-center gap-3">
                                                         <span className={`text-[9px] font-black px-2.5 py-1 rounded-full border uppercase tracking-widest ${
-                                                            calc.type === 'Achievement' ? 'bg-primary/10 border-primary/20 text-primary' : 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400'
+                                                            calc.type === 'Achievement' ? 'bg-[#fffbeb] border-[#b45309]/20 text-[#b45309]' : 'bg-[#e6fbf1] border-[#047857]/20 text-[#047857]'
                                                         }`}>
                                                             {calc.type === 'Achievement' ? 'Achievement' : 'Commission'}
                                                         </span>
@@ -342,7 +342,7 @@ const IncentiveProjectDetails: React.FC<IncentiveProjectDetailsProps> = ({ proje
                                                     <p className="text-[9px] text-white/20 font-black uppercase tracking-widest flex items-center gap-2">
                                                         <Target className="w-3 h-3" /> Metric
                                                     </p>
-                                                    <p className="text-sm font-black text-white/80 truncate uppercase tracking-tight italic">{calc.metricType || 'Custom KPI'}</p>
+                                                    <p className="text-sm font-black text-white/80 truncate uppercase tracking-tight italic">{String(calc.metricType || 'Custom KPI').replace(/_/g, ' ')}</p>
                                                 </div>
                                                 <div className="space-y-2">
                                                     <p className="text-[9px] text-white/20 font-black uppercase tracking-widest flex items-center gap-2">
@@ -352,10 +352,10 @@ const IncentiveProjectDetails: React.FC<IncentiveProjectDetailsProps> = ({ proje
                                                 </div>
                                                 <div className="space-y-2">
                                                     <p className="text-[9px] text-white/20 font-black uppercase tracking-widest flex items-center gap-2">
-                                                        <Terminal className="w-3 h-3" /> Logic_Rule
+                                                        <Terminal className="w-3 h-3" /> Logic Rule
                                                     </p>
                                                     <p className="text-sm font-mono font-black text-primary truncate">
-                                                        {calc.type === 'Achievement' ? `${calc.achievementTiers?.length || 0}_NODES` : (calc.commissionType || 'STATIC').toUpperCase()}
+                                                        {calc.type === 'Achievement' ? `${calc.achievementTiers?.length || 0} Nodes` : String(calc.commissionType || 'STATIC').toUpperCase().replace(/_/g, ' ')}
                                                     </p>
                                                 </div>
                                             </div>
@@ -374,12 +374,12 @@ const IncentiveProjectDetails: React.FC<IncentiveProjectDetailsProps> = ({ proje
                                         </div>
                                         
                                         {calc.type === 'Achievement' && calc.achievementTiers && (
-                                            <div className="bg-white/[0.01] px-6 sm:px-8 py-4 border-t border-white/5 flex flex-col sm:flex-row sm:items-center gap-6 overflow-hidden">
+                                            <div className="bg-white/[0.01] px-6 sm:px-8 py-5 border-t border-white/5 flex flex-col gap-4 items-start overflow-hidden">
                                                 <div className="flex items-center gap-3 shrink-0">
                                                     <div className="w-1.5 h-4 bg-primary rounded-full shadow-[0_0_10px_rgba(252,213,53,0.2)]"></div>
-                                                    <span className="text-[9px] font-black text-white/20 uppercase tracking-[0.3em]">Protocol_Nodes</span>
+                                                    <span className="text-[9px] font-black text-white/20 uppercase tracking-[0.3em]">Protocol Nodes</span>
                                                 </div>
-                                                <div className="flex items-center gap-4 overflow-x-auto custom-scrollbar no-scrollbar pb-1 sm:pb-0">
+                                                <div className="flex flex-wrap items-center gap-x-4 gap-y-3 pb-1 sm:pb-0">
                                                     {[...calc.achievementTiers].sort((a,b) => (a.subPeriod || '').localeCompare(b.subPeriod || '') || a.target - b.target).map((tier, i, arr) => (
                                                         <div key={tier.id} className="flex items-center gap-4 shrink-0">
                                                             <div className="px-5 py-3 bg-black/40 border border-white/5 rounded-[20px] flex items-center gap-4 hover:border-primary/40 hover:bg-black/60 transition-all duration-300 group/node shadow-lg">

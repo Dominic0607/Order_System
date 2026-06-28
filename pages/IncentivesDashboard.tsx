@@ -8,7 +8,7 @@ import {
     TrendingUp, Plus, Copy, Settings2,
     ChevronLeft, Search, Zap, Terminal, Cpu,
     ArrowUpDown, AlertCircle, RefreshCw, Gift,
-    ShieldCheck, Target, Activity, ExternalLink, Layers
+    ShieldCheck, Target, Activity, ExternalLink, Layers, Award
 } from 'lucide-react';
 
 interface IncentivesDashboardProps {
@@ -167,10 +167,10 @@ const IncentivesDashboard: React.FC<IncentivesDashboardProps> = ({ onOpenProject
 
                 <section className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
                     {[
-                        { label: t.total_projects, value: stats.total, color: '#EAECEF', icon: Layers, detail: 'Programs in workspace' },
-                        { label: t.active_projects, value: stats.active, color: '#0ECB81', icon: ShieldCheck, detail: 'Ready for execution' },
-                        { label: 'Draft projects', value: stats.draft, color: '#F0B90B', icon: Activity, detail: 'Still being configured' },
-                        { label: t.total_calculators, value: stats.calculators, color: '#B7BDC6', icon: Target, detail: 'Rules across projects' }
+                        { label: t.total_projects, value: stats.total, color: '#0f172a', icon: Layers, detail: 'Programs in workspace' },
+                        { label: t.active_projects, value: stats.active, color: '#047857', icon: ShieldCheck, detail: 'Ready for execution' },
+                        { label: 'Draft projects', value: stats.draft, color: '#b45309', icon: Activity, detail: 'Still being configured' },
+                        { label: t.total_calculators, value: stats.calculators, color: '#475569', icon: Target, detail: 'Rules across projects' }
                     ].map((stat, i) => (
                         <div key={i} className="bg-[#121212] border border-[#1A1A1A] rounded p-4 flex items-start justify-between gap-4">
                             <div className="space-y-1">
@@ -283,7 +283,7 @@ const IncentivesDashboard: React.FC<IncentivesDashboardProps> = ({ onOpenProject
                                         }`}>
                                             <span className="flex items-center gap-1.5">
                                                 <div className={`w-1.5 h-1.5 rounded-full animate-pulse ${project.status === 'Active' ? 'bg-[#0ECB81]' : 'bg-[#F0B90B]'}`}></div>
-                                                {project.status === 'Active' ? 'PROTOCOL_ACTIVE' : 'SYSTEM_DRAFT'}
+                                                {project.status === 'Active' ? 'Protocol Active' : 'System Draft'}
                                             </span>
                                         </div>
                                     </div>
@@ -311,8 +311,8 @@ const IncentivesDashboard: React.FC<IncentivesDashboardProps> = ({ onOpenProject
                                         onClick={() => onOpenProject(String(project.id), 'execute')}
                                         className="flex-grow h-12 bg-white/5 hover:bg-primary text-white/80 hover:text-black rounded-2xl text-[11px] font-black uppercase tracking-widest transition-all duration-300 flex items-center justify-center gap-3 border border-white/10 hover:border-primary shadow-lg active:scale-95"
                                     >
-                                        <Terminal className="w-4 h-4" />
-                                        EXECUTE_PAYOUT
+                                        <Award className="w-4 h-4" />
+                                        Execute Payout
                                     </button>
                                     <button 
                                         onClick={() => onOpenProject(String(project.id), 'manage')}

@@ -3,7 +3,7 @@ import { IncentiveCalculator, CalculatorType } from '../../types';
 import { addCalculatorToProject, updateCalculator } from '../../services/incentiveService';
 import { AppContext } from '../../context/AppContext';
 import { translations } from '../../translations';
-import { Zap, TrendingUp, ChevronRight, ChevronLeft, Save, X, Cpu, Beaker, Layout, Terminal, Rocket, MousePointer2 } from 'lucide-react';
+import { Zap, TrendingUp, ChevronRight, ChevronLeft, Save, X, Cpu, Beaker, Layout, Terminal, Rocket, MousePointer2, Trophy } from 'lucide-react';
 
 import Step1Templates from './builder/Step1Templates';
 import Step2Configuration from './builder/Step2Configuration';
@@ -26,6 +26,7 @@ const CalculatorBuilder: React.FC<CalculatorBuilderProps> = ({ projectId, initia
     const [step, setStep] = useState(1);
     const [previewInput, setPreviewInput] = useState<number>(5000);
     const [isSaving, setIsSaving] = useState(false);
+    const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(null);
     
     const [calcData, setCalcData] = useState<Partial<IncentiveCalculator>>(initialData || {
         name: '',
@@ -78,6 +79,7 @@ const CalculatorBuilder: React.FC<CalculatorBuilderProps> = ({ projectId, initia
     };
 
     const applyTemplate = (templateId: string) => {
+        setSelectedTemplateId(templateId);
         const updates: Partial<IncentiveCalculator> = {};
         if (templateId === 'marathon_sale') {
             updates.name = 'Marathon Sale Incentives for Team';
@@ -167,7 +169,7 @@ const CalculatorBuilder: React.FC<CalculatorBuilderProps> = ({ projectId, initia
 
             {/* Scrollable Content Area */}
             <div className="flex-1 overflow-y-auto custom-scrollbar w-full relative z-10">
-                <div className="max-w-5xl mx-auto p-6 sm:p-12 pb-12">
+                <div className="max-w-7xl mx-auto p-6 sm:p-12 pb-12">
                     {/* Global Command Header */}
                 <div className="flex justify-between items-center mb-12 bg-[#0B0E11] p-6 sm:p-8 rounded-sm border border-[#2B3139] shadow-[0_20px_50px_rgba(0,0,0,0.5)] relative overflow-hidden group/header z-10">
                     {/* Background Accent */}
@@ -181,7 +183,7 @@ const CalculatorBuilder: React.FC<CalculatorBuilderProps> = ({ projectId, initia
                                 ? 'border-[#FCD535]/30 bg-[#FCD535]/10 text-[#FCD535] shadow-[0_0_20px_rgba(252,213,53,0.15)] group-hover/header:border-[#FCD535]/50 group-hover/header:shadow-[0_0_30px_rgba(252,213,53,0.25)]' 
                                 : 'border-[#0ECB81]/30 bg-[#0ECB81]/10 text-[#0ECB81] shadow-[0_0_20px_rgba(14,203,129,0.15)] group-hover/header:border-[#0ECB81]/50 group-hover/header:shadow-[0_0_30px_rgba(14,203,129,0.25)]'
                         }`}>
-                            {type === 'Achievement' ? <Zap className="w-8 h-8 stroke-[2.5]" /> : <TrendingUp className="w-8 h-8 stroke-[2.5]" />}
+                            {type === 'Achievement' ? <Trophy className="w-8 h-8 stroke-[2.5]" /> : <TrendingUp className="w-8 h-8 stroke-[2.5]" />}
                         </div>
                         <div>
                             <h2 className="text-2xl sm:text-3xl font-black text-[#EAECEF] uppercase tracking-tighter leading-none mb-3 drop-shadow-md">
@@ -190,7 +192,7 @@ const CalculatorBuilder: React.FC<CalculatorBuilderProps> = ({ projectId, initia
                             <div className="flex flex-wrap items-center gap-3 sm:gap-4">
                                 <div className="flex items-center gap-2 px-3 py-1 bg-[#181A20] rounded-sm border border-[#2B3139]">
                                     <div className="w-1.5 h-1.5 bg-[#848E9C] rounded-full animate-pulse"></div>
-                                    <span className="text-[10px] font-black text-[#848E9C] uppercase tracking-[0.3em]">Protocol_v2.5_Refined</span>
+                                    <span className="text-[10px] font-black text-[#848E9C] uppercase tracking-[0.3em]">Protocol V2.5 Refined</span>
                                 </div>
                                 <div className="h-4 w-px bg-[#2B3139]"></div>
                                 <div className="flex items-center gap-2">
@@ -240,7 +242,18 @@ const CalculatorBuilder: React.FC<CalculatorBuilderProps> = ({ projectId, initia
                     </div>
                     
                     <div className="relative z-10 animate-in fade-in zoom-in-95 duration-700">
-                        {step === 1 && <Step1Templates calcType={calcData.type || type} calcName={calcData.name || ''} onApplyTemplate={applyTemplate} onNameChange={(val) => updateField('name', val)} />}
+                        {step === 1 && (
+                            <Step1Templates 
+                                calcType={calcData.type || type} 
+                                calcName={calcData.name || ''} 
+                                selectedTemplateId={selectedTemplateId}
+                                onApplyTemplate={applyTemplate} 
+                                onNameChange={(val) => {
+                                    updateField('name', val);
+                                    setSelectedTemplateId(null);
+                                }} 
+                            />
+                        )}
                         {step === 2 && <Step2Configuration calcData={calcData} updateField={updateField} />}
                         {step === 3 && <Step3TargetEntities calcData={calcData} appData={appData} updateField={updateField} toggleApplyTo={toggleApplyTo} toggleExcludeTarget={toggleExcludeTarget} />}
                         {step === 4 && <Step4Logic calcData={calcData} updateField={updateField} />}
@@ -251,7 +264,7 @@ const CalculatorBuilder: React.FC<CalculatorBuilderProps> = ({ projectId, initia
 
             {/* Command Bar Footer (Sticky relative to the flex container) */}
             <div className="w-full z-50 bg-[#0B0E11] border-t border-[#2B3139] shadow-[0_-10px_40px_rgba(0,0,0,0.6)] shrink-0 relative">
-                <div className="max-w-5xl mx-auto px-6 py-4 flex flex-col sm:flex-row justify-between items-center gap-4">
+                <div className="max-w-7xl mx-auto px-6 py-4 flex flex-col sm:flex-row justify-between items-center gap-4">
                     <button 
                         disabled={step === 1}
                             onClick={() => setStep(s => s - 1)}
@@ -266,7 +279,11 @@ const CalculatorBuilder: React.FC<CalculatorBuilderProps> = ({ projectId, initia
                             {step < 5 ? (
                                 <button 
                                     onClick={() => setStep(s => s + 1)}
-                                    className="h-12 flex-1 sm:flex-none px-10 bg-[#2B3139] hover:bg-[#474D57] text-[#EAECEF] rounded-sm font-black uppercase tracking-[0.2em] text-[10px] sm:text-xs transition-all border border-transparent flex items-center justify-center gap-3 group"
+                                    className={`h-12 flex-1 sm:flex-none px-10 rounded-sm font-black uppercase tracking-[0.2em] text-[10px] sm:text-xs transition-all flex items-center justify-center gap-3 active:scale-95 group ${
+                                        type === 'Achievement' 
+                                            ? 'bg-[#FCD535] hover:bg-[#FCD535]/90 shadow-[0_0_20px_rgba(252,213,53,0.2)]' 
+                                            : 'bg-[#0ECB81] hover:bg-[#0CA66B] shadow-[0_0_20px_rgba(14,203,129,0.2)]'
+                                    }`}
                                 >
                                     Proceed <ChevronRight className="w-4 h-4 stroke-[3] group-hover:translate-x-1 transition-transform" />
                                 </button>
@@ -280,7 +297,7 @@ const CalculatorBuilder: React.FC<CalculatorBuilderProps> = ({ projectId, initia
                                             : 'bg-[#0ECB81] hover:bg-[#0CA66B] shadow-[0_0_20px_rgba(14,203,129,0.2)]'
                                     }`}
                                 >
-                                    <Save className="w-4 h-4 sm:w-5 sm:h-5 stroke-[3]" /> {isSaving ? 'Saving...' : 'Deploy_Protocol'}
+                                    <Save className="w-4 h-4 sm:w-5 sm:h-5 stroke-[3]" /> {isSaving ? 'Saving...' : 'Deploy Protocol'}
                                 </button>
                             )}
                         </div>

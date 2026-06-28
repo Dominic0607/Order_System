@@ -9,16 +9,6 @@
   font-size: 15px;
 }
 
-.incentive-surface .text-xs,
-.incentive-surface [class*="text-[8px]"],
-.incentive-surface [class*="text-[9px]"],
-.incentive-surface [class*="text-[10px]"],
-.incentive-surface [class*="text-[11px]"],
-.incentive-surface [class*="text-[12px]"] {
-  font-size: 0.875rem !important;
-  line-height: 1.35rem !important;
-}
-
 .incentive-surface input,
 .incentive-surface select,
 .incentive-surface textarea,
@@ -694,5 +684,667 @@ body {
     color: var(--primary);
 }
 
+/* ==========================================
+   LIGHT NEUMORPHIC SKIN FOR INCENTIVE SECTION
+   ========================================== */
 
+/* Overall background override */
+.incentive-surface,
+.incentive-surface.min-h-screen,
+.incentive-surface.w-full.h-screen {
+    background-color: #eef2f7 !important;
+    background-image: none !important;
+    color: #0f172a !important;
+    font-family: 'Kantumruy Pro', 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
+}
 
+/* Force clean upright typography (remove all aggressive italics) */
+.incentive-surface,
+.incentive-surface *,
+.incentive-surface .italic,
+.incentive-surface [class*="italic"] {
+    font-style: normal !important;
+}
+
+/* Map heavy 900 weights to clean bold 700 weights */
+.incentive-surface .font-black,
+.incentive-surface .font-extrabold,
+.incentive-surface [class*="font-black"],
+.incentive-surface [class*="font-extrabold"] {
+    font-weight: 700 !important;
+}
+
+/* Primary, secondary, heading text colors (force dark slate color on all text) */
+.incentive-surface,
+.incentive-surface span:not([class*="bg-"]):not([class*="text-"]):not([class*="badge"]):not(.animate-pulse),
+.incentive-surface h1,
+.incentive-surface h2,
+.incentive-surface h3,
+.incentive-surface h4,
+.incentive-surface h5,
+.incentive-surface h6,
+.incentive-surface p,
+.incentive-surface label,
+.incentive-surface div:not([class*="bg-"]):not([class*="text-"]):not([class*="overflow"]):not([class*="w-14"]):not(.relative),
+.incentive-surface td,
+.incentive-surface th {
+    color: #0f172a !important;
+}
+
+/* Muted / secondary text colors */
+.incentive-surface .text-\[\#707A8A\],
+.incentive-surface .text-white\/30,
+.incentive-surface .text-white\/40,
+.incentive-surface .text-white\/20,
+.incentive-surface [class*="text-[#707A8A]"],
+.incentive-surface [class*="text-[#848E9C]"] {
+    color: #475569 !important;
+}
+
+/* Primary Neumorphic Cards (Extruded) - Only top level cards */
+.incentive-surface .page-card,
+.incentive-surface section.grid > div:not([class*="bg-[#F0B90B]"]):not([class*="bg-[#0ECB81]"]):not([class*="bg-red-500"]),
+.incentive-surface div[class*="rounded-\[32px\]"] {
+    background-color: #eef2f7 !important;
+    border: 1px solid rgba(255, 255, 255, 0.5) !important;
+    box-shadow: 6px 6px 16px #cbd5e1, -6px -6px 16px #ffffff !important;
+    border-radius: 24px !important;
+    transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
+.incentive-surface div[class*="rounded-\[32px\]"]:hover {
+    transform: translateY(-4px) !important;
+    box-shadow: 12px 12px 24px #b8c4d2, -12px -12px 24px #ffffff !important;
+}
+
+/* Inner cards and detail panels (Flat to avoid shadow soup) */
+.incentive-surface div[class*="bg-"]:not(.page-card):not(button):not(span):not(tr):not(td):not([class*="grid"]):not(section):not(main):not([class*="w-14"]),
+.incentive-surface .bg-\[\#121212\],
+.incentive-surface .bg-\[\#050505\],
+.incentive-surface .bg-\[\#080808\],
+.incentive-surface .bg-\[\#181A20\],
+.incentive-surface .bg-\[\#0B0E11\],
+.incentive-surface .bg-\[\#0A0A0A\] {
+    background-color: rgba(0, 0, 0, 0.02) !important;
+    border: 1px solid rgba(0, 0, 0, 0.05) !important;
+    box-shadow: none !important;
+    border-radius: 12px !important;
+}
+
+/* Sunken / Inset elements: text/number inputs, selects, scroll-box wrappers */
+.incentive-surface input[type="text"],
+.incentive-surface input[type="number"],
+.incentive-surface select,
+.incentive-surface textarea,
+.incentive-surface .form-input,
+.incentive-surface .form-select,
+.incentive-surface .custom-scrollbar,
+.incentive-surface .border.border-\[\#1A1A1A\].bg-\[\#0A0A0A\].rounded {
+    background-color: #f1f5f9 !important;
+    border: none !important;
+    box-shadow: inset 4px 4px 8px #cbd5e1, inset -4px -4px 8px #ffffff !important;
+    border-radius: 10px !important;
+    color: #0f172a !important;
+}
+
+/* Special scroll-box containers (inset look) */
+.incentive-surface div[class*="overflow-y-auto"],
+.incentive-surface div[class*="overflow-x-auto"] {
+    box-shadow: inset 4px 4px 8px #cbd5e1, inset -4px -4px 8px #ffffff !important;
+    background-color: #f1f5f9 !important;
+    border-radius: 12px !important;
+}
+
+/* Sunken (Inset) Icon Sockets */
+.incentive-surface div[class*="w-14"][class*="h-14"] {
+    background-color: #eef2f7 !important;
+    border: none !important;
+    box-shadow: inset 3px 3px 6px #cbd5e1, inset -3px -3px 6px #ffffff !important;
+    border-radius: 16px !important;
+}
+
+/* Sunken element focus glows */
+.incentive-surface input[type="text"]:focus,
+.incentive-surface input[type="number"]:focus,
+.incentive-surface select:focus,
+.incentive-surface textarea:focus {
+    box-shadow: inset 5px 5px 10px #b8c4d2, inset -5px -5px 10px #ffffff, 0 0 5px rgba(217, 119, 6, 0.15) !important;
+    outline: none !important;
+}
+
+/* Neumorphic Interactive Buttons */
+.incentive-surface button,
+.incentive-surface .btn,
+.incentive-surface a.btn {
+    background-color: #eef2f7 !important;
+    box-shadow: 4px 4px 8px #cbd5e1, -4px -4px 8px #ffffff !important;
+    border: 1px solid rgba(255, 255, 255, 0.5) !important;
+    border-radius: 10px !important;
+    color: #334155 !important;
+    font-weight: 700 !important;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.05em !important;
+}
+
+/* Hover buttons (slightly softer extrusion) */
+.incentive-surface button:hover,
+.incentive-surface .btn:hover {
+    color: #0f172a !important;
+    box-shadow: 2px 2px 4px #cbd5e1, -2px -2px 4px #ffffff !important;
+}
+
+/* Active / Pressed buttons (Inset shadow) */
+.incentive-surface button:active,
+.incentive-surface .btn:active,
+.incentive-surface button.active,
+.incentive-surface button[aria-selected="true"],
+.incentive-surface .btn-active {
+    background-color: #e2e8f0 !important;
+    box-shadow: inset 4px 4px 8px #cbd5e1, inset -4px -4px 8px #ffffff !important;
+    color: #b45309 !important;
+}
+
+/* Selection and Accent States (e.g. Yellow Selected Buttons) */
+.incentive-surface button[class*="bg-[#F0B90B]"],
+.incentive-surface button.bg-[#F0B90B],
+.incentive-surface button[class*="bg-[#FCD535]"],
+.incentive-surface button.bg-[#FCD535] {
+    background-color: #fffbeb !important;
+    box-shadow: inset 3px 3px 6px #fcd34d, inset -3px -3px 6px #ffffff !important;
+    color: #b45309 !important;
+    border: 1px solid rgba(217, 119, 6, 0.2) !important;
+}
+
+/* Excluded / Blocked Items (Soft Crimson Inset) */
+.incentive-surface button[class*="bg-red-500"],
+.incentive-surface .bg-red-500\/20,
+.incentive-surface span[class*="bg-red-500"],
+.incentive-surface tr[class*="bg-red-500"],
+.incentive-surface .bg-\[\#F6465D\]\/10,
+.incentive-surface span[class*="text-[#F6465D]"] {
+    background-color: #fdf2f2 !important;
+    box-shadow: inset 3px 3px 6px #f5c2c2, inset -3px -3px 6px #ffffff !important;
+    color: #b91c1c !important;
+    border: 1px solid rgba(185, 28, 28, 0.2) !important;
+}
+
+/* Eligible / Included Items (Soft Emerald Inset) */
+.incentive-surface button[class*="bg-[#0ECB81]"],
+.incentive-surface .bg-[#0ECB81]/20,
+.incentive-surface span[class*="bg-[#0ECB81]"],
+.incentive-surface tr[class*="bg-[#0ECB81]"] {
+    background-color: #e6fbf1 !important;
+    box-shadow: inset 3px 3px 6px #c6f6d5, inset -3px -3px 6px #ffffff !important;
+    color: #047857 !important;
+    border: 1px solid rgba(4, 120, 87, 0.2) !important;
+}
+
+/* Role Matrix Active items */
+.incentive-surface button[class*="bg-[#2B3139]"],
+.incentive-surface button.bg-[#2B3139] {
+    background-color: #fffbeb !important;
+    box-shadow: inset 4px 4px 8px #cbd5e1, inset -4px -4px 8px #ffffff !important;
+    color: #b45309 !important;
+    border: 1px solid rgba(217, 119, 6, 0.15) !important;
+}
+
+/* Remove standard gradients & dropshadows to preserve soft neumorphic visuals */
+.incentive-surface .shadow-lg,
+.incentive-surface .shadow-2xl,
+.incentive-surface .shadow-xl,
+.incentive-surface .shadow-inner {
+    box-shadow: none !important;
+}
+
+.incentive-surface .bg-gradient-to-r,
+.incentive-surface .bg-gradient-to-b,
+.incentive-surface .bg-gradient-to-t {
+    background-image: none !important;
+}
+
+/* Neumorphic Tables */
+.incentive-surface table {
+    border-collapse: separate !important;
+    border-spacing: 0 10px !important;
+    background: transparent !important;
+    width: 100% !important;
+}
+
+.incentive-surface table tr {
+    background-color: #eef2f7 !important;
+    box-shadow: 4px 4px 8px #cbd5e1, -4px -4px 8px #ffffff !important;
+    border-radius: 12px !important;
+}
+
+.incentive-surface table tr:hover {
+    box-shadow: 2px 2px 4px #cbd5e1, -2px -2px 4px #ffffff !important;
+}
+
+.incentive-surface table td,
+.incentive-surface table th {
+    border: none !important;
+    background: transparent !important;
+    padding: 10px 14px !important;
+}
+
+.incentive-surface table td:first-child {
+    border-top-left-radius: 12px !important;
+    border-bottom-left-radius: 12px !important;
+}
+
+.incentive-surface table td:last-child {
+    border-top-right-radius: 12px !important;
+    border-bottom-right-radius: 12px !important;
+}
+
+/* Table Header */
+.incentive-surface table thead tr {
+    background-color: #e2e8f0 !important;
+    box-shadow: inset 3px 3px 6px #cbd5e1, inset -3px -3px 6px #ffffff !important;
+    border-radius: 8px !important;
+}
+
+/* Neumorphic scrollbar custom layout */
+.incentive-surface ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+.incentive-surface ::-webkit-scrollbar-track {
+    background: #eef2f7;
+    box-shadow: inset 1px 1px 3px #cbd5e1, inset -1px -1px 3px #ffffff;
+    border-radius: 3px;
+}
+.incentive-surface ::-webkit-scrollbar-thumb {
+    background: #e2e8f0;
+    box-shadow: 2px 2px 4px #cbd5e1, -2px -2px 4px #ffffff;
+    border-radius: 3px;
+}
+.incentive-surface ::-webkit-scrollbar-thumb:hover {
+    background: #cbd5e1;
+}
+
+/* Accent Colors */
+.incentive-surface .text-primary,
+.incentive-surface .text-[#F0B90B] {
+    color: #b45309 !important;
+}
+.incentive-surface .bg-primary\/5 {
+    background-color: rgba(180, 83, 9, 0.05) !important;
+    box-shadow: inset 2px 2px 4px #cbd5e1, inset -2px -2px 4px #ffffff !important;
+}
+.incentive-surface .border-primary\/10 {
+    border-color: rgba(180, 83, 9, 0.1) !important;
+}
+
+/* Header style - flat top with soft shadow */
+.incentive-surface header {
+    background-color: #eef2f7 !important;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.03) !important;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.02) !important;
+    border-radius: 0 !important;
+}
+
+/* Fix any white background overlays or border colors */
+.incentive-surface .border-t,
+.incentive-surface .border-b,
+.incentive-surface .border-r,
+.incentive-surface .border-l,
+.incentive-surface .border,
+.incentive-surface .divide-y > * {
+    border-color: rgba(0, 0, 0, 0.04) !important;
+}
+
+/* High-contrast colors for card titles and details */
+.incentive-surface h4[class*="text-xl"] {
+    color: #0f172a !important;
+    font-weight: 800 !important;
+}
+
+/* Muted project properties (e.g. Protocol_ID label) */
+.incentive-surface span[class*="text-[10px]"],
+.incentive-surface p[class*="text-[10px]"] {
+    color: #475569 !important;
+    font-weight: 700 !important;
+}
+
+/* Accent Zap / Electricity icon color override */
+.incentive-surface svg.lucide-zap {
+    color: #b45309 !important;
+    filter: drop-shadow(0 0 4px rgba(180, 83, 9, 0.15)) !important;
+}
+
+/* Card inner stats icons */
+.incentive-surface svg.lucide-cpu,
+.incentive-surface svg.lucide-activity {
+    color: #475569 !important;
+}
+
+/* Card Footer / Bottom Buttons Styling */
+.incentive-surface div[class*="border-t"][class*="bg-white\/\[0\.02\]"] {
+    background-color: rgba(0, 0, 0, 0.01) !important;
+    border-top: 1px solid rgba(0, 0, 0, 0.04) !important;
+}
+
+.incentive-surface div[class*="border-t"] button {
+    background-color: #eef2f7 !important;
+    box-shadow: 4px 4px 8px #cbd5e1, -4px -4px 8px #ffffff !important;
+    color: #334155 !important;
+    border: 1px solid rgba(255, 255, 255, 0.5) !important;
+    border-radius: 12px !important;
+}
+
+.incentive-surface div[class*="border-t"] button:hover {
+    box-shadow: 2px 2px 4px #cbd5e1, -2px -2px 4px #ffffff !important;
+    color: #0f172a !important;
+}
+
+.incentive-surface div[class*="border-t"] button:active {
+    box-shadow: inset 3px 3px 6px #cbd5e1, inset -3px -3px 6px #ffffff !important;
+    background-color: #e2e8f0 !important;
+}
+
+/* Pixel-perfect Search Icon Alignment and Focus Glows */
+.incentive-surface svg.lucide-search {
+    top: 50% !important;
+    transform: translateY(-50%) !important;
+    margin-top: -1px !important; /* Center visually to match placeholder height */
+    transition: all 0.25s ease-in-out !important;
+    color: #475569 !important;
+    opacity: 0.7 !important;
+}
+
+.incentive-surface div.group:focus-within svg.lucide-search {
+    color: #b45309 !important; /* Active amber-gold focus highlight */
+    opacity: 1 !important;
+    filter: drop-shadow(0 0 3px rgba(180, 83, 9, 0.25)) !important;
+}
+
+/* Sidebar backdrop, header, and inner card overrides */
+.incentive-surface aside,
+.incentive-surface aside[class*="bg-"] {
+    background-color: #f1f5f9 !important; /* Soft slate-100 sidebar backdrop */
+    border-right: 1px solid rgba(0, 0, 0, 0.05) !important;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.05) !important;
+}
+
+.incentive-surface aside div[class*="bg-black/20"],
+.incentive-surface aside .bg-black\/20 {
+    background-color: rgba(0, 0, 0, 0.02) !important;
+    border-top: 1px solid rgba(0, 0, 0, 0.04) !important;
+}
+
+.incentive-surface aside div[class*="bg-white/"] {
+    background-color: #eef2f7 !important; /* Matches main card background */
+    border: 1px solid rgba(0, 0, 0, 0.04) !important;
+    box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.02) !important;
+}
+
+.incentive-surface aside h3,
+.incentive-surface aside span[class*="text-white"],
+.incentive-surface aside p[class*="text-white"],
+.incentive-surface aside div[class*="text-white"] {
+    color: #475569 !important; /* High contrast gray/slate */
+    font-weight: 700 !important;
+}
+
+/* Extruded/Sunken Icon sockets for detail page */
+.incentive-surface div[class*="w-14"][class*="h-14"],
+.incentive-surface div[class*="w-16"][class*="h-16"] {
+    background-color: #eef2f7 !important;
+    border: none !important;
+    box-shadow: inset 3px 3px 6px #cbd5e1, inset -3px -3px 6px #ffffff !important;
+    border-radius: 16px !important;
+}
+
+/* Extruded Node Boxes for Tier formula details */
+.incentive-surface div[class*="bg-black/40"],
+.incentive-surface .bg-black\/40 {
+    background-color: #eef2f7 !important;
+    border: 1px solid rgba(255, 255, 255, 0.6) !important;
+    box-shadow: 3px 3px 6px #cbd5e1, -3px -3px 6px #ffffff !important;
+    border-radius: 12px !important;
+}
+
+.incentive-surface div[class*="bg-black/40"] span[class*="text-white"],
+.incentive-surface .bg-black\/40 span[class*="text-white"],
+.incentive-surface div[class*="bg-black/40"] span:not(.text-primary):not(.text-emerald-400),
+.incentive-surface .bg-black\/40 span:not(.text-primary):not(.text-emerald-400) {
+    color: #475569 !important;
+}
+
+.incentive-surface div[class*="bg-white/5"].w-4,
+.incentive-surface div[class*="bg-white/5"].h-\[2px\] {
+    background-color: #cbd5e1 !important; /* Slate-300 connector pins */
+}
+
+/* Deploy and active formula buttons */
+.incentive-surface button[class*="DEPLOY_"],
+.incentive-surface button[class*="bg-white/"] {
+    background-color: #eef2f7 !important;
+    box-shadow: 3px 3px 6px #cbd5e1, -3px -3px 6px #ffffff !important;
+    color: #334155 !important;
+    border: 1px solid rgba(255, 255, 255, 0.5) !important;
+}
+
+.incentive-surface button[class*="DEPLOY_"]:hover,
+.incentive-surface button[class*="bg-white/"]:hover {
+    box-shadow: 2px 2px 4px #cbd5e1, -2px -2px 4px #ffffff !important;
+    color: #0f172a !important;
+}
+
+.incentive-surface button[class*="DEPLOY_"]:active,
+.incentive-surface button[class*="bg-white/"]:active {
+    box-shadow: inset 3px 3px 6px #b8c4d2, inset -3px -3px 6px #ffffff !important;
+    background-color: #e2e8f0 !important;
+}
+
+/* Sunken tray for nodes inside the formula card */
+.incentive-surface div[class*="bg-white/\[0\.01\]"],
+.incentive-surface div[class*="bg-white/0.01"] {
+    background-color: #e2e8f0 !important; /* Slightly darker than card body background */
+    box-shadow: inset 4px 4px 8px #cbd5e1, inset -4px -4px 8px #ffffff !important;
+    border-radius: 20px !important;
+    margin: 12px 24px 24px 24px !important; /* Visual margins inside card */
+    padding: 20px !important;
+    border: 1px solid rgba(0, 0, 0, 0.02) !important;
+}
+
+/* Extruded Node Boxes inside the sunken tray */
+.incentive-surface div[class*="bg-white/\[0\.01\]"] div[class*="bg-black/40"],
+.incentive-surface div[class*="bg-white/0.01"] .bg-black\/40 {
+    background-color: #eef2f7 !important; /* Extrudes out from the tray */
+    border: 1px solid rgba(255, 255, 255, 0.6) !important;
+    box-shadow: 3px 3px 6px #b8c4d2, -3px -3px 6px #ffffff !important;
+    border-radius: 16px !important;
+}
+
+/* Glowing Neon Socket Indicators */
+.incentive-surface svg.lucide-zap {
+    color: #b45309 !important; /* Rich honey-amber */
+    filter: drop-shadow(0 0 5px rgba(180, 83, 9, 0.45)) !important;
+}
+
+.incentive-surface svg.lucide-trending-up {
+    color: #047857 !important; /* Deep emerald green */
+    filter: drop-shadow(0 0 5px rgba(4, 120, 87, 0.45)) !important;
+}
+
+/* Hide connectors completely to support cleaner wrap layouts */
+.incentive-surface div[class*="bg-white/5"].w-4,
+.incentive-surface div[class*="bg-white/5"].h-\[2px\] {
+    display: none !important;
+}
+
+/* Hide vertical dividers inside node cards */
+.incentive-surface div[class*="bg-black/40"] div[class*="w-px"],
+.incentive-surface .bg-black\/40 div[class*="w-px"] {
+    display: none !important;
+}
+
+/* Format node card subPeriod (W1, W2 etc.) labels */
+.incentive-surface div[class*="bg-black/40"] span.text-primary,
+.incentive-surface .bg-black\/40 span.text-primary {
+    color: #b45309 !important;
+    font-size: 9px !important;
+    font-weight: 800 !important;
+    letter-spacing: 0.05em !important;
+}
+
+/* Format node card target amount text */
+.incentive-surface div[class*="bg-black/40"] span[class*="text-white/50"],
+.incentive-surface .bg-black\/40 span[class*="text-white/50"] {
+    color: #475569 !important;
+    font-size: 12px !important;
+    font-weight: 700 !important;
+}
+
+/* Format reward values inside node cards as inset pills */
+.incentive-surface div[class*="bg-black/40"] span.text-emerald-400,
+.incentive-surface .bg-black\/40 span.text-emerald-400 {
+    background-color: #e6fbf1 !important; /* Soft mint green */
+    color: #047857 !important; /* Deep emerald text */
+    padding: 4px 10px !important;
+    border-radius: 8px !important;
+    box-shadow: inset 1px 1px 3px rgba(0, 0, 0, 0.06), inset -1px -1px 3px rgba(255, 255, 255, 0.5) !important;
+    font-size: 11px !important;
+    margin-left: auto !important; /* Pushes the reward badge to the right */
+}
+
+/* Ensure status dot background colors inside Neumorphic surface display correctly */
+.incentive-surface div[class*="rounded-full"][class*="bg-"] {
+    background-color: currentColor !important;
+}
+
+/* Glowing Neon Trophy Indicator */
+.incentive-surface svg.lucide-trophy {
+    color: #b45309 !important; /* Rich honey-amber */
+    filter: drop-shadow(0 0 5px rgba(180, 83, 9, 0.45)) !important;
+}
+
+/* Fix template selector button text and headings contrast inside Builder Modal */
+.incentive-surface button .text-white {
+    color: #0f172a !important; /* Dark Slate for titles */
+}
+
+.incentive-surface button .text-white\/40,
+.incentive-surface button .text-white\/30 {
+    color: #475569 !important; /* Dark Gray for descriptions */
+}
+
+/* Refine heading font-weights inside Neumorphic surface (700 bold instead of 900 heavy black) */
+.incentive-surface h2,
+.incentive-surface h3,
+.incentive-surface h4,
+.incentive-surface .font-black {
+    font-weight: 700 !important;
+    letter-spacing: -0.015em !important;
+}
+
+/* Improve contrast of faint gray label texts on Neumorphic background */
+.incentive-surface label,
+.incentive-surface span[class*="text-[#848E9C]"],
+.incentive-surface span[class*="text-[#707A8A]"],
+.incentive-surface p[class*="text-[#848E9C]"],
+.incentive-surface div[class*="text-[#707A8A]"],
+.incentive-surface .text-white\/30 {
+    color: #475569 !important; /* Dark Slate Gray */
+    font-weight: 600 !important;
+}
+
+/* Preserve active stepper button backgrounds */
+.incentive-surface button[class*="bg-[#FCD535]"],
+.incentive-surface button[class*="bg-\[\#FCD535\]"] {
+    background-color: #FCD535 !important;
+    border-color: #FCD535 !important;
+    color: #000000 !important;
+    box-shadow: 0 0 15px rgba(252, 213, 53, 0.45) !important;
+}
+
+.incentive-surface button[class*="bg-[#0ECB81]"],
+.incentive-surface button[class*="bg-\[\#0ECB81\]"] {
+    background-color: #0ECB81 !important;
+    border-color: #0ECB81 !important;
+    color: #000000 !important;
+    box-shadow: 0 0 15px rgba(14, 203, 129, 0.45) !important;
+}
+
+/* Preserve active progress bar line indicators */
+.incentive-surface div[class*="h-[2px]"][class*="bg-[#FCD535]"],
+.incentive-surface div[class*="h-\[2px\]"][class*="bg-\[\#FCD535\]"] {
+    background-color: #FCD535 !important;
+    box-shadow: 0 0 10px rgba(252, 213, 53, 0.5) !important;
+}
+
+.incentive-surface div[class*="h-[2px]"][class*="bg-[#0ECB81]"],
+.incentive-surface div[class*="h-\[2px\]"][class*="bg-\[\#0ECB81\]"] {
+    background-color: #0ECB81 !important;
+    box-shadow: 0 0 10px rgba(14, 203, 129, 0.5) !important;
+}
+
+/* Style primary action buttons to have rich contrasting background fills (Neumorphic Primary) */
+.incentive-surface button[class*="h-14"][class*="bg-[#FCD535]"],
+.incentive-surface button[class*="h-14"][class*="bg-\[\#FCD535\]"],
+.incentive-surface button[class*="h-12"][class*="bg-[#FCD535]"],
+.incentive-surface button[class*="h-12"][class*="bg-\[\#FCD535\]"],
+.incentive-surface button.bg-\[\#FCD535\] {
+    background-color: #b45309 !important; /* Rich amber bg */
+    color: #ffffff !important; /* High contrast text */
+    border: 1px solid rgba(180, 83, 9, 0.2) !important;
+    box-shadow: 3px 3px 6px #cbd5e1, -3px -3px 6px #ffffff !important;
+}
+
+.incentive-surface button[class*="h-14"][class*="bg-[#0ECB81]"],
+.incentive-surface button[class*="h-14"][class*="bg-\[\#0ECB81\]"],
+.incentive-surface button[class*="h-12"][class*="bg-[#0ECB81]"],
+.incentive-surface button[class*="h-12"][class*="bg-\[\#0ECB81\]"],
+.incentive-surface button.bg-\[\#0ECB81\] {
+    background-color: #047857 !important; /* Deep emerald bg */
+    color: #ffffff !important;
+    border: 1px solid rgba(4, 120, 87, 0.2) !important;
+    box-shadow: 3px 3px 6px #cbd5e1, -3px -3px 6px #ffffff !important;
+}
+
+.incentive-surface button[class*="bg-[#FCD535]"] svg,
+.incentive-surface button[class*="bg-\[\#FCD535\]"] svg,
+.incentive-surface button[class*="bg-[#0ECB81]"] svg,
+.incentive-surface button[class*="bg-\[\#0ECB81\]"] svg {
+    color: #ffffff !important;
+}
+
+/* Styling for selected template card in Neumorphic theme */
+.incentive-surface button.selected-template-card {
+    background-color: #e2e8f0 !important; /* Slightly darker sunken gray */
+    box-shadow: inset 3px 3px 6px #cbd5e1, inset -3px -3px 6px #ffffff !important;
+}
+
+.incentive-surface button.selected-template-card.border-achievement {
+    border: 2px solid #b45309 !important;
+}
+
+.incentive-surface button.selected-template-card.border-commission {
+    border: 2px solid #047857 !important;
+}
+
+/* Neumorphic Segment Controller Active Tab */
+.incentive-surface button.active-segment-tab {
+    background-color: #cbd5e0 !important; /* Sunken gray background */
+    box-shadow: inset 2px 2px 4px #94a3b8, inset -2px -2px 4px #ffffff !important;
+    font-weight: 800 !important;
+}
+
+.incentive-surface button.active-segment-tab.active-achievement {
+    color: #b45309 !important; /* Gold/Amber active text */
+}
+
+.incentive-surface button.active-segment-tab.active-commission {
+    color: #047857 !important; /* Green active text */
+}
+
+/* Fix disabled buttons in Neumorphic theme */
+.incentive-surface button:disabled {
+    opacity: 0.35 !important;
+    cursor: not-allowed !important;
+    pointer-events: none !important;
+    box-shadow: inset 1px 1px 3px #cbd5e1, inset -1px -1px 3px #ffffff !important;
+}
