@@ -362,3 +362,30 @@ export const duplicateCalculator = async (projectId: number, calculatorId: numbe
 export const createProject = async (project: Omit<IncentiveProject, 'id' | 'createdAt' | 'calculators'>): Promise<IncentiveProject | null> => {
     return createIncentiveProject(project as any);
 };
+
+export interface NotifyIncentiveUserPayload {
+    userName: string;
+    projectId: number;
+    month: string;
+    projectName: string;
+    calculatedValue: number;
+    totalRevenue?: number;
+    totalOrders?: number;
+    breakdownJson?: string;
+}
+
+export const notifyIncentiveUser = async (payload: NotifyIncentiveUserPayload): Promise<boolean> => {
+    try {
+        const headers = await getAuthHeaders();
+        const response = await fetch(`${WEB_APP_URL}/api/admin/incentive/notify`, {
+            method: 'POST',
+            headers,
+            body: JSON.stringify(payload)
+        });
+        const result = await readApiResult(response);
+        return result.status === 'success';
+    } catch (e) {
+        console.error('Error sending incentive notification', e);
+        throw e;
+    }
+};
