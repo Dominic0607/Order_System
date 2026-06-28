@@ -847,9 +847,9 @@ body {
 
 /* Selection and Accent States (e.g. Yellow Selected Buttons) */
 .incentive-surface button[class*="bg-[#F0B90B]"],
-.incentive-surface button.bg-[#F0B90B],
+.incentive-surface button.bg-\[\#F0B90B\],
 .incentive-surface button[class*="bg-[#FCD535]"],
-.incentive-surface button.bg-[#FCD535] {
+.incentive-surface button.bg-\[\#FCD535\] {
     background-color: #fffbeb !important;
     box-shadow: inset 3px 3px 6px #fcd34d, inset -3px -3px 6px #ffffff !important;
     color: #b45309 !important;
@@ -871,7 +871,7 @@ body {
 
 /* Eligible / Included Items (Soft Emerald Inset) */
 .incentive-surface button[class*="bg-[#0ECB81]"],
-.incentive-surface .bg-[#0ECB81]/20,
+.incentive-surface .bg-\[\#0ECB81\]\/20,
 .incentive-surface span[class*="bg-[#0ECB81]"],
 .incentive-surface tr[class*="bg-[#0ECB81]"] {
     background-color: #e6fbf1 !important;
@@ -882,7 +882,7 @@ body {
 
 /* Role Matrix Active items */
 .incentive-surface button[class*="bg-[#2B3139]"],
-.incentive-surface button.bg-[#2B3139] {
+.incentive-surface button.bg-\[\#2B3139\] {
     background-color: #fffbeb !important;
     box-shadow: inset 4px 4px 8px #cbd5e1, inset -4px -4px 8px #ffffff !important;
     color: #b45309 !important;
@@ -966,7 +966,7 @@ body {
 
 /* Accent Colors */
 .incentive-surface .text-primary,
-.incentive-surface .text-[#F0B90B] {
+.incentive-surface .text-\[\#F0B90B\] {
     color: #b45309 !important;
 }
 .incentive-surface .bg-primary\/5 {
