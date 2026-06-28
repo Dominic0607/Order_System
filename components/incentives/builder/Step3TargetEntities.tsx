@@ -42,7 +42,7 @@ const Step3TargetEntities: React.FC<Step3TargetEntitiesProps> = ({ calcData, app
         });
     };
 
-    const isUserExcluded = (user: any) => {
+    const isUserExcluded = (user: any, contextTeam?: string | null) => {
         const excludeTargets = calcData.excludeTargets || [];
         return excludeTargets.some(rule => {
             if (rule.startsWith('Role:')) {
@@ -55,6 +55,9 @@ const Step3TargetEntities: React.FC<Step3TargetEntitiesProps> = ({ calcData, app
                 const parts = rule.replace('TeamUser:', '').split(':');
                 if (parts.length === 2) {
                     const [teamName, userName] = parts;
+                    if (contextTeam) {
+                        return user.UserName === userName && teamName.trim().toLowerCase() === contextTeam.trim().toLowerCase();
+                    }
                     return user.UserName === userName && isUserInTeam(user.Team, teamName);
                 }
             }
@@ -62,8 +65,8 @@ const Step3TargetEntities: React.FC<Step3TargetEntitiesProps> = ({ calcData, app
         });
     };
 
-    const receivesBenefit = (user: any) => {
-        return isUserIncluded(user) && !isUserExcluded(user);
+    const receivesBenefit = (user: any, contextTeam?: string | null) => {
+        return isUserIncluded(user) && !isUserExcluded(user, contextTeam);
     };
 
     const filteredUsers = (appData.users || []).filter(u => 
@@ -293,8 +296,8 @@ const Step3TargetEntities: React.FC<Step3TargetEntitiesProps> = ({ calcData, app
                         {/* Summary Metrics */}
                         {(() => {
                             const teamMembers = (appData.users || []).filter(u => isUserInTeam(u.Team, selectedTeam || ''));
-                            const eligibleCount = teamMembers.filter(receivesBenefit).length;
-                            const excludedCount = teamMembers.filter(isUserExcluded).length;
+                            const eligibleCount = teamMembers.filter(u => receivesBenefit(u, selectedTeam)).length;
+                            const excludedCount = teamMembers.filter(u => isUserExcluded(u, selectedTeam)).length;
                             
                             return (
                                 <div className="grid grid-cols-3 gap-4">
@@ -367,8 +370,8 @@ const Step3TargetEntities: React.FC<Step3TargetEntitiesProps> = ({ calcData, app
 
                                             return filteredMembers.map(u => {
                                                 const included = isUserIncluded(u);
-                                                const excluded = isUserExcluded(u);
-                                                const hasBenefit = receivesBenefit(u);
+                                                const excluded = isUserExcluded(u, selectedTeam);
+                                                const hasBenefit = receivesBenefit(u, selectedTeam);
 
                                                 return (
                                                     <tr key={u.UserName} className="hover:bg-[#121212]/40 transition-colors">

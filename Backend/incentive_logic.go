@@ -285,21 +285,6 @@ func (r *IncentiveRules) IsExcluded(u User) bool {
 		if strings.HasPrefix(target, "User:") && u.UserName == strings.TrimPrefix(target, "User:") {
 			return true
 		}
-		if strings.HasPrefix(target, "TeamUser:") {
-			parts := strings.SplitN(strings.TrimPrefix(target, "TeamUser:"), ":", 2)
-			if len(parts) == 2 {
-				tgtTeam := NormalizeTeamKey(parts[0])
-				tgtUser := parts[1]
-				if u.UserName == tgtUser {
-					userTeams := strings.Split(u.Team, ",")
-					for _, ut := range userTeams {
-						if NormalizeTeamKey(ut) == tgtTeam {
-							return true
-						}
-					}
-				}
-			}
-		}
 		if target == u.UserName {
 			return true
 		}
@@ -309,6 +294,29 @@ func (r *IncentiveRules) IsExcluded(u User) bool {
 
 func (r *IncentiveRules) IsUserEligible(u User) bool {
 	return r.IsIncluded(u) && !r.IsExcluded(u)
+}
+
+func (r *IncentiveRules) IsTeamApplicable(teamName string) bool {
+	hasTeamFilters := false
+	for _, target := range r.ApplyTo {
+		if strings.HasPrefix(target, "Team:") {
+			hasTeamFilters = true
+			break
+		}
+	}
+	if !hasTeamFilters {
+		return true
+	}
+	normalizedTeamName := NormalizeTeamKey(teamName)
+	for _, target := range r.ApplyTo {
+		if strings.HasPrefix(target, "Team:") {
+			targetTeam := NormalizeTeamKey(strings.TrimPrefix(target, "Team:"))
+			if normalizedTeamName == targetTeam {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 func ProcessIncentiveCalculation(db *gorm.DB, projectID uint, month string) ([]IncentiveResult, error) {
@@ -396,8 +404,8 @@ func ProcessIncentiveCalculation(db *gorm.DB, projectID uint, month string) ([]I
 					for _, ut := range userTeams {
 						teamName := NormalizeTeamKey(ut)
 						if teamName != "" {
-							// For member count (used for division), only count those who can actually RECEIVE money
-							if !rules.IsExcludedForTeam(u, teamName) {
+							// For member count (used for division), only count those who can actually RECEIVE money in applicable teams
+							if rules.IsTeamApplicable(teamName) && !rules.IsExcludedForTeam(u, teamName) {
 								teamMemberCount[teamName]++
 							}
 						}
@@ -496,7 +504,7 @@ func ProcessIncentiveCalculation(db *gorm.DB, projectID uint, month string) ([]I
 				for _, ut := range userTeams {
 					teamName := NormalizeTeamKey(ut)
 					if teamName != "" {
-						if !rules.IsExcludedForTeam(u, teamName) {
+						if rules.IsTeamApplicable(teamName) && !rules.IsExcludedForTeam(u, teamName) {
 							if teamManualPerf[teamName] > 0 && teamMemberCount[teamName] > 0 {
 								val += teamManualPerf[teamName] / float64(teamMemberCount[teamName])
 							}
@@ -536,6 +544,9 @@ func ProcessIncentiveCalculation(db *gorm.DB, projectID uint, month string) ([]I
 			}
 
 			for teamName, groupUsers := range teamToUsers {
+				if !rules.IsTeamApplicable(teamName) {
+					continue
+				}
 				// CALCULATE TEAM ACHIEVEMENT:
 				// Team Achievement = Sum(Members' Individual Base) + Team's Shared Data
 				// We DO NOT sum members' full profiles because that would leak data from their OTHER teams.

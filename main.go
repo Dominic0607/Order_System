@@ -13,6 +13,7 @@ import (
 	"image/jpeg"
 	"io"
 	"log"
+	"math"
 	"math/rand"
 	"mime/multipart"
 	"net/http"
@@ -175,6 +176,46 @@ func generateShortID() string {
 		b[i] = chars[rand.Intn(len(chars))]
 	}
 	return string(b)
+}
+
+// cambodianCarrier returns the Cambodian carrier name for a given phone number.
+// It strips the +855 country code or leading zero before matching the 2-3 digit prefix.
+func cambodianCarrier(phone string) string {
+	// Normalise: strip spaces/dashes, remove +855 country code
+	p := strings.ReplaceAll(phone, " ", "")
+	p = strings.ReplaceAll(p, "-", "")
+	if strings.HasPrefix(p, "+855") {
+		p = "0" + p[4:]
+	} else if strings.HasPrefix(p, "855") {
+		p = "0" + p[3:]
+	}
+	if len(p) < 9 {
+		return ""
+	}
+	prefix3 := p[:3] // e.g. "070"
+	carrierMap := map[string]string{
+		// Smart
+		"010": "Smart", "015": "Smart", "016": "Smart",
+		"069": "Smart", "070": "Smart", "081": "Smart",
+		"086": "Smart", "087": "Smart", "093": "Smart",
+		"096": "Smart", "098": "Smart",
+		// Cellcard (Mobitel)
+		"011": "Cellcard", "012": "Cellcard", "017": "Cellcard",
+		"061": "Cellcard", "076": "Cellcard", "077": "Cellcard",
+		"078": "Cellcard", "079": "Cellcard", "085": "Cellcard",
+		"089": "Cellcard", "092": "Cellcard", "095": "Cellcard",
+		"099": "Cellcard",
+		// Metfone (Viettel)
+		"031": "Metfone", "038": "Metfone", "068": "Metfone",
+		"071": "Metfone", "088": "Metfone", "090": "Metfone",
+		"097": "Metfone",
+		// Seatel / qb
+		"013": "Seatel", "018": "Seatel",
+	}
+	if carrier, ok := carrierMap[prefix3]; ok {
+		return carrier
+	}
+	return ""
 }
 
 func broadcastToAll(payload interface{}) {
@@ -1657,7 +1698,35 @@ func handleSubmitOrder(c *gin.Context) {
 	eventBytes, _ := json.Marshal(map[string]interface{}{"type": "new_order", "data": newOrder})
 	hub.Broadcast <- eventBytes
 
-	orderChannel <- OrderJob{JobID: fmt.Sprintf("job_%d", time.Now().UnixNano()), OrderID: orderID, UserName: orderRequest.CurrentUser.UserName, OrderData: map[string]interface{}{"orderId": orderID, "timestamp": timestamp, "totalDiscount": totalDiscount, "totalProductCost": totalProductCost, "fullLocation": strings.Join(locationParts, ", "), "productsJSON": string(productsJSON), "shippingCost": shippingCost, "originalRequest": orderRequest, "scheduledTime": timestamp}}
+	// 🔄 Transform paymentStatus for Telegram display only (DB keeps "Unpaid")
+	if paymentStatus == "Unpaid" {
+		orderRequest.Payment["status"] = "Unpaid (មិនទាន់បង់ប្រាក់ 💸)"
+	}
+
+	// 📱 Append phone carrier for Telegram display only (DB keeps original phone)
+	if carrier := cambodianCarrier(custPhone); carrier != "" {
+		orderRequest.Customer["phone"] = custPhone + " (" + carrier + ")"
+	}
+
+	// 💲 Round all price fields to 2 decimal places for Telegram display only
+	round2 := func(v float64) float64 {
+		return math.Round(v*100) / 100
+	}
+	for _, p := range orderRequest.Products {
+		priceFields := []string{"originalPrice", "finalPrice", "cost", "price"}
+		for _, field := range priceFields {
+			if val, ok := p[field].(float64); ok {
+				p[field] = round2(val)
+			}
+		}
+	}
+	telegramShippingCost := round2(shippingCost)
+	telegramTotalDiscount := round2(totalDiscount)
+	telegramTotalProductCost := round2(totalProductCost)
+	orderRequest.Subtotal = round2(orderRequest.Subtotal)
+	orderRequest.GrandTotal = round2(orderRequest.GrandTotal)
+
+	orderChannel <- OrderJob{JobID: fmt.Sprintf("job_%d", time.Now().UnixNano()), OrderID: orderID, UserName: orderRequest.CurrentUser.UserName, OrderData: map[string]interface{}{"orderId": orderID, "timestamp": timestamp, "totalDiscount": telegramTotalDiscount, "totalProductCost": telegramTotalProductCost, "fullLocation": strings.Join(locationParts, ", "), "productsJSON": string(productsJSON), "shippingCost": telegramShippingCost, "originalRequest": orderRequest, "scheduledTime": timestamp}}
 	c.JSON(200, gin.H{"status": "success", "orderId": orderID})
 }
 
