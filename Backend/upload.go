@@ -211,6 +211,11 @@ func HandleImageUploadProxy(c *gin.Context) {
 
 		// Run the actual upload and DB logic in a goroutine
 		go func() {
+			defer func() {
+				if r := recover(); r != nil {
+					log.Printf("🔥 [Upload Goroutine Panic Recovery]: %v", r)
+				}
+			}()
 			// We don't need c.Copy() here because we are not using the context inside the goroutine anymore
 			// All data needed is already in 'req' and 'data'
 			processImageUploadInternal(req, data)
@@ -373,6 +378,11 @@ func processImageUploadInternal(req AppsScriptRequest, data string) (string, str
 
 				// Sync to Google Sheets & Telegram
 				go func(orderId string, bMap map[string]interface{}) {
+					defer func() {
+						if r := recover(); r != nil {
+							log.Printf("🔥 [Sync Goroutine Panic Recovery]: %v", r)
+						}
+					}()
 					var order Order
 					if err := DB.Where("UPPER(TRIM(order_id)) = UPPER(TRIM(?))", orderId).First(&order).Error; err == nil {
 						sheetData := make(map[string]interface{})

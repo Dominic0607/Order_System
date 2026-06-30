@@ -606,9 +606,10 @@ const DesktopPackagingHub: React.FC<DesktopPackagingHubProps> = ({
                                                         <div className="flex flex-col flex-grow min-w-0">
                                                             <p 
                                                                 onClick={(e) => { e.stopPropagation(); handleCopy(order['Customer Name'], 'Name'); }}
-                                                                className={`text-sm font-bold ${B_TEXT_PRIMARY} truncate uppercase cursor-pointer hover:text-[#FCD535] transition-colors`}
+                                                                className={`text-sm font-bold ${B_TEXT_PRIMARY} truncate uppercase cursor-pointer hover:text-[#FCD535] transition-colors flex items-center gap-1`}
                                                             >
                                                                 {order['Customer Name']}
+                                                                {getOptimisticPackagePhoto(order['Order ID'], order['Package Photo']) && <span title="Photo Verified">📸</span>}
                                                             </p>
                                                             <div 
                                                                 onClick={(e) => { e.stopPropagation(); handleCopy(formatPhoneNumber(order['Customer Phone']), 'Phone'); }}
@@ -832,9 +833,10 @@ const DesktopPackagingHub: React.FC<DesktopPackagingHubProps> = ({
                                                             <div className="flex items-center gap-2">
                                                                 <p 
                                                                     onClick={(e) => { e.stopPropagation(); handleCopy(order['Customer Name'], 'Name'); }}
-                                                                    className={`text-sm font-bold ${B_TEXT_PRIMARY} truncate uppercase cursor-pointer hover:text-[#FCD535]`}
+                                                                    className={`text-sm font-bold ${B_TEXT_PRIMARY} truncate uppercase cursor-pointer hover:text-[#FCD535] flex items-center gap-1`}
                                                                 >
                                                                     {order['Customer Name']}
+                                                                    {getOptimisticPackagePhoto(order['Order ID'], order['Package Photo']) && <span title="Photo Verified">📸</span>}
                                                                 </p>
                                                                 <div 
                                                                     onClick={(e) => { e.stopPropagation(); handleCopy(formatPhoneNumber(order['Customer Phone']), 'Phone'); }}

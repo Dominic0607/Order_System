@@ -1,4 +1,5 @@
 import { WEB_APP_URL } from '../constants';
+import { CacheService, CACHE_KEYS } from '../services/cacheService';
 
 /**
  * Converts a Blob (like a File) into a Base64 encoded string, without the data URI prefix.
@@ -90,30 +91,142 @@ export const convertGoogleDriveUrl = (url?: string, type: 'image' | 'audio' | 'p
     return (trimmedUrl.startsWith('http') || trimmedUrl.startsWith('data:')) ? trimmedUrl : (type === 'image' ? fallbackImage : '');
 };
 
+// Global in-memory cache to bypass storage limits and ensure zero UI lag
+const inMemoryPhotoCache = new Map<string, string>();
+
+/**
+ * Saves a package photo in the fast, in-memory cache.
+ */
+export const setOptimisticPackagePhotoInMemory = (orderId: string, dataUrl: string) => {
+    inMemoryPhotoCache.set(orderId, dataUrl);
+};
+
 /**
  * Gets the best available URL for a package photo, prioritizing the server-provided Drive URL,
- * but falling back to a locally cached version (from localStorage) if the server URL is missing.
+ * but falling back to a locally cached version (from memory or localStorage) if the server URL is missing.
  * This ensures "Immediate Preview" as requested.
  * @param orderId The ID of the order.
  * @param serverUrl The URL provided by the server.
  * @returns The best available image URL or null if none found.
  */
 export const getOptimisticPackagePhoto = (orderId: string, serverUrl?: string): string | null => {
-    // If we have a real Google Drive URL or a direct link, use it.
-    if (serverUrl && (serverUrl.startsWith('https://drive.google.com') || serverUrl.startsWith('https://lh3.googleusercontent.com'))) {
-        // Once we have a server URL, we can clear the local cache for this order
+    // If we have a real URL from the server (Drive, R2, or absolute URL), use it.
+    if (serverUrl && (
+        serverUrl.startsWith('https://') || 
+        serverUrl.startsWith('http://') || 
+        serverUrl.startsWith('r2://')
+    )) {
+        // Once synced on server, purge local cache to save localStorage space
         localStorage.removeItem(`package_photo_${orderId}`);
+        localStorage.removeItem(`package_photo_upload_${orderId}`);
+        inMemoryPhotoCache.delete(orderId);
         return convertGoogleDriveUrl(serverUrl);
     }
 
-    // Otherwise, check for a locally cached image (optimistic update)
+    // 1. Look in-memory cache (ultra-fast, bypasses Chrome/Safari localStorage blocking)
+    if (inMemoryPhotoCache.has(orderId)) {
+        return inMemoryPhotoCache.get(orderId)!;
+    }
+
+    // 2. Fallback to localStorage
     const localPhoto = localStorage.getItem(`package_photo_${orderId}`);
     if (localPhoto && localPhoto.startsWith('data:image')) {
+        // Hydrate the memory cache so subsequent lookups are instantaneous
+        inMemoryPhotoCache.set(orderId, localPhoto);
         return localPhoto;
     }
 
     // No photo found
     return null;
+};
+
+// Keep track of active uploads to prevent parallel duplicate uploads for the same order
+const activeSyncUploads = new Set<string>();
+
+/**
+ * Scans localStorage for failed or offline package photos and uploads them.
+ */
+export const syncPendingPackagePhotos = async () => {
+    // Find all package_photo_upload_ keys in localStorage
+    const keys: string[] = [];
+    for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key && key.startsWith('package_photo_upload_')) {
+            keys.push(key);
+        }
+    }
+
+    if (keys.length === 0) return;
+
+    // Check online status
+    if (!navigator.onLine) {
+        console.log("✈️ [Sync Queue] Device is offline, skipping sync.");
+        return;
+    }
+
+    const session = await CacheService.get<{ token: string }>(CACHE_KEYS.SESSION);
+    const token = session?.token || localStorage.getItem('token') || '';
+    if (!token) {
+        console.log("⚠️ [Sync Queue] No authentication session found, deferring sync.");
+        return;
+    }
+
+    for (const key of keys) {
+        const orderId = key.replace('package_photo_upload_', '');
+        
+        if (activeSyncUploads.has(orderId)) {
+            continue; // Already uploading
+        }
+
+        const uploadDataStr = localStorage.getItem(key);
+        const packagePhoto = localStorage.getItem(`package_photo_${orderId}`);
+
+        if (!uploadDataStr || !packagePhoto) {
+            // Cleanup incomplete or stale cache records
+            localStorage.removeItem(key);
+            localStorage.removeItem(`package_photo_${orderId}`);
+            continue;
+        }
+
+        activeSyncUploads.add(orderId);
+        console.log(`🛰️ [Sync Queue] Retrying upload for order: ${orderId}...`);
+
+        try {
+            const uploadData = JSON.parse(uploadDataStr);
+            const base64Data = packagePhoto.includes(',') ? packagePhoto.split(',')[1] : packagePhoto;
+
+            const response = await fetch(`${WEB_APP_URL}/api/upload-image`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({
+                    ...uploadData,
+                    fileData: base64Data
+                })
+            });
+
+            if (response.ok) {
+                const result = await response.json();
+                if (result.status === 'success' || result.status === 'accepted') {
+                    console.log(`✅ [Sync Queue] Successfully synced package photo for order ${orderId}`);
+                    // Success: Purge metadata and big base64 string from local storage to free quota.
+                    // Keep in-memory cache so UI doesn't flicker while waiting for websocket refresh.
+                    localStorage.removeItem(key);
+                    localStorage.removeItem(`package_photo_${orderId}`);
+                } else {
+                    console.warn(`⚠️ [Sync Queue] Server rejected retry for ${orderId}:`, result.message);
+                }
+            } else {
+                console.warn(`⚠️ [Sync Queue] Upload attempt failed for ${orderId} (HTTP ${response.status})`);
+            }
+        } catch (error) {
+            console.error(`❌ [Sync Queue] Network/fetch error on retry for ${orderId}:`, error);
+        } finally {
+            activeSyncUploads.delete(orderId);
+        }
+    }
 };
 
 /**

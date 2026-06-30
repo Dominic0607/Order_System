@@ -5,7 +5,7 @@ import { useUI } from '@/context/UIContext';
 import { WEB_APP_URL } from '@/constants';
 import Spinner from '@/components/common/Spinner';
 import { ParsedOrder } from '@/types';
-import { fileToDataUrl, convertGoogleDriveUrl } from '@/utils/fileUtils';
+import { fileToDataUrl, convertGoogleDriveUrl, setOptimisticPackagePhotoInMemory, syncPendingPackagePhotos } from '@/utils/fileUtils';
 import { extractMapLink } from '@/utils/orderLogic';
 import { compressImage } from '@/utils/imageCompressor';
 import { CacheService, CACHE_KEYS } from '@/services/cacheService';
@@ -187,27 +187,25 @@ const FastPackTerminal: React.FC<FastPackTerminalProps> = ({ order, onClose, onS
 
             // 2. Start Image Upload in background (if photo exists) - do NOT wait for this to finish
             if (packagePhoto) {
-                const base64Data = packagePhoto.includes(',') ? packagePhoto.split(',')[1] : packagePhoto;
-                // Note: We don't pass newData here because we already updated it above
+                // Ensure photo is registered in-memory and local storage
+                setOptimisticPackagePhotoInMemory(order['Order ID'], packagePhoto);
+                localStorage.setItem(`package_photo_${order['Order ID']}`, packagePhoto);
+
+                // Prepare metadata (we omit fileData payload to save localStorage space; sync queue will merge it)
                 const uploadData = { 
                     action: 'uploadImage', 
-                    fileData: base64Data, 
-                    fileName: `Package_${order['Order ID'].substring(0,8)}_${Date.now()}.jpg`, 
-                    mimeType: 'image/jpeg', 
+                    fileName: `Package_${order['Order ID'].substring(0,8)}_${Date.now()}.webp`, 
+                    mimeType: 'image/webp', 
                     orderId: order['Order ID'], 
                     team: order.Team, 
                     targetColumn: 'Package Photo', 
                     isAsync: true 
                 };
+
+                localStorage.setItem(`package_photo_upload_${order['Order ID']}`, JSON.stringify(uploadData));
                 
-                fetch(`${WEB_APP_URL}/api/upload-image`, { 
-                    method: 'POST', 
-                    headers: { 
-                        'Content-Type': 'application/json', 
-                        'Authorization': `Bearer ${token}` 
-                    }, 
-                    body: JSON.stringify(uploadData) 
-                }).catch(err => console.error("Background upload failed:", err));
+                // Fire the sync queue immediately in the background
+                syncPendingPackagePhotos().catch(err => console.error("Immediate sync attempt failed:", err));
             }
             
             setUploadProgress(90);
@@ -285,6 +283,7 @@ const FastPackTerminal: React.FC<FastPackTerminalProps> = ({ order, onClose, onS
             const dataUrl = await fileToDataUrl(compressed);
             setPackagePhoto(dataUrl);
             if (order?.['Order ID']) {
+                setOptimisticPackagePhotoInMemory(order['Order ID'], dataUrl);
                 localStorage.setItem(`package_photo_${order['Order ID']}`, dataUrl);
             }
         } catch (error) {
@@ -433,7 +432,12 @@ const FastPackTerminal: React.FC<FastPackTerminalProps> = ({ order, onClose, onS
             const blob = await new Promise<Blob | null>(res => canvas.toBlob(res, 'image/jpeg', 0.95)); 
             if (!blob) throw new Error("Blob Error");
             const compressed = await compressImage(new File([blob], 'proof.jpg', { type: 'image/jpeg' }), 'high-detail');
-            setPackagePhoto(await fileToDataUrl(compressed)); 
+            const dataUrl = await fileToDataUrl(compressed);
+            setPackagePhoto(dataUrl);
+            if (order?.['Order ID']) {
+                setOptimisticPackagePhotoInMemory(order['Order ID'], dataUrl);
+                localStorage.setItem(`package_photo_${order['Order ID']}`, dataUrl);
+            }
             setAutoCaptureCountdown(null);
         } catch (err) { 
             console.error(err); 

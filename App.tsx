@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, Suspense, useMemo, useRef } from 'react';
 import { User, AppData, ParsedOrder } from './types';
-import { convertGoogleDriveUrl } from './utils/fileUtils';
+import { convertGoogleDriveUrl, syncPendingPackagePhotos } from './utils/fileUtils';
 import { WEB_APP_URL, SOUND_URLS } from './constants';
 import { useUrlState } from './hooks/useUrlState';
 import { CacheService, CACHE_KEYS } from './services/cacheService';
@@ -91,6 +91,32 @@ const AppContent: React.FC = () => {
         }
         return defaultSettings;
     });
+
+    // --- BACKGROUND UPLOAD SYNC QUEUE ---
+    useEffect(() => {
+        // Run sync on mount (after a short delay to not block initial loading)
+        const initialTimeout = setTimeout(() => {
+            syncPendingPackagePhotos().catch(err => console.error("Mount sync failed:", err));
+        }, 5000);
+
+        // Run sync every 30 seconds
+        const interval = setInterval(() => {
+            syncPendingPackagePhotos().catch(err => console.error("Interval sync failed:", err));
+        }, 30000);
+
+        // Run sync when going back online
+        const handleOnline = () => {
+            console.log("🌐 [Sync Queue] Device is back online. Syncing pending package photos...");
+            syncPendingPackagePhotos().catch(err => console.error("Online event sync failed:", err));
+        };
+        window.addEventListener('online', handleOnline);
+
+        return () => {
+            clearTimeout(initialTimeout);
+            clearInterval(interval);
+            window.removeEventListener('online', handleOnline);
+        };
+    }, []);
 
     // --- APPLY DYNAMIC CSS VARIABLES ---
     useEffect(() => {
