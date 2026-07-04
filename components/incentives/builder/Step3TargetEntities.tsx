@@ -225,13 +225,23 @@ const Step3TargetEntities: React.FC<Step3TargetEntitiesProps> = ({ calcData, app
                         <label className="text-[9px] font-black text-[#707A8A] uppercase tracking-[0.2em]">Core Performance Metric</label>
                     </div>
                     <select 
-                        value={calcData.metricType} onChange={e => updateField('metricType', e.target.value)}
+                        value={calcData.metricType} 
+                        onChange={e => {
+                            const val = e.target.value;
+                            updateField('metricType', val);
+                            if (val === 'Number of Videos' || val === 'Number of Orders') {
+                                updateField('metricUnit', 'Count');
+                            } else if (val === 'Sales Amount' || val === 'Revenue' || val === 'Profit') {
+                                updateField('metricUnit', 'USD');
+                            }
+                        }}
                         className="w-full h-11 bg-[#050505] border border-[#1A1A1A] rounded px-4 text-[11px] font-bold text-[#EAECEF] outline-none focus:border-[#F0B90B]/50 transition-all cursor-pointer uppercase tracking-widest"
                     >
                         <option value="Sales Amount">Sales Amount Volume</option>
                         <option value="Number of Orders">Order Count</option>
                         <option value="Revenue">Gross Revenue</option>
                         <option value="Profit">Net Profit Margin</option>
+                        <option value="Number of Videos">Number of Videos & Face-showing</option>
                     </select>
                 </div>
 

@@ -13,6 +13,8 @@ const Step4Logic: React.FC<Step4LogicProps> = ({ calcData, updateField }) => {
     const { language } = React.useContext(AppContext);
     const t = translations[language];
 
+    console.log("DEBUG: Step4Logic Render. metricUnit =", calcData.metricUnit, "calcData =", calcData);
+
     if (calcData.type === 'Achievement') {
         const tiers = calcData.achievementTiers || [];
         
@@ -34,9 +36,10 @@ const Step4Logic: React.FC<Step4LogicProps> = ({ calcData, updateField }) => {
         const handleAddTier = (period?: string) => {
             const nt = [...tiers];
             const lastTarget = nt.length > 0 ? Math.max(...nt.map(t => t.target)) : 0;
+            const increment = calcData.metricUnit === 'Count' ? 5 : 1000;
             nt.push({ 
                 id: `t${Date.now()}`, 
-                target: lastTarget + 1000, 
+                target: lastTarget + increment, 
                 rewardAmount: 0, 
                 rewardType: 'Fixed Cash', 
                 name: `LVL_${nt.length + 1}`,
@@ -145,12 +148,22 @@ const Step4Logic: React.FC<Step4LogicProps> = ({ calcData, updateField }) => {
                                                                 <label className="text-[8px] font-black text-[#848E9C] uppercase tracking-[0.2em]">Threshold Target</label>
                                                             </div>
                                                             <div className="relative group/input">
-                                                                <div className="absolute left-4 top-1/2 -translate-y-1/2 text-[#FCD535] font-black text-[10px]">$</div>
+                                                                {(calcData.metricUnit === 'USD' || !calcData.metricUnit) && (
+                                                                    <div className="absolute left-4 top-1/2 -translate-y-1/2 text-[#FCD535] font-black text-[10px]">$</div>
+                                                                )}
                                                                 <input 
                                                                     type="number" value={tier.target}
                                                                     onChange={e => updateTier(tier.id, 'target', Number(e.target.value))}
-                                                                    className="w-full bg-[#0B0E11] border border-[#2B3139] group-hover/input:border-[#FCD535]/20 rounded-sm h-11 pl-8 pr-4 text-xs font-mono font-black text-[#EAECEF] focus:border-[#FCD535]/50 outline-none transition-all focus:shadow-[0_0_10px_rgba(252,213,53,0.1)]"
+                                                                    className={`w-full bg-[#0B0E11] border border-[#2B3139] group-hover/input:border-[#FCD535]/20 rounded-sm h-11 pr-4 text-xs font-mono font-black text-[#EAECEF] focus:border-[#FCD535]/50 outline-none transition-all focus:shadow-[0_0_10px_rgba(252,213,53,0.1)] ${
+                                                                        (calcData.metricUnit === 'USD' || !calcData.metricUnit) ? 'pl-8' : 'pl-4'
+                                                                    }`}
                                                                 />
+                                                                {calcData.metricUnit === '%' && (
+                                                                    <div className="absolute right-4 top-1/2 -translate-y-1/2 text-[#FCD535] font-black text-[10px]">%</div>
+                                                                )}
+                                                                {calcData.metricUnit === 'Count' && (
+                                                                    <div className="absolute right-4 top-1/2 -translate-y-1/2 text-[#FCD535]/60 font-bold text-[8px] uppercase tracking-wider">Qty</div>
+                                                                )}
                                                             </div>
                                                         </div>
 

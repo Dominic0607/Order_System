@@ -47,10 +47,24 @@ const Step5Simulation: React.FC<Step5SimulationProps> = ({ calcData, previewInpu
                     <div className="bg-[#080808] p-8 rounded border border-[#1A1A1A] text-center relative overflow-hidden group">
                          <div className="absolute top-0 left-0 w-1 h-full bg-[#F0B90B]/20"></div>
                          <div className="text-[9px] font-black text-[#707A8A] uppercase tracking-[0.2em] mb-6">Simulated KPI Metric</div>
-                         <div className="flex items-center justify-center gap-3 mb-8">
-                            <span className="text-xl font-black text-[#1A1A1A] font-mono group-hover:text-[#F0B90B]/20 transition-colors">$</span>
-                            <input type="number" value={previewInput} onChange={e => setPreviewInput(Number(e.target.value))} className="bg-[#050505] border border-[#1A1A1A] rounded h-14 text-3xl font-mono font-black text-[#EAECEF] text-center w-48 focus:border-[#F0B90B]/50 transition-all outline-none shadow-inner" />
-                         </div>
+                          <div className="flex items-center justify-center gap-3 mb-8">
+                             {(calcData.metricUnit === 'USD' || !calcData.metricUnit) && (
+                                 <span className="text-xl font-black text-[#1A1A1A] font-mono group-hover:text-[#F0B90B]/20 transition-colors">$</span>
+                             )}
+                             <div className="relative flex items-center justify-center">
+                                 <input 
+                                     type="number" value={previewInput} 
+                                     onChange={e => setPreviewInput(Number(e.target.value))} 
+                                     className="bg-[#050505] border border-[#1A1A1A] rounded h-14 text-3xl font-mono font-black text-[#EAECEF] text-center w-48 focus:border-[#F0B90B]/50 transition-all outline-none shadow-inner" 
+                                 />
+                                 {calcData.metricUnit === '%' && (
+                                     <span className="absolute -right-8 text-xl font-black text-[#F0B90B]/80 font-mono">%</span>
+                                 )}
+                                 {calcData.metricUnit === 'Count' && (
+                                     <span className="absolute -right-12 text-sm font-black text-[#F0B90B]/60 font-sans uppercase tracking-widest">Qty</span>
+                                 )}
+                             </div>
+                          </div>
                          <div className="pt-6 border-t border-[#1A1A1A]">
                             <div className="text-[9px] font-black text-[#0ECB81] uppercase tracking-[0.2em] mb-2 flex items-center justify-center gap-2">
                                 <Activity className="w-3 h-3" /> Projected Yield Output

@@ -90,7 +90,7 @@ const IncentiveExecutionView: React.FC<IncentiveExecutionViewProps> = ({ project
             const p = await getProjectById(Number(projectId));
             if (p) {
                 setProject(p);
-                const activeCalcs = p.calculators?.filter(c => c.status === 'Active') || [];
+                const activeCalcs = p.calculators?.filter(c => c.status === 'Active' && c.metricType !== 'Face-showing Videos') || [];
                 if (activeCalcs.length > 0) {
                     if (!activeMetricTab || !activeCalcs.find(c => String(c.id) === activeMetricTab)) {
                         setActiveMetricTab(String(activeCalcs[0].id));
@@ -468,7 +468,7 @@ const IncentiveExecutionView: React.FC<IncentiveExecutionViewProps> = ({ project
                                     <span className="text-[10px] font-bold text-white/40 tracking-wide">{language === 'km' ? 'ម៉ូឌុលសកម្ម' : 'Active Module'}</span>
                                 </div>
                                 <div className="flex items-center gap-2 bg-black p-1 rounded-2xl border border-white/5 overflow-x-auto no-scrollbar">
-                                    {project.calculators?.filter(c => c.status === 'Active').map(calc => (
+                                    {project.calculators?.filter(c => c.status === 'Active' && c.metricType !== 'Face-showing Videos').map(calc => (
                                         <button
                                             key={calc.id}
                                             onClick={() => setActiveMetricTab(String(calc.id))}
@@ -567,11 +567,25 @@ const IncentiveExecutionView: React.FC<IncentiveExecutionViewProps> = ({ project
                                             <thead className="sticky top-0 z-20">
                                                 <tr className="bg-black/80 backdrop-blur-xl border-b border-white/10 text-[10px] text-white/30 font-bold tracking-wider">
                                                     <th className="px-8 py-4 min-w-[220px] border-r border-white/5">{language === 'km' ? 'ឈ្មោះ' : 'Name'}</th>
-                                                    {subPeriods.map(p => (
-                                                        <th key={p} className="px-4 py-4 text-center border-r border-white/5 min-w-[180px]">
-                                                            {p === 'month' ? (language === 'km' ? 'ប្រចាំខែ' : 'Monthly') : p}
-                                                        </th>
-                                                    ))}
+                                                    {subPeriods.map(p => {
+                                                        if (calc.metricType === 'Number of Videos') {
+                                                            return (
+                                                                <React.Fragment key={p}>
+                                                                    <th className="px-4 py-4 text-center border-r border-white/5 min-w-[140px]">
+                                                                        {p} ({language === 'km' ? 'សរុប' : 'Total'})
+                                                                    </th>
+                                                                    <th className="px-4 py-4 text-center border-r border-white/5 min-w-[140px]">
+                                                                        {p} ({language === 'km' ? 'បង្ហាញមុខ' : 'Face'})
+                                                                    </th>
+                                                                </React.Fragment>
+                                                            );
+                                                        }
+                                                        return (
+                                                            <th key={p} className="px-4 py-4 text-center border-r border-white/5 min-w-[180px]">
+                                                                {p === 'month' ? (language === 'km' ? 'ប្រចាំខែ' : 'Monthly') : p}
+                                                            </th>
+                                                        );
+                                                    })}
                                                     <th className="px-8 py-4 text-right text-primary bg-primary/5">{language === 'km' ? 'សរុប' : 'Total'}</th>
                                                 </tr>
                                             </thead>
@@ -580,9 +594,14 @@ const IncentiveExecutionView: React.FC<IncentiveExecutionViewProps> = ({ project
                                                     const id = typeof t === 'string' ? t : t.UserName;
                                                     const label = typeof t === 'string' ? t : t.FullName;
                                                     const rowData = manualDataMap[calc.metricType || ''] || {};
+                                                    const faceRowData = manualDataMap['Face-showing Videos'] || {};
                                                     const rowTotal = subPeriods.reduce((sum, p) => {
                                                         const keyWithPrefix = `${p}_${entryMode === 'team' ? 'team:' : 'user:'}${id}`;
                                                         return sum + (rowData[keyWithPrefix] ?? rowData[`${p}_${id}`] ?? 0);
+                                                    }, 0);
+                                                    const faceRowTotal = subPeriods.reduce((sum, p) => {
+                                                        const keyWithPrefix = `${p}_${entryMode === 'team' ? 'team:' : 'user:'}${id}`;
+                                                        return sum + (faceRowData[keyWithPrefix] ?? faceRowData[`${p}_${id}`] ?? 0);
                                                     }, 0);
                                                     
                                                     return (
@@ -596,12 +615,103 @@ const IncentiveExecutionView: React.FC<IncentiveExecutionViewProps> = ({ project
                                                             {subPeriods.map(p => {
                                                                 const keyWithPrefix = `${p}_${entryMode === 'team' ? 'team:' : 'user:'}${id}`;
                                                                 const cellVal = rowData[keyWithPrefix] ?? rowData[`${p}_${id}`] ?? 0;
-                                                                let activeTier = null;
-                                                                if (calc.achievementTiers) {
+                                                                const faceCellVal = faceRowData[keyWithPrefix] ?? faceRowData[`${p}_${id}`] ?? 0;
+                                                                
+                                                                let displayReward = 0;
+                                                                let displayTierName = "";
+
+                                                                if (calc.metricType === 'Number of Videos') {
+                                                                    if (cellVal >= 15) {
+                                                                        if (faceCellVal >= 5) {
+                                                                            displayReward = 15;
+                                                                            displayTierName = language === 'km' ? 'សម្រេច ១៥ វីដេអូ (បង្ហាញមុខ ៥)' : 'Reached 15 Videos (Face 5)';
+                                                                        } else {
+                                                                            displayReward = 10;
+                                                                            displayTierName = language === 'km' ? 'សម្រេច ១៥ វីដេអូ' : 'Reached 15 Videos';
+                                                                        }
+                                                                    } else if (cellVal >= 10) {
+                                                                        displayReward = 5;
+                                                                        displayTierName = language === 'km' ? 'សម្រេច ១០ វីដេអូ' : 'Reached 10 Videos';
+                                                                    }
+                                                                } else if (calc.achievementTiers) {
                                                                     const tiers = [...calc.achievementTiers]
                                                                         .filter(tier => !tier.subPeriod || tier.subPeriod === p)
                                                                         .sort((a, b) => b.target - a.target);
-                                                                    activeTier = tiers.find(tier => cellVal >= tier.target);
+                                                                    const tier = tiers.find(t => cellVal >= t.target);
+                                                                    if (tier) {
+                                                                        displayReward = tier.rewardAmount;
+                                                                        displayTierName = tier.name || (language === 'km' ? 'គោលដៅសម្រេច' : 'Target Reached');
+                                                                    }
+                                                                }
+
+                                                                if (calc.metricType === 'Number of Videos') {
+                                                                    return (
+                                                                        <React.Fragment key={p}>
+                                                                            {/* Total Videos Input */}
+                                                                            <td className="px-4 py-4 border-r border-white/5">
+                                                                                <div className="flex flex-col gap-2">
+                                                                                    <div className="flex items-center gap-1.5 justify-center">
+                                                                                        <button
+                                                                                            type="button"
+                                                                                            disabled={isLocked || cellVal <= 0}
+                                                                                            onClick={() => handleManualDataIncrement(calc.metricType || '', id, p, -1)}
+                                                                                            className="w-8 h-10 flex items-center justify-center rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-500 border border-red-500/20 transition-all disabled:opacity-20 active:scale-90 shrink-0 text-base font-black"
+                                                                                        >−</button>
+                                                                                        <input
+                                                                                            type="number"
+                                                                                            value={cellVal || ''}
+                                                                                            disabled={isLocked}
+                                                                                            onChange={e => handleManualDataChange(calc.metricType || '', id, e.target.value, p)}
+                                                                                            className="w-16 h-10 bg-black border border-white/10 text-center font-mono text-[13px] font-black text-white focus:border-primary/50 focus:bg-primary/[0.02] rounded-lg outline-none transition-all disabled:opacity-30"
+                                                                                            placeholder="0"
+                                                                                        />
+                                                                                        <button
+                                                                                            type="button"
+                                                                                            disabled={isLocked}
+                                                                                            onClick={() => handleManualDataIncrement(calc.metricType || '', id, p, 1)}
+                                                                                            className="w-8 h-10 flex items-center justify-center rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/20 transition-all disabled:opacity-20 active:scale-90 shrink-0 text-base font-black"
+                                                                                        >+</button>
+                                                                                    </div>
+                                                                                    {displayReward > 0 && (
+                                                                                        <div className="flex flex-col gap-0.5 px-2 py-1 bg-emerald-500/5 rounded border border-emerald-500/10 max-w-[120px] mx-auto text-center">
+                                                                                            <span className="text-[7px] font-black text-emerald-400 uppercase tracking-tighter truncate">
+                                                                                                {displayTierName}
+                                                                                            </span>
+                                                                                            <span className="text-[9px] font-mono font-black text-emerald-400">
+                                                                                                +${displayReward.toFixed(0)}
+                                                                                            </span>
+                                                                                        </div>
+                                                                                    )}
+                                                                                </div>
+                                                                            </td>
+
+                                                                            {/* Face-showing Videos Input */}
+                                                                            <td className="px-4 py-4 border-r border-white/5">
+                                                                                <div className="flex items-center gap-1.5 justify-center">
+                                                                                    <button
+                                                                                        type="button"
+                                                                                        disabled={isLocked || faceCellVal <= 0}
+                                                                                        onClick={() => handleManualDataIncrement('Face-showing Videos', id, p, -1)}
+                                                                                        className="w-8 h-10 flex items-center justify-center rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-500 border border-red-500/20 transition-all disabled:opacity-20 active:scale-90 shrink-0 text-base font-black"
+                                                                                    >−</button>
+                                                                                    <input
+                                                                                        type="number"
+                                                                                        value={faceCellVal || ''}
+                                                                                        disabled={isLocked}
+                                                                                        onChange={e => handleManualDataChange('Face-showing Videos', id, e.target.value, p)}
+                                                                                        className="w-16 h-10 bg-black border border-white/10 text-center font-mono text-[13px] font-black text-white focus:border-primary/50 focus:bg-primary/[0.02] rounded-lg outline-none transition-all disabled:opacity-30"
+                                                                                        placeholder="0"
+                                                                                    />
+                                                                                    <button
+                                                                                        type="button"
+                                                                                        disabled={isLocked}
+                                                                                        onClick={() => handleManualDataIncrement('Face-showing Videos', id, p, 1)}
+                                                                                        className="w-8 h-10 flex items-center justify-center rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/20 transition-all disabled:opacity-20 active:scale-90 shrink-0 text-base font-black"
+                                                                                    >+</button>
+                                                                                </div>
+                                                                            </td>
+                                                                        </React.Fragment>
+                                                                    );
                                                                 }
 
                                                                 return (
@@ -629,14 +739,13 @@ const IncentiveExecutionView: React.FC<IncentiveExecutionViewProps> = ({ project
                                                                                     className="w-9 h-11 flex items-center justify-center rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/20 transition-all disabled:opacity-20 active:scale-90 shrink-0 text-lg font-black"
                                                                                 >+</button>
                                                                             </div>
-                                                                            
-                                                                            {activeTier ? (
+                                                                            {displayReward > 0 ? (
                                                                                 <div className="flex items-center justify-between px-2 py-1 bg-emerald-500/5 rounded-lg border border-emerald-500/10">
                                                                                     <span className="text-[8px] font-black text-emerald-400 uppercase tracking-tighter">
-                                                                                        {activeTier.name || (language === 'km' ? 'គោលដៅសម្រេច' : 'Target Reached')}
+                                                                                        {displayTierName}
                                                                                     </span>
                                                                                     <span className="text-[10px] font-mono font-black text-emerald-400">
-                                                                                        +${activeTier.rewardAmount.toFixed(0)}
+                                                                                        +${displayReward.toFixed(0)}
                                                                                     </span>
                                                                                 </div>
                                                                             ) : cellVal > 0 ? (
@@ -653,6 +762,12 @@ const IncentiveExecutionView: React.FC<IncentiveExecutionViewProps> = ({ project
                                                             <td className="px-8 py-5 text-right bg-primary/[0.02]">
                                                                 <span className="font-mono text-[16px] text-primary font-black tracking-tight">{rowTotal.toLocaleString()}</span>
                                                                 <div className="text-[9px] text-white/20 font-black uppercase tracking-[0.2em] mt-1">{calc.metricType || 'KPI'}</div>
+                                                                {isVideoMetric && (
+                                                                    <div className="mt-2 pt-2 border-t border-white/5">
+                                                                        <span className="font-mono text-[13px] text-emerald-400 font-black tracking-tight">{faceRowTotal.toLocaleString()}</span>
+                                                                        <div className="text-[8px] text-white/20 font-black uppercase tracking-wider mt-0.5">{language === 'km' ? 'បង្ហាញមុខសរុប' : 'Face Total'}</div>
+                                                                    </div>
+                                                                )}
                                                             </td>
                                                         </tr>
                                                     );
