@@ -218,7 +218,7 @@ const Step3TargetEntities: React.FC<Step3TargetEntitiesProps> = ({ calcData, app
                 </div>
             </div>
 
-            <div className="pt-8 border-t border-[#1A1A1A] grid grid-cols-1 md:grid-cols-2 gap-8">
+            <div className="pt-8 border-t border-[#1A1A1A] grid grid-cols-1 md:grid-cols-3 gap-8">
                 <div className="space-y-3">
                     <div className="flex items-center gap-2">
                         <Target className="w-3.5 h-3.5 text-[#707A8A]" />
@@ -257,6 +257,7 @@ const Step3TargetEntities: React.FC<Step3TargetEntitiesProps> = ({ calcData, app
                             return (
                                 <button 
                                     key={u} 
+                                    type="button"
                                     onClick={() => updateField('metricUnit', u)} 
                                     className={`flex-1 py-2 rounded text-[10px] font-black uppercase tracking-widest transition-all ${
                                         isActive 
@@ -265,6 +266,33 @@ const Step3TargetEntities: React.FC<Step3TargetEntitiesProps> = ({ calcData, app
                                     }`}
                                 >
                                     {u === 'USD' ? 'Currency' : u === 'Count' ? 'Integer' : 'Percent'}
+                                </button>
+                            );
+                        })}
+                    </div>
+                </div>
+
+                <div className="space-y-3">
+                    <div className="flex items-center gap-2">
+                        <Users className="w-3.5 h-3.5 text-[#707A8A]" />
+                        <label className="text-[9px] font-black text-[#707A8A] uppercase tracking-[0.2em]">Incentive Scale Level</label>
+                    </div>
+                    <div className="flex p-1 bg-[#050505] rounded border border-[#1A1A1A]">
+                        {['Individual', 'Team'].map(level => {
+                            const isActive = (calcData.calculationLevel || 'Individual') === level;
+                            const isAchievement = calcData.type === 'Achievement';
+                            return (
+                                <button
+                                    key={level}
+                                    type="button"
+                                    onClick={() => updateField('calculationLevel', level)}
+                                    className={`flex-1 py-2 rounded text-[10px] font-black uppercase tracking-widest transition-all ${
+                                        isActive
+                                            ? `active-segment-tab ${isAchievement ? 'active-achievement' : 'active-commission'}`
+                                            : 'text-[#707A8A] hover:text-[#EAECEF]'
+                                    }`}
+                                >
+                                    {level === 'Individual' ? 'Individual' : 'Team'}
                                 </button>
                             );
                         })}

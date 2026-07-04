@@ -379,6 +379,7 @@ export interface IncentiveCalculator {
     excludeRefunded?: boolean;
     includeTax?: boolean;
     distributionRule?: DistributionRule;
+    calculationLevel?: 'Individual' | 'Team';
 }
 
 export interface IncentiveProject {

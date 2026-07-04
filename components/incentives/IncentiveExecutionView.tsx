@@ -103,6 +103,15 @@ const IncentiveExecutionView: React.FC<IncentiveExecutionViewProps> = ({ project
         fetchProject();
     }, [projectId, onBack]);
 
+    useEffect(() => {
+        if (!activeMetricTab || !project?.calculators) return;
+        const calc = project.calculators.find(c => String(c.id) === activeMetricTab);
+        if (calc) {
+            const level = calc.calculationLevel || 'Individual';
+            setEntryMode(level === 'Team' ? 'team' : 'user');
+        }
+    }, [activeMetricTab, project?.calculators]);
+
     const loadDataAndCalculate = useCallback(async (isSilent = false) => {
         if (!project?.id) return;
         if (!isSilent) setIsCalculating(true);
