@@ -17,19 +17,15 @@ const Step4Logic: React.FC<Step4LogicProps> = ({ calcData, updateField }) => {
 
     React.useEffect(() => {
         if (calcData.metricType === 'Number of Videos') {
-            const hasCorrectTiers = tiers.length === 3 && 
-                                  tiers.some(t => t.target === 10) && 
-                                  tiers.some(t => t.target === 15 && t.rewardAmount === 10) &&
-                                  tiers.some(t => t.target === 15 && t.rewardAmount === 15);
-            if (!hasCorrectTiers) {
+            if (tiers.length === 0) {
                 updateField('achievementTiers', [
                     { id: 'v_t1', target: 10, rewardAmount: 5, rewardType: 'Fixed Cash', name: '10 Videos' },
                     { id: 'v_t2', target: 15, rewardAmount: 10, rewardType: 'Fixed Cash', name: '15 Videos' },
-                    { id: 'v_t3', target: 15, rewardAmount: 15, rewardType: 'Fixed Cash', name: '15 Videos (Face 5+)' }
+                    { id: 'v_t3', target: 15, rewardAmount: 15, rewardType: 'Fixed Cash', name: '15 Videos (Face 5+)', faceTarget: 5 }
                 ]);
             }
         }
-    }, [calcData.metricType]);
+    }, [calcData.metricType, tiers.length]);
 
     console.log("DEBUG: Step4Logic Render. metricUnit =", calcData.metricUnit, "calcData =", calcData);
 
