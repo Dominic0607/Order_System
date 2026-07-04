@@ -604,6 +604,8 @@ const IncentiveExecutionView: React.FC<IncentiveExecutionViewProps> = ({ project
                                                         return sum + (faceRowData[keyWithPrefix] ?? faceRowData[`${p}_${id}`] ?? 0);
                                                     }, 0);
                                                     
+                                                    const isVideoMetric = calc.metricType === 'Number of Videos';
+
                                                     return (
                                                         <tr key={id} className="hover:bg-white/[0.02] transition-colors group">
                                                             <td className="px-8 py-5 border-r border-white/5 font-black text-white text-xs italic tracking-tight group-hover:text-primary transition-colors">
