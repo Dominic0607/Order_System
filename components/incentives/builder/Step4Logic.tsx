@@ -43,74 +43,85 @@ const Step4Logic: React.FC<Step4LogicProps> = ({ calcData, updateField }) => {
                         </div>
                         <div>
                             <h3 className="text-lg sm:text-xl font-black text-[#EAECEF] uppercase tracking-[0.2em]">
-                                {language === 'km' ? 'លក្ខខណ្ឌវីដេអូ Marathon (លក្ខខណ្ឌពិសេស)' : 'Video Marathon Logic (Special Rules)'}
+                                {language === 'km' ? 'កែសម្រួលលក្ខខណ្ឌវីដេអូ (Weekly Milestone Logic)' : 'Configure Video Milestones (Weekly Logic)'}
                             </h3>
                             <p className="text-[9px] sm:text-[10px] font-mono font-black text-[#848E9C] uppercase tracking-widest mt-1">
-                                {language === 'km' ? 'លក្ខខណ្ឌត្រូវបានកំណត់ដោយស្វ័យប្រវត្តិតាមសប្តាហ៍' : 'Rules are automatically configured per week'}
+                                {language === 'km' ? 'លោកអ្នកអាចកែប្រែចំនួនគោលដៅ និងទឹកប្រាក់រង្វាន់តាមចិត្តចង់' : 'You can customize weekly targets and reward amounts freely'}
                             </p>
                         </div>
                     </div>
 
-                    <div className="bg-[#181A20] border border-[#FCD535]/20 rounded-sm p-6 sm:p-8 space-y-6 relative overflow-hidden">
-                        <div className="absolute top-0 right-0 p-8 opacity-[0.03] pointer-events-none">
-                            <Zap className="w-48 h-48 text-[#FCD535]" />
-                        </div>
-                        
-                        <div className="space-y-4">
-                            <p className="text-xs text-[#848E9C] font-black uppercase tracking-wider">
-                                {language === 'km' ? 'បញ្ជីលក្ខខណ្ឌរង្វាន់ប្រចាំសប្តាហ៍៖' : 'Weekly Reward Tier Matrix:'}
-                            </p>
-                            
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                                {/* Tier 1 */}
-                                <div className="bg-[#0B0E11] border border-[#2B3139] p-5 rounded-sm flex flex-col justify-between h-40 relative group hover:border-[#FCD535]/30 transition-all">
-                                    <div>
-                                        <span className="text-[8px] font-black text-[#848E9C] uppercase tracking-widest block mb-1">TIER 01</span>
-                                        <h4 className="text-sm font-black text-white uppercase tracking-wider">{language === 'km' ? 'វីដេអូ ១០ សរុប' : '10 Videos Total'}</h4>
-                                    </div>
-                                    <div className="mt-4 flex items-baseline justify-between border-t border-white/5 pt-3">
-                                        <span className="text-[9px] font-bold text-[#848E9C]">{language === 'km' ? 'រង្វាន់ប្រចាំសប្តាហ៍' : 'Weekly Payout'}</span>
-                                        <span className="text-xl font-mono font-black text-[#0ECB81]">$5.00</span>
-                                    </div>
-                                </div>
+                    <div className="space-y-6">
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                            {tiers.map((tier, idx) => {
+                                const isTier3 = idx === 2; // Tier 3 has face target
+                                return (
+                                    <div key={tier.id || idx} className="bg-[#181A20] border border-[#2B3139] hover:border-[#FCD535]/20 rounded-sm p-6 space-y-5 relative overflow-hidden transition-all">
+                                        <div className="absolute top-0 left-0 w-1 h-full bg-gradient-to-b from-[#FCD535]/10 to-transparent"></div>
+                                        
+                                        <div className="flex justify-between items-center border-b border-white/5 pb-2">
+                                            <span className="text-[8px] font-black text-[#848E9C] uppercase tracking-widest">TIER 0{idx + 1}</span>
+                                            {isTier3 && (
+                                                <div className="bg-[#FCD535]/10 border border-[#FCD535]/30 px-1.5 py-0.5 rounded-sm">
+                                                    <span className="text-[7px] font-black text-[#FCD535] uppercase tracking-wider">With Face</span>
+                                                </div>
+                                            )}
+                                        </div>
 
-                                {/* Tier 2 */}
-                                <div className="bg-[#0B0E11] border border-[#2B3139] p-5 rounded-sm flex flex-col justify-between h-40 relative group hover:border-[#FCD535]/30 transition-all">
-                                    <div>
-                                        <span className="text-[8px] font-black text-[#848E9C] uppercase tracking-widest block mb-1">TIER 02</span>
-                                        <h4 className="text-sm font-black text-white uppercase tracking-wider">{language === 'km' ? 'វីដេអូ ១៥ សរុប' : '15 Videos Total'}</h4>
-                                        <span className="text-[9px] text-[#848E9C] font-medium mt-1 block">{language === 'km' ? '(គ្មានការបង្ហាញមុខ ឬបង្ហាញមុខតិចជាង ៥)' : '(No face-showing or face < 5)'}</span>
-                                    </div>
-                                    <div className="mt-4 flex items-baseline justify-between border-t border-white/5 pt-3">
-                                        <span className="text-[9px] font-bold text-[#848E9C]">{language === 'km' ? 'រង្វាន់ប្រចាំសប្តាហ៍' : 'Weekly Payout'}</span>
-                                        <span className="text-xl font-mono font-black text-[#0ECB81]">$10.00</span>
-                                    </div>
-                                </div>
+                                        {/* Target Videos */}
+                                        <div className="space-y-2">
+                                            <label className="text-[8px] font-black text-[#848E9C] uppercase tracking-wider block">
+                                                {language === 'km' ? 'គោលដៅវីដេអូសរុប (Qty)' : 'Total Videos Target (Qty)'}
+                                            </label>
+                                            <input
+                                                type="number"
+                                                value={tier.target ?? 0}
+                                                onChange={e => updateTier(tier.id, 'target', Number(e.target.value))}
+                                                className="w-full bg-[#0B0E11] border border-[#2B3139] rounded-sm h-10 px-3 font-mono font-black text-xs text-[#EAECEF] focus:border-[#FCD535]/50 outline-none"
+                                            />
+                                        </div>
 
-                                {/* Tier 3 */}
-                                <div className="bg-[#0B0E11]/80 border border-[#FCD535]/30 p-5 rounded-sm flex flex-col justify-between h-40 relative shadow-[0_0_15px_rgba(252,213,53,0.05)]">
-                                    <div className="absolute top-2 right-2 bg-[#FCD535]/10 border border-[#FCD535]/30 px-1.5 py-0.5 rounded-sm">
-                                        <span className="text-[7px] font-black text-[#FCD535] uppercase tracking-wider">MAX BOOST</span>
+                                        {/* Optional Face-showing Target for Tier 3 */}
+                                        {isTier3 && (
+                                            <div className="space-y-2">
+                                                <label className="text-[8px] font-black text-[#FCD535] uppercase tracking-wider block">
+                                                    {language === 'km' ? 'តម្រូវឱ្យបង្ហាញមុខយ៉ាងតិច (Qty)' : 'Min Face-showing Videos (Qty)'}
+                                                </label>
+                                                <input
+                                                    type="number"
+                                                    value={tier.faceTarget ?? 0}
+                                                    onChange={e => updateTier(tier.id, 'faceTarget', Number(e.target.value))}
+                                                    className="w-full bg-[#0B0E11] border border-[#FCD535]/30 rounded-sm h-10 px-3 font-mono font-black text-xs text-[#FCD535] outline-none"
+                                                />
+                                            </div>
+                                        )}
+
+                                        {/* Reward Amount */}
+                                        <div className="space-y-2">
+                                            <label className="text-[8px] font-black text-[#0ECB81] uppercase tracking-wider block">
+                                                {language === 'km' ? 'ទឹកប្រាក់រង្វាន់ (USD)' : 'Reward Yield (USD)'}
+                                            </label>
+                                            <div className="relative">
+                                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[#0ECB81] font-black text-[10px]">$</span>
+                                                <input
+                                                    type="number"
+                                                    value={tier.rewardAmount ?? 0}
+                                                    onChange={e => updateTier(tier.id, 'rewardAmount', Number(e.target.value))}
+                                                    className="w-full bg-[#0B0E11] border border-[#2B3139] rounded-sm h-10 pl-7 pr-3 font-mono font-black text-xs text-[#0ECB81] focus:border-[#0ECB81]/50 outline-none"
+                                                />
+                                            </div>
+                                        </div>
                                     </div>
-                                    <div>
-                                        <span className="text-[8px] font-black text-[#FCD535] uppercase tracking-widest block mb-1">TIER 03</span>
-                                        <h4 className="text-sm font-black text-[#FCD535] uppercase tracking-wider">{language === 'km' ? 'វីដេអូ ១៥ (បង្ហាញមុខ ៥+)' : '15 Videos (Face 5+)'}</h4>
-                                        <span className="text-[9px] text-[#848E9C] font-medium mt-1 block">{language === 'km' ? 'ធ្វើបាន ១៥ វីដេអូ និងមានវីដេអូបង្ហាញមុខយ៉ាងតិច ៥' : '15 videos total with 5 or more face-showing'}</span>
-                                    </div>
-                                    <div className="mt-4 flex items-baseline justify-between border-t border-[#FCD535]/10 pt-3">
-                                        <span className="text-[9px] font-bold text-[#FCD535]">{language === 'km' ? 'រង្វាន់ប្រចាំសប្តាហ៍' : 'Weekly Payout'}</span>
-                                        <span className="text-xl font-mono font-black text-[#FCD535]">$15.00</span>
-                                    </div>
-                                </div>
-                            </div>
+                                );
+                            })}
                         </div>
 
                         <div className="p-4 bg-emerald-500/5 rounded-sm border border-emerald-500/20 text-xs text-[#0ECB81] flex items-center gap-3">
                             <div className="w-2 h-2 rounded-full bg-[#0ECB81] animate-pulse"></div>
                             <p className="font-bold">
                                 {language === 'km' 
-                                    ? 'ប្រព័ន្ធបានកំណត់លក្ខខណ្ឌពិសេសនេះដោយស្វ័យប្រវត្តិរួចរាល់។ សូមចុច PROCEED ដើម្បីបន្តទៅកាន់ជំហានបន្ទាប់។' 
-                                    : 'Special video incentive rule matrix has been automatically pre-configured. Click PROCEED to continue.'}
+                                    ? 'លោកអ្នកអាចកែប្រែតម្លៃលេខខាងលើ រួចចុច PROCEED ដើម្បីរក្សាទុកកាលកំណត់ថ្មី។' 
+                                    : 'You can update any values above and click PROCEED to save your configuration.'}
                             </p>
                         </div>
                     </div>

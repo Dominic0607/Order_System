@@ -331,6 +331,7 @@ export interface IncentiveTier {
     target: number;
     rewardAmount: number;
     rewardType: 'Fixed Cash' | 'Percentage' | 'Point';
+    faceTarget?: number;
 }
 
 export interface CommissionTier {
