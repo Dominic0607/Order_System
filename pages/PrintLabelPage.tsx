@@ -34,6 +34,10 @@ const PrintLabelPage: React.FC<PrintLabelPageProps> = ({ initialData, onClose, s
 
   const [theme, setTheme] = useState<ThemeType>(ThemeType.ACC);
   const isFlexi = theme === ThemeType.FLEXI;
+  const [flexiTemplate, setFlexiTemplate] = useState<string>(() => {
+    return localStorage.getItem('flexi_label_template') || 'vertical';
+  });
+  const isVertical = theme === ThemeType.FLEXI ? (flexiTemplate === 'vertical' || flexiTemplate === 'minimal') : false;
   const [isDesignMode, setIsDesignMode] = useState(false);
   const [margins, setMargins] = useState<Margins>({
     top: 0, right: 0, bottom: 0, left: 0, lineLeft: 0, lineRight: 2
@@ -117,6 +121,14 @@ const PrintLabelPage: React.FC<PrintLabelPageProps> = ({ initialData, onClose, s
   const handleThemeChange = (newTheme: ThemeType) => {
     setTheme(newTheme);
     localStorage.setItem('label_theme', newTheme);
+  };
+
+  const handleFlexiTemplateChange = (newTemplate: string) => {
+    setFlexiTemplate(newTemplate);
+    localStorage.setItem('flexi_label_template', newTemplate);
+    
+    const event = new CustomEvent('flexi-template-changed', { detail: { template: newTemplate } });
+    window.dispatchEvent(event);
   };
 
   useEffect(() => {
@@ -263,17 +275,17 @@ const PrintLabelPage: React.FC<PrintLabelPageProps> = ({ initialData, onClose, s
     const qrValue = `${window.location.origin}${window.location.pathname}?view=order_metadata&id=${encodeURIComponent(data.id)}`;
 
     return (
-      <div className={`printable-label ${isFlexi ? 'theme-flexi-gear' : 'theme-acc-store'}`} style={{
+      <div className={`printable-label ${isVertical ? 'theme-flexi-gear' : 'theme-acc-store'}`} style={{
         paddingTop: `${margins.top}mm`,
         paddingRight: `${margins.right}mm`,
         paddingBottom: `${margins.bottom}mm`,
         paddingLeft: `${margins.left}mm`,
       }}>
         {printTarget === 'label' ? (
-          <LabelContent data={data} theme={theme} lineLeft={margins.lineLeft} lineRight={margins.lineRight} qrValue={qrValue} isDesignMode={false} printDensity={printDensity} watermarkIntensity={watermarkIntensity} />
+          <LabelContent data={data} theme={theme} lineLeft={margins.lineLeft} lineRight={margins.lineRight} qrValue={qrValue} isDesignMode={false} printDensity={printDensity} watermarkIntensity={watermarkIntensity} flexiTemplate={flexiTemplate} />
         ) : (
           <div className="w-full h-full">
-            {isFlexi ? (
+            {isVertical ? (
                 <div className="w-full h-full flex flex-col bg-white border border-black/5 box-border font-sans">
                     <div className="flex justify-between items-start px-4 pt-2 pb-1.5 bg-gray-50 shrink-0">
                         <div>
@@ -392,6 +404,8 @@ const PrintLabelPage: React.FC<PrintLabelPageProps> = ({ initialData, onClose, s
                 onPrintDensityChange={handleDensityChange}
                 watermarkIntensity={watermarkIntensity}
                 onWatermarkChange={handleWatermarkChange}
+                flexiTemplate={flexiTemplate}
+                onFlexiTemplateChange={handleFlexiTemplateChange}
             />
         </div>
 
@@ -453,6 +467,7 @@ const PrintLabelPage: React.FC<PrintLabelPageProps> = ({ initialData, onClose, s
                         isDesignMode={isDesignMode}
                         printDensity={printDensity}
                         watermarkIntensity={watermarkIntensity}
+                        flexiTemplate={flexiTemplate}
                     />
                 </div>
             </div>

@@ -609,7 +609,8 @@ function processOrder(data) {
   const flatData = {};
   flatData[normalizeKey("Timestamp")] = data.scheduledTime || data.timestamp;
   flatData[normalizeKey("Order ID")] = orderId;
-  flatData[normalizeKey("User")] = orderRequest.currentUser ? orderRequest.currentUser.UserName : "System";
+  const rawUser = orderRequest.currentUser ? (orderRequest.currentUser.UserName || orderRequest.currentUser.userName || orderRequest.currentUser.username) : "";
+  flatData[normalizeKey("User")] = rawUser || "System";
   flatData[normalizeKey("Page")] = orderRequest.page;
   flatData[normalizeKey("TelegramValue")] = orderRequest.telegramValue;
   flatData[normalizeKey("Customer Name")] = orderRequest.customer ? orderRequest.customer.name : "";
@@ -1102,7 +1103,7 @@ function sendTelegramMessage(settings, data, templates) {
   // --- Build replacement map ---
   const vars = {
     "sourceInfo": sourceInfo,
-    "user": (req.currentUser ? req.currentUser.UserName : "") || data["User"] || "",
+    "user": (req.currentUser ? (req.currentUser.UserName || req.currentUser.userName || req.currentUser.username) : "") || data["User"] || "",
     "fulfillmentStore": data.fulfillmentStore || data["Fulfillment Store"] || "",
     "shippingMethod": shipping.method || data["Internal Shipping Method"] || "",
     "shippingDetails": shippingDetailsText,

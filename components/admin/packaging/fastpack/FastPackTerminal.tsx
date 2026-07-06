@@ -77,7 +77,7 @@ const FastPackTerminal: React.FC<FastPackTerminalProps> = ({ order, onClose, onS
         const store = order?.['Fulfillment Store']?.toLowerCase() || '';
         return store.includes('acc');
     }, [order]);
-    
+
     const [uploading, setUploading] = useState(false);
     const [uploadProgress, setUploadProgress] = useState(0);
     const [hasGeneratedLabel, setHasGeneratedLabel] = useState(false);
@@ -85,6 +85,22 @@ const FastPackTerminal: React.FC<FastPackTerminalProps> = ({ order, onClose, onS
     const [showLabelEditor, setShowLabelEditor] = useState(false);
     const [refreshKey, setRefreshKey] = useState(0);
     const [printTarget, setPrintTarget] = useState<'label' | 'qr'>('label');
+
+    const [flexiTemplate, setFlexiTemplate] = useState<string>(() => {
+        return localStorage.getItem('flexi_label_template') || 'vertical';
+    });
+
+    useEffect(() => {
+        const handleTemplateChange = () => {
+            const saved = localStorage.getItem('flexi_label_template') || 'vertical';
+            setFlexiTemplate(saved);
+        };
+        window.addEventListener('flexi-template-changed', handleTemplateChange);
+        handleTemplateChange();
+        return () => {
+            window.removeEventListener('flexi-template-changed', handleTemplateChange);
+        };
+    }, [showLabelEditor]);
 
     // Automatically trigger print when entering LABELING step ONLY if coming from VERIFYING
     useEffect(() => {
@@ -994,13 +1010,22 @@ const FastPackTerminal: React.FC<FastPackTerminalProps> = ({ order, onClose, onS
                                             {!packagePhoto && !isCapturing && (
                                                 <div className="absolute inset-0 z-30 pointer-events-none flex items-center justify-center">
                                                     {isFlexiGear ? (
-                                                        <div className="w-[60%] h-[80%] border-2 border-dashed border-[#FCD535]/40 bg-[#FCD535]/5 flex items-center justify-center relative">
-                                                            <div className="absolute -top-6 left-0 bg-[#FCD535] text-black text-[10px] font-black px-2 py-0.5 uppercase tracking-widest whitespace-nowrap">
-                                                                Flexi Gear (60x80mm Vertical)
+                                                        flexiTemplate === 'horizontal' ? (
+                                                            <div className="w-[80%] h-[60%] border-2 border-dashed border-[#FCD535]/40 bg-[#FCD535]/5 flex items-center justify-center relative">
+                                                                <div className="absolute -top-6 left-0 bg-[#FCD535] text-black text-[10px] font-black px-2 py-0.5 uppercase tracking-widest whitespace-nowrap">
+                                                                    Flexi Gear (80x60mm Horizontal)
+                                                                </div>
+                                                                <div className="w-[80%] h-px bg-[#FCD535]/20"></div>
                                                             </div>
-                                                            <div className="h-[80%] w-px bg-[#FCD535]/20"></div>
-                                                            <div className="w-[80%] h-px bg-[#FCD535]/20 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 opacity-0"></div>
-                                                        </div>
+                                                        ) : (
+                                                            <div className="w-[60%] h-[80%] border-2 border-dashed border-[#FCD535]/40 bg-[#FCD535]/5 flex items-center justify-center relative">
+                                                                <div className="absolute -top-6 left-0 bg-[#FCD535] text-black text-[10px] font-black px-2 py-0.5 uppercase tracking-widest whitespace-nowrap">
+                                                                    {flexiTemplate === 'minimal' ? 'Flexi Gear (60x80mm Minimal)' : 'Flexi Gear (60x80mm Vertical)'}
+                                                                </div>
+                                                                <div className="h-[80%] w-px bg-[#FCD535]/20"></div>
+                                                                <div className="w-[80%] h-px bg-[#FCD535]/20 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 opacity-0"></div>
+                                                            </div>
+                                                        )
                                                     ) : isACCStore ? (
                                                         <div className="w-[80%] h-[60%] border-2 border-dashed border-[#FCD535]/40 bg-[#FCD535]/5 flex items-center justify-center relative">
                                                             <div className="absolute -top-6 left-0 bg-[#FCD535] text-black text-[10px] font-black px-2 py-0.5 uppercase tracking-widest whitespace-nowrap">

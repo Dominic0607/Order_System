@@ -12,9 +12,18 @@ interface LabelPreviewProps {
   isDesignMode: boolean;
   printDensity: number;
   watermarkIntensity: number;
+  flexiTemplate?: string;
 }
 
-const LabelPreview: React.FC<LabelPreviewProps> = ({ data, theme, margins, isDesignMode, printDensity, watermarkIntensity }) => {
+const LabelPreview: React.FC<LabelPreviewProps> = ({ 
+  data, 
+  theme, 
+  margins, 
+  isDesignMode, 
+  printDensity, 
+  watermarkIntensity,
+  flexiTemplate = 'vertical'
+}) => {
   const qrValue = `${window.location.origin}${window.location.pathname}?view=order_metadata&id=${encodeURIComponent(data.id)}`;
 
   const getQrFooter = () => {
@@ -25,9 +34,11 @@ const LabelPreview: React.FC<LabelPreviewProps> = ({ data, theme, margins, isDes
   };
 
   const isFlexi = theme === ThemeType.FLEXI;
+  const isVertical = theme === ThemeType.FLEXI ? (flexiTemplate === 'vertical' || flexiTemplate === 'minimal') : false;
+  
   const sheetStyle: React.CSSProperties = {
-    width: isFlexi ? '60mm' : '80mm',
-    height: isFlexi ? '80mm' : '60mm',
+    width: isVertical ? '60mm' : '80mm',
+    height: isVertical ? '80mm' : '60mm',
     paddingTop: `${margins.top}mm`,
     paddingRight: `${margins.right}mm`,
     paddingBottom: `${margins.bottom}mm`,
@@ -36,7 +47,7 @@ const LabelPreview: React.FC<LabelPreviewProps> = ({ data, theme, margins, isDes
   };
 
   const renderDriverCardContent = () => {
-    if (isFlexi) {
+    if (isVertical) {
         // VERTICAL LAYOUT (60mm x 80mm) - Flexi Style
         // Adjusted padding and sizing to prevent truncation of QR/Badge
         return (
@@ -73,16 +84,16 @@ const LabelPreview: React.FC<LabelPreviewProps> = ({ data, theme, margins, isDes
                 <div className="flex-1 flex flex-col items-center justify-center p-1 relative bg-white overflow-hidden min-h-0">
                      {/* QR Container */}
                      <div className="flex flex-col items-center gap-1.5 z-10">
-                         {/* Reduced border padding */}
-                         <div className="border-[3px] border-black p-1 rounded-xl bg-white shadow-lg">
-                            {/* Adjusted Size */}
-                            <QRCode value={qrValue} size={90} />
-                         </div>
-                         {/* Prominent Driver Scan Badge */}
-                         <div className="flex items-center gap-1.5 bg-black text-white px-3 py-1 rounded-full">
-                            <MapPin size={10} className="text-yellow-500" />
-                            <span className="text-[8pt] font-black uppercase tracking-[0.15em] leading-none pt-[1px]">Driver Scan</span>
-                         </div>
+                          {/* Reduced border padding */}
+                          <div className="border-[3px] border-black p-1 rounded-xl bg-white shadow-lg">
+                             {/* Adjusted Size */}
+                             <QRCode value={qrValue} size={90} />
+                          </div>
+                          {/* Prominent Driver Scan Badge */}
+                          <div className="flex items-center gap-1.5 bg-black text-white px-3 py-1 rounded-full">
+                             <MapPin size={10} className="text-yellow-500" />
+                             <span className="text-[8pt] font-black uppercase tracking-[0.15em] leading-none pt-[1px]">Driver Scan</span>
+                          </div>
                      </div>
                      
                      {/* Background Pattern */}
@@ -166,13 +177,13 @@ const LabelPreview: React.FC<LabelPreviewProps> = ({ data, theme, margins, isDes
                     </div>
                  )}
                  <div className={`relative bg-white transition-all duration-300 ${isDesignMode ? 'ring-2 ring-[#FCD535] ring-offset-4 ring-offset-[#181A20] cursor-text shadow-none' : 'shadow-[0_0_30px_rgba(255,255,255,0.05)]'}`}>
-                    <div className={`printable-label overflow-hidden bg-white text-black ${isFlexi ? 'theme-flexi-gear' : 'theme-acc-store'}`} style={sheetStyle}>
-                        <LabelContent data={data} theme={theme} lineLeft={margins.lineLeft} lineRight={margins.lineRight} qrValue={qrValue} isDesignMode={isDesignMode} printDensity={printDensity} watermarkIntensity={watermarkIntensity} />
+                    <div className={`printable-label overflow-hidden bg-white text-black ${isVertical ? 'theme-flexi-gear' : 'theme-acc-store'}`} style={sheetStyle}>
+                        <LabelContent data={data} theme={theme} lineLeft={margins.lineLeft} lineRight={margins.lineRight} qrValue={qrValue} isDesignMode={isDesignMode} printDensity={printDensity} watermarkIntensity={watermarkIntensity} flexiTemplate={flexiTemplate} />
                     </div>
                  </div>
                  <div className="mt-6 w-full flex justify-between items-center text-xs font-mono text-gray-500 no-print">
-                    <div className="flex items-center gap-1"><Printer className="w-3 h-3" /><span>{isFlexi ? '60x80mm' : '80x60mm'}</span></div>
-                    <div className={isFlexi ? 'text-amber-500 font-bold tracking-widest' : 'text-[#FCD535] font-bold tracking-widest'}>{isFlexi ? 'VERTICAL' : 'LANDSCAPE'}</div>
+                    <div className="flex items-center gap-1"><Printer className="w-3 h-3" /><span>{isVertical ? '60x80mm' : '80x60mm'}</span></div>
+                    <div className={isFlexi ? 'text-amber-500 font-bold tracking-widest' : 'text-[#FCD535] font-bold tracking-widest'}>{isVertical ? 'VERTICAL' : 'LANDSCAPE'}</div>
                  </div>
             </div>
         </div>
@@ -183,7 +194,7 @@ const LabelPreview: React.FC<LabelPreviewProps> = ({ data, theme, margins, isDes
              <div className="absolute -inset-1 bg-[#FCD535] rounded-sm blur opacity-25 group-hover:opacity-50 transition duration-500"></div>
             <div className="relative w-full bg-[#181A20] border border-[#2B3139] p-6 rounded-sm flex flex-col items-center shadow-2xl">
                 <div className={`relative bg-white transition-all duration-300 ${isDesignMode ? 'ring-2 ring-[#FCD535] ring-offset-4 ring-offset-[#181A20]' : 'shadow-[0_0_30px_rgba(255,255,255,0.05)]'}`}>
-                    <div className={`printable-label bg-white text-black overflow-hidden flex flex-col ${isFlexi ? 'theme-flexi-gear' : 'theme-acc-store'}`} style={sheetStyle}>
+                    <div className={`printable-label bg-white text-black overflow-hidden flex flex-col ${isVertical ? 'theme-flexi-gear' : 'theme-acc-store'}`} style={sheetStyle}>
                         {renderDriverCardContent()}
                     </div>
                 </div>

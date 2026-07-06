@@ -739,6 +739,15 @@ const OrderDetailModal: React.FC<OrderDetailModalProps> = ({ order, onClose, inl
                                 )}
                                 <div className="space-y-2">
                                     <label className="text-[8px] sm:text-[9px] font-black text-[#848E9C] uppercase tracking-[0.2em] sm:tracking-[0.25em] ml-1 flex items-center gap-2">
+                                        <User size={10} /> Placed By (អ្នកទម្លាក់ការកម្មង់)
+                                    </label>
+                                    <div className="bg-[#0B0E11] border border-[#2B3139] p-3 sm:p-4 rounded-xl flex items-center gap-3">
+                                        <div className="w-1.5 h-1.5 rounded-full bg-[#FCD535]"></div>
+                                        <p className="text-[10px] sm:text-xs font-black text-[#EAECEF] uppercase tracking-wider truncate">{order.User || 'SYSTEM'}</p>
+                                    </div>
+                                </div>
+                                <div className="space-y-2">
+                                    <label className="text-[8px] sm:text-[9px] font-black text-[#848E9C] uppercase tracking-[0.2em] sm:tracking-[0.25em] ml-1 flex items-center gap-2">
                                         <User size={10} /> Packed By (អ្នកវេចខ្ចប់)
                                     </label>
                                     <div className="bg-[#0B0E11] border border-[#2B3139] p-3 sm:p-4 rounded-xl flex items-center gap-3">

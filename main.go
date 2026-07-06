@@ -223,6 +223,15 @@ func broadcastToAll(payload interface{}) {
 }
 
 func mapToDBColumn(key string, sheetName string) string {
+	if key == "User" || key == "user" {
+		if sheetName == "UserActivityLogs" {
+			return "activity_user"
+		}
+		if sheetName == "AllOrders" || strings.HasPrefix(sheetName, "Orders_") {
+			return "order_user"
+		}
+	}
+
 	specialCases := map[string]string{
 		"Order ID":                     "order_id",
 		"Discount ($)":                 "discount_usd",
@@ -441,7 +450,7 @@ func isValidDBIdentifier(s string) bool {
 
 func isValidOrderColumn(col string) bool {
 	validCols := map[string]bool{
-		"order_id": true, "timestamp": true, "user": true, "page": true, "telegram_value": true,
+		"order_id": true, "timestamp": true, "order_user": true, "page": true, "telegram_value": true,
 		"customer_name": true, "customer_phone": true, "location": true, "address_details": true,
 		"note": true, "shipping_fee_customer": true, "subtotal": true, "grand_total": true,
 		"products_json": true, "internal_shipping_method": true, "internal_shipping_details": true,
@@ -1371,7 +1380,7 @@ func handleGetAllOrders(c *gin.Context) {
 		for _, u := range users {
 			u = strings.TrimSpace(u)
 			if u != "" {
-				conditions = append(conditions, "user = ?")
+				conditions = append(conditions, "order_user = ?")
 				args = append(args, u)
 			}
 		}
@@ -1614,6 +1623,14 @@ func handleSubmitOrder(c *gin.Context) {
 		return
 	}
 
+	// Ensure User is the authenticated user, not trusted from frontend payload
+	authUserName := "System"
+	if uVal, exists := c.Get("userName"); exists {
+		authUserName = uVal.(string)
+	}
+	orderRequest.CurrentUser.UserName = authUserName
+
+
 	productsJSON, _ := json.Marshal(orderRequest.Products)
 	var locationParts []string
 	if p, ok := orderRequest.Customer["province"].(string); ok && p != "" {
@@ -1778,6 +1795,14 @@ func handleAdminUpdateOrder(c *gin.Context) {
 		c.Error(err)
 		return
 	}
+
+	// Ensure updater is the authenticated user, not trusted from frontend payload
+	authUserName := "System"
+	if uVal, exists := c.Get("userName"); exists {
+		authUserName = uVal.(string)
+	}
+	r.UserName = authUserName
+
 
 	if r.NewData == nil {
 		c.JSON(http.StatusBadRequest, gin.H{"status": "error", "message": "ត្រូវការទិន្នន័យថ្មី (NewData is required)"})
@@ -3714,6 +3739,28 @@ func main() {
 	api := r.Group("/api", DBMiddleware())
 	api.POST("/login", handleLogin)
 	api.GET("/settings", handleGetSettings)
+	api.GET("/test-db-orders", func(c *gin.Context) {
+		var raw []map[string]interface{}
+		backend.DB.Table("orders").Select("order_id, order_user, timestamp").Order("timestamp desc").Limit(10).Find(&raw)
+		c.JSON(200, raw)
+	})
+	api.GET("/test-sheet-orders", func(c *gin.Context) {
+		data, err := backend.FetchSheetDataFromAPI("AllOrders")
+		if err != nil {
+			c.JSON(500, gin.H{"error": err.Error()})
+			return
+		}
+		if len(data) > 10 {
+			c.JSON(200, data[:10])
+		} else {
+			c.JSON(200, data)
+		}
+	})
+	api.GET("/test-db-users", func(c *gin.Context) {
+		var users []backend.User
+		backend.DB.Find(&users)
+		c.JSON(200, users)
+	})
 	// ── Entertainment / Video Player routes (Backend/video.go) ────────────────────────
 	// All video handler logic lives in Backend/video.go (package backend).
 	// We call RegisterVideoRoutes to set up both public and admin routes.

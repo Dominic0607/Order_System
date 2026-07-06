@@ -30,6 +30,34 @@ const Step4Logic: React.FC<Step4LogicProps> = ({ calcData, updateField }) => {
     console.log("DEBUG: Step4Logic Render. metricUnit =", calcData.metricUnit, "calcData =", calcData);
 
     if (calcData.type === 'Achievement') {
+        const handleAddTier = (period?: string) => {
+            const nt = [...tiers];
+            const lastTarget = nt.length > 0 ? Math.max(...nt.map(t => t.target)) : 0;
+            const increment = calcData.metricUnit === 'Count' ? 5 : 1000;
+            nt.push({ 
+                id: `t${Date.now()}`, 
+                target: lastTarget + increment, 
+                rewardAmount: 0, 
+                rewardType: 'Fixed Cash', 
+                name: `LVL_${nt.length + 1}`,
+                subPeriod: period || ''
+            });
+            updateField('achievementTiers', nt);
+        };
+
+        const updateTier = (id: string, field: string, value: any) => {
+            const nt = [...tiers];
+            const i = nt.findIndex(t => t.id === id);
+            if (i !== -1) {
+                (nt[i] as any)[field] = value;
+                updateField('achievementTiers', nt);
+            }
+        };
+
+        const removeTier = (id: string) => {
+            updateField('achievementTiers', tiers.filter(t => t.id !== id));
+        };
+
         if (calcData.metricType === 'Number of Videos') {
             return (
                 <div className="space-y-8 animate-in fade-in duration-500">
@@ -140,31 +168,6 @@ const Step4Logic: React.FC<Step4LogicProps> = ({ calcData, updateField }) => {
             return a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' });
         });
 
-        const handleAddTier = (period?: string) => {
-            const nt = [...tiers];
-            const lastTarget = nt.length > 0 ? Math.max(...nt.map(t => t.target)) : 0;
-            const increment = calcData.metricUnit === 'Count' ? 5 : 1000;
-            nt.push({ 
-                id: `t${Date.now()}`, 
-                target: lastTarget + increment, 
-                rewardAmount: 0, 
-                rewardType: 'Fixed Cash', 
-                name: `LVL_${nt.length + 1}`,
-                subPeriod: period || ''
-            });
-            updateField('achievementTiers', nt);
-        };
-
-        const updateTier = (id: string, field: string, value: any) => {
-            const nt = [...tiers];
-            const i = nt.findIndex(t => t.id === id);
-            (nt[i] as any)[field] = value;
-            updateField('achievementTiers', nt);
-        };
-
-        const removeTier = (id: string) => {
-            updateField('achievementTiers', tiers.filter(t => t.id !== id));
-        };
 
         return (
             <div className="space-y-12 animate-in fade-in duration-500">

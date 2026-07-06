@@ -14,6 +14,8 @@ interface ControlsProps {
   onPrintDensityChange: (val: number) => void;
   watermarkIntensity: number;
   onWatermarkChange: (val: number) => void;
+  flexiTemplate?: string;
+  onFlexiTemplateChange?: (val: string) => void;
 }
 
 const Controls: React.FC<ControlsProps> = ({
@@ -26,7 +28,9 @@ const Controls: React.FC<ControlsProps> = ({
   printDensity,
   onPrintDensityChange,
   watermarkIntensity,
-  onWatermarkChange
+  onWatermarkChange,
+  flexiTemplate = 'vertical',
+  onFlexiTemplateChange
 }) => {
   const emitDesignAction = (type: string, payload: any) => {
     window.dispatchEvent(new CustomEvent('design-action', { detail: { type, payload } }));
@@ -67,6 +71,31 @@ const Controls: React.FC<ControlsProps> = ({
             ))}
         </div>
       </div>
+
+      {currentTheme === ThemeType.FLEXI && onFlexiTemplateChange && (
+        <div>
+          <div className="flex items-center gap-2 text-gray-300 font-sans font-bold text-xs tracking-widest uppercase mb-3">
+              <Sliders className="w-4 h-4 text-[#FCD535]" />
+              <h3>LABEL TEMPLATE</h3>
+          </div>
+          <div className="grid grid-cols-3 gap-1.5">
+              {[
+                { id: 'vertical', label: 'Vertical' },
+                { id: 'horizontal', label: 'Horizontal' },
+                { id: 'minimal', label: 'Ink Saver' }
+              ].map((tmpl) => (
+                  <button
+                      key={tmpl.id}
+                      onClick={() => onFlexiTemplateChange(tmpl.id)}
+                      className={`px-1.5 py-2 text-[9px] font-bold uppercase tracking-tight rounded-sm border transition-all duration-300 ${flexiTemplate === tmpl.id ? 'bg-[#FCD535]/10 border-[#FCD535]/50 text-[#FCD535]' : 'bg-[#0B0E11] border-[#2B3139] text-gray-500 hover:text-gray-300 hover:bg-[#181A20]'}`}
+                  >
+                      {tmpl.label}
+                  </button>
+              ))}
+          </div>
+        </div>
+      )}
+
 
       <div>
         <div className="flex items-center gap-2 text-gray-300 font-sans font-bold text-xs tracking-widest uppercase mb-3">
