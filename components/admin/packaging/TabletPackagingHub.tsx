@@ -716,13 +716,23 @@ const TabletPackagingHub: React.FC<TabletPackagingHubProps> = ({
                                                                     </div>
                                                                 )}
                                                                 {activeTab === 'Returned' && (
-                                                                    <button 
-                                                                        onClick={(e) => { e.stopPropagation(); onConfirmReturn?.(order); }} 
-                                                                        disabled={!!order['Return Received By']}
-                                                                        className={`px-3 py-1 ${order['Return Received By'] ? 'bg-gray-500/20 text-gray-500' : 'bg-purple-500 text-white font-bold'} rounded-sm text-xs uppercase transition-colors`}
-                                                                    >
-                                                                        {order['Return Received By'] ? 'Received' : 'Confirm'}
-                                                                    </button>
+                                                                    <div className="flex gap-2">
+                                                                        <button 
+                                                                            onClick={(e) => { e.stopPropagation(); onConfirmReturn?.(order); }} 
+                                                                            disabled={!!order['Return Received By']}
+                                                                            className={`px-3 py-1 ${order['Return Received By'] ? 'bg-[#0ECB81]/10 text-[#0ECB81]' : 'bg-purple-500 text-white font-bold'} rounded-sm text-xs uppercase transition-colors`}
+                                                                        >
+                                                                            {order['Return Received By'] ? '✓ Received' : 'Confirm'}
+                                                                        </button>
+                                                                        {!!order['Return Received By'] && (
+                                                                            <button 
+                                                                                onClick={(e) => { e.stopPropagation(); onUnpack(order); }}
+                                                                                className="px-3 py-1 bg-red-600 hover:bg-red-700 text-white font-bold rounded-sm text-xs uppercase transition-colors"
+                                                                            >
+                                                                                ហែកកញ្ចប់
+                                                                            </button>
+                                                                        )}
+                                                                    </div>
                                                                 )}
                                                             </div>
                                                         </div>

@@ -8,6 +8,7 @@ import FastPackTerminal from '@/components/admin/packaging/fastpack/FastPackTerm
 import { convertGoogleDriveUrl, getOptimisticPackagePhoto, fileToDataUrl } from '@/utils/fileUtils';
 import { compressImage } from '@/utils/imageCompressor';
 import Modal from '@/components/common/Modal';
+import { CameraCapture } from '@/components/common/CameraCapture';
 import MobilePackagingHub from '@/components/admin/packaging/MobilePackagingHub';
 import TabletPackagingHub from '@/components/admin/packaging/TabletPackagingHub';
 import DesktopPackagingHub from '@/components/admin/packaging/DesktopPackagingHub';
@@ -690,59 +691,46 @@ const PackagingView: React.FC<{ orders?: ParsedOrder[], onExit?: () => void }> =
             const authToken = session?.token;
             if (!authToken) throw new Error("Session expired");
 
-            // 1. GET ONE-TIME UPLOAD TOKEN FROM GO BACKEND
-            const tokenRes = await fetch(`${WEB_APP_URL}/api/admin/generate-upload-token?orderId=${returningOrder['Order ID']}`, {
-                headers: { 'Authorization': `Bearer ${authToken}` }
-            });
-            const tokenData = await tokenRes.json();
-            if (!tokenRes.ok || !tokenData.token) throw new Error("Failed to get upload token");
-
-            // 2. PREPARE METADATA
+            // Prepare metadata for order update
             const metadata = {
                 'Fulfillment Status': 'Returned',
                 'Return Received By': currentUser?.FullName || 'Staff',
                 'Return Received Time': new Date().toISOString().slice(0, 19).replace('T', ' ')
             };
 
-            // 3. DIRECT UPLOAD TO APPS SCRIPT (Bypass Server Render)
-            const APPS_SCRIPT_URL = appData.settings?.find((s: any) => s.Key === 'APPS_SCRIPT_URL')?.Value;
-            const APPS_SCRIPT_SECRET = appData.settings?.find((s: any) => s.Key === 'APPS_SCRIPT_SECRET')?.Value;
-
-            if (!APPS_SCRIPT_URL) throw new Error("Apps Script URL not configured");
-
-            await fetch(APPS_SCRIPT_URL, {
+            // Call backend upload-image endpoint
+            const response = await fetch(`${WEB_APP_URL}/api/upload-image`, {
                 method: 'POST',
-                mode: 'no-cors',
+                headers: { 
+                    'Content-Type': 'application/json',
+                    ...(authToken ? { 'Authorization': `Bearer ${authToken}` } : {})
+                },
                 body: JSON.stringify({
-                    action: "uploadImage",
-                    secret: APPS_SCRIPT_SECRET,
-                    token: tokenData.token, // Secure One-Time Token
+                    fileData: photo,
+                    fileName: `return_${returningOrder['Order ID']}_${Date.now()}.webp`,
+                    mimeType: "image/webp",
                     orderId: returningOrder['Order ID'],
                     team: returningOrder.Team,
                     userName: currentUser?.UserName || 'System',
-                    fileData: photo, // Base64
-                    fileName: `return_${returningOrder['Order ID']}_${Date.now()}`,
-                    mimeType: "image/webp",
                     targetColumn: "Return Photo",
                     newData: metadata
                 })
             });
 
-            // Note: with 'no-cors', we can't confirm body response. 
-            // We'll proceed and refresh later.
+            const result = await response.json();
+            if (!response.ok || result.status !== 'success') {
+                throw new Error(result.message || 'ការផ្ញើរូបភាពបរាជ័យ (Image upload failed)');
+            }
+
             setIsReturnPhotoModalOpen(false);
             setReturningOrder(null);
             setReturnPhoto(null);
             
-            alert("កំពុងបញ្ជាក់ការទទួល... (Direct Sync Active)");
-            
-            setTimeout(async () => {
-                await refreshData();
-                setIsSubmittingReturn(false);
-            }, 3000);
-
+            // Refresh data immediately
+            await refreshData();
         } catch (error: any) { 
             alert("មានបញ្ហាពេលបញ្ជាក់ការទទួល: " + error.message); 
+        } finally {
             setIsSubmittingReturn(false);
         }
     };
@@ -1016,10 +1004,10 @@ const PackagingView: React.FC<{ orders?: ParsedOrder[], onExit?: () => void }> =
             {viewingOrder && <OrderDetailModal order={viewingOrder} onClose={() => setViewingOrder(null)} />}
 
             {isReturnPhotoModalOpen && returningOrder && (
-                <Modal isOpen={true} onClose={() => { if (!isSubmittingReturn) { setIsReturnPhotoModalOpen(false); setReturningOrder(null); setReturnPhoto(null); } }} maxWidth="max-w-xl">
-                    <div className="bg-[#1E2329] border border-[#2B3139] overflow-hidden rounded-2xl shadow-2xl animate-fade-in">
+                <Modal isOpen={true} onClose={() => { if (!isSubmittingReturn) { setIsReturnPhotoModalOpen(false); setReturningOrder(null); } }} maxWidth="max-w-xl">
+                    <div className="bg-[#1E2329] border border-[#2B3139] overflow-hidden rounded-2xl shadow-2xl animate-fade-in p-6 space-y-6">
                         {/* Header with Order Info */}
-                        <div className="p-5 border-b border-[#2B3139] bg-[#0B0E11] flex items-center justify-between">
+                        <div className="flex items-center justify-between border-b border-[#2B3139] pb-4 bg-[#0B0E11] -mx-6 -mt-6 p-5">
                             <div className="flex items-center gap-3">
                                 <div className="w-10 h-10 rounded-full bg-purple-500/10 flex items-center justify-center border border-purple-500/20">
                                     <svg className="w-5 h-5 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
@@ -1029,116 +1017,25 @@ const PackagingView: React.FC<{ orders?: ParsedOrder[], onExit?: () => void }> =
                                     <p className="text-[10px] font-mono text-[#FCD535] mt-0.5">#{returningOrder['Order ID']}</p>
                                 </div>
                             </div>
-                            <div className="text-right hidden sm:block">
+                            <div className="text-right">
                                 <p className="text-[9px] font-black text-[#848E9C] uppercase tracking-widest">អតិថិជន (Customer)</p>
                                 <p className="text-xs font-bold text-[#EAECEF] truncate max-w-[150px]">{returningOrder['Customer Name']}</p>
                             </div>
                         </div>
 
-                        <div className="p-6 space-y-6">
-                            {/* Capture Area */}
-                            <div className="relative group">
-                                <div className="aspect-[4/3] sm:aspect-video bg-black rounded-xl overflow-hidden border-2 border-[#2B3139] relative shadow-inner flex items-center justify-center">
-                                    {returnPhoto ? (
-                                        <div className="relative w-full h-full animate-in zoom-in-95 duration-300">
-                                            <img src={returnPhoto} className="w-full h-full object-cover" alt="Return Proof" />
-                                            <div className="absolute inset-0 bg-black/20 pointer-events-none"></div>
-                                        </div>
-                                    ) : (
-                                        <div className="flex flex-col items-center justify-center space-y-4 text-center px-4">
-                                            <div className="w-24 h-24 rounded-full bg-white/5 border border-white/10 flex items-center justify-center relative group-hover:scale-110 transition-transform duration-500">
-                                                <div className="absolute inset-0 rounded-full border-2 border-dashed border-[#FCD535]/30 animate-[spin_10s_linear_infinite]"></div>
-                                                <svg className="w-10 h-10 text-gray-500 group-hover:text-[#FCD535] transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
-                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
-                                                </svg>
-                                            </div>
-                                            <div>
-                                                <p className="text-sm font-black text-[#EAECEF] uppercase tracking-widest">ថតរូបបញ្ជាក់ (Take Photo)</p>
-                                                <p className="text-[10px] text-[#848E9C] mt-1 font-bold">ចុចទីនេះដើម្បីថតរូបកញ្ចប់ឥវ៉ាន់</p>
-                                            </div>
-                                            <input 
-                                                type="file" 
-                                                accept="image/*" 
-                                                capture="environment" 
-                                                onChange={async (e) => { 
-                                                    const file = e.target.files?.[0]; 
-                                                    if (file) { 
-                                                        const compressed = await compressImage(file, 'balanced'); 
-                                                        const dataUrl = await fileToDataUrl(compressed); 
-                                                        setReturnPhoto(dataUrl); 
-                                                    } 
-                                                }} 
-                                                className="absolute inset-0 opacity-0 cursor-pointer z-10" 
-                                            />
-                                        </div>
-                                    )}
-
-                                    {/* Viewfinder Corners (Decorative) */}
-                                    {!returnPhoto && (
-                                        <>
-                                            <div className="absolute top-4 left-4 w-6 h-6 border-t-2 border-l-2 border-[#FCD535]/40 rounded-tl-sm pointer-events-none"></div>
-                                            <div className="absolute top-4 right-4 w-6 h-6 border-t-2 border-r-2 border-[#FCD535]/40 rounded-tr-sm pointer-events-none"></div>
-                                            <div className="absolute bottom-4 left-4 w-6 h-6 border-b-2 border-l-2 border-[#FCD535]/40 rounded-bl-sm pointer-events-none"></div>
-                                            <div className="absolute bottom-4 right-4 w-6 h-6 border-b-2 border-r-2 border-[#FCD535]/40 rounded-br-sm pointer-events-none"></div>
-                                        </>
-                                    )}
-                                </div>
-                                
-                                {returnPhoto && (
-                                    <button 
-                                        onClick={() => setReturnPhoto(null)} 
-                                        className="absolute -top-3 -right-3 w-10 h-10 bg-[#F6465D] text-white rounded-full shadow-2xl flex items-center justify-center border-4 border-[#1E2329] active:scale-90 transition-all z-20"
-                                        title="Retake Photo"
-                                    >
-                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M6 18L18 6M6 6l12 12" /></svg>
-                                    </button>
-                                )}
+                        {isSubmittingReturn ? (
+                            <div className="flex flex-col items-center justify-center space-y-4 py-12">
+                                <Spinner size="lg" />
+                                <p className="text-sm font-bold text-[#EAECEF]">កំពុងបញ្ជាក់ការទទួល Return... (Saving...)</p>
                             </div>
-
-                            {/* Info Banner */}
-                            <div className="bg-[#0B0E11] p-4 rounded-xl border border-[#2B3139] flex items-start gap-4">
-                                <div className="w-8 h-8 rounded-lg bg-orange-500/10 flex items-center justify-center flex-shrink-0 text-lg">💡</div>
-                                <div className="min-w-0">
-                                    <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest">Instruction</p>
-                                    <p className="text-xs text-[#848E9C] font-bold mt-0.5 leading-relaxed">
-                                        សូមថតរូបឱ្យឃើញ <span className="text-[#EAECEF]">លេខកូដ (Order ID)</span> ឬ <span className="text-[#EAECEF]">ឈ្មោះអតិថិជន</span> ដែលមាននៅលើកញ្ចប់ឱ្យបានច្បាស់។
-                                    </p>
-                                </div>
-                            </div>
-
-                            {/* Actions */}
-                            <div className="flex flex-col sm:flex-row gap-3">
-                                <button 
-                                    onClick={() => { setIsReturnPhotoModalOpen(false); setReturningOrder(null); setReturnPhoto(null); }} 
-                                    disabled={isSubmittingReturn}
-                                    className="flex-1 py-4 bg-[#2B3139] hover:bg-[#3B424A] text-[#848E9C] hover:text-[#EAECEF] font-black text-xs uppercase tracking-[0.2em] rounded-xl transition-all active:scale-95 disabled:opacity-50"
-                                >
-                                    បោះបង់ (Cancel)
-                                </button>
-                                <button 
-                                    onClick={() => handleConfirmReturnReceipt(returnPhoto || '')} 
-                                    disabled={!returnPhoto || isSubmittingReturn} 
-                                    className={`flex-[2] py-4 rounded-xl font-black text-xs uppercase tracking-[0.2em] transition-all shadow-xl flex items-center justify-center gap-3 active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed ${
-                                        returnPhoto 
-                                        ? 'bg-[#0ECB81] text-[#0B0E11] shadow-[#0ECB81]/10' 
-                                        : 'bg-[#2B3139] text-[#474D57]'
-                                    }`}
-                                >
-                                    {isSubmittingReturn ? (
-                                        <>
-                                            <Spinner size="sm" />
-                                            <span>កំពុងបញ្ជាក់...</span>
-                                        </>
-                                    ) : (
-                                        <>
-                                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={3}><path d="M5 13l4 4L19 7" /></svg>
-                                            បញ្ជាក់ការទទួល (Confirm)
-                                        </>
-                                    )}
-                                </button>
-                            </div>
-                        </div>
+                        ) : (
+                            <CameraCapture 
+                                onCapture={handleConfirmReturnReceipt}
+                                onCancel={() => { setIsReturnPhotoModalOpen(false); setReturningOrder(null); }}
+                                orderId={returningOrder['Order ID']}
+                                customerName={returningOrder['Customer Name']}
+                            />
+                        )}
                     </div>
                 </Modal>
             )}

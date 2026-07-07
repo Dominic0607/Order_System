@@ -781,13 +781,23 @@ const DesktopPackagingHub: React.FC<DesktopPackagingHubProps> = ({
                                                                     </div>
                                                                 )}
                                                                 {activeTab === 'Returned' && (
-                                                                    <button 
-                                                                        onClick={(e) => { e.stopPropagation(); onConfirmReturn?.(order); }} 
-                                                                        disabled={!!order['Return Received By']}
-                                                                        className={`w-full py-1.5 ${order['Return Received By'] ? 'bg-gray-500/20 text-gray-500' : 'bg-purple-500 text-white hover:bg-purple-600'} text-xs font-bold uppercase transition-colors rounded-sm`}
-                                                                    >
-                                                                        {order['Return Received By'] ? 'Received' : 'Confirm Receipt'}
-                                                                    </button>
+                                                                    <div className="flex flex-col gap-2 w-full">
+                                                                        <button 
+                                                                            onClick={(e) => { e.stopPropagation(); onConfirmReturn?.(order); }} 
+                                                                            disabled={!!order['Return Received By']}
+                                                                            className={`w-full py-1.5 ${order['Return Received By'] ? 'bg-[#0ECB81]/10 text-[#0ECB81]' : 'bg-purple-500 text-white hover:bg-purple-600'} text-xs font-bold uppercase transition-colors rounded-sm`}
+                                                                        >
+                                                                            {order['Return Received By'] ? '✓ Received' : 'Confirm Receipt'}
+                                                                        </button>
+                                                                        {!!order['Return Received By'] && (
+                                                                            <button 
+                                                                                onClick={(e) => { e.stopPropagation(); setUnpackTarget(order); }} 
+                                                                                className="w-full py-1.5 bg-red-600 hover:bg-red-700 text-white text-xs font-bold uppercase transition-colors rounded-sm shadow-lg shadow-red-600/20"
+                                                                            >
+                                                                                ហែកកញ្ចប់ (Unpack)
+                                                                            </button>
+                                                                        )}
+                                                                    </div>
                                                                 )}
                                                             </div>
                                                         </div>
@@ -994,13 +1004,23 @@ const DesktopPackagingHub: React.FC<DesktopPackagingHubProps> = ({
                                                             <button onClick={(e) => { e.stopPropagation(); onUndoShipped(order); }} className={`px-3 py-1 bg-[#F6465D]/10 hover:bg-[#F6465D]/20 ${B_RED} text-xs font-bold uppercase rounded-sm transition-colors`}>Undo</button>
                                                         )}
                                                         {activeTab === 'Returned' && (
-                                                            <button 
-                                                                onClick={(e) => { e.stopPropagation(); onConfirmReturn?.(order); }} 
-                                                                disabled={!!order['Return Received By']}
-                                                                className={`px-3 py-1 ${order['Return Received By'] ? 'bg-gray-500/20 text-gray-500' : 'bg-purple-500 text-white hover:bg-purple-600'} text-xs font-bold uppercase rounded-sm transition-colors`}
-                                                            >
-                                                                {order['Return Received By'] ? 'Received' : 'Confirm Receipt'}
-                                                            </button>
+                                                            <div className="flex gap-2">
+                                                                <button 
+                                                                    onClick={(e) => { e.stopPropagation(); onConfirmReturn?.(order); }} 
+                                                                    disabled={!!order['Return Received By']}
+                                                                    className={`px-3 py-1 ${order['Return Received By'] ? 'bg-[#0ECB81]/10 text-[#0ECB81]' : 'bg-purple-500 text-white hover:bg-purple-600'} text-xs font-bold uppercase rounded-sm transition-colors`}
+                                                                >
+                                                                    {order['Return Received By'] ? '✓ Received' : 'Confirm Receipt'}
+                                                                </button>
+                                                                {!!order['Return Received By'] && (
+                                                                    <button 
+                                                                        onClick={(e) => { e.stopPropagation(); setUnpackTarget(order); }} 
+                                                                        className="px-3 py-1 bg-red-600 hover:bg-red-700 text-white text-xs font-bold uppercase rounded-sm transition-colors shadow-lg shadow-red-600/20"
+                                                                    >
+                                                                        ហែកកញ្ចប់ (Unpack)
+                                                                    </button>
+                                                                )}
+                                                            </div>
                                                         )}
                                                     </div>
                                                 </div>

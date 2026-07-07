@@ -154,6 +154,7 @@ func UploadToGoogleDriveDirectly(base64Data string, fileName string, mimeType st
 		req.NewData = originalReq.NewData
 		req.UserName = originalReq.UserName
 		req.MovieID = originalReq.MovieID
+		req.BackendURL = originalReq.BackendURL
 	}
 
 	log.Printf("🚀 [Drive Upload] Calling Apps Script uploadImage action...")
@@ -178,6 +179,19 @@ func HandleImageUploadProxy(c *gin.Context) {
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.Error(err)
 		return
+	}
+
+	// Dynamically resolve BackendURL from incoming request if not provided
+	if req.BackendURL == "" {
+		scheme := "http"
+		if c.Request.TLS != nil {
+			scheme = "https"
+		}
+		if proto := c.GetHeader("X-Forwarded-Proto"); proto != "" {
+			scheme = proto
+		}
+		req.BackendURL = fmt.Sprintf("%s://%s", scheme, c.Request.Host)
+		log.Printf("🔗 [Upload Proxy] Dynamically resolved BackendURL: %s", req.BackendURL)
 	}
 
 	data := req.FileData
@@ -435,7 +449,7 @@ func processImageUploadInternal(req AppsScriptRequest, data string) (string, str
 		}
 	}
 
-	if resolvedUserName != "" && (req.SheetName == "" || req.SheetName == "Users") {
+	if resolvedUserName != "" && req.OrderID == "" && req.MovieID == "" && (req.SheetName == "" || req.SheetName == "Users") {
 		log.Printf("👤 [Upload Internal] Updating profile picture for user=%q", resolvedUserName)
 		DB.Model(&User{}).Where("user_name = ?", resolvedUserName).UpdateColumn("profile_picture_url", driveURL)
 		SafeBroadcastJSON(map[string]interface{}{

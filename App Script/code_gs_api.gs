@@ -143,8 +143,9 @@ function doPost(e) {
         if (!vToken) return createJsonResponse({ status: "error", message: "Missing upload token (one-time use required)" }, 401);
 
         try {
-          // Point to your Render backend
-          const verifyUrl = "https://oder-backend-2.onrender.com/api/internal/verify-upload-token?token=" + vToken;
+          // Point to your Render backend (or a dynamic backendUrl passed in request contents)
+          const backendBaseUrl = contents.backendUrl || contents.BackendURL || "https://oder-backend-2.onrender.com";
+          const verifyUrl = backendBaseUrl + "/api/internal/verify-upload-token?token=" + vToken;
           const verifyResp = UrlFetchApp.fetch(verifyUrl, {
             method: "get",
             headers: { "X-Internal-Secret": SCRIPT_SECRET_KEY },
@@ -609,7 +610,10 @@ function processOrder(data) {
   const flatData = {};
   flatData[normalizeKey("Timestamp")] = data.scheduledTime || data.timestamp;
   flatData[normalizeKey("Order ID")] = orderId;
-  const rawUser = orderRequest.currentUser ? (orderRequest.currentUser.UserName || orderRequest.currentUser.userName || orderRequest.currentUser.username) : "";
+  const rawUser = (orderRequest && orderRequest.currentUser ? (orderRequest.currentUser.UserName || orderRequest.currentUser.userName || orderRequest.currentUser.username) : "")
+                  || data.userName 
+                  || data.user 
+                  || "";
   flatData[normalizeKey("User")] = rawUser || "System";
   flatData[normalizeKey("Page")] = orderRequest.page;
   flatData[normalizeKey("TelegramValue")] = orderRequest.telegramValue;

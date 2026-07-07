@@ -719,7 +719,6 @@ const MobilePackagingHub: React.FC<MobilePackagingHubProps> = ({
                                                              onClick={(e) => { e.stopPropagation(); onDeliver(order); }} 
                                                              className="flex-1 relative overflow-hidden group py-2 bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 hover:from-blue-500 hover:via-indigo-500 hover:to-purple-500 text-white text-xs font-black uppercase transition-all duration-300 rounded-xl flex items-center justify-center gap-1.5 shadow-[0_0_15px_rgba(79,70,229,0.3)] hover:shadow-[0_0_25px_rgba(79,70,229,0.5)] active:scale-[0.97] border border-indigo-400/30"
                                                          >
-                                                             <div className="absolute inset-0 -translate-x-full group-hover:translate-x-[200%] transition-transform duration-1000 ease-in-out bg-gradient-to-r from-transparent via-white/20 to-transparent skew-x-12"></div>
                                                              <Check size={14} strokeWidth={3} className="relative z-10" />
                                                              <span className="relative z-10">ដឹកជោគជ័យ (Done)</span>
                                                          </button>
@@ -727,14 +726,24 @@ const MobilePackagingHub: React.FC<MobilePackagingHubProps> = ({
                                                      </div>
                                                  )}
                                                  {activeTab === 'Returned' && (
-                                                     <button
-                                                         onClick={(e) => { e.stopPropagation(); onConfirmReturn?.(order); }}
-                                                         disabled={!!order['Return Received By']}
-                                                         className={`flex-1 py-2 ${order['Return Received By'] ? 'bg-gray-500/20 text-gray-500' : 'bg-gradient-to-r from-purple-600 to-purple-700 text-white shadow-[0_4px_12px_rgba(147,51,234,0.15)]'} rounded-xl text-xs font-bold uppercase transition-all duration-300 disabled:opacity-50`}
-                                                     >
-                                                         {order['Return Received By'] ? 'Received' : 'Confirm Receipt'}
-                                                     </button>
-                                                 )}
+                                                      <div className="flex-1 flex gap-2 w-full">
+                                                          <button
+                                                              onClick={(e) => { e.stopPropagation(); onConfirmReturn?.(order); }}
+                                                              disabled={!!order['Return Received By']}
+                                                              className={`flex-1 py-2 ${order['Return Received By'] ? 'bg-[#0ECB81]/10 text-[#0ECB81]' : 'bg-gradient-to-r from-purple-600 to-purple-700 text-white shadow-[0_4px_12px_rgba(147,51,234,0.15)]'} rounded-xl text-xs font-bold uppercase transition-all duration-300 disabled:opacity-50`}
+                                                          >
+                                                              {order['Return Received By'] ? '✓ Received' : 'Confirm Receipt'}
+                                                          </button>
+                                                          {!!order['Return Received By'] && (
+                                                              <button
+                                                                  onClick={(e) => { e.stopPropagation(); onUnpack(order); }}
+                                                                  className="w-24 py-2 bg-red-600 hover:bg-red-700 text-white border border-red-500/20 rounded-xl text-xs font-bold uppercase transition-all duration-300 active:scale-[0.97]"
+                                                              >
+                                                                  ហែកកញ្ចប់
+                                                              </button>
+                                                          )}
+                                                      </div>
+                                                  )}
                                              </div>
                                          </div>
                                            )}
