@@ -29,6 +29,8 @@ const DesktopAdminDashboard: React.FC<{ isTablet?: boolean }> = ({ isTablet }) =
     const { 
         appData, currentUser, refreshTimestamp, orders, isSidebarCollapsed, hasPermission, advancedSettings
     } = useContext(AppContext);
+
+    const isSystemAdmin = currentUser?.IsSystemAdmin || (currentUser?.Role || '').split(',').map(r => r.trim().toLowerCase()).includes('admin');
     
     // --- Navigation State ---
     const [activeDashboard, setActiveDashboard] = useUrlState<ActiveDashboard>('tab', 'admin');
@@ -42,6 +44,15 @@ const DesktopAdminDashboard: React.FC<{ isTablet?: boolean }> = ({ isTablet }) =
     const [isProfileSubMenuOpen, setIsProfileSubMenuOpen] = useState(false);
     const [editProfileModalOpen, setEditProfileModalOpen] = useState(false);
     const [advancedSettingsOpen, setAdvancedSettingsOpen] = useState(false);
+    
+    // Redirect user if they have view_order_list but not view_admin_dashboard
+    useEffect(() => {
+        if (!isSystemAdmin && !hasPermission('view_admin_dashboard') && activeDashboard === 'admin') {
+            if (hasPermission('view_order_list')) {
+                setActiveDashboard('orders');
+            }
+        }
+    }, [activeDashboard, isSystemAdmin, hasPermission]);
 
     // --- Incentive Logic ---
     const [incentiveProjects, setIncentiveProjects] = useState<any[]>([]);
@@ -225,6 +236,7 @@ const DesktopAdminDashboard: React.FC<{ isTablet?: boolean }> = ({ isTablet }) =
     const renderContent = () => {
         switch (activeDashboard) {
             case 'admin':
+                if (!isSystemAdmin && !hasPermission('view_admin_dashboard')) return <div className="flex h-96 items-center justify-center text-gray-500 font-black uppercase italic tracking-widest">Access Denied</div>;
                 if (currentAdminView === 'dashboard') {
                     return (
                         <DashboardOverview 
@@ -260,13 +272,26 @@ const DesktopAdminDashboard: React.FC<{ isTablet?: boolean }> = ({ isTablet }) =
                     />
                 );
             case 'reports': 
+                if (!isSystemAdmin && !hasPermission('view_revenue')) return <div className="flex h-96 items-center justify-center text-gray-500 font-black uppercase italic tracking-widest">Access Denied</div>;
                 return <ReportDashboard activeReport={activeReport} onBack={() => setActiveDashboard('admin')} onNavigate={handleNavigateWithFilters} />;
-            case 'settings': return <SettingsDashboard onBack={() => setActiveDashboard('admin')} />;
-            case 'audit': return <AuditLogDashboard onBack={() => setActiveDashboard('admin')} />;
-            case 'fulfillment': return <FulfillmentDashboard orders={orders} />;
-            case 'packaging': return <PackagingView orders={orders} onExit={() => setActiveDashboard('admin')} />;
-            case 'delivery': return <DriverDeliveryView />;
-            case 'inventory': return <InventoryManagement />;
+            case 'settings': 
+                if (!isSystemAdmin && !hasPermission('manage_permissions') && !hasPermission('manage_roles')) return <div className="flex h-96 items-center justify-center text-gray-500 font-black uppercase italic tracking-widest">Access Denied</div>;
+                return <SettingsDashboard onBack={() => setActiveDashboard('admin')} />;
+            case 'audit': 
+                if (!isSystemAdmin && !hasPermission('manage_permissions')) return <div className="flex h-96 items-center justify-center text-gray-500 font-black uppercase italic tracking-widest">Access Denied</div>;
+                return <AuditLogDashboard onBack={() => setActiveDashboard('admin')} />;
+            case 'fulfillment': 
+                if (!isSystemAdmin && !hasPermission('access_fulfillment')) return <div className="flex h-96 items-center justify-center text-gray-500 font-black uppercase italic tracking-widest">Access Denied</div>;
+                return <FulfillmentDashboard orders={orders} />;
+            case 'packaging': 
+                if (!isSystemAdmin && !hasPermission('access_fulfillment')) return <div className="flex h-96 items-center justify-center text-gray-500 font-black uppercase italic tracking-widest">Access Denied</div>;
+                return <PackagingView orders={orders} onExit={() => setActiveDashboard('admin')} />;
+            case 'delivery': 
+                if (!isSystemAdmin && !hasPermission('access_fulfillment')) return <div className="flex h-96 items-center justify-center text-gray-500 font-black uppercase italic tracking-widest">Access Denied</div>;
+                return <DriverDeliveryView />;
+            case 'inventory': 
+                if (!isSystemAdmin && !hasPermission('manage_inventory')) return <div className="flex h-96 items-center justify-center text-gray-500 font-black uppercase italic tracking-widest">Access Denied</div>;
+                return <InventoryManagement />;
             case 'incentives':
                 if (activeIncentiveProjectId) {
                     if (incentiveViewMode === 'execute') return <IncentiveExecutionView projectId={activeIncentiveProjectId} orders={orders} onBack={() => setActiveIncentiveProjectId('')} />;

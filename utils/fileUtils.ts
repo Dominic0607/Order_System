@@ -88,7 +88,7 @@ export const convertGoogleDriveUrl = (url?: string, type: 'image' | 'audio' | 'p
         }
     }
 
-    return (trimmedUrl.startsWith('http') || trimmedUrl.startsWith('data:')) ? trimmedUrl : (type === 'image' ? fallbackImage : '');
+    return (trimmedUrl.startsWith('http') || trimmedUrl.startsWith('data:') || trimmedUrl.startsWith('/') || trimmedUrl.startsWith('./')) ? trimmedUrl : (type === 'image' ? fallbackImage : '');
 };
 
 // Global in-memory cache to bypass storage limits and ensure zero UI lag

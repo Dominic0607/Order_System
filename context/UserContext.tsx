@@ -22,7 +22,18 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
         // Superusers (IsSystemAdmin or Role: Admin) have all permissions
         const userRoles = (currentUser.Role || '').split(',').map(r => r.trim().toLowerCase());
-        if (currentUser.IsSystemAdmin || userRoles.includes('admin')) return true;
+        
+        // Map common aliases to ensure robust permission matching
+        if (userRoles.includes('sales') && !userRoles.includes('sale')) userRoles.push('sale');
+        if (userRoles.includes('sale') && !userRoles.includes('sales')) userRoles.push('sales');
+        if (userRoles.includes('seller')) {
+            if (!userRoles.includes('sale')) userRoles.push('sale');
+            if (!userRoles.includes('sales')) userRoles.push('sales');
+        }
+        if (userRoles.includes('dispatcher') && !userRoles.includes('fulfillment')) userRoles.push('fulfillment');
+        if (userRoles.includes('fulfillment') && !userRoles.includes('dispatcher')) userRoles.push('dispatcher');
+
+        if (currentUser.IsSystemAdmin) return true;
 
         if (!currentUser.Permissions || !Array.isArray(currentUser.Permissions)) {
             console.warn(`[hasPermission] "${feature}" → FALSE (Permissions array is empty/null). User role: "${currentUser.Role}"`);
@@ -35,6 +46,7 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
             const feat = (p.Feature || p.feature || '').toLowerCase();
             const raw = p.IsEnabled ?? p.isEnabled ?? p.is_enabled ?? false;
             const enabled = raw === true || raw === 1 || raw === 'true' || raw === 'TRUE';
+            
             return feat === targetFeature && enabled;
         });
 

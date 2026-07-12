@@ -30,6 +30,8 @@ const MobileAdminDashboard: React.FC = () => {
     const { 
         appData, currentUser, refreshTimestamp, orders, hasPermission, isOrdersLoading, isSyncing
     } = useContext(AppContext);
+
+    const isSystemAdmin = currentUser?.IsSystemAdmin || (currentUser?.Role || '').split(',').map(r => r.trim().toLowerCase()).includes('admin');
     
     // --- Navigation State ---
     const [activeDashboard, setActiveDashboard] = useUrlState<ActiveDashboard>('tab', 'admin');
@@ -43,6 +45,15 @@ const MobileAdminDashboard: React.FC = () => {
     const [isProfileSubMenuOpen, setIsProfileSubMenuOpen] = useState(false);
     const [editProfileModalOpen, setEditProfileModalOpen] = useState(false);
     const [advancedSettingsOpen, setAdvancedSettingsOpen] = useState(false);
+    
+    // Redirect user if they have view_order_list but not view_admin_dashboard
+    useEffect(() => {
+        if (!isSystemAdmin && !hasPermission('view_admin_dashboard') && activeDashboard === 'admin') {
+            if (hasPermission('view_order_list')) {
+                setActiveDashboard('orders');
+            }
+        }
+    }, [activeDashboard, isSystemAdmin, hasPermission]);
 
     // --- Incentive Logic ---
     const [incentiveProjects, setIncentiveProjects] = useState<any[]>([]);
@@ -221,6 +232,17 @@ const MobileAdminDashboard: React.FC = () => {
     const renderContent = () => {
         switch (activeDashboard) {
             case 'admin':
+                if (!isSystemAdmin && !hasPermission('view_admin_dashboard')) return (
+                    <div className="flex flex-col items-center justify-center py-20 px-6 text-center animate-reveal">
+                        <div className="w-20 h-20 bg-red-500/10 rounded-[2rem] flex items-center justify-center border border-red-500/20 mb-6">
+                            <svg className="w-10 h-10 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" strokeWidth={2.5}/></svg>
+                        </div>
+                        <h3 className="text-xl font-black text-white uppercase tracking-tight mb-2 italic">Access Restricted</h3>
+                        <p className="text-gray-500 text-[11px] font-bold uppercase tracking-widest leading-relaxed">
+                            អ្នកមិនមានសិទ្ធិចូលមើលផ្នែកនេះទេ<br/>សូមទាក់ទង System Administrator
+                        </p>
+                    </div>
+                );
                 if (currentAdminView === 'dashboard') {
                     return (
                         <DashboardOverview 
@@ -265,13 +287,96 @@ const MobileAdminDashboard: React.FC = () => {
                     />
                 );
             case 'reports': 
+                if (!isSystemAdmin && !hasPermission('view_revenue')) return (
+                    <div className="flex flex-col items-center justify-center py-20 px-6 text-center animate-reveal">
+                        <div className="w-20 h-20 bg-red-500/10 rounded-[2rem] flex items-center justify-center border border-red-500/20 mb-6">
+                            <svg className="w-10 h-10 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" strokeWidth={2.5}/></svg>
+                        </div>
+                        <h3 className="text-xl font-black text-white uppercase tracking-tight mb-2 italic">Access Restricted</h3>
+                        <p className="text-gray-500 text-[11px] font-bold uppercase tracking-widest leading-relaxed">
+                            អ្នកមិនមានសិទ្ធិចូលមើលផ្នែកនេះទេ<br/>សូមទាក់ទង System Administrator
+                        </p>
+                    </div>
+                );
                 return <ReportDashboard activeReport={activeReport} onBack={() => setActiveDashboard('admin')} onNavigate={handleNavigateWithFilters} />;
-            case 'settings': return <SettingsDashboard onBack={() => setActiveDashboard('admin')} />;
-            case 'audit': return <AuditLogDashboard onBack={() => setActiveDashboard('admin')} />;
-            case 'fulfillment': return <FulfillmentDashboard orders={orders} />;
-            case 'packaging': return <PackagingView orders={orders} onExit={() => setActiveDashboard('admin')} />;
-            case 'delivery': return <DriverDeliveryView />;
-            case 'inventory': return <InventoryManagement />;
+            case 'settings': 
+                if (!isSystemAdmin && !hasPermission('manage_permissions') && !hasPermission('manage_roles')) return (
+                    <div className="flex flex-col items-center justify-center py-20 px-6 text-center animate-reveal">
+                        <div className="w-20 h-20 bg-red-500/10 rounded-[2rem] flex items-center justify-center border border-red-500/20 mb-6">
+                            <svg className="w-10 h-10 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" strokeWidth={2.5}/></svg>
+                        </div>
+                        <h3 className="text-xl font-black text-white uppercase tracking-tight mb-2 italic">Access Restricted</h3>
+                        <p className="text-gray-500 text-[11px] font-bold uppercase tracking-widest leading-relaxed">
+                            អ្នកមិនមានសិទ្ធិចូលមើលផ្នែកនេះទេ<br/>សូមទាក់ទង System Administrator
+                        </p>
+                    </div>
+                );
+                return <SettingsDashboard onBack={() => setActiveDashboard('admin')} />;
+            case 'audit': 
+                if (!isSystemAdmin && !hasPermission('manage_permissions')) return (
+                    <div className="flex flex-col items-center justify-center py-20 px-6 text-center animate-reveal">
+                        <div className="w-20 h-20 bg-red-500/10 rounded-[2rem] flex items-center justify-center border border-red-500/20 mb-6">
+                            <svg className="w-10 h-10 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" strokeWidth={2.5}/></svg>
+                        </div>
+                        <h3 className="text-xl font-black text-white uppercase tracking-tight mb-2 italic">Access Restricted</h3>
+                        <p className="text-gray-500 text-[11px] font-bold uppercase tracking-widest leading-relaxed">
+                            អ្នកមិនមានសិទ្ធិចូលមើលផ្នែកនេះទេ<br/>សូមទាក់ទង System Administrator
+                        </p>
+                    </div>
+                );
+                return <AuditLogDashboard onBack={() => setActiveDashboard('admin')} />;
+            case 'fulfillment': 
+                if (!isSystemAdmin && !hasPermission('access_fulfillment')) return (
+                    <div className="flex flex-col items-center justify-center py-20 px-6 text-center animate-reveal">
+                        <div className="w-20 h-20 bg-red-500/10 rounded-[2rem] flex items-center justify-center border border-red-500/20 mb-6">
+                            <svg className="w-10 h-10 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" strokeWidth={2.5}/></svg>
+                        </div>
+                        <h3 className="text-xl font-black text-white uppercase tracking-tight mb-2 italic">Access Restricted</h3>
+                        <p className="text-gray-500 text-[11px] font-bold uppercase tracking-widest leading-relaxed">
+                            អ្នកមិនមានសិទ្ធិចូលមើលផ្នែកនេះទេ<br/>សូមទាក់ទង System Administrator
+                        </p>
+                    </div>
+                );
+                return <FulfillmentDashboard orders={orders} />;
+            case 'packaging': 
+                if (!isSystemAdmin && !hasPermission('access_fulfillment')) return (
+                    <div className="flex flex-col items-center justify-center py-20 px-6 text-center animate-reveal">
+                        <div className="w-20 h-20 bg-red-500/10 rounded-[2rem] flex items-center justify-center border border-red-500/20 mb-6">
+                            <svg className="w-10 h-10 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" strokeWidth={2.5}/></svg>
+                        </div>
+                        <h3 className="text-xl font-black text-white uppercase tracking-tight mb-2 italic">Access Restricted</h3>
+                        <p className="text-gray-500 text-[11px] font-bold uppercase tracking-widest leading-relaxed">
+                            អ្នកមិនមានសិទ្ធិចូលមើលផ្នែកនេះទេ<br/>សូមទាក់ទង System Administrator
+                        </p>
+                    </div>
+                );
+                return <PackagingView orders={orders} onExit={() => setActiveDashboard('admin')} />;
+            case 'delivery': 
+                if (!isSystemAdmin && !hasPermission('access_fulfillment')) return (
+                    <div className="flex flex-col items-center justify-center py-20 px-6 text-center animate-reveal">
+                        <div className="w-20 h-20 bg-red-500/10 rounded-[2rem] flex items-center justify-center border border-red-500/20 mb-6">
+                            <svg className="w-10 h-10 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" strokeWidth={2.5}/></svg>
+                        </div>
+                        <h3 className="text-xl font-black text-white uppercase tracking-tight mb-2 italic">Access Restricted</h3>
+                        <p className="text-gray-500 text-[11px] font-bold uppercase tracking-widest leading-relaxed">
+                            អ្នកមិនមានសិទ្ធិចូលមើលផ្នែកនេះទេ<br/>សូមទាក់ទង System Administrator
+                        </p>
+                    </div>
+                );
+                return <DriverDeliveryView />;
+            case 'inventory': 
+                if (!isSystemAdmin && !hasPermission('manage_inventory')) return (
+                    <div className="flex flex-col items-center justify-center py-20 px-6 text-center animate-reveal">
+                        <div className="w-20 h-20 bg-red-500/10 rounded-[2rem] flex items-center justify-center border border-red-500/20 mb-6">
+                            <svg className="w-10 h-10 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" strokeWidth={2.5}/></svg>
+                        </div>
+                        <h3 className="text-xl font-black text-white uppercase tracking-tight mb-2 italic">Access Restricted</h3>
+                        <p className="text-gray-500 text-[11px] font-bold uppercase tracking-widest leading-relaxed">
+                            អ្នកមិនមានសិទ្ធិចូលមើលផ្នែកនេះទេ<br/>សូមទាក់ទង System Administrator
+                        </p>
+                    </div>
+                );
+                return <InventoryManagement />;
             case 'incentives':
                 if (activeIncentiveProjectId) {
                     if (incentiveViewMode === 'execute') return <IncentiveExecutionView projectId={activeIncentiveProjectId} orders={orders} onBack={() => setActiveIncentiveProjectId('')} />;

@@ -10,6 +10,7 @@ package backend
 
 import (
 	"encoding/base64"
+	"encoding/json"
 	"fmt"
 	"io"
 	"log"
@@ -105,9 +106,29 @@ func UploadToGoogleDriveDirectly(base64Data string, fileName string, mimeType st
 		fileName = "upload_" + time.Now().Format("20060102_150405")
 	}
 
-	// Resolve target folder ID (env > DB setting exported from migration.go)
+	// Resolve target folder ID
+	// Return photos go to a dedicated folder (if configured), other uploads use the standard folder
+	isReturnPhoto := originalReq != nil && (originalReq.TargetColumn == "Return Photo" || originalReq.TargetColumn == "return_photo_url")
+
 	targetFolder := "root"
-	if envFolderID := os.Getenv("UPLOAD_FOLDER_ID"); envFolderID != "" {
+	if isReturnPhoto {
+		returnFolder := ReturnUploadFolderID
+		if envVal := os.Getenv("RETURN_UPLOAD_FOLDER_ID"); envVal != "" {
+			returnFolder = envVal
+		}
+		if returnFolder != "" && !strings.Contains(returnFolder, "Folder_Google_Drive") {
+			targetFolder = ExtractDriveFolderID(returnFolder)
+			log.Printf("📁 [Drive Upload] Return photo → using dedicated return folder: %q", targetFolder)
+		} else {
+			// Fallback to main upload folder
+			if envFolderID := os.Getenv("UPLOAD_FOLDER_ID"); envFolderID != "" {
+				targetFolder = ExtractDriveFolderID(envFolderID)
+			} else if UploadFolderID != "" && !strings.Contains(UploadFolderID, "Folder_Google_Drive") {
+				targetFolder = ExtractDriveFolderID(UploadFolderID)
+			}
+			log.Printf("📁 [Drive Upload] Return photo — no dedicated folder set, using main upload folder")
+		}
+	} else if envFolderID := os.Getenv("UPLOAD_FOLDER_ID"); envFolderID != "" {
 		targetFolder = ExtractDriveFolderID(envFolderID)
 		log.Printf("📁 [Drive Upload] Using folder from UPLOAD_FOLDER_ID env: %q", targetFolder)
 	} else if UploadFolderID != "" && !strings.Contains(UploadFolderID, "Folder_Google_Drive") {
@@ -181,6 +202,24 @@ func HandleImageUploadProxy(c *gin.Context) {
 		return
 	}
 
+	// SECURITY FIX: Restrict target columns to prevent arbitrary DB writes
+	if req.TargetColumn != "" {
+		dbCol := UploadMapToDBColumnFunc(req.TargetColumn)
+		isValidCol := UploadIsValidOrderColumnFunc(dbCol) || 
+			dbCol == "profile_picture_url" ||
+			dbCol == "image_url" ||
+			dbCol == "logo_url" ||
+			dbCol == "page_logo_url" ||
+			dbCol == "carrier_logo_url" ||
+			dbCol == "thumbnail"
+
+		if !isValidCol {
+			log.Printf("⚠️ Invalid target column requested: %s (mapped: %s)", req.TargetColumn, dbCol)
+			c.JSON(400, gin.H{"status": "error", "message": "គោលដៅរូបភាពមិនត្រឹមត្រូវ (Invalid target column)"})
+			return
+		}
+	}
+
 	// Dynamically resolve BackendURL from incoming request if not provided
 	if req.BackendURL == "" {
 		scheme := "http"
@@ -193,6 +232,7 @@ func HandleImageUploadProxy(c *gin.Context) {
 		req.BackendURL = fmt.Sprintf("%s://%s", scheme, c.Request.Host)
 		log.Printf("🔗 [Upload Proxy] Dynamically resolved BackendURL: %s", req.BackendURL)
 	}
+
 
 	data := req.FileData
 	if data == "" {
@@ -340,7 +380,6 @@ func processImageUploadInternal(req AppsScriptRequest, data string) (string, str
 					var currentOrder Order
 					if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).
 						Where("UPPER(TRIM(order_id)) = UPPER(TRIM(?))", req.OrderID).
-						Select("fulfillment_status").
 						First(&currentOrder).Error; err != nil {
 						return fmt.Errorf("រកមិនឃើញការកម្មង់ %s: %w", req.OrderID, err)
 					}
@@ -384,6 +423,71 @@ func processImageUploadInternal(req AppsScriptRequest, data string) (string, str
 					return fmt.Errorf("NOT_FOUND:%s", req.OrderID)
 				}
 				rowsAffected = res.RowsAffected
+
+				if newStatus, ok := dbUpdateMap["fulfillment_status"].(string); ok {
+					if newStatus == "Returned" {
+						var fullOrder Order
+						if err := tx.Where("UPPER(TRIM(order_id)) = UPPER(TRIM(?))", req.OrderID).First(&fullOrder).Error; err == nil {
+							var products []map[string]interface{}
+							if err := json.Unmarshal([]byte(fullOrder.ProductsJSON), &products); err == nil {
+								for _, p := range products {
+									name, _ := p["name"].(string)
+									qty, _ := p["quantity"].(float64)
+									if name != "" && qty > 0 {
+										reason := fullOrder.ReturnReason
+										if r, ok := dbUpdateMap["return_reason"].(string); ok && r != "" {
+											reason = r
+										}
+
+										barcode := ""
+										if b, ok := p["barcode"].(string); ok {
+											barcode = b
+										}
+
+										returnItem := ReturnItem{
+											Timestamp:   time.Now().Format("2006-01-02 15:04:05"),
+											OrderID:     fullOrder.OrderID,
+											StoreName:   fullOrder.FulfillmentStore,
+											Barcode:     barcode,
+											ProductName: name,
+											Quantity:    qty,
+											Reason:      reason,
+											HandledBy:   req.UserName,
+											Status:      "Pending Receipt",
+										}
+
+										if _, hasReceivedBy := dbUpdateMap["return_received_by"]; hasReceivedBy {
+											returnItem.Status = "Received"
+										}
+
+										var count int64
+										tx.Table("returns").Where("order_id = ? AND product_name = ?", fullOrder.OrderID, name).Count(&count)
+									if count == 0 {
+										if err := tx.Table("returns").Create(&returnItem).Error; err == nil {
+											go EnqueueSync("addRow", map[string]interface{}{
+												"Timestamp":   returnItem.Timestamp,
+												"OrderID":     returnItem.OrderID,
+												"StoreName":   returnItem.StoreName,
+												"Barcode":     returnItem.Barcode,
+												"ProductName": returnItem.ProductName,
+												"Quantity":    returnItem.Quantity,
+												"Reason":      returnItem.Reason,
+												"HandledBy":   returnItem.HandledBy,
+												"Status":      returnItem.Status,
+											}, "Returns", nil)
+										}
+									} else if returnItem.Status == "Received" {
+										if err := tx.Table("returns").Where("order_id = ? AND product_name = ?", fullOrder.OrderID, name).Update("status", "Received").Error; err == nil {
+											go EnqueueSync("updateSheet", map[string]interface{}{"Status": "Received"}, "Returns", map[string]interface{}{"OrderID": fullOrder.OrderID, "ProductName": name})
+										}
+									}
+								}
+							}
+						}
+					}
+				}
+			}
+
 				return nil
 			})
 
@@ -439,6 +543,23 @@ func processImageUploadInternal(req AppsScriptRequest, data string) (string, str
 		}
 	}
 
+	// ── 1.5 Return Photo URL — save separately in returns table ─────────
+	// When a Return Photo is uploaded for an order, also persist the photo URL
+	// in the `returns` table rows for that order (so each ReturnItem has its own photo record).
+	if req.OrderID != "" && req.TargetColumn == "Return Photo" && driveURL != "" {
+		go func(orderId, photoURL string) {
+			if err := DB.Table("returns").
+				Where("order_id = ?", orderId).
+				Update("photo_url", photoURL).Error; err != nil {
+				log.Printf("⚠️ [Upload Internal] Failed to update photo_url in returns for order %s: %v", orderId, err)
+			} else {
+				log.Printf("📷 [Upload Internal] Saved return photo URL to returns table for order %s", orderId)
+				// Sync to Google Sheets — update PhotoURL column in Returns sheet
+				EnqueueSync("updateSheet", map[string]interface{}{"PhotoURL": photoURL}, "Returns", map[string]interface{}{"OrderID": orderId})
+			}
+		}(req.OrderID, driveURL)
+	}
+
 	// ── 2. User Profile Update ───────────────────────────────────────────
 	// Resolve userName: prefer explicit req.UserName, fallback to primaryKey["UserName"]
 	// (Admin Edit User modal sends primaryKey but not top-level userName)
@@ -449,7 +570,7 @@ func processImageUploadInternal(req AppsScriptRequest, data string) (string, str
 		}
 	}
 
-	if resolvedUserName != "" && req.OrderID == "" && req.MovieID == "" && (req.SheetName == "" || req.SheetName == "Users") {
+	if resolvedUserName != "" && (req.TargetColumn == "ProfilePictureURL" || req.TargetColumn == "profile_picture_url") && req.OrderID == "" && req.MovieID == "" {
 		log.Printf("👤 [Upload Internal] Updating profile picture for user=%q", resolvedUserName)
 		DB.Model(&User{}).Where("user_name = ?", resolvedUserName).UpdateColumn("profile_picture_url", driveURL)
 		SafeBroadcastJSON(map[string]interface{}{

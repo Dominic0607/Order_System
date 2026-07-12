@@ -37,6 +37,8 @@ import { UserProvider, useUser } from './context/UserContext';
 import { OrderProvider, useOrder } from './context/OrderContext';
 import { localDbService } from './services/localDbService';
 import { translations } from './translations';
+import { CLIENT_VERSION } from './constants/version';
+import SystemUpdateModal from './components/common/SystemUpdateModal';
 
 const OrderNotificationTrigger: React.FC = () => {
     useOrderNotifications();
@@ -69,6 +71,31 @@ const AppContent: React.FC = () => {
     const [previewImageUrl, setPreviewImageUrl] = useState<string | null>(null);
     const [isGlobalLoading, setIsGlobalLoading] = useState(true);
     const [language, setLanguage] = useState<'en' | 'km'>(() => (localStorage.getItem('language') as any) || 'km');
+    const [newVersionAvailable, setNewVersionAvailable] = useState<string | null>(null);
+
+    // Check system version on page load
+    useEffect(() => {
+        const checkSystemVersion = async () => {
+            try {
+                const res = await fetch(`${WEB_APP_URL}/api/system-version`);
+                if (res.ok) {
+                    const data = await res.json();
+                    if (data.status === 'success' && data.version && data.version !== CLIENT_VERSION) {
+                        const acknowledgedVersion = localStorage.getItem('system_update_acknowledged_version');
+                        if (acknowledgedVersion !== data.version) {
+                            console.log(`[App] 🆕 System update available on load: Client=${CLIENT_VERSION}, Server=${data.version}`);
+                            setNewVersionAvailable(data.version);
+                        } else {
+                            console.log(`[App] ⚠️ Version mismatch detected but user already acknowledged/attempted update to ${data.version}. Bypassing popup.`);
+                        }
+                    }
+                }
+            } catch (e) {
+                console.warn("[App] Failed to check system version on load:", e);
+            }
+        };
+        checkSystemVersion();
+    }, []);
     const [advancedSettings, setAdvancedSettings] = useState<AdvancedSettings>(() => {
         const saved = localStorage.getItem('advancedSettings');
         const defaultSettings: AdvancedSettings = { 
@@ -76,8 +103,8 @@ const AppContent: React.FC = () => {
             enablePrivacyMode: false, 
             notificationVolume: 0.5, 
             notificationSound: 'default',
-            uiTheme: 'default',
-            themeMode: 'dark',
+            uiTheme: 'neumorphism',
+            themeMode: 'light',
             glassIntensity: 20,
             borderRadius: 24,
             animationSpeed: 'normal',
@@ -87,7 +114,19 @@ const AppContent: React.FC = () => {
             packagingGracePeriod: 2
         };
         if (saved) {
-            try { return { ...defaultSettings, ...JSON.parse(saved) }; } catch (e) { return defaultSettings; }
+            try {
+                const parsed = JSON.parse(saved);
+                // === v1.1.0 MIGRATION ===
+                // If user has old 'default' uiTheme saved but NO v1.1.0 migration flag,
+                // it means they haven't updated yet — keep their saved settings intact.
+                // Once they click Update in SystemUpdateModal, the theme auto-switches.
+                // If they have no uiTheme at all (very old save), treat as neumorphism.
+                if (!parsed.uiTheme) {
+                    parsed.uiTheme = 'neumorphism';
+                    parsed.themeMode = parsed.themeMode || 'light';
+                }
+                return { ...defaultSettings, ...parsed };
+            } catch (e) { return defaultSettings; }
         }
         return defaultSettings;
     });
@@ -327,6 +366,15 @@ const AppContent: React.FC = () => {
              } else {
                  fetchData(true);
              }
+        } else if (lastMessage.type === 'system_info') {
+            const serverVersion = lastMessage.version;
+            if (serverVersion && serverVersion !== CLIENT_VERSION) {
+                const acknowledgedVersion = localStorage.getItem('system_update_acknowledged_version');
+                if (acknowledgedVersion !== serverVersion) {
+                    console.log(`[App] 🆕 System update available via WS: Client=${CLIENT_VERSION}, Server=${serverVersion}`);
+                    setNewVersionAvailable(serverVersion);
+                }
+            }
         } else if (lastMessage.type === 'update_permission' || lastMessage.type === 'permissions_reset') {
             // Admin changed or reset permissions — refresh so all connected users get updated state.
             console.log(`[App] 🔐 Permissions changed (${lastMessage.type}). Refreshing...`);
@@ -401,6 +449,16 @@ const AppContent: React.FC = () => {
         if (!currentUser || !appData?.permissions || !Array.isArray(appData.permissions) || appData.permissions.length === 0) return;
 
         const userRoles = (currentUser.Role || '').split(',').map(r => r.trim().toLowerCase());
+        
+        // Map common aliases to ensure robust permission matching
+        if (userRoles.includes('sales') && !userRoles.includes('sale')) userRoles.push('sale');
+        if (userRoles.includes('sale') && !userRoles.includes('sales')) userRoles.push('sales');
+        if (userRoles.includes('seller')) {
+            if (!userRoles.includes('sale')) userRoles.push('sale');
+            if (!userRoles.includes('sales')) userRoles.push('sales');
+        }
+        if (userRoles.includes('dispatcher') && !userRoles.includes('fulfillment')) userRoles.push('fulfillment');
+        if (userRoles.includes('fulfillment') && !userRoles.includes('dispatcher')) userRoles.push('dispatcher');
 
         // Collect all permission rows that match any of the user's roles (case-insensitive)
         const matchedPerms = appData.permissions.filter(p => {
@@ -689,6 +747,9 @@ const AppContent: React.FC = () => {
     return (
         <AppContext.Provider value={legacyContextValue as any}>
             <OrderNotificationTrigger />
+            {newVersionAvailable && (
+                <SystemUpdateModal newVersion={newVersionAvailable} currentVersion={CLIENT_VERSION} language={language} />
+            )}
             <div className={`theme-wrapper h-screen w-full overflow-hidden flex flex-col ${advancedSettings.uiTheme ? `ui-${advancedSettings.uiTheme}` : ''} ${advancedSettings.themeMode ? `theme-${advancedSettings.themeMode}` : 'theme-dark'}`}>
                 {/* GLOBAL PREMIUM BACKGROUND */}
                 <div className="fixed inset-0 w-screen h-[100dvh] overflow-hidden pointer-events-none z-0" style={{ backgroundColor: 'var(--bg-dark)' }}>

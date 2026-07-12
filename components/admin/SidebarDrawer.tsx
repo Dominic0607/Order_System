@@ -67,12 +67,10 @@ const SidebarDrawer: React.FC<SidebarDrawerProps> = ({
                 
                 {/* Mobile Header */}
                 <div className="flex-shrink-0 px-6 pt-10 pb-6 flex items-center justify-between relative z-10">
-                    <div className="flex items-center gap-3.5">
-                        <div className="w-11 h-11 bg-gradient-to-br from-blue-600 to-indigo-700 rounded-xl flex items-center justify-center shadow-xl shadow-blue-900/30 border border-white/10 overflow-hidden p-2 transform -rotate-2 hover:rotate-0 transition-transform duration-700">
-                             <img src={convertGoogleDriveUrl(APP_LOGO_URL)} alt="Logo" className="w-full h-full object-contain brightness-0 invert" />
-                        </div>
+                    <div class="flex items-center gap-3.5">
+                        <img src={APP_LOGO_URL} alt="Logo" className="w-11 h-11 object-cover flex-shrink-0" />
                         <div>
-                            <h2 className="text-[18px] font-black text-white uppercase tracking-tighter leading-none italic">O-System</h2>
+                            <h2 className="text-[18px] font-bold text-white leading-none" style={{ fontFamily: "'Inter', 'SF Pro Display', system-ui, sans-serif", letterSpacing: '-0.02em' }}>O-System</h2>
                             <div className="flex items-center gap-2 mt-1">
                                 <span className="h-1.5 w-1.5 rounded-full bg-blue-500 animate-pulse shadow-[0_0_8px_rgba(59,130,246,0.5)]"></span>
                                 <p className="text-[10px] text-blue-400/80 font-black uppercase tracking-[0.2em]">Core Access</p>

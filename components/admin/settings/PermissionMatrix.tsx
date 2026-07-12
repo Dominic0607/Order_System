@@ -29,6 +29,9 @@ const FEATURE_INFO: Record<string, { label: string, desc: string, icon: string }
     [FEATURES.STOCK_TRANSFER]: { label: 'ផ្ទេរស្តុក', desc: 'ផ្ទេរទំនិញរវាងឃ្លាំងផ្សេងៗ', icon: '🚛' },
     [FEATURES.VIEW_TEAM_LEADERBOARD]: { label: 'ចំណាត់ថ្នាក់ក្រុម', desc: 'មើលតារាងចំណាត់ថ្នាក់ការលក់', icon: '🏆' },
     [FEATURES.SET_TARGETS]: { label: 'កំណត់គោលដៅ', desc: 'កំណត់គោលដៅលក់សម្រាប់ក្រុម', icon: '🎯' },
+    [FEATURES.ACCESS_PROBLEM_ITEMS_ADMIN]: { label: 'អ្នកគ្រប់គ្រង Problem Items', desc: 'សិទ្ធិជាអ្នកត្រួតពិនិត្យ ឬគ្រប់គ្រងឥវ៉ាន់មានបញ្ហា (ADMIN_KEY)', icon: '🛡️' },
+    [FEATURES.ACCESS_PROBLEM_ITEMS_USER]: { label: 'អ្នកប្រើប្រាស់ Problem Items', desc: 'សិទ្ធិជាអ្នកប្រើប្រាស់សម្រាប់រាយការណ៍ឥវ៉ាន់មានបញ្ហា (USER_KEY)', icon: '📝' },
+    [FEATURES.VIEW_MAP]: { label: 'ផែនទីប្រទេសកម្ពុជា', desc: 'សិទ្ធិចូលមើលផែនទីប្រទេសកម្ពុជា', icon: '🗺️' },
 };
 
 const PermissionMatrix: React.FC = () => {
@@ -70,7 +73,10 @@ const PermissionMatrix: React.FC = () => {
                 FEATURES.VIEW_ADMIN_DASHBOARD,
                 FEATURES.VIEW_ENTERTAINMENT,
                 FEATURES.VIEW_PROMOTIONS,
-                FEATURES.MANAGE_PROMOTIONS
+                FEATURES.MANAGE_PROMOTIONS,
+                FEATURES.ACCESS_PROBLEM_ITEMS_ADMIN,
+                FEATURES.ACCESS_PROBLEM_ITEMS_USER,
+                FEATURES.VIEW_MAP
             ]
         },
         {

@@ -82,6 +82,17 @@ func handleGenerateUploadToken(c *gin.Context) {
 	c.JSON(200, gin.H{"status": "success", "token": token})
 }
 
+func handleGetSystemVersion(c *gin.Context) {
+	version := os.Getenv("SYSTEM_VERSION")
+	if version == "" {
+		version = "1.1.0"
+	}
+	c.JSON(200, gin.H{
+		"status":  "success",
+		"version": version,
+	})
+}
+
 func handleVerifyUploadToken(c *gin.Context) {
 	token := c.Query("token")
 	secret := c.GetHeader("X-Internal-Secret")
@@ -1077,6 +1088,14 @@ func handleGetStaticData(c *gin.Context) {
 						backend.UploadFolderID = envVal
 					} else {
 						backend.UploadFolderID = s.ConfigValue
+					}
+				}
+				if s.ConfigKey == "ReturnUploadFolderID" {
+					envVal := os.Getenv("RETURN_UPLOAD_FOLDER_ID")
+					if envVal != "" {
+						backend.ReturnUploadFolderID = envVal
+					} else {
+						backend.ReturnUploadFolderID = s.ConfigValue
 					}
 				}
 			}
@@ -2129,17 +2148,43 @@ func handleAdminUpdateOrder(c *gin.Context) {
 						}
 					}
 				}
+			} else if newStatusStr == "Cancelled" && originalOrder.FulfillmentStatus == "Returned" {
+				if err := backend.DB.Table("returns").Where("order_id = ?", originalOrder.OrderID).Update("status", "Restocked").Error; err == nil {
+					var products []map[string]interface{}
+					if err := json.Unmarshal([]byte(originalOrder.ProductsJSON), &products); err == nil {
+						for _, p := range products {
+							name, _ := p["name"].(string)
+							if name != "" {
+								go enqueueSync("updateSheet", map[string]interface{}{"Status": "Restocked"}, "Returns", map[string]interface{}{"OrderID": originalOrder.OrderID, "ProductName": name})
+							}
+						}
+					}
+				}
 			}
 		}
 
-		// ✅ Update ReturnItems status when received
+		// ✅ Update ReturnItems status & photo URL when received
 		if _, hasReceivedBy := r.NewData["Return Received By"]; hasReceivedBy {
-			backend.DB.Table("returns").Where("order_id = ?", r.OrderID).Update("status", "Received")
+			// Build update map: always set status, optionally set photo_url
+			returnUpdates := map[string]interface{}{"status": "Received"}
+			sheetUpdates := map[string]interface{}{"Status": "Received"}
+
+			if photoURL, hasPhoto := r.NewData["Return Photo"]; hasPhoto && photoURL != "" {
+				returnUpdates["photo_url"] = photoURL
+				sheetUpdates["PhotoURL"] = photoURL
+			} else {
+				// Try reading from DB in case it was saved by the upload handler
+				var existingOrder Order
+				if backend.DB.Where("UPPER(TRIM(order_id)) = UPPER(TRIM(?))", r.OrderID).First(&existingOrder).Error == nil && existingOrder.ReturnPhotoURL != "" {
+					returnUpdates["photo_url"] = existingOrder.ReturnPhotoURL
+					sheetUpdates["PhotoURL"] = existingOrder.ReturnPhotoURL
+				}
+			}
+
+			backend.DB.Table("returns").Where("order_id = ?", r.OrderID).Updates(returnUpdates)
 
 			// Sync with Google Sheets
-			go enqueueSync("updateSheet", map[string]interface{}{
-				"Status": "Received",
-			}, "Returns", map[string]string{"OrderID": r.OrderID})
+			go enqueueSync("updateSheet", sheetUpdates, "Returns", map[string]string{"OrderID": r.OrderID})
 		}
 
 		eventBytes, _ := json.Marshal(map[string]interface{}{"type": "update_order", "orderId": r.OrderID, "newData": r.NewData})
@@ -3731,6 +3776,7 @@ func main() {
 
 	// Pre-initialize UploadFolderID from environment for immediate use
 	backend.UploadFolderID = os.Getenv("UPLOAD_FOLDER_ID")
+	backend.ReturnUploadFolderID = os.Getenv("RETURN_UPLOAD_FOLDER_ID")
 
 	jwtSecretEnv := os.Getenv("JWT_SECRET")
 	if jwtSecretEnv == "" {
@@ -3787,6 +3833,7 @@ func main() {
 	api.POST("/telegram/webhook/:token", handleTelegramWebhook)
 	api.GET("/internal/verify-upload-token", handleVerifyUploadToken) // New for Apps Script
 	api.GET("/products", handleGetProductsOnly)                       // Read-only Product API for Developers
+	api.GET("/system-version", handleGetSystemVersion)
 
 	protected := api.Group("/")
 	protected.Use(AuthMiddleware())

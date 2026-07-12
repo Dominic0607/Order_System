@@ -15,7 +15,7 @@ const UserJourney: React.FC<{ onBackToRoleSelect: () => void }> = ({ onBackToRol
     // a 403 that sets a persistent ordersFetchError='permission_denied' state,
     // which then shows "Access Denied" in UserOrdersView even after permissions load.
     useEffect(() => {
-        if (orders.length === 0 && !isOrdersLoading && hasPermission('view_order_list')) {
+        if (orders.length === 0 && !isOrdersLoading && (hasPermission('view_order_list') || (hasPermission('create_order') && hasPermission('access_sales_portal')))) {
             fetchOrders();
         }
     // eslint-disable-next-line react-hooks/exhaustive-deps

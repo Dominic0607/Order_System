@@ -258,7 +258,7 @@ func EnsureSeedData() {
 	defaultRoles := []Role{
 		{RoleName: "Admin", Description: "System Administrator - Full Access"},
 		{RoleName: "Manager", Description: "Store/Team Manager"},
-		{RoleName: "Sale", Description: "Sales representative"},
+		{RoleName: "Sales", Description: "Sales representative"},
 		{RoleName: "Fulfillment", Description: "Order packing & fulfillment staff"},
 		{RoleName: "Driver", Description: "Delivery driver"},
 		{RoleName: "Packer", Description: "Packaging team member"},
@@ -277,8 +277,17 @@ func EnsureSeedData() {
 		}
 	}
 
+	// Clean up duplicate capitalized permissions created by historical seeding bug
+	DB.Exec("DELETE FROM role_permissions WHERE role != LOWER(role) OR feature != LOWER(feature)")
+	// Clean up old singular 'sale' role and its permissions to prevent ghost permission issues
+	DB.Exec("DELETE FROM role_permissions WHERE LOWER(TRIM(role)) = 'sale'")
+	DB.Exec("DELETE FROM roles WHERE LOWER(TRIM(role_name)) = 'sale'")
+
 	// Default permissions — only insert if not already present.
 	for _, p := range DefaultPermissions() {
+		p.Role = strings.ToLower(strings.TrimSpace(p.Role))
+		p.Feature = strings.ToLower(strings.TrimSpace(p.Feature))
+
 		var roleObj Role
 		roleID := uint(0)
 		if err := DB.Where("LOWER(role_name) = LOWER(?)", p.Role).First(&roleObj).Error; err == nil {
@@ -326,6 +335,7 @@ func DefaultPermissions() []RolePermission {
 		"manage_roles", "manage_permissions", "view_revenue", "export_data", "migrate_data",
 		"manage_inventory", "stock_transfer", "view_team_leaderboard", "set_targets", "view_global_orders",
 		"view_promotions", "manage_promotions",
+		"access_problem_items_admin", "access_problem_items_user", "view_map",
 	}
 
 	// Define standard templates
@@ -349,14 +359,16 @@ func DefaultPermissions() []RolePermission {
 			"stock_transfer":        true,
 			"view_team_leaderboard": true,
 			"set_targets":           true,
+			"view_map":              true,
 		},
-		"Sale": {
+		"Sales": {
 			"view_order_list":       true,
 			"edit_order":            true,
 			"create_order":          true,
 			"access_sales_portal":   true,
 			"view_entertainment":    true,
 			"view_team_leaderboard": true,
+			"view_map":              true,
 		},
 		"Fulfillment": {
 			"view_order_list":    true,
@@ -366,20 +378,24 @@ func DefaultPermissions() []RolePermission {
 			"view_entertainment": true,
 			"manage_inventory":   true,
 			"stock_transfer":     true,
+			"view_map":           true,
 		},
 		"Packer": {
 			"view_order_list":    true,
 			"access_fulfillment": true,
 			"view_entertainment": true,
+			"view_map":           true,
 		},
 		"Driver": {
 			"view_order_list":    true,
 			"access_fulfillment": true,
 			"view_entertainment": true,
+			"view_map":           true,
 		},
 		"Viewer": {
 			"view_order_list":    true,
 			"view_entertainment": true,
+			"view_map":           true,
 		},
 	}
 
@@ -408,7 +424,7 @@ func DefaultPermissions() []RolePermission {
 		// Map actual role name to a template
 		if strings.Contains(rName, "admin") { templateName = "Admin" }
 		if strings.Contains(rName, "manager") { templateName = "Manager" }
-		if strings.Contains(rName, "sale") || strings.Contains(rName, "sell") { templateName = "Sale" }
+		if strings.Contains(rName, "sale") || strings.Contains(rName, "sell") { templateName = "Sales" }
 		if strings.Contains(rName, "fulfill") || strings.Contains(rName, "dispatch") { templateName = "Fulfillment" }
 		if strings.Contains(rName, "pack") { templateName = "Packer" }
 		if strings.Contains(rName, "driver") { templateName = "Driver" }

@@ -79,11 +79,9 @@ const TabletAdminLayout: React.FC<TabletAdminLayoutProps> = ({
                     </button>
                     
                     <div className="flex items-center gap-3">
-                        <div className="w-9 h-9 bg-gray-900 rounded-lg flex items-center justify-center border border-white/10 shadow-xl overflow-hidden p-1.5">
-                             <img src={convertGoogleDriveUrl(APP_LOGO_URL)} alt="Logo" className="w-full h-full object-contain" />
-                        </div>
+                        <img src={APP_LOGO_URL} alt="Logo" className="w-9 h-9 object-cover flex-shrink-0" />
                         <div className="min-w-0">
-                            <h1 className="text-sm font-black text-white italic uppercase tracking-tighter leading-none">O-System</h1>
+                            <h1 className="text-sm font-bold text-white leading-none" style={{ fontFamily: "'Inter', 'SF Pro Display', system-ui, sans-serif", letterSpacing: '-0.02em' }}>O-System</h1>
                             <span className="text-[10px] text-blue-500 font-black uppercase tracking-[0.2em] opacity-80">TABLET ADMIN</span>
                         </div>
                     </div>

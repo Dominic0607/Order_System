@@ -668,6 +668,33 @@ const DesktopPackagingHub: React.FC<DesktopPackagingHubProps> = ({
                                                                 </span>
                                                             </div>
                                                         )}
+                                                        {activeTab === 'Returned' && order['Return Received By'] && (
+                                                            <div className="flex items-center gap-2">
+                                                                {order['Return Photo'] ? (
+                                                                    <button
+                                                                        onClick={(e) => { e.stopPropagation(); showFullImage(convertGoogleDriveUrl(order['Return Photo']!)); }}
+                                                                        className="w-10 h-10 flex-shrink-0 rounded-sm overflow-hidden border-2 border-[#0ECB81]/40 hover:border-[#0ECB81] transition-all relative group"
+                                                                        title="មើលរូបភាព Return"
+                                                                    >
+                                                                        <img src={convertGoogleDriveUrl(order['Return Photo']!)} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300" alt="Return" />
+                                                                        <div className="absolute inset-0 bg-[#0ECB81]/10 group-hover:bg-transparent transition-colors flex items-center justify-center">
+                                                                            <span className="text-[8px] font-black text-[#0ECB81] opacity-0 group-hover:opacity-100 transition-opacity">VIEW</span>
+                                                                        </div>
+                                                                    </button>
+                                                                ) : (
+                                                                    <div className="w-10 h-10 flex-shrink-0 rounded-sm border border-[#0ECB81]/20 bg-[#0ECB81]/5 flex items-center justify-center">
+                                                                        <span className="text-base">📦</span>
+                                                                    </div>
+                                                                )}
+                                                                <div className="flex flex-col min-w-0">
+                                                                    <span className="text-[9px] font-black text-[#0ECB81] uppercase tracking-wider">✓ Received</span>
+                                                                    <span className="text-[9px] text-[#848E9C] truncate" title={order['Return Received By']}>{order['Return Received By']}</span>
+                                                                    {order['Return Received Time'] && (
+                                                                        <span className="text-[8px] text-[#848E9C]/70">{order['Return Received Time'].slice(0, 16)}</span>
+                                                                    )}
+                                                                </div>
+                                                            </div>
+                                                        )}
 
                                                         {!isCancelled && activeTab === 'Ready to Ship' ? (
                                                             <div className="space-y-2">
@@ -782,14 +809,14 @@ const DesktopPackagingHub: React.FC<DesktopPackagingHubProps> = ({
                                                                 )}
                                                                 {activeTab === 'Returned' && (
                                                                     <div className="flex flex-col gap-2 w-full">
-                                                                        <button 
-                                                                            onClick={(e) => { e.stopPropagation(); onConfirmReturn?.(order); }} 
-                                                                            disabled={!!order['Return Received By']}
-                                                                            className={`w-full py-1.5 ${order['Return Received By'] ? 'bg-[#0ECB81]/10 text-[#0ECB81]' : 'bg-purple-500 text-white hover:bg-purple-600'} text-xs font-bold uppercase transition-colors rounded-sm`}
-                                                                        >
-                                                                            {order['Return Received By'] ? '✓ Received' : 'Confirm Receipt'}
-                                                                        </button>
-                                                                        {!!order['Return Received By'] && (
+                                                                        {!order['Return Received By'] ? (
+                                                                            <button 
+                                                                                onClick={(e) => { e.stopPropagation(); onConfirmReturn?.(order); }} 
+                                                                                className="w-full py-1.5 bg-purple-500 hover:bg-purple-600 text-white text-xs font-bold uppercase transition-colors rounded-sm"
+                                                                            >
+                                                                                Confirm Receipt
+                                                                            </button>
+                                                                        ) : (
                                                                             <button 
                                                                                 onClick={(e) => { e.stopPropagation(); setUnpackTarget(order); }} 
                                                                                 className="w-full py-1.5 bg-red-600 hover:bg-red-700 text-white text-xs font-bold uppercase transition-colors rounded-sm shadow-lg shadow-red-600/20"
@@ -1004,20 +1031,35 @@ const DesktopPackagingHub: React.FC<DesktopPackagingHubProps> = ({
                                                             <button onClick={(e) => { e.stopPropagation(); onUndoShipped(order); }} className={`px-3 py-1 bg-[#F6465D]/10 hover:bg-[#F6465D]/20 ${B_RED} text-xs font-bold uppercase rounded-sm transition-colors`}>Undo</button>
                                                         )}
                                                         {activeTab === 'Returned' && (
-                                                            <div className="flex gap-2">
-                                                                <button 
-                                                                    onClick={(e) => { e.stopPropagation(); onConfirmReturn?.(order); }} 
-                                                                    disabled={!!order['Return Received By']}
-                                                                    className={`px-3 py-1 ${order['Return Received By'] ? 'bg-[#0ECB81]/10 text-[#0ECB81]' : 'bg-purple-500 text-white hover:bg-purple-600'} text-xs font-bold uppercase rounded-sm transition-colors`}
-                                                                >
-                                                                    {order['Return Received By'] ? '✓ Received' : 'Confirm Receipt'}
-                                                                </button>
-                                                                {!!order['Return Received By'] && (
+                                                            <div className="flex gap-2 items-center">
+                                                                {order['Return Received By'] ? (
+                                                                    <>
+                                                                        {order['Return Photo'] && (
+                                                                            <button
+                                                                                onClick={(e) => { e.stopPropagation(); showFullImage(convertGoogleDriveUrl(order['Return Photo']!)); }}
+                                                                                className="w-7 h-7 flex-shrink-0 rounded-sm overflow-hidden border border-[#0ECB81]/40 hover:border-[#0ECB81] transition-all"
+                                                                                title="មើលរូបភាព Return"
+                                                                            >
+                                                                                <img src={convertGoogleDriveUrl(order['Return Photo']!)} className="w-full h-full object-cover" alt="Return" />
+                                                                            </button>
+                                                                        )}
+                                                                        <div className="flex flex-col min-w-0">
+                                                                            <span className="text-[9px] font-black text-[#0ECB81] uppercase">✓ Received</span>
+                                                                            <span className="text-[9px] text-[#848E9C] truncate max-w-[80px]" title={order['Return Received By']}>{order['Return Received By']}</span>
+                                                                        </div>
+                                                                        <button 
+                                                                            onClick={(e) => { e.stopPropagation(); setUnpackTarget(order); }} 
+                                                                            className="px-3 py-1 bg-red-600 hover:bg-red-700 text-white text-xs font-bold uppercase rounded-sm transition-colors shadow-lg shadow-red-600/20 ml-auto flex-shrink-0"
+                                                                        >
+                                                                            ហែកកញ្ចប់
+                                                                        </button>
+                                                                    </>
+                                                                ) : (
                                                                     <button 
-                                                                        onClick={(e) => { e.stopPropagation(); setUnpackTarget(order); }} 
-                                                                        className="px-3 py-1 bg-red-600 hover:bg-red-700 text-white text-xs font-bold uppercase rounded-sm transition-colors shadow-lg shadow-red-600/20"
+                                                                        onClick={(e) => { e.stopPropagation(); onConfirmReturn?.(order); }} 
+                                                                        className="px-3 py-1 bg-purple-500 hover:bg-purple-600 text-white text-xs font-bold uppercase rounded-sm transition-colors"
                                                                     >
-                                                                        ហែកកញ្ចប់ (Unpack)
+                                                                        Confirm Receipt
                                                                     </button>
                                                                 )}
                                                             </div>

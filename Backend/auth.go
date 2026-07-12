@@ -211,23 +211,26 @@ func checkPermission(role string, isSystemAdmin bool, feature string) bool {
 		return true
 	}
 
+	if DB == nil {
+		log.Printf("⚠️ [checkPermission] DB is nil, returning false (running in test?)")
+		return false
+	}
+
 	roles := strings.Split(role, ",")
 	featureLower := strings.ToLower(strings.TrimSpace(feature))
 
 	for _, r := range roles {
 		r = strings.TrimSpace(r)
-		if strings.EqualFold(r, "Admin") {
-			return true
-		}
-
 		rLower := strings.ToLower(r)
 		
 		// Map common aliases to their canonical versions to be more resilient
 		checkRoles := []string{rLower}
 		if rLower == "seller" {
 			checkRoles = append(checkRoles, "sale", "sales")
-		} else if rLower == "sale" || rLower == "sales" {
-			checkRoles = append(checkRoles, "seller")
+		} else if rLower == "sale" {
+			checkRoles = append(checkRoles, "seller", "sales")
+		} else if rLower == "sales" {
+			checkRoles = append(checkRoles, "seller", "sale")
 		} else if rLower == "dispatcher" {
 			checkRoles = append(checkRoles, "fulfillment")
 		} else if rLower == "fulfillment" {
@@ -240,6 +243,19 @@ func checkPermission(role string, isSystemAdmin bool, feature string) bool {
 			err := DB.Where("LOWER(TRIM(role)) = ? AND LOWER(TRIM(feature)) = ? AND is_enabled = true", cr, featureLower).First(&perm).Error
 			if err == nil {
 				return true
+			}
+
+			// If checking for view_order_list, also allow if they have both access_sales_portal and create_order permissions enabled
+			if featureLower == "view_order_list" {
+				var portalPerm RolePermission
+				errPortal := DB.Where("LOWER(TRIM(role)) = ? AND LOWER(TRIM(feature)) = 'access_sales_portal' AND is_enabled = true", cr).First(&portalPerm).Error
+				if errPortal == nil {
+					var createPerm RolePermission
+					errCreate := DB.Where("LOWER(TRIM(role)) = ? AND LOWER(TRIM(feature)) = 'create_order' AND is_enabled = true", cr).First(&createPerm).Error
+					if errCreate == nil {
+						return true
+					}
+				}
 			}
 		}
 		

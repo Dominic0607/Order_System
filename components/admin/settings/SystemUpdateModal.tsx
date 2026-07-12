@@ -2,6 +2,7 @@
 import React from 'react';
 import Modal from '../../common/Modal';
 import Spinner from '../../common/Spinner';
+import { APP_LOGO_URL } from '../../../constants';
 
 interface SystemUpdateModalProps {
     isOpen: boolean;
@@ -17,10 +18,16 @@ const SystemUpdateModal: React.FC<SystemUpdateModalProps> = ({ isOpen, onClose, 
     return (
         <Modal isOpen={isOpen} onClose={onClose} maxWidth="max-w-md">
             <div className="p-6 text-center">
-                <div className="w-16 h-16 bg-red-500/10 rounded-full flex items-center justify-center mx-auto mb-4 border border-red-500/20 animate-pulse">
-                    <svg className="w-8 h-8 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+                {/* Logo */}
+                <div className="flex flex-col items-center gap-1 mb-4">
+                    <img src={APP_LOGO_URL} alt="O-System" className="w-12 h-12 object-cover" />
+                    <span className="text-[9px] font-semibold tracking-[0.18em] text-white/30 uppercase">O-System</span>
                 </div>
-                <h3 className="text-xl font-black text-white mb-2 uppercase tracking-tight">System Update</h3>
+
+                <div className="w-14 h-14 bg-red-500/10 rounded-full flex items-center justify-center mx-auto mb-4 border border-red-500/20 animate-pulse">
+                    <svg className="w-7 h-7 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+                </div>
+                <h3 className="text-xl font-bold text-white mb-2 tracking-tight" style={{ fontFamily: "'Inter', 'SF Pro Display', system-ui, sans-serif" }}>System Update</h3>
                 <p className="text-gray-400 text-sm mb-4 leading-relaxed">
                     សកម្មភាពនេះនឹងតម្រូវឱ្យអ្នកប្រើប្រាស់ទាំងអស់ (All Users) ចាកចេញពីប្រព័ន្ធ (Log Out) ដើម្បីធ្វើបច្ចុប្បន្នភាព។
                 </p>

@@ -35,6 +35,13 @@ export const FEATURES = {
     VIEW_PROMOTIONS: "view_promotions",
     MANAGE_PROMOTIONS: "manage_promotions",
     
+    // Problem Items
+    ACCESS_PROBLEM_ITEMS_ADMIN: "access_problem_items_admin",
+    ACCESS_PROBLEM_ITEMS_USER: "access_problem_items_user",
+    
     // Multi-Team Access
-    VIEW_GLOBAL_ORDERS: "view_global_orders"
+    VIEW_GLOBAL_ORDERS: "view_global_orders",
+    
+    // Map Access
+    VIEW_MAP: "view_map"
 };

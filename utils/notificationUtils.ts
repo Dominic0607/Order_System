@@ -50,9 +50,8 @@ export const sendSystemNotification = async (title: string, body: string) => {
         return;
     }
 
-    // Use a static, safe icon URL because Google Drive redirects can be blocked by Chrome notifications
-    // Fallback to a reliable CDN icon if APP_LOGO_URL conversion fails or is slow
-    const safeIcon = "https://cdn-icons-png.flaticon.com/512/1827/1827404.png"; 
+    // Use the local logo asset as the notification icon
+    const safeIcon = window.location.origin + APP_LOGO_URL;
 
     const uniqueTag = 'osystem-alert-' + Date.now();
 

@@ -105,7 +105,7 @@ const LoginPage: React.FC = () => {
                                 className="absolute inset-0 flex items-center justify-center border-2 border-blue-500/40 bg-blue-600/10 backdrop-blur-md rounded-[2rem]"
                                 style={{ transform: `rotateY(${rotate}deg) translateZ(60px)` }}
                             >
-                                <img src={convertGoogleDriveUrl(APP_LOGO_URL)} className="w-20 h-20 object-contain opacity-80" alt="Core" />
+                                <img src={APP_LOGO_URL} className="w-20 h-20 object-contain opacity-80" alt="Core" />
                             </div>
                         ))}
                     </div>
@@ -154,7 +154,7 @@ const LoginPage: React.FC = () => {
                             <div className="relative inline-block group">
                                 <div className="absolute inset-0 bg-blue-500/20 rounded-3xl blur-2xl opacity-40 group-hover:opacity-100 transition-opacity"></div>
                                 <div className="relative w-20 h-20 bg-gray-950 border border-white/10 rounded-[1.8rem] flex items-center justify-center shadow-2xl overflow-hidden group-hover:scale-105 transition-all duration-500">
-                                    <img src={convertGoogleDriveUrl(APP_LOGO_URL)} alt="Logo" className="w-12 h-12 object-contain" />
+                                    <img src={APP_LOGO_URL} alt="Logo" className="w-12 h-12 object-contain" />
                                 </div>
                             </div>
                             <div className="space-y-1">

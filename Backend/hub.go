@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
+	"os"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -23,10 +25,24 @@ const (
 )
 
 func isOriginAllowed(r *http.Request) bool {
-	// For production on Render, we might want to be more specific,
-	// but 1006 errors are often caused by CheckOrigin failing due to proxy headers.
-	// Allowing all origins is the most compatible default for a multi-platform app.
-	return true
+	allowedOrigins := os.Getenv("ALLOWED_WS_ORIGINS")
+	if allowedOrigins == "" {
+		// For production on Render, we might want to be more specific,
+		// but 1006 errors are often caused by CheckOrigin failing due to proxy headers.
+		// Allowing all origins is the most compatible default for a multi-platform app.
+		return true
+	}
+	origin := r.Header.Get("Origin")
+	if origin == "" {
+		return true
+	}
+	parts := strings.Split(allowedOrigins, ",")
+	for _, p := range parts {
+		if strings.TrimSpace(p) == origin {
+			return true
+		}
+	}
+	return false
 }
 
 type Client struct {
@@ -170,4 +186,15 @@ func ServeWs(c *gin.Context) {
 	client.Hub.Register <- client
 	go client.WritePump()
 	go client.ReadPump()
+
+	// Send current system version immediately upon connection to check for updates
+	version := os.Getenv("SYSTEM_VERSION")
+	if version == "" {
+		version = "1.1.0"
+	}
+	sysInfo, _ := json.Marshal(map[string]interface{}{
+		"type":    "system_info",
+		"version": version,
+	})
+	client.Send <- sysInfo
 }

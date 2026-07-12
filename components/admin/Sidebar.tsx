@@ -30,7 +30,7 @@ const Sidebar: React.FC<SidebarProps> = ({
 }) => {
     const { 
         currentUser, logout, refreshData, isSidebarCollapsed, setIsSidebarCollapsed,
-        setAppState, language, setLanguage, originalAdminUser, advancedSettings
+        setAppState, language, setLanguage, originalAdminUser, advancedSettings, hasPermission
     } = useContext(AppContext);
 
     const [isRefreshing, setIsRefreshing] = useState(false);
@@ -49,32 +49,44 @@ const Sidebar: React.FC<SidebarProps> = ({
         }
     };
 
-    const navGroups = useMemo(() => [
-        {
-            title: t.analysis || 'Analysis',
-            items: [
-                { id: 'dashboard', component: 'admin', label: t.dashboard, icon: <i className="fa-solid fa-table-columns"></i> },
-                { id: 'performance', component: 'admin', label: t.performance, icon: <i className="fa-solid fa-chart-pie"></i> },
-                { id: 'reports', component: 'reports', label: t.reports, icon: <i className="fa-solid fa-file-invoice-dollar"></i> },
-            ]
-        },
-        {
-            title: t.management || 'Sittings',
-            items: [
-                { id: 'orders', component: 'orders', label: t.orders, icon: <i className="fa-solid fa-receipt"></i> },
-                { id: 'fulfillment', component: 'fulfillment', label: t.fulfillment || 'Operations', icon: <i className="fa-solid fa-truck-fast"></i> },
-                { id: 'inventory', component: 'inventory', label: t.inventory, icon: <i className="fa-solid fa-boxes-stacked"></i> },
-            ]
-        },
-        {
-            title: t.system || 'System',
-            items: [
-                { id: 'incentives', component: 'incentives', label: t.incentives || 'Incentives', icon: <i className="fa-solid fa-award"></i> },
-                { id: 'audit', component: 'audit', label: t.audit || 'Audit Logs', icon: <i className="fa-solid fa-shield-halved"></i> },
-                { id: 'settings', component: 'settings', label: t.settings, icon: <i className="fa-solid fa-gears"></i> },
-            ]
-        }
-    ], [t]);
+    const navGroups = useMemo(() => {
+        const isSystemAdmin = currentUser?.IsSystemAdmin || (currentUser?.Role || '').split(',').map(r => r.trim().toLowerCase()).includes('admin');
+        
+        const rawGroups = [
+            {
+                title: t.analysis || 'Analysis',
+                items: [
+                    { id: 'dashboard', component: 'admin', label: t.dashboard, icon: <i className="fa-solid fa-table-columns"></i>, permission: 'view_admin_dashboard' },
+                    { id: 'performance', component: 'admin', label: t.performance, icon: <i className="fa-solid fa-chart-pie"></i>, permission: 'view_team_leaderboard' },
+                    { id: 'reports', component: 'reports', label: t.reports, icon: <i className="fa-solid fa-file-invoice-dollar"></i>, permission: 'view_revenue' },
+                ]
+            },
+            {
+                title: t.management || 'Sittings',
+                items: [
+                    { id: 'orders', component: 'orders', label: t.orders, icon: <i className="fa-solid fa-receipt"></i>, permission: 'view_order_list' },
+                    { id: 'inventory', component: 'inventory', label: t.inventory, icon: <i className="fa-solid fa-boxes-stacked"></i>, permission: 'manage_inventory' },
+                ]
+            },
+            {
+                title: t.system || 'System',
+                items: [
+                    { id: 'incentives', component: 'incentives', label: t.incentives || 'Incentives', icon: <i className="fa-solid fa-award"></i>, permission: 'set_targets' },
+                    { id: 'audit', component: 'audit', label: t.audit || 'Audit Logs', icon: <i className="fa-solid fa-shield-halved"></i>, permission: 'manage_permissions' },
+                    { id: 'settings', component: 'settings', label: t.settings, icon: <i className="fa-solid fa-gears"></i>, permission: 'manage_permissions' },
+                ]
+            }
+        ];
+
+        return rawGroups.map(group => ({
+            ...group,
+            items: group.items.filter(item => {
+                if (isSystemAdmin) return true;
+                if (!item.permission) return true;
+                return hasPermission(item.permission);
+            })
+        })).filter(group => group.items.length > 0);
+    }, [t, currentUser, hasPermission]);
 
     const reportSections = useMemo(() => [
         { id: 'overview', title: t.overview, icon: <i className="fa-solid fa-eye"></i> },
@@ -240,17 +252,11 @@ const Sidebar: React.FC<SidebarProps> = ({
                 <div 
                     className={`h-24 flex items-center justify-center shrink-0 relative z-10 group w-full`}
                 >
-                    <div className={`
-                        flex items-center justify-center rounded-xl transition-all duration-700
-                        ${isSidebarCollapsed ? 'w-12 h-12 shadow-blue-500/20 shadow-lg' : 'w-10 h-10 shadow-blue-500/20 shadow-md'}
-                        ${uiTheme === 'binance' ? 'bg-[#FCD535]' : 'bg-gradient-to-br from-blue-600 to-indigo-700 border border-white/10'}
-                    `}>
-                        <img 
-                            src={convertGoogleDriveUrl(APP_LOGO_URL)} 
-                            alt="Logo" 
-                            className={`w-6 h-6 object-contain transition-transform duration-700 ${isSidebarCollapsed ? 'scale-110' : ''} ${uiTheme === 'binance' ? 'brightness-0' : 'brightness-0 invert'}`} 
-                        />
-                    </div>
+                    <img 
+                        src={APP_LOGO_URL} 
+                        alt="Logo" 
+                        className={`transition-all duration-700 object-cover ${isSidebarCollapsed ? 'w-12 h-12' : 'w-10 h-10'}`} 
+                    />
                     
                     {/* Custom Logo Tooltip */}
                     {isSidebarCollapsed && (
@@ -267,7 +273,7 @@ const Sidebar: React.FC<SidebarProps> = ({
 
                     {!isSidebarCollapsed && (
                         <div className="ml-3.5 flex flex-col min-w-0">
-                            <h1 className={`text-[15px] font-black uppercase tracking-tighter leading-tight ${styles.textPrimary} italic`}>
+                            <h1 className={`text-[15px] font-bold leading-tight ${styles.textPrimary}`} style={{ fontFamily: "'Inter', 'SF Pro Display', system-ui, sans-serif", letterSpacing: '-0.02em' }}>
                                 O-System
                             </h1>
                             <div className="flex items-center gap-1.5 mt-0.5">
@@ -523,12 +529,15 @@ const Sidebar: React.FC<SidebarProps> = ({
                                     {currentUser?.FullName}
                                 </p>
                                 <div className="flex items-center gap-2">
-                                    <span className={`
-                                        text-[9px] font-black px-2 py-0.5 rounded-md uppercase tracking-[0.1em]
-                                        ${isLightMode 
-                                            ? 'bg-blue-50 text-blue-600 border border-blue-100' 
-                                            : 'bg-blue-500/10 text-blue-400 border border-blue-500/20'}
-                                    `}>
+                                    <span 
+                                        className={`
+                                            text-[9px] font-black px-2 py-0.5 rounded-md uppercase tracking-[0.1em] truncate max-w-[115px] inline-block
+                                            ${isLightMode 
+                                                ? 'bg-blue-50 text-blue-600 border border-blue-100' 
+                                                : 'bg-blue-500/10 text-blue-400 border border-blue-500/20'}
+                                        `}
+                                        title={currentUser?.Role}
+                                    >
                                         {currentUser?.Role}
                                     </span>
                                     {originalAdminUser && (

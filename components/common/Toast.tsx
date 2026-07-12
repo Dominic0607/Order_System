@@ -20,7 +20,7 @@ const Toast: React.FC<ToastProps> = ({ message, type = 'info', onClose }) => {
         type === 'error' ? 'bg-red-600/90 border-red-500 shadow-[0_10px_40px_rgba(239,68,68,0.3)]' :
         'bg-blue-600/90 border-blue-500 shadow-[0_10px_40px_rgba(59,130,246,0.3)]';
 
-    const logoUrl = convertGoogleDriveUrl(APP_LOGO_URL);
+    const logoUrl = APP_LOGO_URL;
 
     return (
         <div className={`fixed top-4 right-4 z-[100] flex items-center gap-3 pl-3 pr-4 py-3 rounded-2xl border backdrop-blur-xl text-white animate-slide-in-right ${bgClass} min-w-[320px] max-w-md`}>

@@ -29,7 +29,7 @@ const SYSTEM_STRUCTURE = {
   // ប្រព័ន្ធស្តុក
   "Inventory": ["ID", "StoreName", "ProductName", "Barcode", "Quantity", "LastUpdated", "UpdatedBy"],
   "StockTransfers": ["TransferID", "Timestamp", "FromStore", "ToStore", "Barcode", "Quantity", "Status", "RequestedBy", "ApprovedBy", "ReceivedBy"],
-  "Returns": ["ReturnID", "Timestamp", "OrderID", "StoreName", "Barcode", "Quantity", "Reason", "IsRestocked", "HandledBy"],
+  "Returns": ["ReturnID", "Timestamp", "OrderID", "StoreName", "Barcode", "ProductName", "Quantity", "Reason", "HandledBy", "Status", "PhotoURL"],
   
   // ប្រព័ន្ធគ្រប់គ្រងសិទ្ធិ (RBAC)
   "Roles": ["ID", "RoleName", "Description"],
@@ -178,7 +178,8 @@ function setupDefaultSettings(ss) {
   if (!settingsSheet) return;
 
   const defaultSettings = [
-    ["UploadFolderID", "ដាក់_ID_Folder_Google_Drive_របស់អ្នកនៅទីនេះ", "Folder សម្រាប់រក្សាទុករូបភាព"],
+    ["UploadFolderID", "ដាក់_ID_Folder_Google_Drive_របស់អ្នកនៅទីនេះ", "Folder សម្រាប់រក្សាទុករូបភាព (Package, Profile, ...)"],
+    ["ReturnUploadFolderID", "", "Folder ដាច់ដោយឡែក សម្រាប់រក្សាទុករូបភាពកញ្ចប់ Return (ទុកទំនេរ = ប្រើ UploadFolderID)"],
     ["StoreName", "My Store", "ឈ្មោះហាងរបស់អ្នក"]
   ];
 
@@ -309,7 +310,7 @@ function setupSampleRoles(ss) {
   insertSampleIfEmpty(ss, "Roles", [
     [1, "Admin", "System Administrator - Full Access"],
     [2, "Manager", "Store/Team Manager"],
-    [3, "Sale", "Sales representative"],
+    [3, "Sales", "Sales representative"],
     [4, "Fulfillment", "Order packing & fulfillment staff"],
     [5, "Driver", "Delivery driver"],
     [6, "Packer", "Packaging team member"]
@@ -322,7 +323,8 @@ function setupSampleRolePermissions(ss) {
     "access_sales_portal", "access_fulfillment", "view_admin_dashboard", "view_entertainment",
     "manage_roles", "manage_permissions", "view_revenue", "export_data", "migrate_data",
     "manage_inventory", "stock_transfer", "view_team_leaderboard", "set_targets",
-    "view_promotions", "manage_promotions"
+    "view_promotions", "manage_promotions",
+    "access_problem_items_admin", "access_problem_items_user", "view_map"
   ];
 
   const permissions = [];
@@ -339,25 +341,28 @@ function setupSampleRolePermissions(ss) {
     "access_sales_portal": true, "access_fulfillment": true, "view_admin_dashboard": true, "view_entertainment": true,
     "view_revenue": true, "export_data": true, "manage_inventory": true, "stock_transfer": true,
     "view_team_leaderboard": true, "set_targets": true,
-    "view_promotions": true, "manage_promotions": true
+    "view_promotions": true, "manage_promotions": true,
+    "view_map": true
   };
   features.forEach(f => {
     permissions.push([id++, "Manager", f, !!managerEnabled[f]]);
   });
 
-  // 3. Sale
-  const saleEnabled = {
+  // 3. Sales
+  const salesEnabled = {
     "view_order_list": true, "edit_order": true, "create_order": true,
-    "access_sales_portal": true, "view_entertainment": true, "view_team_leaderboard": true
+    "access_sales_portal": true, "view_entertainment": true, "view_team_leaderboard": true,
+    "view_map": true
   };
   features.forEach(f => {
-    permissions.push([id++, "Sale", f, !!saleEnabled[f]]);
+    permissions.push([id++, "Sales", f, !!salesEnabled[f]]);
   });
 
   // 4. Fulfillment
   const fulfillmentEnabled = {
     "view_order_list": true, "edit_order": true, "verify_order": true, "access_fulfillment": true,
-    "view_entertainment": true, "manage_inventory": true, "stock_transfer": true
+    "view_entertainment": true, "manage_inventory": true, "stock_transfer": true,
+    "view_map": true
   };
   features.forEach(f => {
     permissions.push([id++, "Fulfillment", f, !!fulfillmentEnabled[f]]);
@@ -365,7 +370,8 @@ function setupSampleRolePermissions(ss) {
 
   // 5. Packer
   const packerEnabled = {
-    "view_order_list": true, "access_fulfillment": true, "view_entertainment": true
+    "view_order_list": true, "access_fulfillment": true, "view_entertainment": true,
+    "view_map": true
   };
   features.forEach(f => {
     permissions.push([id++, "Packer", f, !!packerEnabled[f]]);
@@ -374,7 +380,7 @@ function setupSampleRolePermissions(ss) {
   // 6. Driver
   const driverEnabled = {
     "view_order_list": true, "access_fulfillment": true, "view_entertainment": true,
-    "view_promotions": true
+    "view_promotions": true, "view_map": true
   };
   features.forEach(f => {
     permissions.push([id++, "Driver", f, !!driverEnabled[f]]);

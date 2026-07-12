@@ -83,7 +83,7 @@ const PWAInstallPrompt: React.FC = () => {
                         <div className="relative flex-shrink-0">
                             <div className="absolute -inset-1 bg-gradient-to-tr from-blue-500 to-emerald-500 rounded-2xl blur opacity-30 group-hover:opacity-50 transition duration-500"></div>
                             <img 
-                                src={convertGoogleDriveUrl(APP_LOGO_URL)} 
+                                src={APP_LOGO_URL} 
                                 alt="App Logo" 
                                 className="relative w-14 h-14 rounded-2xl object-cover shadow-lg border border-white/10"
                             />

@@ -726,18 +726,42 @@ const MobilePackagingHub: React.FC<MobilePackagingHubProps> = ({
                                                      </div>
                                                  )}
                                                  {activeTab === 'Returned' && (
-                                                      <div className="flex-1 flex gap-2 w-full">
-                                                          <button
-                                                              onClick={(e) => { e.stopPropagation(); onConfirmReturn?.(order); }}
-                                                              disabled={!!order['Return Received By']}
-                                                              className={`flex-1 py-2 ${order['Return Received By'] ? 'bg-[#0ECB81]/10 text-[#0ECB81]' : 'bg-gradient-to-r from-purple-600 to-purple-700 text-white shadow-[0_4px_12px_rgba(147,51,234,0.15)]'} rounded-xl text-xs font-bold uppercase transition-all duration-300 disabled:opacity-50`}
-                                                          >
-                                                              {order['Return Received By'] ? '✓ Received' : 'Confirm Receipt'}
-                                                          </button>
-                                                          {!!order['Return Received By'] && (
+                                                      <div className="flex-1 flex flex-col gap-2 w-full">
+                                                          {order['Return Received By'] && (
+                                                              <div className="flex items-center gap-2">
+                                                                  {order['Return Photo'] ? (
+                                                                      <button
+                                                                          onClick={(e) => { e.stopPropagation(); showFullImage(convertGoogleDriveUrl(order['Return Photo']!)); }}
+                                                                          className="w-10 h-10 flex-shrink-0 rounded-xl overflow-hidden border-2 border-[#0ECB81]/40 hover:border-[#0ECB81] transition-all relative group"
+                                                                          title="មើលរូបភាព Return"
+                                                                      >
+                                                                          <img src={convertGoogleDriveUrl(order['Return Photo']!)} className="w-full h-full object-cover" alt="Return" />
+                                                                      </button>
+                                                                  ) : (
+                                                                      <div className="w-10 h-10 flex-shrink-0 rounded-xl border border-[#0ECB81]/20 bg-[#0ECB81]/5 flex items-center justify-center">
+                                                                          <span className="text-base">📦</span>
+                                                                      </div>
+                                                                  )}
+                                                                  <div className="flex flex-col min-w-0 flex-1">
+                                                                      <span className="text-[10px] font-black text-[#0ECB81] uppercase tracking-wider">✓ Received</span>
+                                                                      <span className="text-[10px] text-[#848E9C] truncate">{order['Return Received By']}</span>
+                                                                      {order['Return Received Time'] && (
+                                                                          <span className="text-[9px] text-[#848E9C]/70">{order['Return Received Time'].slice(0, 16)}</span>
+                                                                      )}
+                                                                  </div>
+                                                              </div>
+                                                          )}
+                                                          {!order['Return Received By'] ? (
+                                                              <button
+                                                                  onClick={(e) => { e.stopPropagation(); onConfirmReturn?.(order); }}
+                                                                  className="flex-1 py-2 bg-gradient-to-r from-purple-600 to-purple-700 text-white rounded-xl text-xs font-bold uppercase shadow-[0_4px_12px_rgba(147,51,234,0.15)] active:scale-[0.97] transition-all"
+                                                              >
+                                                                  Confirm Receipt
+                                                              </button>
+                                                          ) : (
                                                               <button
                                                                   onClick={(e) => { e.stopPropagation(); onUnpack(order); }}
-                                                                  className="w-24 py-2 bg-red-600 hover:bg-red-700 text-white border border-red-500/20 rounded-xl text-xs font-bold uppercase transition-all duration-300 active:scale-[0.97]"
+                                                                  className="w-full py-2 bg-red-600 hover:bg-red-700 text-white border border-red-500/20 rounded-xl text-xs font-bold uppercase transition-all duration-300 active:scale-[0.97]"
                                                               >
                                                                   ហែកកញ្ចប់
                                                               </button>

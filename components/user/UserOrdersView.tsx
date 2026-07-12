@@ -314,7 +314,7 @@ const UserOrdersView: React.FC<UserOrdersViewProps> = ({ onAdd, onStatsUpdate, s
 
     const handleSaveEdit = () => { setEditingOrder(null); refreshData(); };
 
-    const isFrontendDenied = !hasPermission('view_order_list');
+    const isFrontendDenied = !hasPermission('view_order_list') && !(hasPermission('create_order') && hasPermission('access_sales_portal'));
     const isBackendDenied = ordersFetchError === 'permission_denied';
 
     // Auto-retry: frontend permission is now granted but a previous fetch got 403 (stale state).
