@@ -1,4 +1,5 @@
-import React, { useRef, useState } from 'react';
+import React, { useRef, useState, useContext } from 'react';
+import { AppContext } from '../../context/AppContext';
 
 interface SetQuantityProps {
     value: number;
@@ -15,6 +16,8 @@ const SetQuantity: React.FC<SetQuantityProps> = ({
     min = 1,
     max = 99
 }) => {
+    const { advancedSettings } = useContext(AppContext);
+    const isLightMode = advancedSettings?.themeMode === 'light';
     const inputRef = useRef<HTMLInputElement>(null);
     const [isEditing, setIsEditing] = useState(false);
 
@@ -90,21 +93,21 @@ const SetQuantity: React.FC<SetQuantityProps> = ({
 
     return (
         <div className="space-y-1.5 w-full">
-            <label className="text-[10px] font-black text-[#848E9C] uppercase tracking-widest ml-1">
+            <label className={`text-[10px] font-black uppercase tracking-widest ml-1 ${isLightMode ? 'text-slate-500' : 'text-[#848E9C]'}`}>
                 {label}
             </label>
             
-            <div className="flex items-center bg-[#0B0E11] rounded-none border-2 border-[#2B3139] h-12 w-full overflow-hidden focus-within:border-[#FCD535] transition-all group shadow-inner">
+            <div className={`flex items-center rounded-none border-2 h-12 w-full overflow-hidden transition-all group shadow-inner ${isLightMode ? (isEditing ? 'bg-white border-blue-500' : 'bg-white border-slate-200 focus-within:border-blue-500') : (isEditing ? 'bg-[#0B0E11] border-[#FCD535]' : 'bg-[#0B0E11] border-[#2B3139] focus-within:border-[#FCD535]')}`}>
                 {/* Decrement Button */}
                 <button 
                     type="button" 
                     className={`
                         w-12 h-full flex items-center justify-center 
                         ${value <= min 
-                            ? 'text-[#2B3139] cursor-not-allowed' 
-                            : 'text-[#848E9C] hover:text-[#FCD535] hover:bg-[#FCD535]/10 active:bg-[#FCD535]/20'
+                            ? (isLightMode ? 'text-slate-200 cursor-not-allowed' : 'text-[#2B3139] cursor-not-allowed') 
+                            : (isLightMode ? 'text-slate-500 hover:text-blue-600 hover:bg-blue-50 active:bg-blue-100' : 'text-[#848E9C] hover:text-[#FCD535] hover:bg-[#FCD535]/10 active:bg-[#FCD535]/20')
                         }
-                        transition-all border-r-2 border-[#2B3139]
+                        transition-all border-r-2 ${isLightMode ? 'border-slate-200' : 'border-[#2B3139]'}
                     `}
                     onClick={handleDecrement}
                     disabled={value <= min}
@@ -134,7 +137,7 @@ const SetQuantity: React.FC<SetQuantityProps> = ({
                     min={min}
                     max={max}
                     step="1"
-                    className="flex-1 h-full bg-transparent text-center text-[#EAECEF] font-black text-lg outline-none border-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none group-focus-within:text-[#FCD535] transition-colors"
+                    className={`flex-1 h-full bg-transparent text-center font-black text-lg outline-none border-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none transition-colors ${isLightMode ? 'text-slate-900 focus:text-blue-600' : 'text-[#EAECEF] group-focus-within:text-[#FCD535]'}`}
                     placeholder={min.toString()}
                     aria-label="ចំនួន"
                 />
@@ -145,10 +148,10 @@ const SetQuantity: React.FC<SetQuantityProps> = ({
                     className={`
                         w-12 h-full flex items-center justify-center 
                         ${value >= max 
-                            ? 'text-[#2B3139] cursor-not-allowed' 
-                            : 'text-[#848E9C] hover:text-[#FCD535] hover:bg-[#FCD535]/10 active:bg-[#FCD535]/20'
+                            ? (isLightMode ? 'text-slate-200 cursor-not-allowed' : 'text-[#2B3139] cursor-not-allowed') 
+                            : (isLightMode ? 'text-slate-500 hover:text-blue-600 hover:bg-blue-50 active:bg-blue-100' : 'text-[#848E9C] hover:text-[#FCD535] hover:bg-[#FCD535]/10 active:bg-[#FCD535]/20')
                         }
-                        transition-all border-l-2 border-[#2B3139]
+                        transition-all border-l-2 ${isLightMode ? 'border-slate-200' : 'border-[#2B3139]'}
                     `}
                     onClick={handleIncrement}
                     disabled={value >= max}
@@ -166,7 +169,7 @@ const SetQuantity: React.FC<SetQuantityProps> = ({
                 </button>
             </div>
             
-            <div className="text-[9px] text-[#474D57] px-1 flex justify-between font-black uppercase tracking-widest">
+            <div className={`text-[9px] px-1 flex justify-between font-black uppercase tracking-widest ${isLightMode ? 'text-slate-400' : 'text-[#474D57]'}`}>
                 <span>Min: {min}</span>
                 <span>Max: {max}</span>
             </div>

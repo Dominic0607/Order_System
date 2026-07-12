@@ -63,10 +63,19 @@ const STEPS = [
 ];
 
 const CreateOrderPage: React.FC<CreateOrderPageProps> = ({ team, onSaveSuccess, onCancel }) => {
-    const { appData, currentUser, apiKey, previewImage, hasPermission } = useContext(AppContext);
+    const { appData, currentUser, apiKey, previewImage, hasPermission, advancedSettings } = useContext(AppContext);
     const { playSuccess } = useSoundEffects();
     const [currentStep, setCurrentStep] = useState(1);
     const [isCancelModalOpen, setIsCancelModalOpen] = useState(false);
+    const isLightMode = advancedSettings?.themeMode === 'light';
+
+    // Theme-specific input styles
+    const inputBgClass = isLightMode 
+        ? 'bg-white border-slate-200 text-slate-900 placeholder-slate-400 focus:border-blue-500' 
+        : 'bg-gray-900 border-gray-700 text-white placeholder-gray-500';
+    const selectBgClass = isLightMode 
+        ? 'bg-white border-slate-200 text-slate-900 focus:border-blue-500' 
+        : 'bg-gray-900 border-gray-700 text-white';
 
     useEffect(() => {
         if (window.innerWidth < 768) {
@@ -79,9 +88,9 @@ const CreateOrderPage: React.FC<CreateOrderPageProps> = ({ team, onSaveSuccess, 
             <div className="w-20 h-20 bg-red-500/10 rounded-3xl flex items-center justify-center border border-red-500/20 mb-6 shadow-2xl">
                 <svg className="w-10 h-10 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
             </div>
-            <h2 className="text-2xl font-black text-white italic uppercase tracking-tight mb-4">Access Denied</h2>
-            <p className="text-gray-500 text-sm max-w-sm leading-relaxed mb-10">អ្នកមិនមានសិទ្ធិបង្កើតការកម្មង់ឡើយ។ សូមទាក់ទង Admin។</p>
-            <button onClick={onCancel} className="px-10 py-4 bg-white text-black rounded-2xl font-black uppercase text-xs tracking-[0.2em] hover:bg-gray-200 transition-all shadow-xl active:scale-95">Back to Portal</button>
+            <h2 className={`text-2xl font-black italic uppercase tracking-tight mb-4 ${isLightMode ? 'text-slate-900' : 'text-white'}`}>Access Denied</h2>
+            <p className={`text-sm max-w-sm leading-relaxed mb-10 ${isLightMode ? 'text-slate-500' : 'text-gray-500'}`}>អ្នកមិនមានសិទ្ធិបង្កើតការកម្មង់ឡើយ។ សូមទាក់ទង Admin។</p>
+            <button onClick={onCancel} className={`px-10 py-4 rounded-2xl font-black uppercase text-xs tracking-[0.2em] transition-all shadow-xl active:scale-95 ${isLightMode ? 'bg-slate-950 text-white hover:bg-slate-800' : 'bg-white text-black hover:bg-gray-200'}`}>Back to Portal</button>
         </div>
     );
 
@@ -378,7 +387,12 @@ const CreateOrderPage: React.FC<CreateOrderPageProps> = ({ team, onSaveSuccess, 
 
             if (recommendation) {
                 recommendedDriver = recommendation.DriverName;
+                setRecommendationMessage(`នៅសាខា ${recommendation.StoreName} ថ្ងៃនេះ វេនដឹករបស់ ${recommendation.DriverName}`);
+            } else {
+                setRecommendationMessage('');
             }
+        } else {
+            setRecommendationMessage('');
         }
 
         setOrder((prev: any) => ({
@@ -449,7 +463,6 @@ const CreateOrderPage: React.FC<CreateOrderPageProps> = ({ team, onSaveSuccess, 
     const [isUndoing, setIsUndoing] = useState(false);
     const submitTimeoutRef = useRef<NodeJS.Timeout | null>(null);
     const submitIntervalRef = useRef<NodeJS.Timeout | null>(null);
-    const { advancedSettings } = useContext(AppContext);
 
     const submitOrder = async () => {
         for (const step of STEPS) { if (!validateStep(step.number)) { setCurrentStep(step.number); return; } }
@@ -654,19 +667,19 @@ const CreateOrderPage: React.FC<CreateOrderPageProps> = ({ team, onSaveSuccess, 
         switch (currentStep) {
             case 1:
                 return (
-                    <fieldset className="border border-gray-600 p-3 sm:p-4 rounded-lg animate-fade-in space-y-6">
-                        <legend className="px-2 text-base sm:text-lg font-semibold text-blue-300">ព័ត៌មានអតិថិជន & Page</legend>
+                    <fieldset className={`border p-3 sm:p-4 rounded-lg animate-fade-in space-y-6 ${isLightMode ? 'border-slate-200' : 'border-gray-600'}`}>
+                        <legend className={`px-2 text-base sm:text-lg font-semibold ${isLightMode ? 'text-blue-600' : 'text-blue-300'}`}>ព័ត៌មានអតិថិជន & Page</legend>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div className="md:col-span-2 space-y-4">
                                 <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                                     <label className="input-label font-black text-xs uppercase tracking-widest text-gray-500 mb-0 block">Facebook Page*</label>
                                     
                                     {/* UI Style Toggle */}
-                                    <div className="flex bg-gray-900/80 p-1 rounded-xl border border-gray-700">
+                                    <div className={`flex p-1 rounded-xl border ${isLightMode ? 'bg-slate-100 border-slate-200' : 'bg-gray-900/80 border-gray-700'}`}>
                                         <button 
                                             type="button"
                                             onClick={() => setOrder({ ...order, pageSelectMode: 'cards' })}
-                                            className={`px-3 py-1.5 text-[10px] font-black uppercase rounded-lg transition-all flex items-center gap-2 ${order.pageSelectMode === 'cards' ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/20' : 'text-gray-500 hover:text-gray-300'}`}
+                                            className={`px-3 py-1.5 text-[10px] font-black uppercase rounded-lg transition-all flex items-center gap-2 ${order.pageSelectMode === 'cards' ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/20' : (isLightMode ? 'text-slate-500 hover:text-slate-700' : 'text-gray-500 hover:text-gray-300')}`}
                                         >
                                             <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2z" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
                                             Card View
@@ -674,7 +687,7 @@ const CreateOrderPage: React.FC<CreateOrderPageProps> = ({ team, onSaveSuccess, 
                                         <button 
                                             type="button"
                                             onClick={() => setOrder({ ...order, pageSelectMode: 'search' })}
-                                            className={`px-3 py-1.5 text-[10px] font-black uppercase rounded-lg transition-all flex items-center gap-2 ${order.pageSelectMode === 'search' ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/20' : 'text-gray-500 hover:text-gray-300'}`}
+                                            className={`px-3 py-1.5 text-[10px] font-black uppercase rounded-lg transition-all flex items-center gap-2 ${order.pageSelectMode === 'search' ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/20' : (isLightMode ? 'text-slate-500 hover:text-slate-700' : 'text-gray-500 hover:text-gray-300')}`}
                                         >
                                             <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
                                             Search View
@@ -712,7 +725,7 @@ const CreateOrderPage: React.FC<CreateOrderPageProps> = ({ team, onSaveSuccess, 
                             <div className="md:col-span-2 space-y-3">
                                 <div className="flex items-center gap-2 mb-1">
                                     <div className="w-1.5 h-4 bg-orange-500 rounded-full"></div>
-                                    <label className="input-label !mb-0 font-black text-xs uppercase tracking-widest text-orange-400">ឃ្លាំងបញ្ចេញទំនិញ (Store)*</label>
+                                    <label className={`input-label !mb-0 font-black text-xs uppercase tracking-widest ${isLightMode ? 'text-orange-600' : 'text-orange-400'}`}>ឃ្លាំងបញ្ចេញទំនិញ (Store)*</label>
                                 </div>
                                 <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
                                     {appData.stores?.map((s: Store) => {
@@ -724,14 +737,14 @@ const CreateOrderPage: React.FC<CreateOrderPageProps> = ({ team, onSaveSuccess, 
                                                 onClick={() => setOrder({...order, fulfillmentStore: s.StoreName})}
                                                 className={`relative overflow-hidden group p-4 rounded-2xl border-2 transition-all duration-300 flex flex-col items-center text-center gap-2 ${
                                                     isSelected 
-                                                    ? 'bg-orange-500/10 border-orange-500 shadow-[0_0_20px_rgba(249,115,22,0.2)]' 
-                                                    : 'bg-gray-900 border-gray-800 hover:border-gray-600'
+                                                    ? (isLightMode ? 'bg-orange-50 border-orange-500 shadow-[0_0_20px_rgba(249,115,22,0.15)]' : 'bg-orange-500/10 border-orange-500 shadow-[0_0_20px_rgba(249,115,22,0.2)]') 
+                                                    : (isLightMode ? 'bg-slate-50 border-slate-200 hover:border-slate-400 hover:bg-slate-100/50' : 'bg-gray-900 border-gray-800 hover:border-gray-600')
                                                 }`}
                                             >
-                                                <div className={`w-10 h-10 rounded-xl flex items-center justify-center transition-colors ${isSelected ? 'bg-orange-500 text-white' : 'bg-gray-800 text-gray-500 group-hover:text-gray-300'}`}>
+                                                <div className={`w-10 h-10 rounded-xl flex items-center justify-center transition-colors ${isSelected ? 'bg-orange-500 text-white' : (isLightMode ? 'bg-slate-200 text-slate-500 group-hover:text-slate-700' : 'bg-gray-800 text-gray-500 group-hover:text-gray-300')}`}>
                                                     <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" /></svg>
                                                 </div>
-                                                <span className={`text-[11px] font-black uppercase tracking-tight ${isSelected ? 'text-white' : 'text-gray-400'}`}>{s.StoreName}</span>
+                                                <span className={`text-[11px] font-black uppercase tracking-tight ${isSelected ? (isLightMode ? 'text-orange-700' : 'text-white') : (isLightMode ? 'text-slate-600' : 'text-gray-400')}`}>{s.StoreName}</span>
                                                 {isSelected && (
                                                     <div className="absolute top-1 right-1">
                                                         <svg className="w-4 h-4 text-orange-500" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" /></svg>
@@ -743,9 +756,9 @@ const CreateOrderPage: React.FC<CreateOrderPageProps> = ({ team, onSaveSuccess, 
                                 </div>
                             </div>
 
-                            <input type="text" name="name" value={order.customer.name} placeholder="ឈ្មោះអតិថិជន*" className="form-input !py-3 rounded-xl border-gray-700 bg-gray-900" onChange={handleCustomerChange} required />
+                            <input type="text" name="name" value={order.customer.name} placeholder="ឈ្មោះអតិថិជន*" className={`form-input !py-3 rounded-xl ${inputBgClass}`} onChange={handleCustomerChange} required />
                             <div className="relative group">
-                                <input type="tel" name="phone" value={order.customer.phone} placeholder="លេខទូរស័ព្ទ*" className="form-input !py-3 rounded-xl border-gray-700 bg-gray-900 pr-12 font-mono font-black text-blue-300" onChange={handleCustomerChange} required />
+                                <input type="tel" name="phone" value={order.customer.phone} placeholder="លេខទូរស័ព្ទ*" className={`form-input !py-3 rounded-xl pr-12 font-mono font-black ${inputBgClass} ${isLightMode ? '!text-blue-600' : '!text-blue-300'}`} onChange={handleCustomerChange} required />
                                 <div className="absolute right-0 top-0 bottom-0 pr-3 flex items-center justify-center pointer-events-none">
                                     {carrierLogo && <img src={carrierLogo} alt="Carrier" className="h-6 w-auto object-contain transition-all animate-fade-in" />}
                                 </div>
@@ -757,14 +770,14 @@ const CreateOrderPage: React.FC<CreateOrderPageProps> = ({ team, onSaveSuccess, 
                                     selectedProvince={order.customer.province}
                                     onSelect={(val) => handleCustomerChange({ target: { name: 'province', value: val } } as any)}
                                 />
-                                <select name="district" value={order.customer.district} className="form-select !py-3 rounded-xl border-gray-700 bg-gray-900" onChange={handleCustomerChange} disabled={!order.customer.province}><option value="">-- ស្រុក/ខណ្ឌ --</option>{districts.map((d: string) => <option key={d} value={d}>{d}</option>)}</select>
-                                <select name="sangkat" value={order.customer.sangkat} className="form-select !py-3 rounded-xl border-gray-700 bg-gray-900" onChange={handleCustomerChange} disabled={!order.customer.district}><option value="">-- ឃុំ/សង្កាត់ --</option>{sangkats.map((s: string) => <option key={s} value={s}>{s}</option>)}</select>
+                                <select name="district" value={order.customer.district} className={`form-select !py-3 rounded-xl ${selectBgClass}`} onChange={handleCustomerChange} disabled={!order.customer.province}><option value="">-- ស្រុក/ខណ្ឌ --</option>{districts.map((d: string) => <option key={d} value={d}>{d}</option>)}</select>
+                                <select name="sangkat" value={order.customer.sangkat} className={`form-select !py-3 rounded-xl ${selectBgClass}`} onChange={handleCustomerChange} disabled={!order.customer.district}><option value="">-- ឃុំ/សង្កាត់ --</option>{sangkats.map((s: string) => <option key={s} value={s}>{s}</option>)}</select>
                             </div>
                              <div className="md:col-span-2">
                                 <label className="input-label font-black text-[10px] uppercase text-gray-500 tracking-widest mb-2 block">ទីតាំងលម្អិត (ផ្ទះលេខ, ផ្លូវ)</label>
                                 <div className="flex gap-2">
-                                    <input type="text" name="additionalLocation" value={order.customer.additionalLocation} placeholder="បញ្ចូលទីតាំងលម្អិត..." className="form-input !py-3 rounded-xl bg-gray-900 border-gray-700 flex-grow" onChange={handleCustomerChange} />
-                                    <button type="button" onClick={handleSearchOnMaps} className="flex-shrink-0 w-12 h-12 flex items-center justify-center bg-blue-600/10 text-blue-400 rounded-xl border border-blue-500/20 hover:bg-blue-600 hover:text-white transition-all active:scale-90">
+                                    <input type="text" name="additionalLocation" value={order.customer.additionalLocation} placeholder="បញ្ចូលទីតាំងលម្អិត..." className={`form-input !py-3 rounded-xl flex-grow ${inputBgClass}`} onChange={handleCustomerChange} />
+                                    <button type="button" onClick={handleSearchOnMaps} className={`flex-shrink-0 w-12 h-12 flex items-center justify-center rounded-xl border transition-all active:scale-90 ${isLightMode ? 'bg-blue-50 text-blue-600 border-blue-100 hover:bg-blue-600 hover:text-white' : 'bg-blue-600/10 text-blue-400 border-blue-500/20 hover:bg-blue-600 hover:text-white'}`}>
                                         <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd" /></svg>
                                     </button>
                                 </div>
@@ -772,12 +785,12 @@ const CreateOrderPage: React.FC<CreateOrderPageProps> = ({ team, onSaveSuccess, 
                             <div className="md:col-span-2">
                                 <label className="input-label font-black text-[10px] uppercase text-gray-500 tracking-widest mb-2 block">ថ្លៃសេវាដឹកជញ្ជូន</label>
                                 <div className="flex gap-3 mb-3">
-                                    <button type="button" onClick={() => handleShippingOptionChange('charge')} className={`flex-1 py-3 px-4 rounded-xl text-xs font-black uppercase transition-all border ${shippingFeeOption === 'charge' ? 'bg-blue-600 border-blue-500 text-white shadow-lg shadow-blue-600/20' : 'bg-gray-800 border-gray-700 text-gray-400 hover:text-gray-300'}`}>គិតថ្លៃសេវា</button>
-                                    <button type="button" onClick={() => handleShippingOptionChange('free')} className={`flex-1 py-3 px-4 rounded-xl text-xs font-black uppercase transition-all border ${shippingFeeOption === 'free' ? 'bg-emerald-600 border-emerald-500 text-white shadow-lg shadow-emerald-600/20' : 'bg-gray-800 border-gray-700 text-gray-400 hover:text-gray-300'}`}>មិនគិតថ្លៃសេវា</button>
+                                    <button type="button" onClick={() => handleShippingOptionChange('charge')} className={`flex-1 py-3 px-4 rounded-xl text-xs font-black uppercase transition-all border ${shippingFeeOption === 'charge' ? 'bg-blue-600 border-blue-500 text-white shadow-lg shadow-blue-600/20' : (isLightMode ? 'bg-slate-100 border-slate-200 text-slate-600 hover:bg-slate-200' : 'bg-gray-800 border-gray-700 text-gray-400 hover:text-gray-300')}`}>គិតថ្លៃសេវា</button>
+                                    <button type="button" onClick={() => handleShippingOptionChange('free')} className={`flex-1 py-3 px-4 rounded-xl text-xs font-black uppercase transition-all border ${shippingFeeOption === 'free' ? 'bg-emerald-600 border-emerald-500 text-white shadow-lg shadow-emerald-600/20' : (isLightMode ? 'bg-slate-100 border-slate-200 text-slate-600 hover:bg-slate-200' : 'bg-gray-800 border-gray-700 text-gray-400 hover:text-gray-300')}`}>មិនគិតថ្លៃសេវា</button>
                                 </div>
                                 {shippingFeeOption === 'charge' && (
                                     <div className="space-y-3 animate-fade-in">
-                                        <input type="number" min="0" name="shippingFee" value={order.customer.shippingFee} placeholder="តម្លៃដឹកជញ្ជូន (ឧ. 1.5)*" className="form-input !py-3 rounded-xl border-gray-700 bg-gray-900" onChange={handleCustomerChange} required />
+                                        <input type="number" min="0" name="shippingFee" value={order.customer.shippingFee} placeholder="តម្លៃដឹកជញ្ជូន (ឧ. 1.5)*" className={`form-input !py-3 rounded-xl ${inputBgClass}`} onChange={handleCustomerChange} required />
                                         <div className="flex gap-2">
                                             {[1, 1.5, 2].map(fee => {
                                                 const isActive = parseFloat(order.customer.shippingFee) === fee;
@@ -786,7 +799,7 @@ const CreateOrderPage: React.FC<CreateOrderPageProps> = ({ team, onSaveSuccess, 
                                                         key={fee} 
                                                         type="button" 
                                                         onClick={() => handleCustomerChange({ target: { name: 'shippingFee', value: String(fee) } } as any)}
-                                                        className={`flex-1 py-2 border font-black rounded-xl text-xs transition-all active:scale-95 ${isActive ? 'bg-blue-600 border-blue-500 text-white shadow-lg shadow-blue-600/20' : 'bg-gray-800 border-gray-700 text-gray-400 hover:text-gray-200'}`}
+                                                        className={`flex-1 py-2 border font-black rounded-xl text-xs transition-all active:scale-95 ${isActive ? 'bg-blue-600 border-blue-500 text-white shadow-lg shadow-blue-600/20' : (isLightMode ? 'bg-slate-100 border-slate-200 text-slate-600 hover:bg-slate-200' : 'bg-gray-800 border-gray-700 text-gray-400 hover:text-gray-200')}`}
                                                     >
                                                         ${fee}
                                                     </button>
@@ -801,30 +814,30 @@ const CreateOrderPage: React.FC<CreateOrderPageProps> = ({ team, onSaveSuccess, 
                 );
             case 2:
                 return (
-                    <fieldset className="border border-gray-600 p-3 sm:p-4 rounded-lg animate-fade-in space-y-4 sm:space-y-6">
-                        <legend className="px-2 text-base sm:text-lg font-semibold text-blue-300">ផលិតផល & ការបញ្ចុះតម្លៃ</legend>
+                    <fieldset className={`border p-3 sm:p-4 rounded-lg animate-fade-in space-y-4 sm:space-y-6 ${isLightMode ? 'border-slate-200' : 'border-gray-600'}`}>
+                        <legend className={`px-2 text-base sm:text-lg font-semibold ${isLightMode ? 'text-blue-600' : 'text-blue-300'}`}>ផលិតផល & ការបញ្ចុះតម្លៃ</legend>
                         
                         {/* Team, Page, User Info Banner */}
-                        <div className="bg-white/5 border border-white/10 rounded-2xl p-4 flex flex-wrap gap-4 items-center justify-between shadow-inner">
+                        <div className={`rounded-2xl p-4 flex flex-wrap gap-4 items-center justify-between shadow-inner border ${isLightMode ? 'bg-slate-50 border-slate-200 text-slate-700' : 'bg-white/5 border-white/10 text-white'}`}>
                             <div className="flex gap-4 flex-wrap">
                                 <div className="flex flex-col gap-1">
                                     <span className="text-[8px] font-black text-gray-500 uppercase tracking-widest px-1">Team</span>
                                     <span className="bg-blue-600 text-white font-black text-[10px] sm:text-xs uppercase tracking-wider px-3 py-1 rounded-lg shadow-md">{team}</span>
                                 </div>
-                                <div className="h-10 w-px bg-white/10 hidden sm:block"></div>
+                                <div className={`h-10 w-px hidden sm:block ${isLightMode ? 'bg-slate-200' : 'bg-white/10'}`}></div>
                                 <div className="flex flex-col gap-1">
                                     <span className="text-[8px] font-black text-gray-500 uppercase tracking-widest px-1">Page</span>
-                                    <span className="bg-purple-600/20 text-purple-400 font-black text-[10px] sm:text-xs uppercase tracking-wider px-3 py-1 rounded-lg border border-purple-500/20 truncate max-w-[150px]">{order.page || 'Not Selected'}</span>
+                                    <span className={`font-black text-[10px] sm:text-xs uppercase tracking-wider px-3 py-1 rounded-lg border truncate max-w-[150px] ${isLightMode ? 'bg-purple-50 text-purple-700 border-purple-200' : 'bg-purple-600/20 text-purple-400 border-purple-500/20'}`}>{order.page || 'Not Selected'}</span>
                                 </div>
-                                <div className="h-10 w-px bg-white/10 hidden sm:block"></div>
+                                <div className={`h-10 w-px hidden sm:block ${isLightMode ? 'bg-slate-200' : 'bg-white/10'}`}></div>
                                 <div className="flex flex-col gap-1">
                                     <span className="text-[8px] font-black text-gray-500 uppercase tracking-widest px-1">User</span>
-                                    <span className="bg-emerald-600/20 text-emerald-400 font-black text-[10px] sm:text-xs uppercase tracking-wider px-3 py-1 rounded-lg border border-emerald-500/20">{currentUser?.FullName}</span>
+                                    <span className={`font-black text-[10px] sm:text-xs uppercase tracking-wider px-3 py-1 rounded-lg border ${isLightMode ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-emerald-600/20 text-emerald-400 border-emerald-500/20'}`}>{currentUser?.FullName}</span>
                                 </div>
                             </div>
                             <div className="flex flex-col items-end">
                                 <span className="text-[8px] font-black text-gray-500 uppercase tracking-widest">Customer</span>
-                                <span className="text-gray-300 font-bold text-xs">{order.customer.name || 'N/A'}</span>
+                                <span className={`font-bold text-xs ${isLightMode ? 'text-slate-700' : 'text-gray-300'}`}>{order.customer.name || 'N/A'}</span>
                             </div>
                         </div>
 
@@ -833,13 +846,13 @@ const CreateOrderPage: React.FC<CreateOrderPageProps> = ({ team, onSaveSuccess, 
                                  const originalTotal = (Number(p.quantity) || 0) * (Number(p.originalPrice) || 0);
                                  const discountValue = originalTotal - (Number(p.total) || 0);
                                  return (
-                                    <div key={p.id} className="p-3 sm:p-5 bg-gray-800/40 rounded-2xl sm:rounded-3xl border border-gray-700 relative shadow-xl overflow-hidden group">
+                                    <div key={p.id} className={`p-3 sm:p-5 rounded-2xl sm:rounded-3xl border relative shadow-xl overflow-hidden group ${isLightMode ? 'bg-slate-50/50 border-slate-200/80' : 'bg-gray-800/40 border-gray-700'}`}>
                                         <button type="button" onClick={() => { if (order.products.length > 1) setOrder({ ...order, products: order.products.filter((_:any, i:number)=>i!==index) }); }} className="absolute top-2 right-2 sm:top-4 sm:right-4 text-red-400 bg-red-400/10 rounded-full h-8 w-8 sm:h-10 sm:w-10 flex items-center justify-center border border-red-400/20 hover:bg-red-600 hover:text-white transition-all z-10 active:scale-90" disabled={order.products.length <= 1}>
                                             <span className="text-xl sm:text-2xl leading-none">&times;</span>
                                         </button>
                                         <div className="grid grid-cols-1 md:grid-cols-12 gap-3 sm:gap-6 mb-4 sm:mb-6">
                                             <div className="md:col-span-2 flex justify-center">
-                                                <div className="w-20 h-20 sm:w-28 sm:h-28 bg-gray-900 rounded-xl sm:rounded-2xl overflow-hidden border-2 border-gray-700 shadow-inner group-hover:border-blue-500/50 transition-colors"><img src={convertGoogleDriveUrl(p.image)} className="w-full h-full object-cover" alt="" /></div>
+                                                <div className={`w-20 h-20 sm:w-28 sm:h-28 rounded-xl sm:rounded-2xl overflow-hidden border-2 shadow-inner group-hover:border-blue-500/50 transition-colors ${isLightMode ? 'bg-slate-100 border-slate-200' : 'bg-gray-900 border-gray-700'}`}><img src={convertGoogleDriveUrl(p.image)} className="w-full h-full object-cover" alt="" /></div>
                                             </div>
                                             <div className="md:col-span-10 grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                                                 <div className="space-y-1.5"><label className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-1">ឈ្មោះផលិតផល*</label><SearchableProductDropdown products={appData.products || []} selectedProductName={p.name} onSelect={(val, tags) => handleProductUpdate(index, 'name', val, tags)} allowAddNew={false} /></div>
@@ -848,40 +861,40 @@ const CreateOrderPage: React.FC<CreateOrderPageProps> = ({ team, onSaveSuccess, 
                                                         value={p.quantity} 
                                                         onChange={(val) => handleProductUpdate(index, 'quantity', val)} 
                                                     />
-                                                    <div className="space-y-1.5"><label className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-1">ពណ៌/សម្គាល់</label><input type="text" list={`colors-datalist-${p.id}`} value={p.colorInfo} onChange={(e) => handleProductUpdate(index, 'colorInfo', e.target.value)} className="form-input text-sm !py-2.5 rounded-xl bg-gray-900 border-gray-700" placeholder="ឧ. ខៀវ, XL" /><datalist id={`colors-datalist-${p.id}`}>{(appData.colors || []).map((c:any,i:number)=><option key={i} value={c.ColorName}/>)}</datalist></div>
+                                                    <div className="space-y-1.5"><label className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-1">ពណ៌/សម្គាល់</label><input type="text" list={`colors-datalist-${p.id}`} value={p.colorInfo} onChange={(e) => handleProductUpdate(index, 'colorInfo', e.target.value)} className={`form-input text-sm !py-2.5 rounded-xl ${inputBgClass}`} placeholder="ឧ. ខៀវ, XL" /><datalist id={`colors-datalist-${p.id}`}>{(appData.colors || []).map((c:any,i:number)=><option key={i} value={c.ColorName}/>)}</datalist></div>
                                                 </div>
                                             </div>
                                         </div>
-                                        <div className="bg-black/20 rounded-xl sm:rounded-[2rem] p-3 sm:p-6 border border-white/5 space-y-4 sm:space-y-6">
-                                            <div className="flex items-center gap-2 sm:gap-3"><div className="h-px flex-grow bg-gray-700/50"></div><span className="text-[9px] sm:text-[10px] font-black text-gray-500 uppercase tracking-[0.2em] sm:tracking-[0.3em] whitespace-nowrap">Pricing & Discount</span><div className="h-px flex-grow bg-gray-700/50"></div></div>
+                                        <div className={`rounded-xl sm:rounded-[2rem] p-3 sm:p-6 border space-y-4 sm:space-y-6 ${isLightMode ? 'bg-slate-100/60 border-slate-200/80' : 'bg-black/20 border-white/5'}`}>
+                                            <div className="flex items-center gap-2 sm:gap-3"><div className={`h-px flex-grow ${isLightMode ? 'bg-slate-200' : 'bg-gray-700/50'}`}></div><span className="text-[9px] sm:text-[10px] font-black text-gray-500 uppercase tracking-[0.2em] sm:tracking-[0.3em] whitespace-nowrap">Pricing & Discount</span><div className={`h-px flex-grow ${isLightMode ? 'bg-slate-200' : 'bg-gray-700/50'}`}></div></div>
                                             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-8">
                                                 <div className="space-y-3 sm:space-y-4">
-                                                    <div className="flex bg-gray-900/50 p-1 rounded-xl sm:rounded-2xl border border-gray-700 shadow-inner">{(['percent', 'amount', 'custom'] as const).map(t => (<button key={t} type="button" onClick={() => handleProductUpdate(index, 'discountType', t)} className={`flex-1 flex flex-col items-center justify-center py-2 sm:py-2.5 rounded-lg sm:rounded-xl transition-all duration-300 active:scale-95 ${p.discountType === t ? 'bg-blue-600 text-white shadow-lg' : 'text-gray-500 hover:text-gray-300'}`}><span className="text-[9px] sm:text-[11px] font-black uppercase tracking-widest">{t === 'percent' ? 'បញ្ចុះ %' : t === 'amount' ? 'បញ្ចុះ $' : 'កែតម្លៃលក់'}</span></button>))}</div>
-                                                    <div className="relative animate-fade-in">{p.discountType === 'percent' && (<div className="space-y-2"><label className="text-[10px] font-bold text-gray-400 ml-1">បញ្ចូលភាគរយបញ្ចុះតម្លៃ (%)</label><div className="relative"><input type="number" min="0" max="100" placeholder="0" value={p.discountPercentInput} onChange={e=>handleProductUpdate(index, 'discountPercentInput', e.target.value)} className="form-input !text-base sm:!text-lg !font-black !py-2 sm:!py-3 pr-10 text-right text-blue-400 bg-gray-900 border-gray-700" /><div className="absolute right-0 top-0 bottom-0 pr-4 flex items-center pointer-events-none"><span className="text-gray-500 font-black">%</span></div></div></div>)}{p.discountType === 'amount' && (<><div className="space-y-2"><label className="text-[10px] font-bold text-gray-400 ml-1">បញ្ចូលទឹកប្រាក់បញ្ចុះតម្លៃ ($)</label><div className="relative"><input type="number" min="0" placeholder="0.00" value={p.discountAmountInput} onChange={e=>handleProductUpdate(index, 'discountAmountInput', e.target.value)} className="form-input !text-base sm:!text-lg !font-black !py-2 sm:!py-3 pr-10 text-right text-red-400 bg-gray-900 border-gray-700" /><div className="absolute right-0 top-0 bottom-0 pr-4 flex items-center pointer-events-none"><span className="text-gray-500 font-black">$</span></div></div></div>{p.quantity > 1 && (<label className="flex items-center gap-2 cursor-pointer p-2 bg-black/20 rounded-lg mt-1 sm:mt-2 border border-white/5 active:scale-95 transition-transform"><input type="checkbox" checked={p.applyDiscountToTotal} onChange={e => handleProductUpdate(index, 'applyDiscountToTotal', e.target.checked)} className="w-4 h-4 rounded border-gray-600 bg-gray-800 text-blue-500" /><span className="text-[9px] sm:text-[10px] text-gray-400 uppercase font-black">បញ្ចុះលើតម្លៃសរុប</span></label>)}</>)}{p.discountType === 'custom' && (<div className="space-y-2"><label className="text-[10px] font-bold text-gray-400 ml-1">កំណត់តម្លៃលក់ថ្មីក្នុង ១ ឯកតា ($)</label><div className="relative"><input type="text" inputMode="decimal" placeholder="0.00" value={p.finalPriceInput} onChange={e=>handleProductUpdate(index, 'finalPriceInput', e.target.value)} className="form-input !text-base sm:!text-lg !font-black !py-2 sm:!py-3 pr-10 text-right text-emerald-400 bg-gray-900 border-gray-700" /><div className="absolute right-0 top-0 bottom-0 pr-4 flex items-center pointer-events-none"><span className="text-gray-500 font-black">$</span></div></div></div>)}</div>
+                                                    <div className={`flex p-1 rounded-xl sm:rounded-2xl border shadow-inner ${isLightMode ? 'bg-slate-200/60 border-slate-300' : 'bg-gray-900/50 border-gray-700'}`}>{(['percent', 'amount', 'custom'] as const).map(t => (<button key={t} type="button" onClick={() => handleProductUpdate(index, 'discountType', t)} className={`flex-1 flex flex-col items-center justify-center py-2 sm:py-2.5 rounded-lg sm:rounded-xl transition-all duration-300 active:scale-95 ${p.discountType === t ? 'bg-blue-600 text-white shadow-lg' : (isLightMode ? 'text-slate-500 hover:text-slate-700' : 'text-gray-500 hover:text-gray-300')}`}><span className="text-[9px] sm:text-[11px] font-black uppercase tracking-widest">{t === 'percent' ? 'បញ្ចុះ %' : t === 'amount' ? 'បញ្ចុះ $' : 'កែតម្លៃលក់'}</span></button>))}</div>
+                                                    <div className="relative animate-fade-in">{p.discountType === 'percent' && (<div className="space-y-2"><label className={`text-[10px] font-bold ml-1 ${isLightMode ? 'text-slate-600' : 'text-gray-400'}`}>បញ្ចូលភាគរយបញ្ចុះតម្លៃ (%)</label><div className="relative"><input type="number" min="0" max="100" placeholder="0" value={p.discountPercentInput} onChange={e=>handleProductUpdate(index, 'discountPercentInput', e.target.value)} className={`form-input !text-base sm:!text-lg !font-black !py-2 sm:!py-3 pr-10 text-right ${isLightMode ? 'text-blue-600 bg-white border-slate-200' : 'text-blue-400 bg-gray-900 border-gray-700'}`} /><div className="absolute right-0 top-0 bottom-0 pr-4 flex items-center pointer-events-none"><span className="text-gray-500 font-black">%</span></div></div></div>)}{p.discountType === 'amount' && (<><div className="space-y-2"><label className={`text-[10px] font-bold ml-1 ${isLightMode ? 'text-slate-600' : 'text-gray-400'}`}>បញ្ចូលទឹកប្រាក់បញ្ចុះតម្លៃ ($)</label><div className="relative"><input type="number" min="0" placeholder="0.00" value={p.discountAmountInput} onChange={e=>handleProductUpdate(index, 'discountAmountInput', e.target.value)} className={`form-input !text-base sm:!text-lg !font-black !py-2 sm:!py-3 pr-10 text-right ${isLightMode ? 'text-red-600 bg-white border-slate-200' : 'text-red-400 bg-gray-900 border-gray-700'}`} /><div className="absolute right-0 top-0 bottom-0 pr-4 flex items-center pointer-events-none"><span className="text-gray-500 font-black">$</span></div></div></div>{p.quantity > 1 && (<label className={`flex items-center gap-2 cursor-pointer p-2 rounded-lg mt-1 sm:mt-2 border active:scale-95 transition-transform ${isLightMode ? 'bg-slate-100 border-slate-200 text-slate-700' : 'bg-black/20 border-white/5 text-gray-400'}`}><input type="checkbox" checked={p.applyDiscountToTotal} onChange={e => handleProductUpdate(index, 'applyDiscountToTotal', e.target.checked)} className={`w-4 h-4 rounded ${isLightMode ? 'border-slate-300 bg-white text-blue-600' : 'border-gray-600 bg-gray-800 text-blue-500'}`} /><span className="text-[9px] sm:text-[10px] uppercase font-black">បញ្ចុះលើតម្លៃសរុប</span></label>)}</>)}{p.discountType === 'custom' && (<div className="space-y-2"><label className={`text-[10px] font-bold ml-1 ${isLightMode ? 'text-slate-600' : 'text-gray-400'}`}>កំណត់តម្លៃលក់ថ្មីក្នុង ១ ឯកតា ($)</label><div className="relative"><input type="text" inputMode="decimal" placeholder="0.00" value={p.finalPriceInput} onChange={e=>handleProductUpdate(index, 'finalPriceInput', e.target.value)} className={`form-input !text-base sm:!text-lg !font-black !py-2 sm:!py-3 pr-10 text-right ${isLightMode ? 'text-emerald-600 bg-white border-slate-200' : 'text-emerald-400 bg-gray-900 border-gray-700'}`} /><div className="absolute right-0 top-0 bottom-0 pr-4 flex items-center pointer-events-none"><span className="text-gray-500 font-black">$</span></div></div></div>)}</div>
                                                 </div>
-                                                <div className="bg-gray-900/60 rounded-xl sm:rounded-[1.5rem] p-3 sm:p-5 border border-white/5 flex flex-col justify-between"><div className="space-y-2 sm:space-y-3"><div className="flex justify-between items-center text-[10px] sm:text-xs"><span className="text-gray-500 font-bold uppercase">Original Subtotal</span><span className="text-blue-400 font-black">${originalTotal.toFixed(2)}</span></div><div className="flex justify-between items-center text-[10px] sm:text-xs"><span className="text-gray-500 font-bold uppercase">Discount Applied</span><span className="text-red-400 font-black">-{discountValue > 0 ? `$${discountValue.toFixed(2)}` : '$0.00'}</span></div><div className="h-px bg-gray-700/50 my-1"></div><div className="flex justify-between items-center"><span className="text-[9px] sm:text-[10px] font-black text-gray-400 uppercase tracking-widest">Net Total</span><span className="text-xl sm:text-2xl font-black text-white tracking-tighter">${(p.total || 0).toFixed(2)}</span></div></div><div className="mt-3 sm:mt-4 pt-2 sm:pt-3 border-t border-white/5 flex justify-center"><span className="text-[8px] sm:text-[9px] bg-emerald-500/10 text-emerald-400 px-2 sm:px-3 py-1 rounded-full border border-emerald-500/20 font-black uppercase tracking-widest">Avg. ${(p.finalPrice || 0).toFixed(2)} / unit</span></div></div>
+                                                <div className={`rounded-xl sm:rounded-[1.5rem] p-3 sm:p-5 border flex flex-col justify-between ${isLightMode ? 'bg-white border-slate-200 shadow-sm' : 'bg-gray-900/60 border-white/5'}`}><div className="space-y-2 sm:space-y-3"><div className="flex justify-between items-center text-[10px] sm:text-xs"><span className="text-gray-500 font-bold uppercase">Original Subtotal</span><span className={`font-black ${isLightMode ? 'text-blue-600' : 'text-blue-400'}`}>${originalTotal.toFixed(2)}</span></div><div className="flex justify-between items-center text-[10px] sm:text-xs"><span className="text-gray-500 font-bold uppercase">Discount Applied</span><span className={`font-black ${isLightMode ? 'text-red-600' : 'text-red-400'}`}>-{discountValue > 0 ? `$${discountValue.toFixed(2)}` : '$0.00'}</span></div><div className={`h-px my-1 ${isLightMode ? 'bg-slate-100' : 'bg-gray-700/50'}`}></div><div className="flex justify-between items-center"><span className="text-[9px] sm:text-[10px] font-black text-gray-400 uppercase tracking-widest">Net Total</span><span className={`text-xl sm:text-2xl font-black tracking-tighter ${isLightMode ? 'text-slate-900' : 'text-white'}`}>${(p.total || 0).toFixed(2)}</span></div></div><div className={`mt-3 sm:mt-4 pt-2 sm:pt-3 border-t flex justify-center ${isLightMode ? 'border-slate-100' : 'border-white/5'}`}><span className={`text-[8px] sm:text-[9px] px-2 sm:px-3 py-1 rounded-full border font-black uppercase tracking-widest ${isLightMode ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'}`}>Avg. ${(p.finalPrice || 0).toFixed(2)} / unit</span></div></div>
                                             </div>
                                         </div>
                                     </div>
                                  );
-                             })}
+                              })}
                         </div>
 
                         {/* NEW: Subtotal Display for Step 2 */}
-                        <div className="bg-gray-900/80 p-4 rounded-2xl border border-blue-500/20 shadow-lg flex flex-col sm:flex-row justify-between items-center gap-4 mt-4">
+                        <div className={`p-4 rounded-2xl shadow-lg flex flex-col sm:flex-row justify-between items-center gap-4 mt-4 border ${isLightMode ? 'bg-blue-50/50 border-blue-200' : 'bg-gray-900/80 border-blue-500/20'}`}>
                             <div className="flex items-center gap-2">
-                                <div className="p-2 bg-blue-500/10 rounded-lg text-blue-400">
+                                <div className={`p-2 rounded-lg ${isLightMode ? 'bg-blue-100 text-blue-600' : 'bg-blue-500/10 text-blue-400'}`}>
                                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" /></svg>
                                 </div>
                                 <div className="flex flex-col">
                                     <span className="text-[10px] font-black text-gray-500 uppercase tracking-widest">Total Quantity</span>
-                                    <span className="text-lg font-black text-white">{order.products.reduce((acc: number, p: any) => acc + (Number(p.quantity) || 0), 0)} items</span>
+                                    <span className={`text-lg font-black ${isLightMode ? 'text-slate-900' : 'text-white'}`}>{order.products.reduce((acc: number, p: any) => acc + (Number(p.quantity) || 0), 0)} items</span>
                                 </div>
                             </div>
-                            <div className="h-px w-full sm:w-px sm:h-10 bg-gray-700"></div>
+                            <div className={`h-px w-full sm:w-px sm:h-10 ${isLightMode ? 'bg-blue-200' : 'bg-gray-700'}`}></div>
                             <div className="flex flex-col items-center sm:items-end">
-                                <span className="text-[10px] font-black text-blue-400 uppercase tracking-widest">Estimated Subtotal</span>
-                                <span className="text-3xl font-black text-white tracking-tighter drop-shadow-md">
+                                <span className={`text-[10px] font-black uppercase tracking-widest ${isLightMode ? 'text-blue-600' : 'text-blue-400'}`}>Estimated Subtotal</span>
+                                <span className={`text-3xl font-black tracking-tighter drop-shadow-md ${isLightMode ? 'text-slate-900' : 'text-white'}`}>
                                     ${(order.subtotal || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
                                 </span>
                             </div>
@@ -891,115 +904,258 @@ const CreateOrderPage: React.FC<CreateOrderPageProps> = ({ team, onSaveSuccess, 
                             <button 
                                 type="button" 
                                 onClick={() => setOrder({ ...order, products: [...order.products, { ...initialProductState, id: Date.now() }] })}
-                                className="w-full py-4 px-6 bg-emerald-600/10 border border-emerald-500/30 rounded-2xl text-emerald-400 font-black uppercase text-[11px] tracking-widest hover:bg-emerald-600 hover:text-white transition-all flex items-center justify-center gap-2 shadow-lg shadow-emerald-900/10 active:scale-95"
+                                className={`w-full py-4 px-6 rounded-2xl font-black uppercase text-[11px] tracking-widest transition-all flex items-center justify-center gap-2 shadow-lg active:scale-95 ${isLightMode ? 'bg-emerald-50 border border-emerald-200 text-emerald-600 hover:bg-emerald-600 hover:text-white shadow-emerald-100' : 'bg-emerald-600/10 border border-emerald-500/30 text-emerald-400 hover:bg-emerald-600 hover:text-white shadow-emerald-900/10'}`}
                             >
                                 <svg className="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M12 4v16m8-8H4" /></svg>
                                 បន្ថែមផលិតផល (Add Item)
                             </button>
-                            <button type="button" onClick={()=>setIsScannerVisible(true)} className="w-full py-4 px-6 bg-blue-600/10 border border-blue-500/30 rounded-2xl text-blue-400 font-black uppercase text-[11px] tracking-widest hover:bg-blue-600 hover:text-white transition-all flex items-center justify-center gap-2 shadow-lg shadow-blue-900/10 active:scale-95"><svg className="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2M7 12h10" strokeWidth="3"/></svg>Scan Barcode</button>
+                            <button type="button" onClick={()=>setIsScannerVisible(true)} className={`w-full py-4 px-6 rounded-2xl font-black uppercase text-[11px] tracking-widest transition-all flex items-center justify-center gap-2 shadow-lg active:scale-95 ${isLightMode ? 'bg-blue-50 border border-blue-200 text-blue-600 hover:bg-blue-600 hover:text-white shadow-blue-100' : 'bg-blue-600/10 border border-blue-500/30 text-blue-400 hover:bg-blue-600 hover:text-white shadow-blue-900/10'}`}><svg className="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2M7 12h10" strokeWidth="3"/></svg>Scan Barcode</button>
                         </div>
                     </fieldset>
                 );
             case 3:
                 return (
-                    <fieldset className="border border-gray-600 p-3 sm:p-4 rounded-lg animate-fade-in space-y-4 sm:space-y-6"><legend className="px-2 text-base sm:text-lg font-semibold text-blue-300">ដឹកជញ្ជូន</legend><div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
-                            <div className="space-y-1.5">
-                                <label className="input-label font-black text-[10px] uppercase text-gray-500 tracking-widest mb-2 block">វិធីសាស្រ្តដឹកជញ្ជូន*</label>
-                                {recommendationMessage && (
-                                    <div className="mb-2 p-2 bg-blue-600/10 border border-blue-500/20 rounded-xl flex items-center gap-2 animate-pulse">
-                                        <div className="w-1.5 h-1.5 rounded-full bg-blue-500"></div>
-                                        <span className="text-[10px] font-black text-blue-400 uppercase tracking-widest">{recommendationMessage}</span>
+                    <div className="animate-fade-in space-y-4 sm:space-y-6">
+                        {/* Section Header */}
+                        <div className={`flex items-center gap-3 pb-2 border-b border-dashed ${isLightMode ? 'border-slate-200' : 'border-gray-700'}`}>
+                            <span className={`text-lg font-black uppercase tracking-widest ${isLightMode ? 'text-blue-600' : 'text-blue-300'}`}>
+                                ដឹកជញ្ជូន (Logistics Settings)
+                            </span>
+                        </div>
+
+                        {/* Unified Card Container */}
+                        <div className={`p-4 sm:p-5 border-2 rounded-none space-y-5 ${isLightMode ? 'bg-white border-slate-200 shadow-sm' : 'bg-[#181A20] border-[#2B3139]'}`}>
+                            
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-5 sm:gap-6">
+                                {/* Section 1: Shipping Method */}
+                                <div className="space-y-1.5 w-full">
+                                    <div className="flex items-center gap-2 mb-2">
+                                        <div className={`w-1.5 h-3.5 ${isLightMode ? 'bg-blue-600' : 'bg-blue-400'}`}></div>
+                                        <span className={`text-xs font-black uppercase tracking-wider ${isLightMode ? 'text-slate-800' : 'text-slate-200'}`}>វិធីសាស្រ្តដឹកជញ្ជូន*</span>
                                     </div>
-                                )}
-                                <ShippingMethodDropdown methods={appData.shippingMethods || []} selectedMethodName={order.shipping.method} onSelect={handleShippingMethodSelect} />
-                            </div>
-                            <div className="space-y-1.5">
-                                <label className="input-label font-black text-[10px] uppercase text-gray-500 tracking-widest mb-2 block">ថ្លៃសេវាឲ្យអ្នកដឹក (Cost)*</label>
-                                <div className="space-y-3">
-                                    <div className="relative">
-                                        <input type="number" min="0" step="0.01" name="cost" placeholder="0.00" value={order.shipping.cost} className="form-input !py-3 rounded-xl bg-gray-900 border-gray-700 text-blue-400 font-black pr-12" onChange={handleShippingChange} required />
-                                        <div className="absolute right-0 top-0 bottom-0 pr-4 flex items-center pointer-events-none">
-                                            <span className="text-gray-500 font-bold">$</span>
+                                    {recommendationMessage && (
+                                        <div className={`mb-2 p-2 border rounded-xl flex items-center gap-2 animate-pulse ${isLightMode ? 'bg-blue-50 border-blue-200' : 'bg-blue-600/10 border-blue-500/20'}`}>
+                                            <div className="w-1.5 h-1.5 rounded-full bg-blue-500"></div>
+                                            <span className={`text-[10px] font-black uppercase tracking-widest ${isLightMode ? 'text-blue-700' : 'text-blue-400'}`}>{recommendationMessage}</span>
                                         </div>
+                                    )}
+                                    <ShippingMethodDropdown methods={appData.shippingMethods || []} selectedMethodName={order.shipping.method} onSelect={handleShippingMethodSelect} />
+                                </div>
+
+                                {/* Section 2: Cost */}
+                                <div className="space-y-1.5 w-full">
+                                    <div className="flex items-center gap-2 mb-2">
+                                        <div className={`w-1.5 h-3.5 ${isLightMode ? 'bg-blue-600' : 'bg-blue-400'}`}></div>
+                                        <span className={`text-xs font-black uppercase tracking-wider ${isLightMode ? 'text-slate-800' : 'text-slate-200'}`}>ថ្លៃសេវាឲ្យអ្នកដឹក (Cost)*</span>
                                     </div>
-                                    <div className="flex flex-wrap gap-2">
-                                        {(selectedShippingMethod?.CostShortcuts ? selectedShippingMethod.CostShortcuts.split(',').map((s: string) => parseFloat(s.trim())) : [1.25, 1.5, 2]).map((cost: number) => {
-                                            const isActive = parseFloat(order.shipping.cost) === cost;
-                                            return (
-                                                <button 
-                                                    key={cost} 
-                                                    type="button" 
-                                                    onClick={() => handleShippingChange({ target: { name: 'cost', value: String(cost) } } as any)}
-                                                    className={`flex-1 min-w-[60px] py-2 border font-black rounded-xl text-xs transition-all active:scale-95 ${isActive ? 'bg-blue-600 border-blue-500 text-white shadow-lg shadow-blue-600/20' : 'bg-gray-800 border-gray-700 text-gray-400 hover:text-gray-200'}`}
-                                                >
-                                                    ${cost}
-                                                </button>
-                                            );
-                                        })}
+                                    <div className="flex flex-wrap items-center gap-2 mt-2">
+                                        <div className={`flex items-center rounded-xl border-2 transition-all flex-1 min-w-[100px] ${isLightMode ? 'bg-white border-slate-200 focus-within:border-blue-500 focus-within:ring-1 focus-within:ring-blue-500/20' : 'bg-gray-900 border-gray-700 focus-within:border-blue-500'}`}>
+                                            <input 
+                                                type="number" 
+                                                min="0" 
+                                                step="0.01" 
+                                                name="cost" 
+                                                placeholder="0.00" 
+                                                value={order.shipping.cost} 
+                                                className="w-full bg-transparent pl-3 pr-8 py-1.5 font-black text-sm outline-none border-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" 
+                                                onChange={handleShippingChange} 
+                                                required 
+                                            />
+                                            <span className="pr-3 text-gray-400 font-bold text-xs">$</span>
+                                        </div>
+                                        <div className="flex gap-1.5">
+                                            {(selectedShippingMethod?.CostShortcuts ? selectedShippingMethod.CostShortcuts.split(',').map((s: string) => parseFloat(s.trim())) : [1.25, 1.5, 2]).map((cost: number) => {
+                                                const isActive = parseFloat(order.shipping.cost) === cost;
+                                                return (
+                                                    <button 
+                                                        key={cost} 
+                                                        type="button" 
+                                                        onClick={() => handleShippingChange({ target: { name: 'cost', value: String(cost) } } as any)}
+                                                        className={`px-3.5 py-1.5 border font-black rounded-xl text-xs transition-all active:scale-95 ${isActive ? (isLightMode ? 'bg-blue-600 border-blue-600 text-white shadow-md' : 'bg-blue-600 border-blue-500 text-white shadow-lg') : (isLightMode ? 'bg-slate-100 border-slate-200 text-slate-600 hover:bg-slate-200' : 'bg-gray-800 border-gray-700 text-gray-400 hover:text-gray-200')}`}
+                                                    >
+                                                        ${cost}
+                                                    </button>
+                                                );
+                                            })}
+                                        </div>
                                     </div>
                                 </div>
                             </div>
+
+                            {/* Section 3: Driver Selection (conditionally rendered inside same card to keep padding low) */}
                             {selectedShippingMethod?.RequireDriverSelection && (
-                                <div className="md:col-span-2 space-y-3 sm:space-y-4">
-                                    <div className="flex items-center gap-2 px-1">
-                                        <div className="h-4 w-1 bg-blue-500 rounded-full"></div>
-                                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">ជ្រើសរើសអ្នកដឹក (DriverSelection)*</label>
+                                <div className={`pt-4 border-t ${isLightMode ? 'border-slate-100' : 'border-gray-800/80'} space-y-2.5`}>
+                                    <div className="flex items-center gap-2">
+                                        <div className={`w-1.5 h-3.5 ${isLightMode ? 'bg-blue-600' : 'bg-blue-400'}`}></div>
+                                        <span className={`text-xs font-black uppercase tracking-wider ${isLightMode ? 'text-slate-800' : 'text-slate-200'}`}>ជ្រើសរើសអ្នកដឹក (DriverSelection)*</span>
                                     </div>
                                     <DriverSelector 
                                         drivers={appData.drivers || []} 
                                         selectedDriverName={order.shipping.details} 
                                         onSelect={handleDriverChange} 
                                     />
-                                    {!order.shipping.details && (<p className="text-center text-[9px] text-gray-500 italic mt-1">សូមជ្រើសរើសអ្នកដឹកម្នាក់</p>)}
+                                    {!order.shipping.details && (<p className={`text-center text-[10px] italic mt-1 font-bold ${isLightMode ? 'text-red-500' : 'text-red-400'}`}>សូមជ្រើសរើសអ្នកដឹកម្នាក់</p>)}
                                 </div>
                             )}
-                         </div></fieldset>
+                        </div>
+                    </div>
                 );
             case 4:
                 const selectedDriver = appData.drivers?.find((d: Driver) => d.DriverName === order.shipping.details);
                 return (
-                    <div className="animate-fade-in space-y-4 sm:space-y-8">
-                        <div><h3 className="text-[10px] font-black text-gray-500 uppercase tracking-widest mb-2 sm:mb-3 flex items-center gap-2"><span className="w-1.5 h-1.5 rounded-full bg-blue-500"></span> ព័ត៌មានអតិថិជន</h3><div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4 bg-gray-900/60 p-3 sm:p-5 rounded-2xl sm:rounded-3xl border border-white/5 shadow-inner"><div className="space-y-1"><p className="text-[9px] text-gray-500 font-bold uppercase">Customer Info</p><p className="text-white font-black text-base sm:text-lg">{order.customer.name}</p><div className="flex items-center gap-3"><p className="text-blue-400 font-bold font-mono text-base">{order.customer.phone}</p>{carrierLogo && <div className="h-6 flex items-center"><img src={carrierLogo} className="h-5 sm:h-6 w-auto object-contain" alt="Carrier" /></div>}</div></div><div className="space-y-2 md:text-right">
-                                    <p className="text-[9px] text-gray-500 font-bold uppercase">Location / Store</p>
-                                    <p className="text-gray-200 font-bold text-xs sm:text-sm leading-tight">{`${order.customer.additionalLocation}, ${order.customer.sangkat}, ${order.customer.district}, ${order.customer.province}`.replace(/^,|,$/g, '').trim()}</p>
-                                    <div className="pt-1.5 border-t border-white/5 mt-1.5 inline-block md:ml-auto">
-                                        <p className="text-gray-500 text-[8px] font-black uppercase tracking-[0.2em] mb-0.5">Fulfillment Store</p>
-                                        <div className="bg-purple-600/10 border border-purple-500/20 px-3 py-1 rounded-lg">
-                                            <p className="text-purple-400 font-black text-xs sm:text-sm uppercase tracking-wider">{order.fulfillmentStore}</p>
+                    <div className="animate-fade-in space-y-4">
+                        {/* Combined Customer & Shipping Info Card */}
+                        <div>
+                            <div className="flex items-center gap-2 mb-2">
+                                <div className={`w-1 h-3 ${isLightMode ? 'bg-blue-600' : 'bg-blue-400'}`}></div>
+                                <span className={`text-[10px] font-black uppercase tracking-widest ${isLightMode ? 'text-slate-500' : 'text-gray-400'}`}>
+                                    ព័ត៌មានដឹកជញ្ជូន និងអតិថិជន (Delivery Details)
+                                </span>
+                            </div>
+                            <div className={`p-4 border-2 rounded-2xl ${isLightMode ? 'bg-white border-slate-100 shadow-sm' : 'bg-[#181A20] border-[#2B3139]'}`}>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 divide-y md:divide-y-0 md:divide-x divide-dashed divide-slate-100 dark:divide-gray-800">
+                                    {/* Column 1: Customer */}
+                                    <div className="space-y-1 pb-3 md:pb-0">
+                                        <p className={`text-[9px] font-black uppercase tracking-wider ${isLightMode ? 'text-slate-400' : 'text-gray-500'}`}>ព័ត៌មានអតិថិជន / Customer</p>
+                                        <p className={`font-black text-base ${isLightMode ? 'text-slate-800' : 'text-white'}`}>{order.customer.name}</p>
+                                        <div className="flex items-center gap-2">
+                                            <span className={`font-black font-mono text-sm ${isLightMode ? 'text-blue-600' : 'text-blue-400'}`}>{order.customer.phone}</span>
+                                            {carrierLogo && <img src={carrierLogo} className="h-4 w-auto object-contain opacity-90" alt="" />}
+                                        </div>
+                                        
+                                        {/* Address with Map Pin Icon */}
+                                        <div className="flex items-start gap-1.5 mt-1">
+                                            <svg className="w-3.5 h-3.5 mt-0.5 text-slate-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5}>
+                                                <path strokeLinecap="round" strokeLinejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                                                <path strokeLinecap="round" strokeLinejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                                            </svg>
+                                            <p className={`font-medium text-xs leading-normal ${isLightMode ? 'text-slate-600' : 'text-gray-400'}`}>
+                                                {`${order.customer.additionalLocation}, Sangkat ${order.customer.sangkat}, District ${order.customer.district}, Province ${order.customer.province}`.replace(/^,|,$/g, '').trim() || 'No address specified'}
+                                            </p>
                                         </div>
                                     </div>
-                                </div></div></div>
-                        <div><h3 className="text-[10px] font-black text-gray-500 uppercase tracking-widest mb-2 sm:mb-3 flex items-center gap-2"><span className="w-1.5 h-1.5 rounded-full bg-orange-500"></span> ព័ត៌មានដឹកជញ្ជូន</h3><div className="bg-gray-900/40 p-3 sm:p-5 rounded-2xl sm:rounded-3xl border border-white/5 shadow-inner grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6"><div className="space-y-1"><p className="text-[9px] text-gray-500 font-bold uppercase">Shipping Method</p><div className="flex items-center gap-2">{shippingLogo && <img src={shippingLogo} className="h-4 sm:h-5 w-auto object-contain" alt="Logo" />}<p className="text-white font-black text-xs sm:text-sm">{order.shipping.method}</p></div></div><div className="space-y-1"><p className="text-[9px] text-gray-500 font-bold uppercase">Driver / Details</p><div className="flex items-center gap-2">{selectedDriver && (<img src={convertGoogleDriveUrl(selectedDriver.ImageURL)} className="h-6 w-6 sm:h-8 sm:w-8 rounded-full object-cover border border-gray-700 cursor-pointer active:scale-95 transition-transform" alt="Driver" onClick={() => previewImage(convertGoogleDriveUrl(selectedDriver.ImageURL))} />)}<p className="text-white font-bold text-xs sm:text-sm">{order.shipping.details || 'N/A'}</p></div></div><div className="space-y-1 sm:text-right"><p className="text-[9px] text-gray-500 font-bold uppercase">Internal Cost ($)</p><p className="text-orange-400 font-black text-base sm:text-lg font-mono">${(Number(order.shipping.cost) || 0).toFixed(2)}</p></div></div></div>
-                        <div><h3 className="text-[10px] font-black text-gray-500 uppercase tracking-widest mb-2 sm:mb-3 flex items-center gap-2"><span className="w-1.5 h-1.5 rounded-full bg-blue-500"></span> បញ្ជីទំនិញកុម្ម៉ង់</h3><div className="space-y-2 sm:space-y-3">{order.products.map((p: any) => (<div key={p.id} className="flex items-center gap-3 sm:gap-4 bg-gray-900/40 p-2 sm:p-3 rounded-xl sm:rounded-2xl border border-white/5 group hover:border-blue-500/30 transition-all"><div className="w-12 h-12 sm:w-16 sm:h-16 bg-gray-800 rounded-lg sm:rounded-xl overflow-hidden border border-gray-700 flex-shrink-0 relative"><img src={convertGoogleDriveUrl(p.image)} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" alt={p.name} /></div><div className="flex-grow min-w-0"><div className="flex justify-between items-start mb-0.5 sm:mb-1"><h4 className="text-white font-black text-xs sm:text-sm truncate leading-tight">{p.name}</h4><div className="flex gap-1.5"><span className="bg-blue-600/10 text-blue-400 text-[9px] sm:text-[10px] font-black px-1.5 sm:px-2.5 py-0.5 sm:py-1 rounded-lg border border-blue-500/20">x{p.quantity}</span></div></div><div className="flex items-center gap-2 sm:gap-3">{p.colorInfo && (<span className="text-[9px] bg-purple-500/10 text-purple-400 px-1.5 py-0.5 rounded-md font-bold">{p.colorInfo}</span>)}<p className="text-[9px] text-gray-500 font-bold uppercase tracking-tight"><span>${(p.finalPrice || 0).toFixed(2)}</span> / unit</p></div></div><div className="text-right"><p className="text-white font-black text-sm sm:text-base tracking-tight">${(p.total || 0).toFixed(2)}</p><p className="text-[8px] text-gray-600 font-bold uppercase">Subtotal</p></div></div>))}</div></div>
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4"><div className="bg-gray-900/40 p-3 sm:p-4 rounded-xl sm:rounded-2xl border border-white/5 text-center"><p className="text-[8px] sm:text-[9px] text-gray-500 font-black uppercase mb-1">សរុបទំនិញ</p><p className="text-white font-black text-base sm:text-lg">${(Number(order.subtotal) || 0).toFixed(2)}</p></div><div className="bg-gray-900/40 p-3 sm:p-4 rounded-xl sm:rounded-2xl border border-white/5 text-center"><p className="text-[8px] sm:text-[9px] text-gray-500 font-black uppercase mb-1">សេវាដឹក</p><p className="text-white font-black text-base sm:text-lg">${(Number(order.customer.shippingFee) || 0).toFixed(2)}</p></div><div className="col-span-2 bg-blue-600/10 p-3 sm:p-4 rounded-xl sm:rounded-2xl border border-blue-500/20 text-center shadow-lg shadow-blue-900/10"><p className="text-[9px] sm:text-[10px] text-blue-400 font-black uppercase mb-1 tracking-widest">សរុបរួម (Grand Total)</p><p className="text-white font-black text-2xl sm:text-3xl tracking-tighter">${(Number(order.grandTotal) || 0).toFixed(2)}</p></div></div>
+                                    
+                                    {/* Column 2: Shipping Details */}
+                                    <div className="space-y-2.5 pt-3 md:pt-0 md:pl-4 flex flex-col justify-between">
+                                        <div>
+                                            <p className={`text-[9px] font-black uppercase tracking-wider mb-2.5 ${isLightMode ? 'text-slate-400' : 'text-gray-500'}`}>ព័ត៌មានដឹកជញ្ជូន / Shipping Details</p>
+                                            
+                                            <div className="space-y-2">
+                                                {/* Shipping Method */}
+                                                <div className="flex items-center justify-between gap-4">
+                                                    <span className={`text-[10.5px] font-bold ${isLightMode ? 'text-slate-500' : 'text-gray-400'}`}>វិធីសាស្រ្តដឹក / Method</span>
+                                                    <div className="flex items-center gap-1.5 min-w-0">
+                                                        {shippingLogo && <img src={shippingLogo} className="h-5 w-auto object-contain rounded-md border border-black/5 flex-shrink-0" alt="" />}
+                                                        <span className={`font-black text-xs truncate ${isLightMode ? 'text-slate-800' : 'text-white'}`}>{order.shipping.method}</span>
+                                                    </div>
+                                                </div>
+
+                                                {/* Fulfillment Store */}
+                                                <div className="flex items-center justify-between gap-4">
+                                                    <span className={`text-[10.5px] font-bold ${isLightMode ? 'text-slate-500' : 'text-gray-400'}`}>ឃ្លាំងបំពេញ / Warehouse</span>
+                                                    <span className={`text-[10px] font-black uppercase px-2 py-0.5 rounded-md ${isLightMode ? 'bg-purple-50 text-purple-600 border border-purple-100' : 'bg-purple-600/10 text-purple-400 border-purple-500/20'}`}>{order.fulfillmentStore}</span>
+                                                </div>
+
+                                                {/* Selected Driver */}
+                                                <div className="flex items-center justify-between gap-4">
+                                                    <span className={`text-[10.5px] font-bold ${isLightMode ? 'text-slate-500' : 'text-gray-400'}`}>អ្នកដឹកបញ្ជូន / Driver</span>
+                                                    {order.shipping.details ? (
+                                                        <div className="flex items-center gap-1.5 min-w-0">
+                                                            {selectedDriver && <img src={convertGoogleDriveUrl(selectedDriver.ImageURL)} className="w-5 h-5 rounded-full object-cover border border-white shadow-sm flex-shrink-0" alt="" />}
+                                                            <span className={`text-xs font-black truncate ${isLightMode ? 'text-slate-800' : 'text-white'}`}>{order.shipping.details}</span>
+                                                        </div>
+                                                    ) : (
+                                                        <span className={`text-xs font-bold ${isLightMode ? 'text-slate-400' : 'text-gray-500'}`}>N/A</span>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        {/* Cost Row */}
+                                        <div className={`flex items-center justify-between pt-2 border-t border-dashed ${isLightMode ? 'border-slate-100' : 'border-gray-800'}`}>
+                                            <span className={`text-[10.5px] font-black uppercase tracking-wider ${isLightMode ? 'text-slate-500' : 'text-gray-400'}`}>ថ្លៃដឹកជញ្ជូន / Cost</span>
+                                            <span className={`text-sm font-black font-mono ${isLightMode ? 'text-orange-600' : 'text-orange-400'}`}>${(Number(order.shipping.cost) || 0).toFixed(2)}</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Compact Order Items List */}
+                        <div>
+                            <div className="flex items-center gap-2 mb-2">
+                                <div className={`w-1 h-3 ${isLightMode ? 'bg-blue-600' : 'bg-blue-400'}`}></div>
+                                <span className={`text-[10px] font-black uppercase tracking-widest ${isLightMode ? 'text-slate-500' : 'text-gray-400'}`}>
+                                    បញ្ជីទំនិញកុម្ម៉ង់ (Order Items)
+                                </span>
+                            </div>
+                            <div className="space-y-1.5">
+                                {order.products.map((p: any) => (
+                                    <div key={p.id} className={`flex items-center gap-3.5 p-2 rounded-2xl border transition-all duration-300 hover:-translate-y-0.5 ${isLightMode ? 'bg-white border-slate-100 hover:border-slate-200 hover:shadow-md hover:shadow-slate-100/50' : 'bg-[#181A20] border-[#2B3139]'}`}>
+                                        <img src={convertGoogleDriveUrl(p.image)} className="w-9 h-9 rounded-xl object-cover border border-slate-100 flex-shrink-0" alt="" />
+                                        <div className="flex-grow min-w-0">
+                                            <div className="flex items-center justify-between gap-2">
+                                                <p className={`font-black text-xs truncate ${isLightMode ? 'text-slate-800' : 'text-white'}`}>{p.name}</p>
+                                                <p className={`font-black text-xs font-mono ${isLightMode ? 'text-slate-900' : 'text-white'}`}>${(p.total || 0).toFixed(2)}</p>
+                                            </div>
+                                            <div className="flex items-center justify-between text-[10px] mt-0.5">
+                                                <div className="flex items-center gap-2">
+                                                    <span className={`text-[9px] font-black px-1.5 py-0.5 rounded-md border ${isLightMode ? 'bg-blue-50 border-blue-100 text-blue-600' : 'bg-blue-600/10 text-blue-400 border-blue-500/20'}`}>x{p.quantity}</span>
+                                                    {p.colorInfo && <span className={`px-1.5 py-0.5 rounded-md font-bold text-[9px] ${isLightMode ? 'bg-purple-50 text-purple-600 border border-purple-100/50' : 'bg-purple-500/10 text-purple-400 border-purple-500/20'}`}>{p.colorInfo}</span>}
+                                                </div>
+                                                <p className={`font-bold font-mono text-[9px] ${isLightMode ? 'text-slate-400' : 'text-slate-500'}`}>${(p.finalPrice || 0).toFixed(2)}/unit</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+
+                        {/* Compact Pricing Summary Bar */}
+                        <div className={`p-3 rounded-2xl border-2 flex items-center justify-between gap-4 ${isLightMode ? 'bg-slate-50/50 border-slate-100' : 'bg-gray-905 border-[#2B3139]'}`}>
+                            <div className="flex gap-6">
+                                <div>
+                                    <span className={`text-[8px] font-black uppercase tracking-wider ${isLightMode ? 'text-slate-400' : 'text-gray-500'}`}>សរុបទំនិញ</span>
+                                    <p className={`font-black text-sm ${isLightMode ? 'text-slate-700' : 'text-white'}`}>${(Number(order.subtotal) || 0).toFixed(2)}</p>
+                                </div>
+                                <div>
+                                    <span className={`text-[8px] font-black uppercase tracking-wider ${isLightMode ? 'text-slate-400' : 'text-gray-500'}`}>សេវាដឹក</span>
+                                    <p className={`font-black text-sm ${isLightMode ? 'text-slate-700' : 'text-white'}`}>${(Number(order.customer.shippingFee) || 0).toFixed(2)}</p>
+                                </div>
+                            </div>
+                            <div className="px-4 py-2 rounded-xl text-center bg-blue-600 text-white shadow-md shadow-blue-500/15">
+                                <span className="text-[8px] font-black uppercase tracking-widest block opacity-90 mb-0.5">សរុបរួម (Grand Total)</span>
+                                <p className="font-black text-xl font-mono leading-none">${(Number(order.grandTotal) || 0).toFixed(2)}</p>
+                            </div>
+                        </div>
                         
-                        {/* Improved Payment Section */}
-                        <fieldset className="border border-gray-700 p-4 sm:p-6 rounded-2xl sm:rounded-3xl bg-gray-900/20">
-                            <legend className="px-3 text-[10px] sm:text-xs font-black text-blue-400 uppercase tracking-[0.2em]">ស្ថានភាពទូទាត់</legend>
-                            <div className="space-y-6">
+                        {/* Compact Payment Section */}
+                        <fieldset className={`border-2 p-4 rounded-2xl ${isLightMode ? 'border-slate-100 bg-slate-50/30' : 'border-gray-755 bg-[#181A20]/20'}`}>
+                            <legend className={`px-2 text-[10px] sm:text-xs font-black uppercase tracking-[0.2em] ${isLightMode ? 'text-blue-600' : 'text-blue-400'}`}>ស្ថានភាពទូទាត់</legend>
+                            <div className="space-y-3">
                                 {/* Segmented Control for Payment Status */}
-                                <div className="flex bg-gray-900/80 p-1 rounded-2xl border border-gray-700 max-w-md mx-auto sm:mx-0">
+                                <div className={`flex p-0.5 rounded-xl border max-w-xs ${isLightMode ? 'bg-slate-100/80 border-slate-200/60' : 'bg-gray-900/80 border-gray-700'}`}>
                                     <button 
                                         type="button"
                                         onClick={() => setOrder({...order, payment: {...order.payment, status: 'Unpaid', info: ''}})}
-                                        className={`flex-1 py-3 px-4 rounded-xl text-xs font-black uppercase transition-all flex flex-col items-center gap-1 ${order.payment.status === 'Unpaid' ? 'bg-red-600 text-white shadow-lg' : 'text-gray-500 hover:text-gray-300'}`}
+                                        className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-black uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 ${order.payment.status === 'Unpaid' ? 'bg-red-600 text-white shadow-sm' : (isLightMode ? 'text-slate-500 hover:text-slate-700' : 'text-gray-500 hover:text-gray-300')}`}
                                     >
                                         <span>Unpaid</span>
-                                        <span className="text-[8px] opacity-70 tracking-wider">COD</span>
+                                        <span className="text-[8px] opacity-75 font-normal">(COD)</span>
                                     </button>
                                     <button 
                                         type="button"
                                         onClick={() => setOrder({...order, payment: {...order.payment, status: 'Paid'}})}
-                                        className={`flex-1 py-3 px-4 rounded-xl text-xs font-black uppercase transition-all flex flex-col items-center gap-1 ${order.payment.status === 'Paid' ? 'bg-emerald-600 text-white shadow-lg' : 'text-gray-500 hover:text-gray-300'}`}
+                                        className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-black uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 ${order.payment.status === 'Paid' ? 'bg-emerald-600 text-white shadow-sm' : (isLightMode ? 'text-slate-500 hover:text-slate-700' : 'text-gray-500 hover:text-gray-300')}`}
                                     >
                                         <span>Paid</span>
-                                        <span className="text-[8px] opacity-70 tracking-wider">Transfer</span>
+                                        <span className="text-[8px] opacity-75 font-normal">(Transfer)</span>
                                     </button>
                                 </div>
 
                                 {order.payment.status === 'Paid' && (
-                                    <div className="animate-fade-in-down space-y-3">
-                                        <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-1">ជ្រើសរើសគណនីធនាគារ</p>
+                                    <div className="animate-fade-in-down space-y-2">
+                                        <p className={`text-[9px] font-black uppercase tracking-widest ml-1 ${isLightMode ? 'text-slate-400' : 'text-gray-500'}`}>ជ្រើសរើសគណនីធនាគារ</p>
                                         <BankSelector 
                                             bankAccounts={appData.bankAccounts || []}
                                             selectedBankName={order.payment.info}
@@ -1019,7 +1175,7 @@ const CreateOrderPage: React.FC<CreateOrderPageProps> = ({ team, onSaveSuccess, 
                         />
 
                         <div className="space-y-2 sm:space-y-3 pt-4">
-                            <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-1">ចំណាំ & Link Google Map</label>
+                            <label className={`text-[10px] font-black uppercase tracking-widest ml-1 ${isLightMode ? 'text-slate-500' : 'text-gray-500'}`}>ចំណាំ & Link Google Map</label>
                             
                             {/* Recently Used Notes Chips */}
                             {recentNotes.length > 0 && (
@@ -1029,7 +1185,7 @@ const CreateOrderPage: React.FC<CreateOrderPageProps> = ({ team, onSaveSuccess, 
                                             key={idx}
                                             type="button"
                                             onClick={() => setOrder({...order, note: order.note ? `${order.note} | ${rNote}` : rNote})}
-                                            className="px-3 py-1.5 bg-blue-600/10 border border-blue-500/20 text-blue-400 rounded-xl text-[10px] font-bold hover:bg-blue-600 hover:text-white transition-colors truncate max-w-[200px]"
+                                            className={`px-3.5 py-1 border rounded-full text-[10px] font-bold hover:bg-blue-600 hover:text-white transition-all duration-200 active:scale-95 truncate max-w-[200px] ${isLightMode ? 'bg-blue-50 border-blue-200 text-blue-600 shadow-sm shadow-blue-500/5' : 'bg-blue-600/10 border-blue-500/20 text-blue-400'}`}
                                             title={rNote}
                                         >
                                             {rNote.length > 20 ? rNote.substring(0, 20) + '...' : rNote}
@@ -1038,7 +1194,7 @@ const CreateOrderPage: React.FC<CreateOrderPageProps> = ({ team, onSaveSuccess, 
                                 </div>
                             )}
 
-                            <textarea placeholder="ចំណាំបន្ថែម..." value={order.note} rows={4} onChange={(e) => setOrder({...order, note: e.target.value})} className="form-textarea bg-gray-900/60 !rounded-[1.5rem] sm:!rounded-[2rem] border-white/5 focus:border-blue-500/50 text-sm"></textarea>
+                            <textarea placeholder="ចំណាំបន្ថែម..." value={order.note} rows={4} onChange={(e) => setOrder({...order, note: e.target.value})} className={`form-textarea !rounded-2xl text-sm focus:border-blue-500/50 ${isLightMode ? 'bg-white border-slate-200 text-slate-900 placeholder-slate-400' : 'bg-gray-900/60 border-white/5 text-white'}`}></textarea>
                         </div>
                     </div>
                 );
@@ -1047,9 +1203,49 @@ const CreateOrderPage: React.FC<CreateOrderPageProps> = ({ team, onSaveSuccess, 
     };
 
     return (
-        <div className="w-full px-1 sm:px-4 pb-10">
+        <div className="w-full px-1 sm:px-4 pb-10 create-order-flat">
             <div className="max-w-4xl mx-auto mt-2 sm:mt-10 lg:mt-14">
              <style>{`
+                /* CSS variables for flat theme colors */
+                .create-order-flat {
+                    --input-bg: rgba(15, 23, 42, 0.4);
+                    --input-border: rgba(255, 255, 255, 0.05);
+                    --card-bg-override: rgba(30, 41, 59, 0.3);
+                    --border-override: rgba(255, 255, 255, 0.05);
+                    --text-color: #ffffff;
+                }
+                .theme-light .create-order-flat {
+                    --input-bg: #ffffff;
+                    --input-border: #e2e8f0;
+                    --card-bg-override: #ffffff;
+                    --border-override: #e2e8f0;
+                    --text-color: #1e293b;
+                }
+
+                /* Neutralize Neumorphism overrides to allow standard flat layout styling */
+                .ui-neumorphism .create-order-flat .form-input,
+                .ui-neumorphism .create-order-flat .form-select,
+                .ui-neumorphism .create-order-flat .form-textarea {
+                    background: var(--input-bg) !important;
+                    border: 1px solid var(--input-border) !important;
+                    box-shadow: none !important;
+                    color: var(--text-color) !important;
+                }
+                .ui-neumorphism .create-order-flat .bg-gray-800\\/40,
+                .ui-neumorphism .create-order-flat .bg-gray-900\\/50,
+                .ui-neumorphism .create-order-flat .bg-gray-900\\/80,
+                .ui-neumorphism .create-order-flat .bg-gray-900\\/60,
+                .ui-neumorphism .create-order-flat .bg-gray-900\\/40,
+                .ui-neumorphism .create-order-flat .bg-black\\/20,
+                .ui-neumorphism .create-order-flat .page-card {
+                    background: var(--card-bg-override) !important;
+                    border: 1px solid var(--border-override) !important;
+                    box-shadow: none !important;
+                }
+                .ui-neumorphism .create-order-flat fieldset {
+                    box-shadow: none !important;
+                }
+
                 @keyframes shimmer {
                     0% { background-position: -200% 0; }
                     100% { background-position: 200% 0; }
@@ -1087,7 +1283,7 @@ const CreateOrderPage: React.FC<CreateOrderPageProps> = ({ team, onSaveSuccess, 
                     border-radius: inherit;
                     animation: spin-border 3s linear infinite;
                 }
-                .card-flux-active::before {
+                .card-flux-before {
                     filter: blur(10px);
                     opacity: 0.7;
                 }
@@ -1105,24 +1301,24 @@ const CreateOrderPage: React.FC<CreateOrderPageProps> = ({ team, onSaveSuccess, 
              {submissionStatus && (<div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-[100] animate-fade-in p-4"><div className="page-card text-center flex flex-col items-center animate-fade-in-scale">{submissionStatus.type === 'success' ? (<div className="w-16 h-16 sm:w-20 sm:h-20 bg-green-500/20 text-green-400 rounded-full flex items-center justify-center mb-4 border border-green-500/30 shadow-[0_0_30px_rgba(34,197,94,0.2)]"><svg className="h-8 w-8 sm:h-10 sm:w-10" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7"/></svg></div>) : (<div className="w-16 h-16 sm:w-20 sm:h-20 bg-red-500/20 text-red-400 rounded-full flex items-center justify-center mb-4 border border-red-500/30"><svg className="h-8 w-8 sm:h-10 sm:w-10" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12"/></svg></div>)}<p className="text-base sm:text-lg font-black text-white">{submissionStatus.message}</p></div></div>)}
             <MapModal isOpen={isMapModalOpen} onClose={() => setIsMapModalOpen(false)} url={mapSearchUrl} />
             {isScannerVisible && <BarcodeScannerModal onClose={() => setIsScannerVisible(false)} onCodeScanned={handleCodeScanned} scanMode={scanMode} setScanMode={setScanMode} productsInOrder={order.products} masterProducts={appData.products || []} />}
-            <Modal isOpen={isCancelModalOpen} onClose={() => setIsCancelModalOpen(false)} maxWidth="max-w-sm"><div className="p-6 text-center space-y-6"><div className="mx-auto w-14 h-14 sm:w-16 sm:h-16 bg-red-500/10 text-red-500 rounded-full flex items-center justify-center border border-red-500/20 shadow-xl shadow-red-900/10 animate-bounce-slow"><svg className="h-7 w-7 sm:h-8 sm:w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg></div><h3 className="text-lg sm:text-xl font-black text-white uppercase tracking-tighter">បោះបង់ការបញ្ចូល?</h3><div className="flex gap-3"><button onClick={() => setIsCancelModalOpen(false)} className="px-6 py-3 bg-gray-800 border border-gray-700 text-gray-300 rounded-2xl flex-1 font-black text-xs sm:text-sm transition-all hover:bg-gray-700 active:scale-95">ទេ (ត្រឡប់)</button><button onClick={handleConfirmCancel} className="px-6 py-3 bg-red-600 border border-red-500 text-white rounded-2xl flex-1 font-black text-xs sm:text-sm transition-all hover:bg-red-700 active:scale-95 shadow-lg shadow-red-900/20">បាទ (បោះបង់)</button></div></div></Modal>
+            <Modal isOpen={isCancelModalOpen} onClose={() => setIsCancelModalOpen(false)} maxWidth="max-w-sm"><div className="p-6 text-center space-y-6"><div className="mx-auto w-14 h-14 sm:w-16 sm:h-16 bg-red-500/10 text-red-500 rounded-full flex items-center justify-center border border-red-500/20 shadow-xl shadow-red-900/10 animate-bounce-slow"><svg className="h-7 w-7 sm:h-8 sm:w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg></div><h3 className={`text-lg sm:text-xl font-black uppercase tracking-tighter ${isLightMode ? 'text-slate-900' : 'text-white'}`}>បោះបង់ការបញ្ចូល?</h3><div className="flex gap-3"><button onClick={() => setIsCancelModalOpen(false)} className={`px-6 py-3 border rounded-2xl flex-1 font-black text-xs sm:text-sm transition-all active:scale-95 ${isLightMode ? 'bg-slate-100 border-slate-200 text-slate-700 hover:bg-slate-200' : 'bg-gray-800 border-gray-700 text-gray-300 hover:bg-gray-700'}`}>ទេ (ត្រឡប់)</button><button onClick={handleConfirmCancel} className="px-6 py-3 bg-red-600 border border-red-500 text-white rounded-2xl flex-1 font-black text-xs sm:text-sm transition-all hover:bg-red-700 active:scale-95 shadow-lg shadow-red-900/20">បាទ (បោះបង់)</button></div></div></Modal>
             
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 sm:mb-10 gap-4">
-                <h1 className="hidden md:flex text-2xl sm:text-3xl font-black text-white uppercase tracking-tighter items-center gap-3 sm:gap-4">
+                <h1 className={`hidden md:flex text-2xl sm:text-3xl font-black uppercase tracking-tighter items-center gap-3 sm:gap-4 ${isLightMode ? 'text-slate-900' : 'text-white'}`}>
                     <span className="text-blue-500">កុម្ម៉ង់ថ្មី</span>
-                    <span className="text-[9px] sm:text-[10px] bg-blue-600/20 text-blue-400 px-3 sm:px-4 py-1.5 rounded-full border border-blue-500/20 uppercase tracking-[0.15em] sm:tracking-[0.2em]">{team}</span>
+                    <span className={`text-[9px] sm:text-[10px] px-3 sm:px-4 py-1.5 rounded-full border uppercase tracking-[0.15em] sm:tracking-[0.2em] ${isLightMode ? 'bg-blue-50 border-blue-200 text-blue-600' : 'bg-blue-600/20 text-blue-400 border-blue-500/20'}`}>{team}</span>
                 </h1>
-                <button onClick={handleCancelClick} className="hidden md:block px-6 py-2.5 bg-gray-800 border border-gray-700 hover:border-red-500 hover:bg-red-500/10 text-gray-400 hover:text-red-400 font-black rounded-2xl uppercase text-[10px] sm:text-[11px] tracking-widest transition-all active:scale-90">បោះបង់</button>
+                <button onClick={handleCancelClick} className={`hidden md:block px-6 py-2.5 border font-black rounded-2xl uppercase text-[10px] sm:text-[11px] tracking-widest transition-all active:scale-90 ${isLightMode ? 'bg-white border-slate-200 text-slate-500 hover:bg-red-50 hover:border-red-500 hover:text-red-600' : 'bg-gray-800 border-gray-700 text-gray-400 hover:border-red-500 hover:bg-red-500/10 hover:text-red-400'}`}>បោះបង់</button>
             </div>
 
-            <div className="bg-gray-800/30 backdrop-blur-3xl border border-white/5 rounded-[1.5rem] sm:rounded-[3rem] p-3 sm:p-10 shadow-2xl">
+            <div className={`backdrop-blur-3xl rounded-[1.5rem] sm:rounded-[3rem] p-3 sm:p-10 shadow-2xl border ${isLightMode ? 'bg-white border-slate-200/80 shadow-slate-100' : 'bg-gray-800/30 border-white/5'}`}>
                 <div className="flex justify-between items-center mb-8 sm:mb-12 relative px-2 sm:px-4">
-                    <div className="absolute left-6 right-6 sm:left-10 sm:right-10 top-1/2 w-[calc(100%-48px)] sm:w-[calc(100%-80px)] h-0.5 bg-gray-700 -z-10"></div>
+                    <div className={`absolute left-6 right-6 sm:left-10 sm:right-10 top-1/2 w-[calc(100%-48px)] sm:w-[calc(100%-80px)] h-0.5 -z-10 ${isLightMode ? 'bg-slate-200' : 'bg-gray-700'}`}></div>
                     <div className="absolute left-6 sm:left-10 top-1/2 h-0.5 bg-blue-500 -z-10 transition-all duration-500" style={{ width: `${((currentStep-1)/(STEPS.length-1)) * (100 - (48/400)*100)}%` }}></div>
                     {STEPS.map(step => (
                         <div key={step.number} className={`relative flex flex-col items-center z-10 transition-all duration-500 ${currentStep >= step.number ? 'scale-110' : 'opacity-40 scale-90'}`}>
-                            <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl flex items-center justify-center font-black text-[10px] sm:text-xs border-2 transition-all duration-500 ${currentStep >= step.number ? 'border-blue-500 bg-blue-600 text-white shadow-[0_0_20px_rgba(37,99,235,0.4)]' : 'border-gray-600 bg-gray-800 text-gray-500'}`}>{currentStep > step.number ? "✓" : step.number}</div>
-                            <span className={`absolute -bottom-6 sm:-bottom-7 text-[8px] sm:text-[9px] font-black uppercase tracking-widest whitespace-nowrap ${currentStep >= step.number ? 'text-blue-400' : 'text-gray-600'}`}>{step.title}</span>
+                            <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl flex items-center justify-center font-black text-[10px] sm:text-xs border-2 transition-all duration-500 ${currentStep >= step.number ? 'border-blue-500 bg-blue-600 text-white shadow-[0_0_20px_rgba(37,99,235,0.4)]' : (isLightMode ? 'border-slate-300 bg-slate-100 text-slate-400' : 'border-gray-600 bg-gray-800 text-gray-500')}`}>{currentStep > step.number ? "✓" : step.number}</div>
+                            <span className={`absolute -bottom-6 sm:-bottom-7 text-[8px] sm:text-[9px] font-black uppercase tracking-widest whitespace-nowrap ${currentStep >= step.number ? (isLightMode ? 'text-blue-600' : 'text-blue-400') : (isLightMode ? 'text-slate-400' : 'text-gray-600')}`}>{step.title}</span>
                         </div>
                     ))}
                 </div>
@@ -1130,12 +1326,12 @@ const CreateOrderPage: React.FC<CreateOrderPageProps> = ({ team, onSaveSuccess, 
                  
                 <div className="mt-8 sm:mt-16">{renderStepContent()}</div>
                 
-                {error && <div className="mt-4 sm:mt-6 p-3 sm:p-4 bg-red-500/10 border border-red-500/20 rounded-xl sm:rounded-2xl text-red-400 text-center text-[10px] sm:text-xs font-bold animate-shake">{error}</div>}
+                {error && <div className={`mt-4 sm:mt-6 p-3 sm:p-4 border rounded-xl sm:rounded-2xl text-center text-[10px] sm:text-xs font-bold animate-shake ${isLightMode ? 'bg-red-50 border-red-200 text-red-700' : 'bg-red-500/10 border-red-500/20 text-red-400'}`}>{error}</div>}
                 
-                <div className="mt-8 sm:mt-10 pt-6 sm:pt-8 border-t border-white/5 space-y-3 sm:space-y-4">
+                <div className={`mt-8 sm:mt-10 pt-6 sm:pt-8 border-t space-y-3 sm:space-y-4 ${isLightMode ? 'border-slate-200' : 'border-white/5'}`}>
                     <div className="flex gap-3 sm:gap-4 h-12 sm:h-16">
                         {currentStep > 1 && (
-                            <button type="button" onClick={prevStep} className="flex-1 px-4 sm:px-8 bg-gray-800 border border-gray-700 text-gray-300 rounded-2xl font-black uppercase text-[10px] sm:text-[12px] tracking-[0.15em] transition-all hover:bg-gray-700 flex items-center justify-center gap-2 active:scale-95"><svg className="w-3 h-3 sm:w-4 sm:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={3}><path d="M15 19l-7-7 7-7"/></svg>ត្រឡប់</button>
+                            <button type="button" onClick={prevStep} className={`flex-1 px-4 sm:px-8 border rounded-2xl font-black uppercase text-[10px] sm:text-[12px] tracking-[0.15em] transition-all flex items-center justify-center gap-2 active:scale-95 ${isLightMode ? 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50' : 'bg-gray-800 border-gray-700 text-gray-300 hover:bg-gray-700'}`}><svg className="w-3 h-3 sm:w-4 sm:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={3}><path d="M15 19l-7-7 7-7"/></svg>ត្រឡប់</button>
                         )}
                         
                         {currentStep < STEPS.length ? (
@@ -1144,7 +1340,7 @@ const CreateOrderPage: React.FC<CreateOrderPageProps> = ({ team, onSaveSuccess, 
                              <button type="button" onClick={submitOrder} className="relative flex-[2] bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl font-black uppercase text-[12px] sm:text-[14px] tracking-[0.2em] shadow-2xl active:scale-95 transition-all flex items-center justify-center gap-3 overflow-hidden" disabled={loading}><div className="absolute inset-0 btn-shimmer pointer-events-none"></div>{loading && undoTimer === null ? <Spinner size="sm" /> : <><span className="relative z-10">បញ្ជូនកម្ម៉ង់ឥឡូវនេះ</span><svg className="w-4 h-4 sm:w-5 sm:h-5 relative z-10 animate-bounce-x" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={3}><path d="M5 13l4 4L19 7"/></svg></>}</button>
                         )}
                     </div>
-                    <button onClick={handleCancelClick} className="md:hidden w-full py-4 bg-gray-800/40 text-gray-500 hover:text-red-400 font-black rounded-2xl uppercase text-[10px] tracking-widest transition-all active:scale-95 border border-white/5">បោះបង់ការបញ្ចូល</button>
+                    <button onClick={handleCancelClick} className={`md:hidden w-full py-4 font-black rounded-2xl uppercase text-[10px] tracking-widest transition-all active:scale-95 border ${isLightMode ? 'bg-white border-slate-200 text-slate-500 hover:bg-red-50 hover:text-red-600' : 'bg-gray-800/40 border-white/5 text-gray-500 hover:text-red-400'}`}>បោះបង់ការបញ្ចូល</button>
                 </div>
             </div>
         </div>

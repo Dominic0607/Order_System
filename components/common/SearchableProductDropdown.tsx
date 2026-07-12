@@ -52,7 +52,8 @@ const SearchableProductDropdown: React.FC<SearchableProductDropdownProps> = ({
     showTagEditor = true,
     allowAddNew = true
 }) => {
-    const { showNotification } = useContext(AppContext);
+    const { showNotification, advancedSettings } = useContext(AppContext);
+    const isLightMode = advancedSettings?.themeMode === 'light';
     const [isOpen, setIsOpen] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
     const [activeIndex, setActiveIndex] = useState(0);
@@ -171,14 +172,16 @@ const SearchableProductDropdown: React.FC<SearchableProductDropdownProps> = ({
         <div className={`group/search-unit transition-all ${isOpen ? 'relative z-[70]' : 'relative z-10'}`} ref={dropdownRef}>
             {/* Unified Clean Input Frame */}
             <div className={`
-                flex items-stretch bg-[#0B0E11] border rounded-lg transition-all duration-200 overflow-hidden
-                ${isOpen || searchTerm !== selectedProductName ? 'border-[#FCD535] ring-1 ring-[#FCD535]/20' : 'border-[#2B3139] hover:border-[#474D57]'}
+                flex items-stretch border rounded-lg transition-all duration-200 overflow-hidden
+                ${isLightMode 
+                    ? (isOpen || searchTerm !== selectedProductName ? 'bg-white border-blue-500 ring-1 ring-blue-500/20' : 'bg-white border-slate-200 hover:border-slate-300')
+                    : (isOpen || searchTerm !== selectedProductName ? 'bg-[#0B0E11] border-[#FCD535] ring-1 ring-[#FCD535]/20' : 'bg-[#0B0E11] border-[#2B3139] hover:border-[#474D57]')}
             `}>
                 {/* Left Action: Review Toggle */}
-                <div className="flex-shrink-0 flex items-center bg-[#1E2329] border-r border-[#2B3139] transition-colors">
+                <div className={`flex-shrink-0 flex items-center border-r transition-colors ${isLightMode ? 'bg-slate-50 border-slate-200' : 'bg-[#1E2329] border-[#2B3139]'}`}>
                     <button 
                         type="button"
-                        className={`w-10 h-10 flex items-center justify-center transition-all group/pen ${selectedProduct ? 'text-[#FCD535] hover:bg-[#FCD535]/10' : 'text-[#474D57] cursor-not-allowed opacity-50'}`}
+                        className={`w-10 h-10 flex items-center justify-center transition-all group/pen ${selectedProduct ? (isLightMode ? 'text-blue-600 hover:bg-blue-50' : 'text-[#FCD535] hover:bg-[#FCD535]/10') : 'text-[#474D57] cursor-not-allowed opacity-50'}`}
                         onClick={() => selectedProduct && setPreviewProduct(selectedProduct)}
                         title="Operational Review"
                         disabled={!selectedProduct}
@@ -192,7 +195,7 @@ const SearchableProductDropdown: React.FC<SearchableProductDropdownProps> = ({
                     <input
                         ref={inputRef}
                         type="text"
-                        className="w-full bg-transparent pl-3 pr-10 py-2 font-medium text-sm text-[#EAECEF] placeholder-[#474D57] outline-none h-10"
+                        className={`w-full bg-transparent pl-3 pr-10 py-2 font-medium text-sm outline-none h-10 ${isLightMode ? 'text-slate-900 placeholder-slate-400' : 'text-[#EAECEF] placeholder-[#474D57]'}`}
                         placeholder="Search product or barcode..."
                         value={searchTerm}
                         onChange={e => { setSearchTerm(e.target.value); setIsOpen(true); setActiveIndex(0); }}
@@ -206,7 +209,7 @@ const SearchableProductDropdown: React.FC<SearchableProductDropdownProps> = ({
                             <button 
                                 type="button" 
                                 onClick={handleClear} 
-                                className="w-6 h-6 flex items-center justify-center text-[#474D57] hover:text-[#F6465D] hover:bg-[#F6465D]/10 rounded-full transition-colors font-bold text-lg"
+                                className={`w-6 h-6 flex items-center justify-center rounded-full transition-colors font-bold text-lg ${isLightMode ? 'text-slate-400 hover:text-red-500 hover:bg-red-50' : 'text-[#474D57] hover:text-[#F6465D] hover:bg-[#F6465D]/10'}`}
                             >
                                 &times;
                             </button>
@@ -216,31 +219,31 @@ const SearchableProductDropdown: React.FC<SearchableProductDropdownProps> = ({
             </div>
             
             {isOpen && (
-                <div className="absolute z-[100] w-full mt-2 bg-[#1E2329] border border-[#2B3139] rounded-xl shadow-2xl overflow-hidden animate-fade-in-down max-h-[350px] flex flex-col">
-                    <div className="bg-[#0B0E11]/80 px-4 py-2.5 border-b border-[#2B3139] flex justify-between items-center flex-shrink-0 backdrop-blur-sm">
-                        <span className="text-[10px] font-semibold text-[#848E9C] uppercase tracking-wider">Results ({filteredProducts.length})</span>
-                        <span className="text-[10px] font-semibold text-[#FCD535] uppercase tracking-wider animate-pulse flex items-center gap-1">
-                            <span className="w-1.5 h-1.5 rounded-full bg-[#FCD535]"></span> Active
+                <div className={`absolute z-[100] w-full mt-2 border rounded-xl shadow-2xl overflow-hidden animate-fade-in-down max-h-[350px] flex flex-col ${isLightMode ? 'bg-white border-slate-200' : 'bg-[#1E2329] border-[#2B3139]'}`}>
+                    <div className={`px-4 py-2.5 border-b flex justify-between items-center flex-shrink-0 backdrop-blur-sm ${isLightMode ? 'bg-slate-50 border-slate-200' : 'bg-[#0B0E11]/80 border-[#2B3139]'}`}>
+                        <span className={`text-[10px] font-semibold uppercase tracking-wider ${isLightMode ? 'text-slate-500' : 'text-[#848E9C]'}`}>Results ({filteredProducts.length})</span>
+                        <span className={`text-[10px] font-semibold uppercase tracking-wider animate-pulse flex items-center gap-1 ${isLightMode ? 'text-blue-600' : 'text-[#FCD535]'}`}>
+                            <span className={`w-1.5 h-1.5 rounded-full ${isLightMode ? 'bg-blue-600' : 'bg-[#FCD535]'}`}></span> Active
                         </span>
                     </div>
                     <ul className="p-0 space-y-0 overflow-y-auto custom-scrollbar">
                         {itemsForNavigation.length === 0 ? (
                             <li className="p-8 text-center flex flex-col items-center gap-3">
-                                <div className="w-12 h-12 rounded-full bg-[#2B3139]/30 flex items-center justify-center">
-                                    <svg className="w-6 h-6 text-[#474D57]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9.172 9.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                                <div className={`w-12 h-12 rounded-full flex items-center justify-center ${isLightMode ? 'bg-slate-100' : 'bg-[#2B3139]/30'}`}>
+                                    <svg className={`w-6 h-6 ${isLightMode ? 'text-slate-400' : 'text-[#474D57]'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9.172 9.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                                 </div>
-                                <span className="text-xs text-[#848E9C] font-medium">No matches found</span>
+                                <span className={`text-xs font-medium ${isLightMode ? 'text-slate-400' : 'text-[#848E9C]'}`}>No matches found</span>
                             </li>
                         ) : itemsForNavigation.map((item, index) => {
                             if ('isAddNew' in item && item.isAddNew) {
                                 return (
-                                    <li key="add-new" className={`px-4 py-3 cursor-pointer flex items-center gap-4 transition-all border-b border-[#2B3139]/50 ${activeIndex === index ? 'bg-[#FCD535]/10' : 'hover:bg-[#2B3139]/50'}`} onMouseDown={() => handleItemClick(item)}>
-                                        <div className={`w-10 h-10 rounded-lg flex items-center justify-center transition-all ${activeIndex === index ? 'bg-[#FCD535] text-[#181A20]' : 'bg-[#2B3139] text-[#848E9C]'}`}>
+                                    <li key="add-new" className={`px-4 py-3 cursor-pointer flex items-center gap-4 transition-all border-b ${isLightMode ? 'border-slate-100' : 'border-[#2B3139]/50'} ${activeIndex === index ? (isLightMode ? 'bg-blue-50/50' : 'bg-[#FCD535]/10') : (isLightMode ? 'hover:bg-slate-50' : 'hover:bg-[#2B3139]/50')}`} onMouseDown={() => handleItemClick(item)}>
+                                        <div className={`w-10 h-10 rounded-lg flex items-center justify-center transition-all ${activeIndex === index ? (isLightMode ? 'bg-blue-600 text-white shadow-md' : 'bg-[#FCD535] text-[#181A20]') : (isLightMode ? 'bg-slate-100 text-slate-400' : 'bg-[#2B3139] text-[#848E9C]')}`}>
                                             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" /></svg>
                                         </div>
                                         <div className="min-w-0 flex flex-col">
-                                            <p className={`font-semibold text-sm leading-none mb-1 ${activeIndex === index ? 'text-[#FCD535]' : 'text-[#EAECEF]'}`}>Add new product</p>
-                                            <p className="text-xs text-[#848E9C] truncate">"{item.ProductName}"</p>
+                                            <p className={`font-semibold text-sm leading-none mb-1 ${activeIndex === index ? (isLightMode ? 'text-blue-600' : 'text-[#FCD535]') : (isLightMode ? 'text-slate-800' : 'text-[#EAECEF]')}`}>Add new product</p>
+                                            <p className={`text-xs truncate ${isLightMode ? 'text-slate-400' : 'text-[#848E9C]'}`}>"{item.ProductName}"</p>
                                         </div>
                                     </li>
                                 );
@@ -252,7 +255,7 @@ const SearchableProductDropdown: React.FC<SearchableProductDropdownProps> = ({
                             return (
                                 <li 
                                     key={product.ProductName} 
-                                    className={`px-4 py-3 cursor-pointer flex items-center gap-4 transition-all border-b border-[#2B3139]/50 last:border-0 relative ${activeIndex === index ? 'bg-[#2B3139]/40' : 'hover:bg-[#2B3139]/20'}`} 
+                                    className={`px-4 py-3 cursor-pointer flex items-center gap-4 transition-all border-b last:border-0 relative ${isLightMode ? 'border-slate-100' : 'border-[#2B3139]/50'} ${activeIndex === index ? (isLightMode ? 'bg-slate-50' : 'bg-[#2B3139]/40') : (isLightMode ? 'hover:bg-slate-50/50' : 'hover:bg-[#2B3139]/20')}`} 
                                     onMouseEnter={() => handleHoldStart(product, 400)}
                                     onMouseLeave={handleHoldEnd}
                                     onMouseDown={(e) => e.button === 0 && handleHoldStart(product, 400)}
@@ -260,23 +263,23 @@ const SearchableProductDropdown: React.FC<SearchableProductDropdownProps> = ({
                                     onTouchStart={() => handleHoldStart(product, 400)}
                                     onTouchEnd={() => handleItemClickFromHandler(product)}
                                 >
-                                    {activeIndex === index && <div className="absolute inset-y-0 left-0 w-1 bg-[#FCD535]"></div>}
+                                    {activeIndex === index && <div className={`absolute inset-y-0 left-0 w-1 ${isLightMode ? 'bg-blue-500' : 'bg-[#FCD535]'}`}></div>}
                                     
                                     {/* Product Visual */}
                                     <div className="relative flex-shrink-0">
-                                        <div className={`w-12 h-12 rounded-lg overflow-hidden border transition-all ${activeIndex === index ? 'border-[#FCD535]' : 'border-[#2B3139]'}`}>
+                                        <div className={`w-12 h-12 rounded-lg overflow-hidden border transition-all ${activeIndex === index ? (isLightMode ? 'border-blue-500' : 'border-[#FCD535]') : (isLightMode ? 'border-slate-200' : 'border-[#2B3139]')}`}>
                                             <img src={convertGoogleDriveUrl(product.ImageURL)} className={`w-full h-full object-cover ${hasNoImage ? 'opacity-20 grayscale' : ''}`} alt="" />
                                         </div>
                                     </div>
 
                                     {/* Product Meta */}
                                     <div className="min-w-0 flex-grow py-0.5">
-                                        <p className="font-semibold text-sm truncate text-[#EAECEF]" title={product.ProductName}>
+                                        <p className={`font-semibold text-sm truncate ${isLightMode ? 'text-slate-800' : 'text-[#EAECEF]'}`} title={product.ProductName}>
                                             {highlightMatch(product.ProductName, searchTerm)}
                                         </p>
                                         <div className="flex items-center gap-3 mt-1">
-                                            <span className="text-xs font-bold text-[#FCD535]">${product.Price.toFixed(2)}</span>
-                                            <span className="text-[10px] text-[#848E9C] uppercase tracking-wider bg-[#0B0E11] px-1.5 py-0.5 rounded border border-[#2B3139]">
+                                            <span className={`text-xs font-bold ${isLightMode ? 'text-blue-600' : 'text-[#FCD535]'}`}>${product.Price.toFixed(2)}</span>
+                                            <span className={`text-[10px] uppercase tracking-wider px-1.5 py-0.5 rounded border ${isLightMode ? 'bg-slate-50 border-slate-200 text-slate-500' : 'bg-[#0B0E11] border-[#2B3139] text-[#848E9C]'}`}>
                                                 {product.Barcode || 'N/A'}
                                             </span>
                                         </div>
@@ -286,7 +289,7 @@ const SearchableProductDropdown: React.FC<SearchableProductDropdownProps> = ({
                                     <div className="flex-shrink-0 pl-2 hidden sm:block">
                                         <button 
                                             type="button"
-                                            className={`w-8 h-8 rounded-full flex items-center justify-center transition-all ${activeIndex === index ? 'bg-[#FCD535] text-[#181A20]' : 'text-[#848E9C] hover:bg-[#2B3139] hover:text-[#EAECEF]'}`}
+                                            className={`w-8 h-8 rounded-full flex items-center justify-center transition-all ${activeIndex === index ? (isLightMode ? 'bg-blue-600 text-white shadow-md' : 'bg-[#FCD535] text-[#181A20]') : (isLightMode ? 'text-slate-400 hover:bg-slate-100 hover:text-slate-700' : 'text-[#848E9C] hover:bg-[#2B3139] hover:text-[#EAECEF]')}`}
                                             onClick={(e) => {
                                                 e.stopPropagation();
                                                 setPreviewProduct(product);
@@ -306,12 +309,12 @@ const SearchableProductDropdown: React.FC<SearchableProductDropdownProps> = ({
             {holdItem && (
                 <div className="fixed inset-0 z-[200] flex items-center justify-center p-6 animate-fade-in pointer-events-none">
                     <div className="absolute inset-0 bg-black/80 backdrop-blur-sm"></div>
-                    <div className="bg-[#1E2329] border-2 border-[#FCD535] p-6 rounded-none shadow-2xl max-w-xs w-full text-center animate-scale-in">
-                        <div className="w-24 h-24 mx-auto mb-4 rounded-none overflow-hidden border-2 border-[#FCD535]">
+                    <div className={`p-6 rounded-none shadow-2xl max-w-xs w-full text-center animate-scale-in border-2 ${isLightMode ? 'bg-white border-blue-500' : 'bg-[#1E2329] border-[#FCD535]'}`}>
+                        <div className={`w-24 h-24 mx-auto mb-4 rounded-none overflow-hidden border-2 ${isLightMode ? 'border-blue-500' : 'border-[#FCD535]'}`}>
                             <img src={convertGoogleDriveUrl(holdItem.ImageURL)} className="w-full h-full object-cover" />
                         </div>
-                        <h3 className="text-[#FCD535] font-black text-lg leading-tight uppercase tracking-tighter mb-2">{holdItem.ProductName}</h3>
-                        <p className="text-[#EAECEF] font-black font-mono text-base tracking-widest">${holdItem.Price.toFixed(2)}</p>
+                        <h3 className={`font-black text-lg leading-tight uppercase tracking-tighter mb-2 ${isLightMode ? 'text-blue-600' : 'text-[#FCD535]'}`}>{holdItem.ProductName}</h3>
+                        <p className={`font-black font-mono text-base tracking-widest ${isLightMode ? 'text-slate-900' : 'text-[#EAECEF]'}`}>${holdItem.Price.toFixed(2)}</p>
                     </div>
                 </div>
             )}
