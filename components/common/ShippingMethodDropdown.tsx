@@ -72,7 +72,7 @@ const ShippingMethodChip: React.FC<ShippingMethodChipProps> = ({ method, isSelec
                     className="w-7 h-7 rounded-lg object-contain bg-white p-0.5 border border-black/5 flex-shrink-0 shadow-sm"
                     alt="" 
                 />
-                <span className="text-[10px] font-black uppercase tracking-wider truncate">{method.MethodName}</span>
+                <span className="text-[10px] font-black uppercase tracking-wider">{method.MethodName}</span>
             </div>
             
             {/* Right side: Rec Cost badge / Icons */}
