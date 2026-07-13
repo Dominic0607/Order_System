@@ -25,7 +25,7 @@ interface MobileOrdersDashboardProps {
 
 const MobileOrdersDashboard: React.FC<MobileOrdersDashboardProps> = ({ onBack, initialFilters }) => {
     const { 
-        appData, refreshData, fetchOrders, orders, isOrdersLoading, language, isSyncing, advancedSettings
+        appData, refreshData, fetchOrders, orders, isOrdersLoading, language, isSyncing, advancedSettings, isSidebarCollapsed
     } = useContext(AppContext);
     const isLightMode = advancedSettings?.themeMode === 'light';
     const { setIsBottomNavHidden } = useUI();
@@ -196,8 +196,21 @@ const MobileOrdersDashboard: React.FC<MobileOrdersDashboardProps> = ({ onBack, i
 
     if (editingOrderId) {
         const order = enrichedOrders.find(o => o['Order ID'] === editingOrderId);
+        const sidebarWidth = (() => {
+            if (typeof window !== 'undefined' && window.innerWidth < 1024) return '0px';
+            const uiTheme = advancedSettings?.uiTheme || 'default';
+            if (uiTheme === 'binance') return isSidebarCollapsed ? '64px' : '240px';
+            if (uiTheme === 'neumorphism') return isSidebarCollapsed ? '96px' : '288px';
+            return isSidebarCollapsed ? '80px' : '256px';
+        })();
+
         return order ? (
-            <EditOrderPage order={order} onSaveSuccess={() => { setEditingOrderId(''); refreshData(); }} onCancel={() => setEditingOrderId('')} />
+            <div 
+                className={`fixed top-0 bottom-0 right-0 z-[100] flex flex-col ${isLightMode ? 'bg-[#f8fafc]' : 'bg-[#0B0E11]'}`}
+                style={{ left: sidebarWidth }}
+            >
+                <EditOrderPage order={order} onSaveSuccess={() => { setEditingOrderId(''); refreshData(); }} onCancel={() => setEditingOrderId('')} />
+            </div>
         ) : null;
     }
 

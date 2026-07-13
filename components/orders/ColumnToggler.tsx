@@ -33,8 +33,9 @@ interface ColumnTogglerProps {
 }
 
 export const ColumnToggler: React.FC<ColumnTogglerProps> = ({ visibleColumns, onToggle, columns = availableColumns }) => {
-    const { language } = useContext(AppContext);
+    const { language, advancedSettings } = useContext(AppContext);
     const t = translations[language];
+    const isLightMode = advancedSettings?.themeMode === 'light';
     const [isOpen, setIsOpen] = useState(false);
     const ref = useRef<HTMLDivElement>(null);
 
@@ -50,21 +51,37 @@ export const ColumnToggler: React.FC<ColumnTogglerProps> = ({ visibleColumns, on
         <div className="relative inline-block text-left h-full" ref={ref}>
             <button 
                 onClick={() => setIsOpen(!isOpen)} 
-                className="flex h-full items-center justify-center gap-2 px-3 py-2.5 bg-gray-900 border border-gray-800 text-gray-400 hover:text-white hover:border-blue-500/30 rounded-xl text-[9px] xl:text-[10px] font-black uppercase tracking-widest transition-all active:scale-95"
+                className={`flex h-full items-center justify-center gap-2 px-3 py-2.5 border rounded-xl text-[9px] xl:text-[10px] font-black uppercase tracking-widest transition-all active:scale-95 ${
+                    isLightMode
+                        ? 'bg-white border-slate-200 text-slate-600 hover:text-slate-800 hover:border-slate-350'
+                        : 'bg-gray-900 border-gray-800 text-gray-400 hover:text-white hover:border-blue-500/30'
+                }`}
             >
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-blue-400" viewBox="0 0 20 20" fill="currentColor"><path d="M5 4a1 1 0 00-2 0v12a1 1 0 002 0V4zM9 4a1 1 0 00-2 0v12a1 1 0 002 0V4zM13 4a1 1 0 00-2 0v12a1 1 0 002 0V4zM17 4a1 1 0 00-2 0v12a1 1 0 002 0V4z" /></svg>
                 {t.columns}
                 <svg className={`h-3 w-3 ml-0.5 transition-transform duration-500 ${isOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M19 9l-7 7-7-7" strokeWidth={3} strokeLinecap="round" strokeLinejoin="round"/></svg>
             </button>
             {isOpen && (
-                <div className="absolute right-0 mt-3 w-64 bg-[#1a2235]/95 border border-white/10 rounded-[1.8rem] shadow-[0_30px_70px_rgba(0,0,0,0.7)] z-[100] origin-top-right overflow-hidden backdrop-blur-3xl p-3 animate-fade-in-scale">
+                <div className={`absolute right-0 mt-3 w-64 border rounded-[1.8rem] z-[100] origin-top-right overflow-hidden backdrop-blur-3xl p-3 animate-fade-in-scale shadow-[0_15px_40px_rgba(0,0,0,0.15)] ${
+                    isLightMode
+                        ? 'bg-white border-slate-200'
+                        : 'bg-[#1a2235]/95 border border-white/10 shadow-[0_30px_70px_rgba(0,0,0,0.7)]'
+                }`}>
                     <div className="space-y-1">
-                        <p className="text-[9px] font-black text-gray-500 uppercase tracking-[0.2em] px-3 py-2 mb-1 border-b border-white/5">{t.columns}</p>
+                        <p className={`text-[9px] font-black uppercase tracking-[0.2em] px-3 py-2 mb-1 border-b ${isLightMode ? 'text-slate-400 border-slate-100' : 'text-gray-500 border-white/5'}`}>{t.columns}</p>
                         <div className="max-h-[400px] overflow-y-auto custom-scrollbar">
                             {columns.map(col => (
-                                <label key={col.key} className={`flex items-center px-3 py-2.5 text-xs rounded-xl cursor-pointer transition-all group mb-0.5 ${visibleColumns.has(col.key) ? 'bg-blue-600/10 text-white' : 'text-gray-400 hover:bg-white/5'}`}>
+                                <label key={col.key} className={`flex items-center px-3 py-2.5 text-xs rounded-xl cursor-pointer transition-all group mb-0.5 ${
+                                    visibleColumns.has(col.key)
+                                        ? (isLightMode ? 'bg-blue-50 text-blue-600 font-extrabold' : 'bg-blue-600/10 text-white')
+                                        : (isLightMode ? 'text-slate-650 hover:bg-slate-50' : 'text-gray-400 hover:bg-white/5')
+                                }`}>
                                     <input type="checkbox" className="sr-only" checked={visibleColumns.has(col.key)} onChange={() => onToggle(col.key)} />
-                                    <div className={`w-4.5 h-4.5 rounded-md border-2 transition-all flex items-center justify-center ${visibleColumns.has(col.key) ? 'bg-blue-600 border-blue-400 shadow-[0_0_10px_rgba(37,99,235,0.4)]' : 'border-gray-700 bg-black/20'}`}>
+                                    <div className={`w-4.5 h-4.5 rounded-md border-2 transition-all flex items-center justify-center ${
+                                        visibleColumns.has(col.key)
+                                            ? 'bg-blue-600 border-blue-400 shadow-[0_0_10px_rgba(37,99,235,0.4)]'
+                                            : (isLightMode ? 'border-slate-200 bg-slate-50' : 'border-gray-700 bg-black/20')
+                                    }`}>
                                         {visibleColumns.has(col.key) && <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={4}><path d="M5 13l4 4L19 7" /></svg>}
                                     </div>
                                     <span className="ml-3 font-bold group-hover:translate-x-1 transition-transform uppercase tracking-tighter text-[10px]">

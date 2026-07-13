@@ -28,5 +28,10 @@
     "resolveJsonModule": true,
     "esModuleInterop": true,
     "noEmit": true
-  }
+  },
+  "exclude": [
+    "node_modules",
+    "dist",
+    "Advanced_HLS_Proxy"
+  ]
 }

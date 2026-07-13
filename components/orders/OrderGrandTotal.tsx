@@ -37,18 +37,21 @@ export const DesktopGrandTotalRow: React.FC<DesktopGrandTotalRowProps> = ({ tota
     const { language, advancedSettings } = useContext(AppContext);
     const t = translations[language];
     const isBinance = advancedSettings?.uiTheme === 'binance';
+    const isLightMode = advancedSettings?.themeMode === 'light';
     
     if (totals.count === 0) return null;
 
     const check = isVisible;
 
     // Theme Variables - Enhanced for a borderless layout
-    const rowBg = isBinance 
-        ? 'bg-[#1E2329]' 
-        : 'bg-[#0f172a]/90 backdrop-blur-3xl';
+    const rowBg = isLightMode
+        ? 'bg-slate-50 border-b border-slate-200'
+        : isBinance 
+            ? 'bg-[#1E2329]' 
+            : 'bg-[#0f172a]/90 backdrop-blur-3xl';
     
-    const greenText = isBinance ? 'text-[#0ECB81]' : 'text-emerald-400';
-    const redText = isBinance ? 'text-[#F6465D]' : 'text-red-400';
+    const greenText = isLightMode ? 'text-emerald-600' : (isBinance ? 'text-[#0ECB81]' : 'text-emerald-400');
+    const redText = isLightMode ? 'text-rose-600' : (isBinance ? 'text-[#F6465D]' : 'text-red-400');
     const isNumericColumn = (key: string) => ['total', 'shippingCost'].includes(key);
 
     const renderCell = (key: string, content: React.ReactNode, extraClasses = "") => {
@@ -56,7 +59,7 @@ export const DesktopGrandTotalRow: React.FC<DesktopGrandTotalRowProps> = ({ tota
         return (
             <div 
                 style={{ width: `${getColWidth(key)}px` }} 
-                className={`order-column-cell ${isNumericColumn(key) ? 'is-numeric' : ''} flex-shrink-0 flex items-center px-4 py-3 ${extraClasses} ${showBorders ? (isBinance ? 'border-r border-[#2B3139]' : 'border-r border-white/10') : ''}`}
+                className={`order-column-cell ${isNumericColumn(key) ? 'is-numeric' : ''} flex-shrink-0 flex items-center px-4 py-3 ${extraClasses} ${showBorders ? (isLightMode ? 'border-r border-slate-200' : isBinance ? 'border-r border-[#2B3139]' : 'border-r border-white/10') : ''}`}
             >
                 {content}
             </div>
@@ -64,9 +67,9 @@ export const DesktopGrandTotalRow: React.FC<DesktopGrandTotalRowProps> = ({ tota
     };
 
     return (
-        <div className={`flex w-full ${rowBg} transition-all duration-300 group z-10 relative overflow-hidden ${isBinance ? 'border-b border-[#2B3139]' : 'border-b border-white/10'}`}>
+        <div className={`flex w-full ${rowBg} transition-all duration-300 group z-10 relative overflow-hidden ${isLightMode ? 'border-b border-slate-200' : isBinance ? 'border-b border-[#2B3139]' : 'border-b border-white/10'}`}>
             {/* Animated Ambient Light (Default Theme Only) */}
-            {!isBinance && (
+            {!isBinance && !isLightMode && (
                 <div className="absolute inset-0 pointer-events-none overflow-hidden opacity-20">
                     <div className="absolute top-[-50%] left-[-10%] w-[40%] h-[200%] bg-blue-600/10 blur-[100px] rotate-45 animate-pulse"></div>
                     <div className="absolute bottom-[-50%] right-[-10%] w-[40%] h-[200%] bg-emerald-500/5 blur-[100px] rotate-45 animate-pulse" style={{ animationDelay: '1s' }}></div>
@@ -74,15 +77,15 @@ export const DesktopGrandTotalRow: React.FC<DesktopGrandTotalRowProps> = ({ tota
             )}
 
             {showSelection && (
-                <div className={`order-column-cell flex-shrink-0 flex items-center justify-center px-0.5 ${showBorders ? (isBinance ? 'border-r border-[#2B3139]' : 'border-r border-white/10') : ''}`} style={{ width: '40px' }}></div>
+                <div className={`order-column-cell flex-shrink-0 flex items-center justify-center px-0.5 ${showBorders ? (isLightMode ? 'border-r border-slate-200' : isBinance ? 'border-r border-[#2B3139]' : 'border-r border-white/10') : ''}`} style={{ width: '40px' }}></div>
             )}
             
             {renderCell('index', (
                 <div className="flex flex-col items-center justify-center w-full transition-transform group-hover:scale-105">
-                    <span className={`text-[7px] font-black uppercase tracking-[0.2em] mb-0.5 ${isBinance ? 'text-[#848E9C]' : 'text-blue-500/50'}`}>
+                    <span className={`text-[7px] font-black uppercase tracking-[0.2em] mb-0.5 ${isLightMode ? 'text-slate-500' : isBinance ? 'text-[#848E9C]' : 'text-blue-500/50'}`}>
                         {language === 'km' ? 'ចំនួន' : 'COUNT'}
                     </span>
-                    <div className={`px-2 py-0.5 rounded-sm ${isBinance ? 'bg-[#2B3139] text-[#EAECEF]' : 'bg-blue-500/10 text-white'} font-black text-[11px] tabular-nums border border-transparent`}>
+                    <div className={`px-2 py-0.5 rounded-sm ${isLightMode ? 'bg-slate-200 text-slate-800' : isBinance ? 'bg-[#2B3139] text-[#EAECEF]' : 'bg-blue-500/10 text-white'} font-black text-[11px] tabular-nums border border-transparent`}>
                         {totals.count}
                     </div>
                 </div>
@@ -90,10 +93,10 @@ export const DesktopGrandTotalRow: React.FC<DesktopGrandTotalRowProps> = ({ tota
             
             {renderCell('actions', (
                 <div className="flex flex-col items-center justify-center w-full opacity-60">
-                   <span className={`text-[7px] font-black uppercase tracking-[0.2em] ${isBinance ? 'text-[#848E9C]' : 'text-gray-500 italic'}`}>
+                   <span className={`text-[7px] font-black uppercase tracking-[0.2em] ${isLightMode ? 'text-slate-500' : isBinance ? 'text-[#848E9C]' : 'text-gray-500 italic'}`}>
                         {language === 'km' ? 'សរុប' : 'SUMMARY'}
                     </span>
-                    {isBinance && <div className="flex items-center gap-1 mt-0.5">
+                    {isBinance && !isLightMode && <div className="flex items-center gap-1 mt-0.5">
                         <span className="w-1 h-1 bg-[#0ECB81] rounded-full animate-pulse"></span>
                         <span className="text-[6px] font-bold text-[#0ECB81]">LIVE</span>
                     </div>}
@@ -103,11 +106,11 @@ export const DesktopGrandTotalRow: React.FC<DesktopGrandTotalRowProps> = ({ tota
             {renderCell('customerName', (
                 <div className="flex items-center gap-3">
                     <div className="relative flex items-center justify-center">
-                        <div className={`w-1 h-8 rounded-full relative z-10 ${isBinance ? 'bg-[#FCD535]' : 'bg-gradient-to-b from-blue-400 to-indigo-600 shadow-[0_0_10px_rgba(59,130,246,0.3)]'}`}></div>
+                        <div className={`w-1 h-8 rounded-full relative z-10 ${isLightMode ? 'bg-blue-500' : isBinance ? 'bg-[#FCD535]' : 'bg-gradient-to-b from-blue-400 to-indigo-600 shadow-[0_0_10px_rgba(59,130,246,0.3)]'}`}></div>
                     </div>
                     <div className="flex flex-col">
-                        <span className={`text-[8px] font-black uppercase tracking-[0.2em] mb-0.5 ${isBinance ? 'text-[#848E9C]' : 'text-blue-500/60'}`}>SYSTEM TOTALS</span>
-                        <h4 className={`font-black uppercase tracking-tight leading-none ${isBinance ? 'text-[14px] text-[#EAECEF]' : 'text-[16px] text-white italic'}`}>
+                        <span className={`text-[8px] font-black uppercase tracking-[0.2em] mb-0.5 ${isLightMode ? 'text-slate-500' : isBinance ? 'text-[#848E9C]' : 'text-blue-500/60'}`}>SYSTEM TOTALS</span>
+                        <h4 className={`font-black uppercase tracking-tight leading-none ${isLightMode ? 'text-[14px] text-slate-800' : isBinance ? 'text-[14px] text-[#EAECEF]' : 'text-[16px] text-white italic'}`}>
                             {t.grand_total}
                         </h4>
                     </div>
@@ -122,12 +125,12 @@ export const DesktopGrandTotalRow: React.FC<DesktopGrandTotalRowProps> = ({ tota
             
             {renderCell('total', (
                 <div className="flex flex-col items-start w-full relative">
-                    <span className={`text-[8px] font-black uppercase mb-0.5 tracking-wider ${isBinance ? 'text-[#848E9C]' : 'text-emerald-500/70'}`}>
+                    <span className={`text-[8px] font-black uppercase mb-0.5 tracking-wider ${isLightMode ? 'text-emerald-600' : isBinance ? 'text-[#848E9C]' : 'text-emerald-500/70'}`}>
                         {t.total_revenue}
                     </span>
                     <div className="flex items-baseline gap-0.5">
-                        <span className={`font-black ${isBinance ? 'text-[12px] text-[#0ECB81]' : 'text-[12px] text-emerald-500'}`}>$</span>
-                        <span className={`font-black tabular-nums tracking-tighter ${isBinance ? 'text-[20px] text-[#EAECEF]' : 'text-[22px] text-white shadow-emerald-500/20'}`}>
+                        <span className={`font-black ${isLightMode ? 'text-[12px] text-emerald-600' : isBinance ? 'text-[12px] text-[#0ECB81]' : 'text-[12px] text-emerald-500'}`}>$</span>
+                        <span className={`font-black tabular-nums tracking-tighter ${isLightMode ? 'text-[20px] text-slate-900' : isBinance ? 'text-[20px] text-[#EAECEF]' : 'text-[22px] text-white shadow-emerald-500/20'}`}>
                             {totals.grandTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                         </span>
                     </div>
@@ -139,12 +142,12 @@ export const DesktopGrandTotalRow: React.FC<DesktopGrandTotalRowProps> = ({ tota
             
             {renderCell('shippingCost', (
                 <div className="flex flex-col items-start w-full opacity-90">
-                    <span className={`text-[8px] font-black uppercase mb-0.5 tracking-wider ${isBinance ? 'text-[#848E9C]' : 'text-orange-500/70'}`}>
+                    <span className={`text-[8px] font-black uppercase mb-0.5 tracking-wider ${isLightMode ? 'text-slate-500' : isBinance ? 'text-[#848E9C]' : 'text-orange-500/70'}`}>
                         {t.total_cost}
                     </span>
                     <div className="flex items-baseline gap-0.5">
-                        <span className={`font-black ${isBinance ? 'text-[11px] text-[#848E9C]' : 'text-[11px] text-orange-500'}`}>$</span>
-                        <span className={`font-black tabular-nums tracking-tight ${isBinance ? 'text-[15px] text-[#EAECEF]' : 'text-[17px] text-white/90'}`}>
+                        <span className={`font-black ${isLightMode ? 'text-[11px] text-slate-500' : isBinance ? 'text-[11px] text-[#848E9C]' : 'text-[11px] text-orange-500'}`}>$</span>
+                        <span className={`font-black tabular-nums tracking-tight ${isLightMode ? 'text-[15px] text-slate-800' : isBinance ? 'text-[15px] text-[#EAECEF]' : 'text-[17px] text-white/90'}`}>
                             {totals.internalCost.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                         </span>
                     </div>
@@ -154,17 +157,17 @@ export const DesktopGrandTotalRow: React.FC<DesktopGrandTotalRowProps> = ({ tota
             {renderCell('status', (
                 <div className="flex items-center gap-3 justify-center w-full">
                     <div className="flex flex-col items-center group/stat">
-                        <div className={`font-black tabular-nums leading-none ${isBinance ? 'text-[13px]' : 'text-[15px]'} ${greenText} group-hover/stat:scale-110 transition-transform`}>
+                        <div className={`font-black tabular-nums leading-none ${isLightMode ? 'text-[13px]' : isBinance ? 'text-[13px]' : 'text-[15px]'} ${greenText} group-hover/stat:scale-110 transition-transform`}>
                             {totals.paidCount}
                         </div>
-                        <span className={`font-black uppercase mt-0.5 tracking-widest ${isBinance ? 'text-[6px] text-[#848E9C]' : 'text-[6px] text-gray-500'}`}>{t.paid}</span>
+                        <span className={`font-black uppercase mt-0.5 tracking-widest ${isLightMode ? 'text-[6px] text-slate-500' : isBinance ? 'text-[6px] text-[#848E9C]' : 'text-[6px] text-gray-500'}`}>{t.paid}</span>
                     </div>
-                    <div className={`w-px h-5 ${isBinance ? 'bg-[#2B3139]' : 'bg-white/10'}`}></div>
+                    <div className={`w-px h-5 ${isLightMode ? 'bg-slate-200' : isBinance ? 'bg-[#2B3139]' : 'bg-white/10'}`}></div>
                     <div className="flex flex-col items-center group/stat">
-                        <div className={`font-black tabular-nums leading-none ${isBinance ? 'text-[13px]' : 'text-[15px]'} ${redText} group-hover/stat:scale-110 transition-transform`}>
+                        <div className={`font-black tabular-nums leading-none ${isLightMode ? 'text-[13px]' : isBinance ? 'text-[13px]' : 'text-[15px]'} ${redText} group-hover/stat:scale-110 transition-transform`}>
                             {totals.unpaidCount}
                         </div>
-                        <span className={`font-black uppercase mt-0.5 tracking-widest ${isBinance ? 'text-[6px] text-[#848E9C]' : 'text-[6px] text-gray-500'}`}>{t.unpaid}</span>
+                        <span className={`font-black uppercase mt-0.5 tracking-widest ${isLightMode ? 'text-[6px] text-slate-500' : isBinance ? 'text-[6px] text-[#848E9C]' : 'text-[6px] text-gray-500'}`}>{t.unpaid}</span>
                     </div>
                 </div>
             ), "justify-center")}

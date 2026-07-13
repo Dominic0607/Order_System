@@ -10,6 +10,7 @@ const FEATURE_INFO: Record<string, { label: string, desc: string, icon: string }
     [FEATURES.VIEW_ORDER_LIST]: { label: 'បញ្ជីការកម្ម៉ង់', desc: 'មើលបញ្ជីការកម្ម៉ង់ទាំងអស់ក្នុងប្រព័ន្ធ', icon: '📋' },
     [FEATURES.CREATE_ORDER]: { label: 'បង្កើតការកម្ម៉ង់', desc: 'បង្កើតការកម្ម៉ង់ថ្មីសម្រាប់អតិថិជន', icon: '➕' },
     [FEATURES.EDIT_ORDER]: { label: 'កែសម្រួលការកម្ម៉ង់', desc: 'កែប្រែព័ត៌មានការកម្ម៉ង់ដែលមានស្រាប់', icon: '📝' },
+    [FEATURES.EDIT_ORDER_GLOBAL]: { label: 'កែសម្រួលការកម្ម៉ង់សកល', desc: 'កែសម្រួលការកម្ម៉ង់ដោយមិនកំណត់ម៉ោង ឬក្រុមការងារ', icon: '🌐' },
     [FEATURES.VERIFY_ORDER]: { label: 'ផ្ទៀងផ្ទាត់ការកម្ម៉ង់', desc: 'បញ្ជាក់ការកម្ម៉ង់ថាត្រឹមត្រូវ', icon: '✅' },
     [FEATURES.DELETE_ORDER]: { label: 'លុបការកម្ម៉ង់', desc: 'លុបការកម្ម៉ង់ចេញពីប្រព័ន្ធ', icon: '🗑️' },
     [FEATURES.VIEW_GLOBAL_ORDERS]: { label: 'មើលការកម្ម៉ង់សកល', desc: 'មើលការកម្ម៉ង់ពីគ្រប់ក្រុមទាំងអស់', icon: '🌍' },
@@ -59,6 +60,7 @@ const PermissionMatrix: React.FC = () => {
                 FEATURES.VIEW_ORDER_LIST,
                 FEATURES.CREATE_ORDER,
                 FEATURES.EDIT_ORDER,
+                FEATURES.EDIT_ORDER_GLOBAL,
                 FEATURES.VERIFY_ORDER,
                 FEATURES.DELETE_ORDER,
                 FEATURES.VIEW_GLOBAL_ORDERS

@@ -55,13 +55,13 @@ const AdvancedSettingsModal: React.FC<AdvancedSettingsModalProps> = ({ onClose }
 
     const ToggleItem = ({ label, desc, value, onChange }: any) => (
         <div className={`flex items-center justify-between group p-4 rounded-2xl ${isLightMode ? 'bg-gray-50' : 'bg-white/5'} transition-all hover:scale-[1.01]`}>
-            <div className="space-y-1">
+            <div className="space-y-1 mr-4">
                 <h3 className={`text-sm font-black ${isLightMode ? 'text-gray-900' : 'text-white'} uppercase tracking-tight`}>{label}</h3>
                 <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest leading-relaxed">{desc}</p>
             </div>
             <button 
                 onClick={() => onChange(!value)}
-                className={`w-12 h-6 rounded-full p-1 transition-all duration-300 ${value ? '' : 'bg-gray-600'}`}
+                className={`w-12 h-6 rounded-full p-1 transition-all duration-300 flex-shrink-0 ${value ? '' : 'bg-gray-600'}`}
                 style={{ backgroundColor: value ? accentColor : undefined }}
             >
                 <div className={`w-4 h-4 rounded-full bg-white shadow-lg transform transition-transform duration-300 ${value ? 'translate-x-6' : 'translate-x-0'}`} />
@@ -71,12 +71,12 @@ const AdvancedSettingsModal: React.FC<AdvancedSettingsModalProps> = ({ onClose }
 
     const SliderItem = ({ label, value, min, max, step, unit, onChange, desc }: any) => (
         <div className={`space-y-4 p-4 rounded-2xl ${isLightMode ? 'bg-gray-50' : 'bg-white/5'}`}>
-            <div className="flex justify-between items-end">
-                <div className="space-y-1">
-                    <h3 className={`text-sm font-black ${isLightMode ? 'text-gray-900' : 'text-white'} uppercase tracking-tight`}>{label}</h3>
-                    {desc && <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest">{desc}</p>}
+            <div className="flex justify-between items-end gap-4">
+                <div className="space-y-1 min-w-0">
+                    <h3 className={`text-sm font-black ${isLightMode ? 'text-gray-900' : 'text-white'} uppercase tracking-tight truncate`}>{label}</h3>
+                    {desc && <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest line-clamp-2">{desc}</p>}
                 </div>
-                <span className="text-xl font-black font-mono leading-none" style={{ color: accentColor }}>
+                <span className="text-xl font-black font-mono leading-none flex-shrink-0" style={{ color: accentColor }}>
                     {value}<span className="text-[10px] text-gray-500 uppercase ml-1">{unit}</span>
                 </span>
             </div>
@@ -92,12 +92,12 @@ const AdvancedSettingsModal: React.FC<AdvancedSettingsModalProps> = ({ onClose }
     const SegmentedControl = ({ label, options, value, onChange }: any) => (
         <div className="space-y-4">
             <h3 className={`text-[10px] font-black text-gray-500 uppercase tracking-widest`}>{label}</h3>
-            <div className={`flex p-1 rounded-xl ${isLightMode ? 'bg-gray-100' : 'bg-black/40'} gap-1`}>
+            <div className={`flex p-1 rounded-xl ${isLightMode ? 'bg-gray-100' : 'bg-black/40'} gap-1 overflow-x-auto no-scrollbar`}>
                 {options.map((opt: any) => (
                     <button
                         key={opt.id}
                         onClick={() => onChange(opt.id)}
-                        className={`flex-1 py-2 px-3 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all ${
+                        className={`flex-1 min-w-[70px] py-2 px-3 rounded-lg text-[9px] md:text-[10px] font-black uppercase tracking-wider transition-all whitespace-nowrap ${
                             value === opt.id 
                             ? (isLightMode ? 'bg-white text-black shadow-sm' : 'bg-white/10 text-white shadow-xl') 
                             : 'text-gray-500 hover:text-gray-300'
@@ -121,8 +121,20 @@ const AdvancedSettingsModal: React.FC<AdvancedSettingsModalProps> = ({ onClose }
                 </div>
 
                 {/* Sidebar */}
-                <aside className={`w-full md:w-[320px] ${isLightMode ? 'bg-gray-50' : 'bg-black/40'} backdrop-blur-3xl p-6 flex flex-col flex-shrink-0 border-r ${isLightMode ? 'border-gray-200' : 'border-white/5'} z-20`}>
-                    <div className="mb-10 mt-4 flex items-center gap-4">
+                <aside className={`w-full md:w-[320px] ${isLightMode ? 'bg-gray-50' : 'bg-black/40'} backdrop-blur-3xl p-4 md:p-6 flex flex-col flex-shrink-0 border-b md:border-b-0 md:border-r ${isLightMode ? 'border-gray-200' : 'border-white/5'} z-20`}>
+                    <div className="flex md:hidden justify-between items-center mb-4">
+                        <div className="flex items-center gap-3">
+                            <div className="w-8 h-8 rounded-xl flex items-center justify-center" style={{ backgroundColor: accentColor }}>
+                                <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5}><path d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" /></svg>
+                            </div>
+                            <h2 className="text-base font-black tracking-tighter uppercase italic leading-none">{t.advanced_settings}</h2>
+                        </div>
+                        <button onClick={onClose} className="w-9 h-9 bg-white/5 border border-white/10 text-gray-400 rounded-xl flex items-center justify-center transition-all active:scale-90">
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={3}><path d="M6 18L18 6M6 6l12 12" /></svg>
+                        </button>
+                    </div>
+
+                    <div className="hidden md:flex items-center gap-4 mb-10 mt-4">
                         <div className="w-12 h-12 rounded-2xl flex items-center justify-center shadow-2xl transition-all duration-500" style={{ backgroundColor: accentColor }}>
                             <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5}><path d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" /></svg>
                         </div>
@@ -132,7 +144,7 @@ const AdvancedSettingsModal: React.FC<AdvancedSettingsModalProps> = ({ onClose }
                         </div>
                     </div>
 
-                    <nav className="space-y-2">
+                    <nav className="flex flex-row md:flex-col overflow-x-auto no-scrollbar gap-1.5 md:space-y-2 pb-2 md:pb-0">
                         {[
                             { id: 'interface', label: t.interface_settings, icon: 'M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 13a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6zM16 13a1 1 0 011-1h2a1 1 0 011 1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1v-6z' },
                             { id: 'audio', label: t.audio_settings, icon: 'M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z' },
@@ -144,25 +156,25 @@ const AdvancedSettingsModal: React.FC<AdvancedSettingsModalProps> = ({ onClose }
                                 <button 
                                     key={tab.id}
                                     onClick={() => setActiveTab(tab.id as SettingsTab)}
-                                    className={`w-full flex items-center gap-4 px-5 py-4 rounded-2xl transition-all group ${
+                                    className={`flex-shrink-0 flex flex-col md:flex-row items-center gap-1.5 md:gap-4 px-3 py-2.5 md:px-5 md:py-4 rounded-xl md:rounded-2xl transition-all group ${
                                         isActive 
-                                        ? (isLightMode ? 'bg-white text-black shadow-lg shadow-black/5' : 'bg-white/10 text-white shadow-2xl shadow-black/20') 
+                                        ? (isLightMode ? 'bg-white text-black shadow-md' : 'bg-white/10 text-white shadow-lg') 
                                         : (isLightMode ? 'text-gray-500 hover:bg-gray-100 hover:text-black' : 'text-gray-400 hover:bg-white/5 hover:text-white')
                                     }`}
                                 >
                                     <svg 
-                                        className={`w-5 h-5 transition-transform duration-300 ${isActive ? 'scale-110' : 'group-hover:scale-110'}`} 
+                                        className={`w-4 h-4 md:w-5 md:h-5 transition-transform duration-300 ${isActive ? 'scale-110' : 'group-hover:scale-110'}`} 
                                         style={{ color: isActive ? accentColor : undefined }}
                                         fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5}
                                     ><path d={tab.icon} /></svg>
-                                    <span className="text-[12px] font-black uppercase tracking-wider">{tab.label}</span>
+                                    <span className="text-[9px] md:text-[12px] font-black uppercase tracking-wider whitespace-nowrap">{tab.label.split(' ')[0]}</span>
                                 </button>
                             );
                         })}
                     </nav>
 
                     {/* UI Live Preview Card */}
-                    <div className="mt-10 p-6 rounded-3xl border border-white/5 bg-gradient-to-br from-white/5 to-transparent">
+                    <div className="hidden md:block mt-10 p-6 rounded-3xl border border-white/5 bg-gradient-to-br from-white/5 to-transparent">
                         <SectionTitle title={t.ui_preview} />
                         <div className="space-y-4">
                             <div 
@@ -189,14 +201,14 @@ const AdvancedSettingsModal: React.FC<AdvancedSettingsModalProps> = ({ onClose }
                         </div>
                     </div>
 
-                    <div className="mt-auto pt-6 text-center">
+                    <div className="hidden md:block mt-auto pt-6 text-center">
                         <p className="text-[9px] font-black text-gray-500 uppercase tracking-[0.3em]">Device ID: {Math.random().toString(36).substring(7).toUpperCase()}</p>
                     </div>
                 </aside>
 
                 {/* Main Content */}
                 <main className="flex-1 overflow-hidden flex flex-col relative z-10">
-                    <header className="px-10 py-12 flex justify-between items-end border-b border-white/5">
+                    <header className="hidden md:flex px-10 py-12 justify-between items-end border-b border-white/5">
                         <div className="animate-fade-in-up">
                             <p className="text-[10px] font-black text-gray-500 uppercase tracking-[0.4em] mb-3">{t.advanced_settings}</p>
                             <h2 className="text-5xl md:text-7xl font-black uppercase tracking-tighter italic leading-[0.8]">
@@ -208,7 +220,14 @@ const AdvancedSettingsModal: React.FC<AdvancedSettingsModalProps> = ({ onClose }
                         </button>
                     </header>
 
-                    <div className="flex-1 overflow-y-auto custom-scrollbar p-10 space-y-12 pb-32">
+                    <div className="flex-1 overflow-y-auto custom-scrollbar p-6 md:p-10 space-y-8 md:space-y-12 pb-32">
+                        {/* Mobile active tab heading */}
+                        <div className="block md:hidden mb-2">
+                            <p className="text-[9px] font-black text-gray-500 uppercase tracking-widest mb-1">{t.advanced_settings}</p>
+                            <h3 className="text-2xl font-black uppercase tracking-tighter italic">
+                                {activeTab === 'interface' ? t.interface_settings : activeTab === 'audio' ? t.audio_settings : activeTab === 'privacy' ? t.privacy_security : t.system_performance}
+                            </h3>
+                        </div>
                         {activeTab === 'interface' && (
                             <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 animate-fade-in-up">
                                 <div className="space-y-10">
@@ -424,7 +443,7 @@ const AdvancedSettingsModal: React.FC<AdvancedSettingsModalProps> = ({ onClose }
                         )}
                     </div>
 
-                    <footer className="h-20 px-10 border-t border-white/5 flex items-center justify-between bg-black/20 backdrop-blur-xl">
+                    <footer className="hidden md:flex h-20 px-10 border-t border-white/5 items-center justify-between bg-black/20 backdrop-blur-xl">
                         <p className="text-[9px] font-black text-gray-500 uppercase tracking-[0.3em]">Settings persistent on this local device</p>
                         <div className="flex gap-2">
                              <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></div>

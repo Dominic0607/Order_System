@@ -480,7 +480,7 @@ const IncentiveReport: React.FC<IncentiveReportProps> = ({ onBack }) => {
                                 <th className="px-6 py-4.5">{language === 'km' ? 'បុគ្គលិក' : 'Staff'}</th>
                                 <th className="px-6 py-4.5">{language === 'km' ? 'គម្រោង' : 'Project'}</th>
                                 <th className="px-6 py-4.5">{language === 'km' ? 'ចំនួនលក់សរុប (Grand Total)' : 'Performance Volume'}</th>
-                                <th className="px-6 py-4.5">{language === 'km' ? 'ការគណនាស្អិតរមួត' : 'Calculations Breakdown'}</th>
+                                <th className="px-6 py-4.5">{language === 'km' ? 'ការគណនាលម្អិត' : 'Calculations Breakdown'}</th>
                                 <th className="px-6 py-4.5 text-right">{language === 'km' ? 'ប្រាក់រង្វាន់ទទួលបាន' : 'Reward (USD)'}</th>
                             </tr>
                         </thead>

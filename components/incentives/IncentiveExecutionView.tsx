@@ -6,7 +6,7 @@ import UserAvatar from '../common/UserAvatar';
 import { getProjectById, calculateIncentive, getIncentiveManualData, saveIncentiveManualData, getIncentiveCustomPayouts, saveIncentiveCustomPayout, lockIncentivePayout } from '../../services/incentiveService';
 import IncentivePdfExportModal from './IncentivePdfExportModal';
 import {
-    ChevronLeft, FileText, Lock, Unlock, Search, CheckCircle, RefreshCw,
+    ChevronLeft, FileText, Lock, Unlock, Search, CheckCircle, RefreshCw, Save,
     AlertCircle, Activity, Coins, TrendingUp, ShieldCheck, MousePointer2,
     Trophy, Calendar, Target, Layout, Cpu, Zap, ArrowRight, Layers
 } from 'lucide-react';
@@ -78,12 +78,17 @@ const IncentiveExecutionView: React.FC<IncentiveExecutionViewProps> = ({ project
     const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
     const [isPdfModalOpen, setIsPdfModalOpen] = useState(false);
     const [isCalculating, setIsCalculating] = useState(false);
+    const [isAutoSave, setIsAutoSave] = useState(true);
+    const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
 
     // Separate timers: saveTimer debounces API writes, recalcTimer debounces recalculation
     const debounceTimer = useRef<NodeJS.Timeout | null>(null);
     const recalcTimer = useRef<NodeJS.Timeout | null>(null);
     const pendingManual = useRef<Record<string, Record<string, number>>>({});
+    const unsavedManualChanges = useRef<Record<string, Record<string, number>>>({});
+    const unsavedCustomPayouts = useRef<Record<string, number>>({});
     const monthInputRef = useRef<HTMLInputElement>(null);
+    const lastTabRef = useRef<string>('');
 
     useEffect(() => {
         const fetchProject = async () => {
@@ -105,10 +110,13 @@ const IncentiveExecutionView: React.FC<IncentiveExecutionViewProps> = ({ project
 
     useEffect(() => {
         if (!activeMetricTab || !project?.calculators) return;
-        const calc = project.calculators.find(c => String(c.id) === activeMetricTab);
-        if (calc) {
-            const level = calc.calculationLevel || 'Individual';
-            setEntryMode(level === 'Team' ? 'team' : 'user');
+        if (activeMetricTab !== lastTabRef.current) {
+            lastTabRef.current = activeMetricTab;
+            const calc = project.calculators.find(c => String(c.id) === activeMetricTab);
+            if (calc) {
+                const level = calc.calculationLevel || 'Individual';
+                setEntryMode(level === 'Team' ? 'team' : 'user');
+            }
         }
     }, [activeMetricTab, project?.calculators]);
 
@@ -131,6 +139,11 @@ const IncentiveExecutionView: React.FC<IncentiveExecutionViewProps> = ({ project
             customData.forEach((item: any) => { cpMap[item.userName] = item.value; });
             setCustomPayouts(cpMap);
             setCalculationResults(results);
+
+            // Clear any unsaved changes on fresh load
+            unsavedManualChanges.current = {};
+            unsavedCustomPayouts.current = {};
+            setHasUnsavedChanges(false);
         } catch (error) {
             console.error('Error loading incentive data', error);
             setSaveStatus('error');
@@ -156,37 +169,43 @@ const IncentiveExecutionView: React.FC<IncentiveExecutionViewProps> = ({ project
         const valNum = Number(val) || 0;
         const cellKey = `${pk}_${entryMode === 'team' ? 'team:' : 'user:'}${tid}`;
 
-        if (!pendingManual.current[metric]) pendingManual.current[metric] = {};
-        pendingManual.current[metric][cellKey] = valNum;
-
         setManualDataMap(prev => ({ ...prev, [metric]: { ...(prev[metric] || {}), [cellKey]: valNum } }));
-        setSaveStatus('saving');
 
-        if (debounceTimer.current) clearTimeout(debounceTimer.current);
-        debounceTimer.current = setTimeout(async () => {
-            const latestVal = pendingManual.current[metric]?.[cellKey] ?? valNum;
-            const success = await saveIncentiveManualData({
-                projectId: project.id,
-                month: selectedMonth,
-                metricType: metric,
-                dataKey: cellKey,
-                value: latestVal
-            });
-            if (success) {
-                setSaveStatus('saved');
-                setTimeout(() => setSaveStatus('idle'), 1500);
-                if (recalcTimer.current) clearTimeout(recalcTimer.current);
-                recalcTimer.current = setTimeout(() => loadDataAndCalculate(true), 3000);
-            } else {
-                setSaveStatus('error');
-            }
-        }, 800);
+        if (isAutoSave) {
+            if (!pendingManual.current[metric]) pendingManual.current[metric] = {};
+            pendingManual.current[metric][cellKey] = valNum;
+            setSaveStatus('saving');
+
+            if (debounceTimer.current) clearTimeout(debounceTimer.current);
+            debounceTimer.current = setTimeout(async () => {
+                const latestVal = pendingManual.current[metric]?.[cellKey] ?? valNum;
+                const success = await saveIncentiveManualData({
+                    projectId: project.id,
+                    month: selectedMonth,
+                    metricType: metric,
+                    dataKey: cellKey,
+                    value: latestVal
+                });
+                if (success) {
+                    setSaveStatus('saved');
+                    setTimeout(() => setSaveStatus('idle'), 1500);
+                    if (recalcTimer.current) clearTimeout(recalcTimer.current);
+                    recalcTimer.current = setTimeout(() => loadDataAndCalculate(true), 3000);
+                } else {
+                    setSaveStatus('error');
+                }
+            }, 800);
+        } else {
+            if (!unsavedManualChanges.current[metric]) unsavedManualChanges.current[metric] = {};
+            unsavedManualChanges.current[metric][cellKey] = valNum;
+            setHasUnsavedChanges(true);
+        }
     };
 
     const handleManualDataIncrement = (metric: string, tid: string, p: string, delta: number) => {
         if (isLocked || !project?.id) return;
         const keyWithPrefix = `${p}_${entryMode === 'team' ? 'team:' : 'user:'}${tid}`;
-        const currentVal = pendingManual.current[metric]?.[keyWithPrefix]
+        const currentVal = (isAutoSave ? pendingManual.current[metric]?.[keyWithPrefix] : unsavedManualChanges.current[metric]?.[keyWithPrefix])
             ?? (manualDataMap[metric] || {})[keyWithPrefix]
             ?? (manualDataMap[metric] || {})[`${p}_${tid}`]
             ?? 0;
@@ -198,27 +217,103 @@ const IncentiveExecutionView: React.FC<IncentiveExecutionViewProps> = ({ project
     const handleCustomPayoutChange = (un: string, val: string) => {
         if (isLocked || !project?.id) return;
         const valNum = Number(val) || 0;
-        pendingPayout.current[un] = valNum;
+        
         setCustomPayouts(prev => ({ ...prev, [un]: valNum }));
+
+        if (isAutoSave) {
+            pendingPayout.current[un] = valNum;
+            setSaveStatus('saving');
+            if (debounceTimer.current) clearTimeout(debounceTimer.current);
+            debounceTimer.current = setTimeout(async () => {
+                const latest = pendingPayout.current[un] ?? valNum;
+                const success = await saveIncentiveCustomPayout({
+                    projectId: project.id,
+                    month: selectedMonth,
+                    userName: un,
+                    value: latest
+                });
+                if (success) {
+                    setSaveStatus('saved');
+                    setTimeout(() => setSaveStatus('idle'), 1500);
+                    if (recalcTimer.current) clearTimeout(recalcTimer.current);
+                    recalcTimer.current = setTimeout(() => loadDataAndCalculate(true), 3000);
+                } else {
+                    setSaveStatus('error');
+                }
+            }, 800);
+        } else {
+            unsavedCustomPayouts.current[un] = valNum;
+            setHasUnsavedChanges(true);
+        }
+    };
+
+    const handleManualSave = async () => {
+        if (isLocked || !project?.id || isCalculating) return;
         setSaveStatus('saving');
-        if (debounceTimer.current) clearTimeout(debounceTimer.current);
-        debounceTimer.current = setTimeout(async () => {
-            const latest = pendingPayout.current[un] ?? valNum;
-            const success = await saveIncentiveCustomPayout({
-                projectId: project.id,
-                month: selectedMonth,
-                userName: un,
-                value: latest
+        setIsCalculating(true);
+
+        try {
+            const savePromises: Promise<boolean>[] = [];
+
+            Object.entries(unsavedManualChanges.current).forEach(([metric, keys]) => {
+                Object.entries(keys).forEach(([cellKey, value]) => {
+                    savePromises.push(
+                        saveIncentiveManualData({
+                            projectId: project.id,
+                            month: selectedMonth,
+                            metricType: metric,
+                            dataKey: cellKey,
+                            value
+                        })
+                    );
+                });
             });
-            if (success) {
+
+            Object.entries(unsavedCustomPayouts.current).forEach(([un, value]) => {
+                savePromises.push(
+                    saveIncentiveCustomPayout({
+                        projectId: project.id,
+                        month: selectedMonth,
+                        userName: un,
+                        value
+                    })
+                );
+            });
+
+            if (savePromises.length === 0) {
+                setSaveStatus('idle');
+                setIsCalculating(false);
+                return;
+            }
+
+            const results = await Promise.all(savePromises);
+            const allSuccess = results.every(res => res === true);
+
+            if (allSuccess) {
+                unsavedManualChanges.current = {};
+                unsavedCustomPayouts.current = {};
+                setHasUnsavedChanges(false);
                 setSaveStatus('saved');
-                setTimeout(() => setSaveStatus('idle'), 1500);
-                if (recalcTimer.current) clearTimeout(recalcTimer.current);
-                recalcTimer.current = setTimeout(() => loadDataAndCalculate(true), 3000);
+                setTimeout(() => setSaveStatus('idle'), 2000);
+                await loadDataAndCalculate(false);
             } else {
                 setSaveStatus('error');
+                alert(language === 'km' ? 'កំហុសក្នុងការរក្សាទុកទិន្នន័យមួយចំនួន!' : 'Error saving some changes!');
             }
-        }, 800);
+        } catch (error) {
+            console.error('Error in manual save:', error);
+            setSaveStatus('error');
+        } finally {
+            setIsCalculating(false);
+        }
+    };
+
+    const toggleAutoSave = async () => {
+        const nextVal = !isAutoSave;
+        setIsAutoSave(nextVal);
+        if (nextVal && hasUnsavedChanges) {
+            await handleManualSave();
+        }
     };
 
     const preparedResults = useMemo(() => {
@@ -346,6 +441,47 @@ const IncentiveExecutionView: React.FC<IncentiveExecutionViewProps> = ({ project
                                 ? (language === 'km' ? 'បានចាក់សោ' : 'Locked') 
                                 : (language === 'km' ? 'កំពុងបើក' : 'Open')}
                         </div>
+
+                        {/* Auto Save Toggle */}
+                        <div className="flex items-center gap-3 bg-white/5 border border-white/10 rounded-2xl px-4 h-11 shrink-0 select-none">
+                            <span className="text-[10px] font-black text-white/40 tracking-wider uppercase">
+                                {language === 'km' ? 'រក្សាទុកស្វ័យប្រវត្ត' : 'Auto Save'}
+                            </span>
+                            <button
+                                type="button"
+                                onClick={toggleAutoSave}
+                                className={`w-9 h-5.5 rounded-full p-0.5 transition-all duration-300 relative ${
+                                    isAutoSave ? 'bg-[#F0B90B]' : 'bg-white/10'
+                                }`}
+                                title={language === 'km' ? 'បិទ/បើក ការរក្សាទុកស្វ័យប្រវត្ត' : 'Toggle Auto Save'}
+                            >
+                                <div
+                                    className={`w-4 h-4 rounded-full bg-black shadow-md transition-all duration-300 ${
+                                        isAutoSave ? 'translate-x-4' : 'translate-x-0'
+                                    }`}
+                                />
+                            </button>
+                        </div>
+
+                        {/* Manual Save Button */}
+                        {!isAutoSave && (
+                            <button
+                                type="button"
+                                onClick={handleManualSave}
+                                disabled={!hasUnsavedChanges || isCalculating}
+                                className={`h-11 px-5 rounded-2xl text-[11px] font-bold tracking-wide transition-all border flex items-center gap-2.5 active:scale-95 shrink-0 ${
+                                    hasUnsavedChanges
+                                        ? 'bg-[#F0B90B] text-black border-[#F0B90B] shadow-lg shadow-[#F0B90B]/20 hover:bg-[#F0B90B]/90'
+                                        : 'bg-white/5 border-white/10 text-white/30 cursor-not-allowed'
+                                }`}
+                            >
+                                <Save className="w-4 h-4 shrink-0" />
+                                {language === 'km' ? 'រក្សាទុកទិន្នន័យ' : 'Save Changes'}
+                                {hasUnsavedChanges && (
+                                    <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse shrink-0" />
+                                )}
+                            </button>
+                        )}
 
                         {/* Divider */}
                         <div className="h-7 w-px bg-white/10 shrink-0 hidden lg:block" />

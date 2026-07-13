@@ -55,6 +55,7 @@ interface RowData {
     t: any;
     groupByLabel: string;
     isBinance: boolean;
+    isLightMode: boolean;
 }
 
 interface OrdersListDesktopProps {
@@ -142,6 +143,8 @@ const ORDER_LIST_STYLES = `
     .theme-binance .table-border-r { border-right-color: #2B3139; }
     .theme-default .table-border-b { border-bottom-color: rgba(255, 255, 255, 0.08); }
     .theme-default .table-border-r { border-right-color: rgba(255, 255, 255, 0.08); }
+    .theme-light .table-border-b { border-bottom-color: #E2E8F0; }
+    .theme-light .table-border-r { border-right-color: #E2E8F0; }
     .order-column-cell,
     .order-column-header {
         position: relative;
@@ -159,6 +162,10 @@ const ORDER_LIST_STYLES = `
     }
     .theme-default .order-column-cell::after,
     .theme-default .order-column-header::after {
+        background: linear-gradient(to bottom, transparent, rgba(148, 163, 184, 0.18), transparent);
+    }
+    .theme-light .order-column-cell::after,
+    .theme-light .order-column-header::after {
         background: linear-gradient(to bottom, transparent, rgba(148, 163, 184, 0.18), transparent);
     }
     .order-column-cell:last-child::after,
@@ -184,6 +191,9 @@ const ORDER_LIST_STYLES = `
         background: #FCD535;
     }
     .theme-default .order-column-header:hover::before {
+        background: #3B82F6;
+    }
+    .theme-light .order-column-header:hover::before {
         background: #3B82F6;
     }
     .order-column-label {
@@ -212,6 +222,9 @@ const ORDER_LIST_STYLES = `
     .theme-default .order-table-row {
         box-shadow: inset 0 -1px 0 rgba(255, 255, 255, 0.08);
     }
+    .theme-light .order-table-row {
+        box-shadow: inset 0 -1px 0 #E2E8F0;
+    }
     .order-table-row::before {
         content: "";
         position: absolute;
@@ -225,6 +238,9 @@ const ORDER_LIST_STYLES = `
         box-shadow: inset 0 -1px 0 rgba(252, 213, 53, 0.28), inset 0 1px 0 rgba(252, 213, 53, 0.12);
     }
     .theme-default .order-table-row:hover {
+        box-shadow: inset 0 -1px 0 rgba(59, 130, 246, 0.3), inset 0 1px 0 rgba(59, 130, 246, 0.14);
+    }
+    .theme-light .order-table-row:hover {
         box-shadow: inset 0 -1px 0 rgba(59, 130, 246, 0.3), inset 0 1px 0 rgba(59, 130, 246, 0.14);
     }
     .order-table-row.is-selected::before { background: #FCD535; }
@@ -278,7 +294,7 @@ const ColumnContent = ({ col, order, data, item, enriched }: { col: string, orde
     const { 
         getColWidth, onView, onEdit, handleCopyTemplate, handlePrint, handleCopy,
         toggleOrderVerified, handleSendTelegram, updatingIds, canVerifyOrder, canEditOrder,
-        showBorders, copiedTemplateId, appData, t, isBinance 
+        showBorders, copiedTemplateId, appData, t, isBinance, isLightMode
     } = data;
 
     const { 
@@ -292,23 +308,23 @@ const ColumnContent = ({ col, order, data, item, enriched }: { col: string, orde
 
     switch (col) {
         case 'index':
-            return <div className="font-bold text-[#848E9C] text-xs text-center w-full">{item.type === 'order' ? item.originalIndex + 1 : ''}</div>;
+            return <div className={`font-bold text-xs text-center w-full ${isLightMode ? 'text-slate-500' : 'text-[#848E9C]'}`}>{item.type === 'order' ? item.originalIndex + 1 : ''}</div>;
         case 'actions':
             return (
                 <div className="flex items-center justify-center gap-2 w-full">
-                    <button onClick={() => onView && onView(order)} className="w-8 h-8 flex items-center justify-center bg-[#2B3139] hover:bg-[#363C44] text-[#848E9C] hover:text-white rounded transition-all" title="View" aria-label="View Order"><svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path d="M2.458 12C3.732 7.943 7.523 5 12 5c3.478 0 6.991 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" strokeWidth={2}/></svg></button>
+                    <button onClick={() => onView && onView(order)} className={`w-8 h-8 flex items-center justify-center rounded transition-all ${isLightMode ? 'bg-slate-100 hover:bg-slate-200 text-slate-650 hover:text-slate-800' : 'bg-[#2B3139] hover:bg-[#363C44] text-[#848E9C] hover:text-white'}`} title="View" aria-label="View Order"><svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path d="M2.458 12C3.732 7.943 7.523 5 12 5c3.478 0 6.991 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" strokeWidth={2}/></svg></button>
                     {allowEdit && (
-                        <button onClick={() => onEdit && onEdit(order)} className="w-8 h-8 flex items-center justify-center bg-[#2B3139] hover:bg-[#363C44] text-[#FCD535] rounded transition-all" title="Edit" aria-label="Edit Order"><svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" strokeWidth={2}/></svg></button>
+                        <button onClick={() => onEdit && onEdit(order)} className={`w-8 h-8 flex items-center justify-center rounded transition-all ${isLightMode ? 'bg-amber-50 hover:bg-amber-100 text-amber-600 hover:text-amber-800' : 'bg-[#2B3139] hover:bg-[#363C44] text-[#FCD535]'}`} title="Edit" aria-label="Edit Order"><svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" strokeWidth={2}/></svg></button>
                     )}
                 </div>
             );
         case 'customerName':
             return (
                 <div className="w-full overflow-hidden">
-                    <div className="font-bold text-[#EAECEF] truncate mb-0.5 text-[14px]">{order['Customer Name']}</div>
+                    <div className={`font-bold truncate mb-0.5 text-[14px] ${isLightMode ? 'text-slate-800' : 'text-[#EAECEF]'}`}>{order['Customer Name']}</div>
                     <div className="flex items-center gap-2">
                         {carrierLogo && <img src={convertGoogleDriveUrl(carrierLogo)} className="w-3.5 h-3.5 object-contain" alt="Carrier" />}
-                        <div className="text-[#848E9C] font-bold text-[11px] tracking-tight">{displayPhone}</div>
+                        <div className={`font-bold text-[11px] tracking-tight ${isLightMode ? 'text-slate-400' : 'text-[#848E9C]'}`}>{displayPhone}</div>
                     </div>
                 </div>
             );
@@ -319,8 +335,8 @@ const ColumnContent = ({ col, order, data, item, enriched }: { col: string, orde
                         <div className="flex -space-x-2 items-center shrink-0">
                             {productThumbnails.slice(0, 3).map((p: any, i: number) => (
                                 <div key={i} className="relative z-10 hover:z-20">
-                                    <div className="w-10 h-10 rounded bg-[#2B3139] border border-[#363C44] overflow-hidden shadow-sm">
-                                        {p.img ? <img src={p.img} className="w-full h-full object-cover" alt="Product" /> : <div className="w-full h-full flex items-center justify-center text-[8px] text-[#848E9C]">No Pic</div>}
+                                    <div className={`w-10 h-10 rounded overflow-hidden shadow-sm border ${isLightMode ? 'bg-slate-100 border-slate-200' : 'bg-[#2B3139] border-[#363C44]'}`}>
+                                        {p.img ? <img src={p.img} className="w-full h-full object-cover" alt="Product" /> : <div className={`w-full h-full flex items-center justify-center text-[8px] ${isLightMode ? 'text-slate-400' : 'text-[#848E9C]'}`}>No Pic</div>}
                                     </div>
                                     <div className="absolute -top-1 -right-1 bg-[#FCD535] text-[#181A20] text-[9px] font-bold px-1 rounded-sm border border-[#181A20]">
                                         {p.quantity}
@@ -329,7 +345,7 @@ const ColumnContent = ({ col, order, data, item, enriched }: { col: string, orde
                             ))}
                             {order['Package Photo'] && (
                                 <div className="relative z-0 ml-1 hover:z-20">
-                                    <div className="w-10 h-10 rounded-lg bg-black/20 border border-blue-500/40 overflow-hidden shadow-sm">
+                                    <div className={`w-10 h-10 rounded-lg bg-black/20 border overflow-hidden shadow-sm ${isLightMode ? 'border-blue-200' : 'border-blue-500/40'}`}>
                                         <img src={convertGoogleDriveUrl(order['Package Photo'])} className="w-full h-full object-cover" alt="PKG" />
                                     </div>
                                     <div className="absolute -bottom-1 -right-1 bg-blue-500 text-white text-[8px] font-black px-1 rounded-sm border border-[#181A20]">
@@ -340,10 +356,10 @@ const ColumnContent = ({ col, order, data, item, enriched }: { col: string, orde
                         </div>
                         <div className="flex-1 min-w-0 flex flex-col justify-center">
                             <div className="flex items-center gap-1.5">
-                                <span className="text-[12px] font-bold text-[#EAECEF] truncate uppercase tracking-tight leading-none">{order.Products[0]?.name}</span>
+                                <span className={`text-[12px] font-bold truncate uppercase tracking-tight leading-none ${isLightMode ? 'text-slate-800' : 'text-[#EAECEF]'}`}>{order.Products[0]?.name}</span>
                             </div>
                             <div className="flex items-center gap-2 mt-1">
-                                <span className="text-[10px] font-medium text-[#848E9C] uppercase tracking-wider leading-none">{order.Products.length} Items</span>
+                                <span className={`text-[10px] font-medium uppercase tracking-wider leading-none ${isLightMode ? 'text-slate-400' : 'text-[#848E9C]'}`}>{order.Products.length} Items</span>
                             </div>
                         </div>
                     </div>
@@ -352,23 +368,23 @@ const ColumnContent = ({ col, order, data, item, enriched }: { col: string, orde
         case 'location':
             return (
                 <div className="w-full overflow-hidden">
-                    <div className="font-bold text-[#EAECEF] text-[12px] truncate leading-tight uppercase tracking-tight">{order.Location}</div>
-                    <div className="text-[10px] text-[#848E9C] font-medium truncate mt-0.5">{order['Address Details']}</div>
+                    <div className={`font-bold text-[12px] truncate leading-tight uppercase tracking-tight ${isLightMode ? 'text-slate-800' : 'text-[#EAECEF]'}`}>{order.Location}</div>
+                    <div className={`text-[10px] font-medium truncate mt-0.5 ${isLightMode ? 'text-slate-400' : 'text-[#848E9C]'}`}>{order['Address Details']}</div>
                 </div>
             );
         case 'pageInfo':
             return (
                 <div className={`w-full flex items-center gap-2.5 os-tooltip-trigger`}>
                     <div className="os-tooltip">{order.Page}</div>
-                    {pageLogoUrl && <img src={pageLogoUrl} className="w-8 h-8 rounded border border-[#2B3139] object-cover" alt="Page Logo" />}
-                    <span className="font-bold text-[#848E9C] text-[11px] uppercase truncate tracking-tight">{order.Page}</span>
+                    {pageLogoUrl && <img src={pageLogoUrl} className={`w-8 h-8 rounded border object-cover ${isLightMode ? 'border-slate-200' : 'border-[#2B3139]'}`} alt="Page Logo" />}
+                    <span className={`font-bold text-[11px] uppercase truncate tracking-tight ${isLightMode ? 'text-slate-500' : 'text-[#848E9C]'}`}>{order.Page}</span>
                 </div>
             );
         case 'brandSales':
         case 'fulfillment':
             return (
                 <div className="w-full flex items-center overflow-hidden">
-                    <span className="px-2 py-1 rounded bg-[#2B3139] text-[#EAECEF] font-bold text-[10px] uppercase tracking-tight truncate block text-center w-full">
+                    <span className={`px-2 py-1 rounded font-bold text-[10px] uppercase tracking-tight truncate block text-center w-full ${isLightMode ? 'bg-slate-100 text-slate-700' : 'bg-[#2B3139] text-[#EAECEF]'}`}>
                         {order['Fulfillment Store']}
                     </span>
                 </div>
@@ -376,8 +392,8 @@ const ColumnContent = ({ col, order, data, item, enriched }: { col: string, orde
         case 'total':
             return (
                 <div className="w-full flex items-center justify-end">
-                    <div className="font-bold text-[#EAECEF] text-[16px] tracking-tight tabular-nums text-right">
-                        <span className="text-[11px] mr-0.5">$</span>
+                    <div className={`font-bold text-[16px] tracking-tight tabular-nums text-right ${isLightMode ? 'text-slate-900' : 'text-[#EAECEF]'}`}>
+                        <span className={`text-[11px] mr-0.5 ${isLightMode ? 'text-slate-500' : 'text-gray-400'}`}>$</span>
                         {(Number(order['Grand Total']) || 0).toFixed(2)}
                     </div>
                 </div>
@@ -386,18 +402,18 @@ const ColumnContent = ({ col, order, data, item, enriched }: { col: string, orde
             return (
                 <div className={`w-full flex items-center os-tooltip-trigger`}>
                     <div className="os-tooltip">{order['Internal Shipping Method']}</div>
-                    <div className="flex items-center gap-2 bg-[#2B3139]/50 p-1.5 rounded border border-[#2B3139] overflow-hidden w-full">
-                        <div className="w-6 h-6 bg-[#2B3139] rounded flex items-center justify-center flex-shrink-0">
-                            {shippingLogo ? <img src={convertGoogleDriveUrl(shippingLogo)} className="w-4 h-4 object-contain" alt="Shipping" /> : <span className="text-[8px] text-[#848E9C]">N/A</span>}
+                    <div className={`flex items-center gap-2 p-1.5 rounded border overflow-hidden w-full ${isLightMode ? 'bg-slate-100/50 border-slate-200' : 'bg-[#2B3139]/50 border-[#2B3139]'}`}>
+                        <div className={`w-6 h-6 rounded flex items-center justify-center flex-shrink-0 ${isLightMode ? 'bg-slate-200' : 'bg-[#2B3139]'}`}>
+                            {shippingLogo ? <img src={convertGoogleDriveUrl(shippingLogo)} className="w-4 h-4 object-contain" alt="Shipping" /> : <span className={`text-[8px] ${isLightMode ? 'text-slate-400' : 'text-[#848E9C]'}`}>N/A</span>}
                         </div>
-                        <span className="text-[10px] font-bold text-[#848E9C] uppercase truncate tracking-tight">{order['Internal Shipping Method'] || 'N/A'}</span>
+                        <span className={`text-[10px] font-bold uppercase truncate tracking-tight ${isLightMode ? 'text-slate-650' : 'text-[#848E9C]'}`}>{order['Internal Shipping Method'] || 'N/A'}</span>
                     </div>
                 </div>
             );
         case 'driver':
-            return <div className="w-full font-bold text-[#848E9C] text-[11px] uppercase truncate tracking-tight flex items-center">{order['Driver Name'] || order['Internal Shipping Details'] || 'Unassigned'}</div>;
+            return <div className={`w-full font-bold text-[11px] uppercase truncate tracking-tight flex items-center ${isLightMode ? 'text-slate-500' : 'text-[#848E9C]'}`}>{order['Driver Name'] || order['Internal Shipping Details'] || 'Unassigned'}</div>;
         case 'shippingCost':
-            return <div className="w-full font-bold text-[#848E9C] text-[12px] flex items-center justify-end tabular-nums text-right">${(Number(order['Internal Cost']) || 0).toFixed(2)}</div>;
+            return <div className={`w-full font-bold text-[12px] flex items-center justify-end tabular-nums text-right ${isLightMode ? 'text-slate-500' : 'text-[#848E9C]'}`}>${(Number(order['Internal Cost']) || 0).toFixed(2)}</div>;
         case 'fulfillmentStatus': {
             const fsColors: Record<string, string> = {
                 'Pending': 'bg-yellow-500/10 text-yellow-400',
@@ -412,7 +428,7 @@ const ColumnContent = ({ col, order, data, item, enriched }: { col: string, orde
             return (
                 <div className="w-full flex items-center justify-center os-tooltip-trigger">
                     {reason && <div className="os-tooltip">{reason}</div>}
-                    <span className={`px-2.5 py-1 rounded text-[9px] font-bold uppercase tracking-wider ${fsColors[fs] || 'bg-[#2B3139] text-[#848E9C]'}`}>
+                    <span className={`px-2.5 py-1 rounded text-[9px] font-bold uppercase tracking-wider ${fsColors[fs] || (isLightMode ? 'bg-slate-100 text-slate-500' : 'bg-[#2B3139] text-[#848E9C]')}`}>
                         {fs}
                     </span>
                 </div>
@@ -421,7 +437,7 @@ const ColumnContent = ({ col, order, data, item, enriched }: { col: string, orde
         case 'status':
             return (
                 <div className="w-full flex items-center justify-center">
-                    <span className={`px-3 py-1 rounded text-[10px] font-bold uppercase tracking-wider ${order['Payment Status'] === 'Paid' ? 'bg-[#0ECB81]/10 text-[#0ECB81]' : 'bg-[#F6465D]/10 text-[#F6465D]'}`}>
+                    <span className={`px-3 py-1 rounded text-[10px] font-bold uppercase tracking-wider ${order['Payment Status'] === 'Paid' ? 'bg-[#0ECB81]/10 text-[#0ECB81]' : (isLightMode ? 'bg-rose-50 text-rose-600' : 'bg-[#F6465D]/10 text-[#F6465D]')}`}>
                         {order['Payment Status']}
                     </span>
                 </div>
@@ -429,33 +445,33 @@ const ColumnContent = ({ col, order, data, item, enriched }: { col: string, orde
         case 'date':
             return (
                 <div className="w-full flex flex-col justify-center leading-tight">
-                    <span className="font-bold text-[#EAECEF] text-[11px] tracking-tight">{orderDate.toLocaleDateString('km-KH')}</span>
-                    <span className="text-[#848E9C] font-medium text-[10px] uppercase tracking-wider">{orderDate.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}</span>
+                    <span className={`font-bold text-[11px] tracking-tight ${isLightMode ? 'text-slate-700' : 'text-[#EAECEF]'}`}>{orderDate.toLocaleDateString('km-KH')}</span>
+                    <span className={`font-medium text-[10px] uppercase tracking-wider ${isLightMode ? 'text-slate-400' : 'text-[#848E9C]'}`}>{orderDate.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}</span>
                 </div>
             );
         case 'note':
             return (
-                <div className="w-full text-[11px] text-[#848E9C] font-medium truncate flex items-center italic">
+                <div className={`w-full text-[11px] font-medium truncate flex items-center italic ${isLightMode ? 'text-slate-400' : 'text-[#848E9C]'}`}>
                     {order.Note || '---'}
                 </div>
             );
         case 'print':
             return (
                 <div className="w-full flex items-center justify-center gap-2">
-                    <button onClick={() => handleCopyTemplate(order)} className={`w-8 h-8 flex items-center justify-center rounded transition-all border ${copiedTemplateId === order['Order ID'] ? 'bg-[#FCD535] border-[#FCD535] text-[#181A20]' : 'bg-[#2B3139] text-[#848E9C] hover:text-white border-[#363C44]'}`} title="Copy Template" aria-label="Copy Template"><svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" /></svg></button>
-                    <button onClick={() => handlePrint(order)} className="w-8 h-8 flex items-center justify-center bg-[#2B3139] hover:bg-[#0ECB81] text-[#848E9C] hover:text-white rounded transition-all border border-[#363C44]" title="Print Label" aria-label="Print Label"><svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path d="M6 9V2h12v7M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2m-2 4H8v-4h8v4z" /></svg></button>
+                    <button onClick={() => handleCopyTemplate(order)} className={`w-8 h-8 flex items-center justify-center rounded transition-all border ${copiedTemplateId === order['Order ID'] ? (isLightMode ? 'bg-blue-600 border-blue-600 text-white' : 'bg-[#FCD535] border-[#FCD535] text-[#181A20]') : (isLightMode ? 'bg-slate-100 hover:bg-slate-200 text-slate-500 border-slate-200' : 'bg-[#2B3139] text-[#848E9C] hover:text-white border-[#363C44]')}`} title="Copy Template" aria-label="Copy Template"><svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" /></svg></button>
+                    <button onClick={() => handlePrint(order)} className={`w-8 h-8 flex items-center justify-center rounded transition-all border ${isLightMode ? 'bg-slate-100 hover:bg-emerald-50 hover:text-emerald-600 text-slate-500 border-slate-200 hover:border-emerald-300' : 'bg-[#2B3139] hover:bg-[#0ECB81] text-[#848E9C] hover:text-white border-[#363C44]'}`} title="Print Label" aria-label="Print Label"><svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path d="M6 9V2h12v7M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2m-2 4H8v-4h8v4z" /></svg></button>
                 </div>
             );
         case 'check':
             return (
                 <div className="w-full flex items-center justify-center">
-                    <div className={`h-6 w-6 rounded border flex items-center justify-center transition-all ${isVerified ? 'bg-[#0ECB81] border-[#0ECB81]' : 'border-[#474D57] hover:border-[#FCD535]'} ${canVerifyOrder() ? 'cursor-pointer' : 'cursor-not-allowed'}`} onClick={() => canVerifyOrder() && !updatingIds.has(order['Order ID']) && toggleOrderVerified(order['Order ID'], order.IsVerified)}>
+                    <div className={`h-6 w-6 rounded border flex items-center justify-center transition-all ${isVerified ? 'bg-[#0ECB81] border-[#0ECB81]' : isLightMode ? 'border-slate-300 hover:border-blue-500 bg-white' : 'border-[#474D57] hover:border-[#FCD535] bg-transparent'} ${canVerifyOrder() ? 'cursor-pointer' : 'cursor-not-allowed'}`} onClick={() => canVerifyOrder() && !updatingIds.has(order['Order ID']) && toggleOrderVerified(order['Order ID'], order.IsVerified)}>
                         {updatingIds.has(order['Order ID']) ? <Spinner size="xs" /> : isVerified && <svg className="w-3.5 h-3.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={4}><path d="M5 13l4 4L19 7" /></svg>}
                     </div>
                 </div>
             );
         case 'orderId':
-            return <div className="text-center flex items-center justify-center w-full"><button onClick={() => handleCopy(order['Order ID'])} className="text-[10px] font-bold font-mono text-[#848E9C] hover:text-[#FCD535] transition-colors uppercase tracking-tight">{order['Order ID'].substring(0, 6)}</button></div>;
+            return <div className="text-center flex items-center justify-center w-full"><button onClick={() => handleCopy(order['Order ID'])} className={`text-[10px] font-bold font-mono transition-colors uppercase tracking-tight ${isLightMode ? 'text-slate-400 hover:text-blue-600' : 'text-[#848E9C] hover:text-[#FCD535]'}`}>{order['Order ID'].substring(0, 6)}</button></div>;
         case 'telegramStatus': {
             const id1 = order['Telegram Message ID 1'];
             const id2 = order['Telegram Message ID 2'];
@@ -479,7 +495,7 @@ const ColumnContent = ({ col, order, data, item, enriched }: { col: string, orde
                             </span>
                             <button 
                                 onClick={(e) => { e.stopPropagation(); handleSendTelegram(order['Order ID']); }} 
-                                className={`mt-1 px-2 py-1 text-[9px] font-black uppercase tracking-widest rounded-sm transition-all flex items-center gap-1 ${isBinance ? 'bg-[#FCD535] text-[#181A20] hover:bg-[#f0c51d]' : 'bg-blue-600 text-white hover:bg-blue-500 shadow-lg shadow-blue-900/20'}`}
+                                className={`mt-1 px-2 py-1 text-[9px] font-black uppercase tracking-widest rounded-sm transition-all flex items-center gap-1 ${isLightMode ? 'bg-blue-600 text-white hover:bg-blue-500 shadow-lg shadow-blue-900/10' : isBinance ? 'bg-[#FCD535] text-[#181A20] hover:bg-[#f0c51d]' : 'bg-blue-600 text-white hover:bg-blue-500 shadow-lg shadow-blue-900/20'}`}
                                 disabled={updatingIds.has(order['Order ID'])}
                             >
                                 {updatingIds.has(order['Order ID']) ? <Spinner size="xs" /> : t.btn_send_telegram}
@@ -499,7 +515,7 @@ const OrderRow = memo((props: any) => {
     const { index, style, ...data } = props;
     const { 
         items, visibleCols, getColWidth, totalTableWidth, onToggleSelect, selectedIds, 
-        isBinance, showBorders, groupByLabel
+        isBinance, showBorders, groupByLabel, isLightMode
     } = data as RowData;
     
     const item = items[index];
@@ -507,11 +523,11 @@ const OrderRow = memo((props: any) => {
 
     if (item.type === 'header') {
         return (
-            <div style={{ ...style, width: `${totalTableWidth}px` }} className={`${isBinance ? 'bg-[#1E2329] border-y border-[#2B3139]' : 'bg-white/[0.03] backdrop-blur-md border-y border-white/5'} flex items-center px-6 z-10`}>
+            <div style={{ ...style, width: `${totalTableWidth}px` }} className={`${isLightMode ? 'bg-[#f1f5f9] border-y border-slate-200' : isBinance ? 'bg-[#1E2329] border-y border-[#2B3139]' : 'bg-white/[0.03] backdrop-blur-md border-y border-white/5'} flex items-center px-6 z-10`}>
                 <div className="flex items-center gap-3">
-                    <div className={`w-1.5 h-5 ${isBinance ? 'bg-[#FCD535]' : 'bg-blue-500 rounded-full'}`} style={isBinance ? { borderRadius: '1px' } : undefined}></div>
-                    <span className={`text-xs font-bold ${isBinance ? 'text-[#EAECEF]' : 'text-white italic'} uppercase tracking-wider`}>
-                        {groupByLabel}: <span className={`${isBinance ? 'text-[#FCD535]' : 'text-blue-400'} ml-1`}>{item.label}</span>
+                    <div className={`w-1.5 h-5 ${isLightMode ? 'bg-blue-500 rounded-full' : isBinance ? 'bg-[#FCD535]' : 'bg-blue-500 rounded-full'}`} style={isBinance && !isLightMode ? { borderRadius: '1px' } : undefined}></div>
+                    <span className={`text-xs font-bold ${isLightMode ? 'text-slate-700 font-extrabold' : isBinance ? 'text-[#EAECEF]' : 'text-white italic'} uppercase tracking-wider`}>
+                        {groupByLabel}: <span className={`${isLightMode ? 'text-blue-600 font-extrabold' : isBinance ? 'text-[#FCD535]' : 'text-blue-400'} ml-1`}>{item.label}</span>
                     </span>
                 </div>
             </div>
@@ -525,9 +541,18 @@ const OrderRow = memo((props: any) => {
     const fs = getFulfillmentStatus(order);
     const isCancelled = fs === 'Cancelled';
     const isReturned = fs === 'Returned';
-    const rowTone = index % 2 === 0
-        ? (isBinance ? 'bg-[#0B0E11]' : 'bg-[#020617]')
-        : (isBinance ? 'bg-[#101418]' : 'bg-[#07111f]');
+    const rowTone = isLightMode
+        ? (index % 2 === 0 ? 'bg-white' : 'bg-[#f8fafc]')
+        : index % 2 === 0
+            ? (isBinance ? 'bg-[#0B0E11]' : 'bg-[#020617]')
+            : (isBinance ? 'bg-[#101418]' : 'bg-[#07111f]');
+
+    const rowBgClass = isVerified
+        ? (isLightMode ? 'bg-[#0ECB81]/[0.08]' : 'bg-[#0ECB81]/[0.035]')
+        : isSelected
+            ? (isLightMode ? 'bg-blue-50/50' : 'bg-[#FCD535]/[0.08]')
+            : `${rowTone} ${isLightMode ? 'hover:bg-slate-100/60' : 'hover:bg-[#2B3139]/40'}`;
+
     const rowStateClass = [
         'order-table-row',
         isSelected ? 'is-selected' : '',
@@ -545,12 +570,12 @@ const OrderRow = memo((props: any) => {
                 </div>
             )}
 
-            <div className={`${rowStateClass} flex h-full transition-all box-border table-border-b ${isVerified ? 'bg-[#0ECB81]/[0.035]' : isSelected ? 'bg-[#FCD535]/[0.08]' : `${rowTone} hover:bg-[#2B3139]/40`} ${isCancelled || isReturned ? 'opacity-60 grayscale-[0.5]' : ''} ${isCancelled ? 'is-cancelled-row' : ''}`}>
+            <div className={`${rowStateClass} flex h-full transition-all box-border table-border-b ${rowBgClass} ${isCancelled || isReturned ? 'opacity-60 grayscale-[0.5]' : ''} ${isCancelled ? 'is-cancelled-row' : ''}`}>
                 {onToggleSelect && (
                     <div className={`order-table-cell flex-shrink-0 flex items-center justify-center px-0.5 box-border ${showBorders ? 'table-border-r' : ''}`} style={{ width: '40px' }}>
                         <input 
                             type="checkbox" 
-                            className={`h-4 w-4 rounded border-[#474D57] bg-transparent text-[#FCD535] cursor-pointer focus:ring-0 focus:ring-offset-0 ${isBinance ? 'border-[#474D57]' : 'border-white/20 bg-black/40 text-blue-500'}`} 
+                            className={`h-4 w-4 rounded cursor-pointer focus:ring-0 focus:ring-offset-0 ${isLightMode ? 'border-slate-350 bg-white text-blue-600' : isBinance ? 'border-[#474D57] bg-transparent text-[#FCD535]' : 'border-white/20 bg-black/40 text-blue-500'}`} 
                             checked={isSelected} 
                             onChange={() => onToggleSelect(order['Order ID'])} 
                         />
@@ -581,6 +606,7 @@ const OrdersListDesktop: React.FC<OrdersListDesktopProps> = ({
     const { appData, currentUser, hasPermission, language, advancedSettings } = useContext(AppContext);
     const t = translations[language];
     const isBinance = advancedSettings?.uiTheme === 'binance';
+    const isLightMode = advancedSettings?.themeMode === 'light';
 
     const ROW_HEIGHT = isBinance ? 72 : 88;
     const GROUP_HEADER_HEIGHT = 45;
@@ -706,6 +732,10 @@ const OrdersListDesktop: React.FC<OrdersListDesktopProps> = ({
         if (checkIsVerified(order.IsVerified)) return currentUser.IsSystemAdmin || currentUser.Role === 'Admin';
         if (currentUser.IsSystemAdmin) return true;
         if (!hasPermission('edit_order')) return false;
+
+        // If they have edit_order_global permission, they can view and edit all orders without team or time limit
+        if (hasPermission('edit_order_global')) return true;
+
         const userTeams = (currentUser.Team || '').split(',').map(t => t.trim());
         if (!userTeams.includes(order.Team)) return false;
         const orderTime = getSafeDateObj(order.Timestamp).getTime();
@@ -737,21 +767,22 @@ const OrdersListDesktop: React.FC<OrdersListDesktopProps> = ({
         appData,
         t,
         groupByLabel: groupBy,
-        isBinance
+        isBinance,
+        isLightMode
     }), [
         enrichedItems, visibleCols, getColWidth, totalTableWidth, onToggleSelect, selectedIds,
         onView, onEdit, handleCopyTemplate, handlePrint, handleCopy,
         toggleOrderVerified, handleUpdateFulfillmentStatus, handleSendTelegram, updatingIds, canVerifyOrder, canEditOrder,
-        showBorders, copiedTemplateId, appData, t, groupBy, isBinance
+        showBorders, copiedTemplateId, appData, t, groupBy, isBinance, isLightMode
     ]);
 
     return (
-        <div className={`${isBinance ? 'bg-[#0B0E11] border-[#2B3139] theme-binance' : 'bg-[#020617] border-white/5 shadow-2xl theme-default'} rounded-none border flex flex-col h-full min-h-[400px] overflow-hidden relative`}>
+        <div className={`${isLightMode ? 'bg-[#f8fafc] border-slate-200 theme-light text-slate-800' : isBinance ? 'bg-[#0B0E11] border-[#2B3139] theme-binance text-[#EAECEF]' : 'bg-[#020617] border-white/5 shadow-2xl theme-default text-[#EAECEF]'} rounded-none border flex flex-col h-full min-h-[400px] overflow-hidden relative`}>
             <style>{ORDER_LIST_STYLES}</style>
             <div className="flex-grow overflow-auto custom-scrollbar overscroll-contain">
                 <div style={{ minWidth: `${totalTableWidth}px`, height: '100%', display: 'flex', flexDirection: 'column' }}>
                     {/* Sticky Table Header & Total Row */}
-                    <div className={`sticky top-0 z-40 ${isBinance ? 'shadow-[0_4px_12px_rgba(0,0,0,0.5)]' : 'shadow-[0_15px_30px_rgba(0,0,0,0.6)]'} flex-shrink-0`}>
+                    <div className={`sticky top-0 z-40 ${isLightMode ? 'shadow-[0_4px_12px_rgba(0,0,0,0.05)] border-b border-slate-200' : isBinance ? 'shadow-[0_4px_12px_rgba(0,0,0,0.5)]' : 'shadow-[0_15px_30px_rgba(0,0,0,0.6)]'} flex-shrink-0`}>
                         {/* Grand Total Row (Now on top) */}
                         <div className="w-full">
                             <DesktopGrandTotalRow 
@@ -764,14 +795,14 @@ const OrdersListDesktop: React.FC<OrdersListDesktopProps> = ({
                         </div>
 
                         {/* Table Column Headers (Now below Grand Total) */}
-                        <div className={`${isBinance ? 'bg-[#1E2329]' : 'bg-[#0f172a]/98 backdrop-blur-3xl'} table-border-b`}>
+                        <div className={`${isLightMode ? 'bg-[#f1f5f9]' : isBinance ? 'bg-[#1E2329]' : 'bg-[#0f172a]/98 backdrop-blur-3xl'} table-border-b`}>
                             <div className="flex w-full box-border">
                                 {hasSelectionColumn && (
                                     <div className={`flex-shrink-0 flex items-center justify-center py-4 px-0.5 box-border ${showBorders ? 'table-border-r' : ''}`} style={{ width: '40px' }}>
                                         {onToggleSelectAll && (
                                             <input 
                                                 type="checkbox" 
-                                                className={`h-4 w-4 rounded border-[#474D57] bg-transparent text-[#FCD535] cursor-pointer focus:ring-0 focus:ring-offset-0 ${isBinance ? 'border-[#474D57]' : 'border-white/20 bg-black/40 text-blue-500'}`} 
+                                                className={`h-4 w-4 rounded cursor-pointer focus:ring-0 focus:ring-offset-0 ${isLightMode ? 'border-slate-350 bg-white text-blue-600' : isBinance ? 'border-[#474D57] bg-transparent text-[#FCD535]' : 'border-white/20 bg-black/40 text-blue-500'}`} 
                                                 checked={isAllSelected} 
                                                 onChange={() => onToggleSelectAll(orders.map(o => o['Order ID']))} 
                                             />
@@ -784,7 +815,7 @@ const OrdersListDesktop: React.FC<OrdersListDesktopProps> = ({
                                         <div 
                                             key={k} 
                                             style={{ width: `${getColWidth(k)}px` }} 
-                                            className={`order-column-header ${columnRoleClass} flex-shrink-0 px-4 py-3 box-border ${isBinance ? 'font-black tracking-normal text-[#848E9C]' : 'font-black tracking-[0.1em] text-gray-400'} uppercase text-[10px] flex items-center ${showBorders ? 'table-border-r' : ''}`}
+                                            className={`order-column-header ${columnRoleClass} flex-shrink-0 px-4 py-3 box-border ${isLightMode ? 'font-black tracking-normal text-slate-500' : isBinance ? 'font-black tracking-normal text-[#848E9C]' : 'font-black tracking-[0.1em] text-gray-400'} uppercase text-[10px] flex items-center ${showBorders ? 'table-border-r' : ''}`}
                                         >
                                             <span className="order-column-label">{(t as any)[`col_${k}`] || (t as any)[k] || k}</span>
                                         </div>

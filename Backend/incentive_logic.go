@@ -307,6 +307,15 @@ func (r *IncentiveRules) IsExcludedForTeam(u User, teamName string) bool {
 		if strings.HasPrefix(target, "Role:") && u.Role == strings.TrimPrefix(target, "Role:") {
 			return true
 		}
+		if strings.HasPrefix(target, "Team:") {
+			targetTeam := strings.TrimPrefix(target, "Team:")
+			userTeams := strings.Split(u.Team, ",")
+			for _, ut := range userTeams {
+				if strings.EqualFold(strings.TrimSpace(ut), strings.TrimSpace(targetTeam)) {
+					return true
+				}
+			}
+		}
 		if strings.HasPrefix(target, "User:") && u.UserName == strings.TrimPrefix(target, "User:") {
 			return true
 		}
@@ -331,6 +340,15 @@ func (r *IncentiveRules) IsExcluded(u User) bool {
 	for _, target := range r.ExcludeTargets {
 		if strings.HasPrefix(target, "Role:") && u.Role == strings.TrimPrefix(target, "Role:") {
 			return true
+		}
+		if strings.HasPrefix(target, "Team:") {
+			targetTeam := strings.TrimPrefix(target, "Team:")
+			userTeams := strings.Split(u.Team, ",")
+			for _, ut := range userTeams {
+				if strings.EqualFold(strings.TrimSpace(ut), strings.TrimSpace(targetTeam)) {
+					return true
+				}
+			}
 		}
 		if strings.HasPrefix(target, "User:") && u.UserName == strings.TrimPrefix(target, "User:") {
 			return true
@@ -378,6 +396,9 @@ func ProcessIncentiveCalculation(db *gorm.DB, projectID uint, month string) ([]I
 	// Fetch all users
 	var allUsers []User
 	db.Find(&allUsers)
+	for _, u := range allUsers {
+		log.Printf("[DEBUG] User list: Username=%q, FullName=%q, Team=%q, Role=%q", u.UserName, u.FullName, u.Team, u.Role)
+	}
 
 	// Fetch orders for the month. Timestamps in this app are stored as strings and
 	// may be either "YYYY-MM-DD HH:mm:ss" or RFC3339, so filter by the stable month prefix.
@@ -452,6 +473,7 @@ func ProcessIncentiveCalculation(db *gorm.DB, projectID uint, month string) ([]I
 				continue
 			}
 		}
+		log.Printf("[DEBUG] Calculator %d: Name=%q, RulesJSON=%s, Parsed ApplyTo=%v, Parsed ExcludeTargets=%v", calc.ID, calc.Name, calc.RulesJSON, rules.ApplyTo, rules.ExcludeTargets)
 
 		status := strings.TrimSpace(calc.Status)
 		if status == "" {

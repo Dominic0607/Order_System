@@ -24,11 +24,12 @@ interface DesktopOrdersDashboardProps {
 const DesktopOrdersDashboard: React.FC<DesktopOrdersDashboardProps> = ({ onBack, initialFilters }) => {
     const {
         appData, refreshData, fetchOrders, refreshTimestamp, currentUser,
-        orders, isOrdersLoading, language, isSyncing, advancedSettings
+        orders, isOrdersLoading, language, isSyncing, advancedSettings, isSidebarCollapsed
     } = useContext(AppContext);
 
     const uiTheme = advancedSettings?.uiTheme || 'default';
     const isBinance = uiTheme === 'binance';
+    const isLightMode = advancedSettings?.themeMode === 'light';
     
     const t = useMemo(() => translations[language || 'km'] || translations['km'], [language]);
 
@@ -210,27 +211,40 @@ const DesktopOrdersDashboard: React.FC<DesktopOrdersDashboardProps> = ({ onBack,
 
     if (editingOrderId) {
         const order = enrichedOrders.find(o => o['Order ID'] === editingOrderId);
+        const sidebarWidth = (() => {
+            if (typeof window !== 'undefined' && window.innerWidth < 1024) return '0px';
+            const uiTheme = advancedSettings?.uiTheme || 'default';
+            if (uiTheme === 'binance') return isSidebarCollapsed ? '64px' : '240px';
+            if (uiTheme === 'neumorphism') return isSidebarCollapsed ? '96px' : '288px';
+            return isSidebarCollapsed ? '80px' : '256px';
+        })();
+
         return order ? (
-            <EditOrderPage order={order} onSaveSuccess={() => { setEditingOrderId(''); refreshData(); }} onCancel={() => setEditingOrderId('')} />
+            <div 
+                className={`fixed top-0 bottom-0 right-0 z-[100] flex flex-col ${isLightMode ? 'bg-[#f8fafc]' : 'bg-[#0B0E11]'}`}
+                style={{ left: sidebarWidth }}
+            >
+                <EditOrderPage order={order} onSaveSuccess={() => { setEditingOrderId(''); refreshData(); }} onCancel={() => setEditingOrderId('')} />
+            </div>
         ) : null;
     }
 
     return (
-        <div className={`w-full h-full flex flex-col animate-reveal relative ${isBinance ? 'bg-[#0B0E11]' : 'bg-[#020617]'} overflow-hidden`}>
+        <div className={`w-full h-full flex flex-col animate-reveal relative ${isLightMode ? 'bg-[#f8fafc]' : isBinance ? 'bg-[#0B0E11]' : 'bg-[#020617]'} overflow-hidden`}>
             <Modal isOpen={isFilterModalOpen} onClose={() => setIsFilterModalOpen(false)} maxWidth="max-w-5xl">
-                <div className={`p-8 ${isBinance ? 'bg-[#1E2329]' : 'bg-[#0f172a] rounded-[2.5rem]'} flex flex-col h-[85vh]`} style={isBinance ? { borderRadius: '2px' } : undefined}>
+                <div className={`p-8 ${isLightMode ? 'bg-white border border-slate-200 shadow-2xl' : isBinance ? 'bg-[#1E2329]' : 'bg-[#0f172a] rounded-[2.5rem]'} flex flex-col h-[85vh]`} style={isBinance && !isLightMode ? { borderRadius: '2px' } : { borderRadius: '24px' }}>
                     <div className="flex justify-between items-center mb-8">
                         <div className="flex items-center gap-4">
-                            <div className={`w-2 h-10 ${isBinance ? 'bg-[#FCD535]' : 'bg-blue-600 rounded-full shadow-[0_0_20px_rgba(37,99,235,0.5)]'}`} style={isBinance ? { borderRadius: '1px' } : undefined}></div>
-                            <h2 className={`text-3xl font-black ${isBinance ? 'text-[#EAECEF]' : 'text-white'} uppercase tracking-tighter ${isBinance ? '' : 'italic'}`}>{t.filter_engine}</h2>
+                            <div className={`w-2 h-10 ${isLightMode ? 'bg-blue-500 rounded-full shadow-[0_0_20px_rgba(59,130,246,0.3)]' : isBinance ? 'bg-[#FCD535]' : 'bg-blue-600 rounded-full shadow-[0_0_20px_rgba(37,99,235,0.5)]'}`} style={isBinance && !isLightMode ? { borderRadius: '1px' } : undefined}></div>
+                            <h2 className={`text-3xl font-black ${isLightMode ? 'text-slate-800' : isBinance ? 'text-[#EAECEF]' : 'text-white'} uppercase tracking-tighter ${isBinance ? '' : 'italic'}`}>{t.filter_engine}</h2>
                         </div>
-                        <button onClick={() => setIsFilterModalOpen(false)} className={`w-12 h-12 ${isBinance ? 'bg-[#2B3139] border-[#474D57] text-[#848E9C] hover:text-[#EAECEF]' : 'bg-white/5 border-white/5 text-gray-500 hover:text-white'} flex items-center justify-center border shadow-xl`} style={isBinance ? { borderRadius: '2px' } : undefined}>&times;</button>
+                        <button onClick={() => setIsFilterModalOpen(false)} className={`w-12 h-12 ${isLightMode ? 'bg-slate-100 border-slate-200 text-slate-500 hover:text-slate-800 hover:bg-slate-200 rounded-2xl' : isBinance ? 'bg-[#2B3139] border-[#474D57] text-[#848E9C] hover:text-[#EAECEF]' : 'bg-white/5 border-white/5 text-gray-500 hover:text-white'} flex items-center justify-center border shadow-xl`} style={isBinance && !isLightMode ? { borderRadius: '2px' } : undefined}>&times;</button>
                     </div>
                     <div className="flex-grow overflow-y-auto pr-4 custom-scrollbar">
                         <OrderFilters filters={filters} setFilters={setFilters} orders={enrichedOrders} usersList={appData.users || []} appData={appData} calculatedRange={calculatedRange} />
                     </div>
-                    <div className={`mt-6 border-t ${isBinance ? 'border-[#2B3139]' : 'border-white/5'} pt-6`}>
-                        <button onClick={() => { setIsFilterModalOpen(false); setCurrentPage(1); }} className={`w-full py-4 ${isBinance ? 'bg-[#FCD535] hover:bg-[#f0c51d] text-[#181A20]' : 'bg-blue-600 hover:bg-blue-500 text-white shadow-[0_20px_50px_rgba(37,99,235,0.3)] rounded-2xl'} text-[13px] font-black uppercase tracking-[0.25em]`} style={isBinance ? { borderRadius: '2px' } : undefined}>{t.apply_config}</button>
+                    <div className={`mt-6 border-t ${isLightMode ? 'border-slate-200' : isBinance ? 'border-[#2B3139]' : 'border-white/5'} pt-6`}>
+                        <button onClick={() => { setIsFilterModalOpen(false); setCurrentPage(1); }} className={`w-full py-4 ${isLightMode ? 'bg-blue-600 hover:bg-blue-500 text-white shadow-lg rounded-2xl' : isBinance ? 'bg-[#FCD535] hover:bg-[#f0c51d] text-[#181A20]' : 'bg-blue-600 hover:bg-blue-500 text-white shadow-[0_20px_50px_rgba(37,99,235,0.3)] rounded-2xl'} text-[13px] font-black uppercase tracking-[0.25em]`} style={isBinance && !isLightMode ? { borderRadius: '2px' } : undefined}>{t.apply_config}</button>
                     </div>
                 </div>
             </Modal>
@@ -241,15 +255,15 @@ const DesktopOrdersDashboard: React.FC<DesktopOrdersDashboardProps> = ({ onBack,
                 {/* Row 1: Title + Actions */}
                 <div className="flex justify-between items-center mb-3">
                     <div className="flex items-center gap-3">
-                        <button onClick={() => onBack()} className={`p-2 ${isBinance ? 'bg-transparent hover:bg-[#2B3139] text-[#848E9C] hover:text-[#EAECEF]' : 'bg-white/5 hover:bg-white/10 rounded-2xl text-gray-400 hover:text-white'} transition-all active:scale-90`} style={isBinance ? { borderRadius: '4px' } : undefined}>
+                        <button onClick={() => onBack()} className={`p-2 transition-all active:scale-90 ${isLightMode ? 'bg-slate-100 hover:bg-slate-200 rounded-2xl text-slate-650 hover:text-slate-800' : isBinance ? 'bg-transparent hover:bg-[#2B3139] text-[#848E9C] hover:text-[#EAECEF]' : 'bg-white/5 hover:bg-white/10 rounded-2xl text-gray-400 hover:text-white'}`} style={isBinance && !isLightMode ? { borderRadius: '4px' } : undefined}>
                             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5}><path d="M15 19l-7-7 7-7" /></svg>
                         </button>
                         <div className="flex items-center gap-2">
-                            <div className={`w-1 h-5 ${isBinance ? 'bg-[#FCD535]' : 'bg-blue-500 rounded-full'}`} style={isBinance ? { borderRadius: '1px' } : undefined}></div>
-                            <h1 className={`text-base font-black ${isBinance ? 'text-[#EAECEF]' : 'text-white italic'} tracking-tight uppercase`}>{t.manage_orders}</h1>
-                            <div className={`flex items-center gap-1.5 px-2 py-0.5 ml-2 ${isBinance ? 'bg-[#0B0E11]' : 'bg-white/5 rounded-lg'} border ${isBinance ? 'border-[#2B3139]' : 'border-white/5'}`} style={isBinance ? { borderRadius: '2px' } : undefined}>
+                            <div className={`w-1 h-5 ${isLightMode ? 'bg-blue-500 rounded-full' : isBinance ? 'bg-[#FCD535]' : 'bg-blue-500 rounded-full'}`} style={isBinance && !isLightMode ? { borderRadius: '1px' } : undefined}></div>
+                            <h1 className={`text-base font-black ${isLightMode ? 'text-slate-800' : isBinance ? 'text-[#EAECEF]' : 'text-white italic'} tracking-tight uppercase`}>{t.manage_orders}</h1>
+                            <div className={`flex items-center gap-1.5 px-2 py-0.5 ml-2 ${isLightMode ? 'bg-slate-100 text-slate-700 border-slate-200 rounded-lg' : isBinance ? 'bg-[#0B0E11] border-[#2B3139]' : 'bg-white/5 border-white/5 rounded-lg'} border`} style={isBinance && !isLightMode ? { borderRadius: '2px' } : undefined}>
                                 <span className={`w-1.5 h-1.5 rounded-full ${isSyncing ? 'bg-[#FCD535] animate-pulse' : 'bg-[#0ECB81]'}`}></span>
-                                <span className={`text-[9px] font-bold uppercase tracking-wider ${isBinance ? 'text-[#848E9C]' : 'text-gray-400'}`}>
+                                <span className={`text-[9px] font-bold uppercase tracking-wider ${isLightMode ? 'text-slate-500' : isBinance ? 'text-[#848E9C]' : 'text-gray-400'}`}>
                                     {isSyncing ? 'Sync' : 'Live'}
                                 </span>
                             </div>
@@ -259,21 +273,21 @@ const DesktopOrdersDashboard: React.FC<DesktopOrdersDashboardProps> = ({ onBack,
                     <div className="flex items-center gap-2">
                         {/* Pagination Control (Mini) */}
                         {totalPages > 1 && (
-                            <div className="flex items-center bg-[#1E2329] border border-[#2B3139] p-0.5 rounded-lg mr-2">
+                            <div className={`flex items-center p-0.5 rounded-lg mr-2 border ${isLightMode ? 'bg-slate-100 border-slate-200' : 'bg-[#1E2329] border-[#2B3139]'}`}>
                                 <button 
                                     onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
                                     disabled={currentPage === 1}
-                                    className="p-1.5 text-gray-500 hover:text-white disabled:opacity-30 transition-colors"
+                                    className={`p-1.5 disabled:opacity-30 transition-colors ${isLightMode ? 'text-slate-400 hover:text-slate-700' : 'text-gray-500 hover:text-white'}`}
                                 >
                                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M15 19l-7-7 7-7" strokeWidth={3}/></svg>
                                 </button>
-                                <span className="text-[10px] font-black text-[#FCD535] px-2 tabular-nums">
+                                <span className={`text-[10px] font-black px-2 tabular-nums ${isLightMode ? 'text-blue-600' : 'text-[#FCD535]'}`}>
                                     {currentPage} / {totalPages}
                                 </span>
                                 <button 
                                     onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
                                     disabled={currentPage === totalPages}
-                                    className="p-1.5 text-gray-500 hover:text-white disabled:opacity-30 transition-colors"
+                                    className={`p-1.5 disabled:opacity-30 transition-colors ${isLightMode ? 'text-slate-400 hover:text-slate-700' : 'text-gray-500 hover:text-white'}`}
                                 >
                                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M9 5l7 7-7 7" strokeWidth={3}/></svg>
                                 </button>
@@ -287,22 +301,40 @@ const DesktopOrdersDashboard: React.FC<DesktopOrdersDashboardProps> = ({ onBack,
                                 placeholder={t.search_placeholder} 
                                 value={searchQuery} 
                                 onChange={e => { setSearchQuery(e.target.value); setCurrentPage(1); }} 
-                                className={`w-[240px] ${isBinance ? 'bg-[#0B0E11] border-[#2B3139] text-[#EAECEF] focus:border-[#FCD535] placeholder-[#848E9C]' : 'bg-white/[0.03] border-white/5 text-white focus:bg-white/10 rounded-2xl'} border py-2 pl-9 pr-3 text-xs font-medium outline-none transition-all`} 
-                                style={isBinance ? { borderRadius: '4px' } : undefined} 
+                                className={`w-[240px] border py-2 pl-9 pr-3 text-xs font-medium outline-none transition-all ${
+                                    isLightMode
+                                        ? 'bg-white border-slate-300 text-slate-800 focus:border-blue-500 placeholder-slate-400 rounded-2xl shadow-sm'
+                                        : isBinance 
+                                            ? 'bg-[#0B0E11] border-[#2B3139] text-[#EAECEF] focus:border-[#FCD535] placeholder-[#848E9C]' 
+                                            : 'bg-white/[0.03] border-white/5 text-white focus:bg-white/10 rounded-2xl'
+                                }`} 
+                                style={isBinance && !isLightMode ? { borderRadius: '4px' } : undefined} 
                             />
-                            <div className={`absolute left-2.5 top-0 bottom-0 flex items-center justify-center pointer-events-none ${isBinance ? 'text-[#848E9C]' : 'text-gray-600 group-focus-within:text-blue-500'} transition-colors`}>
+                            <div className={`absolute left-2.5 top-0 bottom-0 flex items-center justify-center pointer-events-none ${isLightMode ? 'text-slate-400 group-focus-within:text-blue-500' : isBinance ? 'text-[#848E9C]' : 'text-gray-600 group-focus-within:text-blue-500'} transition-colors`}>
                                 <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
                             </div>
                         </div>
 
                         {/* Filters Button */}
-                        <button onClick={() => setIsFilterModalOpen(true)} className={`flex items-center gap-1.5 px-3 py-2 ${isBinance ? 'bg-[#0B0E11] border-[#2B3139] text-[#848E9C] hover:text-[#EAECEF] hover:border-[#474D57]' : 'bg-gray-900 border-gray-800 text-gray-400 hover:text-white rounded-2xl'} border text-[10px] font-bold uppercase tracking-wider transition-all active:scale-95`} style={isBinance ? { borderRadius: '4px' } : undefined}>
+                        <button onClick={() => setIsFilterModalOpen(true)} className={`flex items-center gap-1.5 px-3 py-2 border text-[10px] font-bold uppercase tracking-wider transition-all active:scale-95 ${
+                            isLightMode
+                                ? 'bg-white border-slate-200 text-slate-650 hover:text-slate-800 hover:bg-slate-50 rounded-2xl shadow-sm'
+                                : isBinance
+                                    ? 'bg-[#0B0E11] border-[#2B3139] text-[#848E9C] hover:text-[#EAECEF] hover:border-[#474D57]'
+                                    : 'bg-gray-900 border-gray-800 text-gray-400 hover:text-white rounded-2xl'
+                        }`} style={isBinance && !isLightMode ? { borderRadius: '4px' } : undefined}>
                             <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5}><path d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" /></svg>
                             Filters
                         </button>
 
                         {/* Export Button */}
-                        <button onClick={() => setIsPdfModalOpen(true)} className={`flex items-center gap-1.5 px-3 py-2 ${isBinance ? 'bg-transparent border-[#2B3139] text-[#848E9C] hover:text-[#FCD535] hover:border-[#FCD535]' : 'bg-red-600/10 border-red-500/20 text-red-500 hover:bg-red-600 hover:text-white rounded-2xl'} border text-[10px] font-bold uppercase tracking-wider transition-all`} style={isBinance ? { borderRadius: '4px' } : undefined}>
+                        <button onClick={() => setIsPdfModalOpen(true)} className={`flex items-center gap-1.5 px-3 py-2 border text-[10px] font-bold uppercase tracking-wider transition-all ${
+                            isLightMode
+                                ? 'bg-rose-50 border-rose-250 text-rose-600 hover:bg-rose-600 hover:text-white rounded-2xl shadow-sm'
+                                : isBinance
+                                    ? 'bg-transparent border-[#2B3139] text-[#848E9C] hover:text-[#FCD535] hover:border-[#FCD535]'
+                                    : 'bg-red-600/10 border-red-500/20 text-red-500 hover:bg-red-600 hover:text-white rounded-2xl'
+                        }`} style={isBinance && !isLightMode ? { borderRadius: '4px' } : undefined}>
                             <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5}><path d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" /></svg>
                             Export
                         </button>
@@ -313,7 +345,7 @@ const DesktopOrdersDashboard: React.FC<DesktopOrdersDashboardProps> = ({ onBack,
                 </div>
 
                 {/* Row 2: Date Filter Tabs + Sort Controls */}
-                <div className={`flex items-center justify-between ${isBinance ? 'border-b border-[#2B3139]' : ''} mb-2 pb-0`}>
+                <div className={`flex items-center justify-between ${isLightMode ? 'border-b border-slate-200' : isBinance ? 'border-b border-[#2B3139]' : ''} mb-2 pb-0`}>
                     {/* Date Filter Tabs */}
                     <div className="flex items-center">
                         {[
@@ -330,13 +362,17 @@ const DesktopOrdersDashboard: React.FC<DesktopOrdersDashboardProps> = ({ onBack,
                                     setCurrentPage(1); // Reset to page 1 when date changes
                                 }}
                                 className={`px-4 py-2 text-[10px] font-bold uppercase tracking-wider transition-all border-b-2 ${
-                                    isBinance
+                                    isLightMode
                                     ? (filters.datePreset === p.id
-                                        ? 'text-[#EAECEF] border-[#FCD535]'
-                                        : 'text-[#848E9C] border-transparent hover:text-[#EAECEF]')
-                                    : (filters.datePreset === p.id
-                                        ? 'text-white border-blue-500'
-                                        : 'text-gray-500 border-transparent hover:text-gray-300')
+                                        ? 'text-blue-600 border-blue-600 font-extrabold'
+                                        : 'text-slate-500 border-transparent hover:text-slate-800')
+                                    : isBinance
+                                        ? (filters.datePreset === p.id
+                                            ? 'text-[#EAECEF] border-[#FCD535]'
+                                            : 'text-[#848E9C] border-transparent hover:text-[#EAECEF]')
+                                        : (filters.datePreset === p.id
+                                            ? 'text-white border-blue-500'
+                                            : 'text-gray-500 border-transparent hover:text-gray-300')
                                 }`}
                             >
                                 {p.label}
@@ -347,17 +383,17 @@ const DesktopOrdersDashboard: React.FC<DesktopOrdersDashboardProps> = ({ onBack,
                     {/* Sort + Group Controls */}
                     <div className="flex items-center gap-3">
                         <div className="flex items-center gap-1.5">
-                            <span className={`text-[9px] font-bold ${isBinance ? 'text-[#848E9C]' : 'text-gray-500'} uppercase tracking-wider`}>Sort</span>
-                            <select value={sortBy} onChange={e => setSortBy(e.target.value)} className={`bg-transparent border-none text-[10px] font-bold ${isBinance ? 'text-[#EAECEF]' : 'text-blue-400'} focus:ring-0 cursor-pointer`}>
+                            <span className={`text-[9px] font-bold ${isLightMode ? 'text-slate-400' : isBinance ? 'text-[#848E9C]' : 'text-gray-500'} uppercase tracking-wider`}>Sort</span>
+                            <select value={sortBy} onChange={e => setSortBy(e.target.value)} className={`bg-transparent border-none text-[10px] font-bold ${isLightMode ? 'text-blue-600' : isBinance ? 'text-[#EAECEF]' : 'text-blue-400'} focus:ring-0 cursor-pointer`}>
                                 <option value="date">Date</option>
                                 <option value="total">Revenue</option>
                                 <option value="customer">Customer</option>
                             </select>
                         </div>
-                        <div className={`w-px h-3 ${isBinance ? 'bg-[#2B3139]' : 'bg-white/10'}`}></div>
+                        <div className={`w-px h-3 ${isLightMode ? 'bg-slate-200' : isBinance ? 'bg-[#2B3139]' : 'bg-white/10'}`}></div>
                         <div className="flex items-center gap-1.5">
-                            <span className={`text-[9px] font-bold ${isBinance ? 'text-[#848E9C]' : 'text-gray-500'} uppercase tracking-wider`}>Group</span>
-                            <select value={groupBy} onChange={e => setGroupBy(e.target.value)} className={`bg-transparent border-none text-[10px] font-bold ${isBinance ? 'text-[#EAECEF]' : 'text-purple-400'} focus:ring-0 cursor-pointer`}>
+                            <span className={`text-[9px] font-bold ${isLightMode ? 'text-slate-400' : isBinance ? 'text-[#848E9C]' : 'text-gray-500'} uppercase tracking-wider`}>Group</span>
+                            <select value={groupBy} onChange={e => setGroupBy(e.target.value)} className={`bg-transparent border-none text-[10px] font-bold ${isLightMode ? 'text-purple-600' : isBinance ? 'text-[#EAECEF]' : 'text-purple-400'} focus:ring-0 cursor-pointer`}>
                                 <option value="none">None</option>
                                 <option value="Page">Page</option>
                                 <option value="Team">Team</option>
@@ -369,7 +405,7 @@ const DesktopOrdersDashboard: React.FC<DesktopOrdersDashboardProps> = ({ onBack,
 
                 {/* Row 3: Warehouse Quick Filters */}
                 <div className="flex items-center gap-2 mb-1">
-                    <span className={`text-[9px] font-bold ${isBinance ? 'text-[#848E9C]' : 'text-gray-500'} uppercase tracking-wider mr-1`}>{t.warehouse}</span>
+                    <span className={`text-[9px] font-bold ${isLightMode ? 'text-slate-400' : isBinance ? 'text-[#848E9C]' : 'text-gray-500'} uppercase tracking-wider mr-1`}>{t.warehouse}</span>
                     <div className="flex items-center gap-1 overflow-x-auto no-scrollbar">
                         {Array.from(new Set(appData.stores?.map(s => s.StoreName) || [])).map(s => {
                             const sel = filters.fulfillmentStore.split(',').map(v => v.trim().toLowerCase()).includes(s.toLowerCase());
@@ -383,21 +419,23 @@ const DesktopOrdersDashboard: React.FC<DesktopOrdersDashboardProps> = ({ onBack,
                                         setCurrentPage(1);
                                     }}
                                     className={`px-3 py-1.5 text-[9px] font-bold uppercase transition-all whitespace-nowrap ${
-                                        isBinance
-                                        ? (sel ? 'bg-[#FCD535] text-[#181A20]' : 'text-[#848E9C] hover:text-[#EAECEF] hover:bg-[#2B3139]')
-                                        : (sel
-                                            ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-[0_0_20px_rgba(79,70,229,0.4)]'
-                                            : 'text-gray-500 hover:text-white hover:bg-white/5')
+                                        isLightMode
+                                        ? (sel ? 'bg-blue-600 text-white shadow-md' : 'text-slate-650 hover:text-slate-800 hover:bg-slate-100')
+                                        : isBinance
+                                            ? (sel ? 'bg-[#FCD535] text-[#181A20]' : 'text-[#848E9C] hover:text-[#EAECEF] hover:bg-[#2B3139]')
+                                            : (sel
+                                                ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-[0_0_20px_rgba(79,70,229,0.4)]'
+                                                : 'text-gray-500 hover:text-white hover:bg-white/5')
                                     }`}
-                                    style={isBinance ? { borderRadius: '4px' } : undefined}
+                                    style={isBinance && !isLightMode ? { borderRadius: '4px' } : { borderRadius: '8px' }}
                                 >
                                     {s}
                                 </button>
                             );
                         })}
                     </div>
-                    <div className={`ml-auto text-[10px] ${isBinance ? 'text-[#848E9C]' : 'text-gray-500'} tabular-nums font-medium`}>
-                        <span className={isBinance ? 'text-[#EAECEF]' : 'text-white'}>{totalCount}</span> {language === 'km' ? 'ការកម្មង់សរុប' : 'total orders'}
+                    <div className={`ml-auto text-[10px] ${isLightMode ? 'text-slate-400' : isBinance ? 'text-[#848E9C]' : 'text-gray-500'} tabular-nums font-medium`}>
+                        <span className={isLightMode ? 'text-slate-800 font-bold' : isBinance ? 'text-[#EAECEF]' : 'text-white'}>{totalCount}</span> {language === 'km' ? 'ការកម្មង់សរុប' : 'total orders'}
                     </div>
                 </div>
             </div>

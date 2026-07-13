@@ -48,7 +48,7 @@ const OrdersListTablet: React.FC<OrdersListTabletProps> = ({
     groupBy = 'none',
     viewMode = 'card'
 }) => {
-    const { appData, previewImage, currentUser, advancedSettings, language } = useContext(AppContext);
+    const { appData, previewImage, currentUser, advancedSettings, language, hasPermission } = useContext(AppContext);
     const t = translations[language];
     const isBinance = advancedSettings?.uiTheme === 'binance';
 
@@ -79,7 +79,13 @@ const OrdersListTablet: React.FC<OrdersListTabletProps> = ({
     // Helper to check edit permission
     const canEditOrder = (order: ParsedOrder) => {
         if (!currentUser) return false;
+        const isVerified = order.IsVerified === true || String(order.IsVerified).toUpperCase() === 'TRUE' || order.IsVerified === 'A';
+        if (isVerified) return currentUser.IsSystemAdmin || currentUser.Role === 'Admin';
         if (currentUser.IsSystemAdmin) return true;
+        if (hasPermission && !hasPermission('edit_order')) return false;
+
+        // If they have edit_order_global permission, they can view and edit all orders without team or time limit
+        if (hasPermission && hasPermission('edit_order_global')) return true;
 
         const userTeams = (currentUser.Team || '').split(',').map(t => t.trim());
         if (!userTeams.includes(order.Team)) return false;

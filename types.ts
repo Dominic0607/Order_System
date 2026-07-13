@@ -358,7 +358,7 @@ export interface IncentiveCalculator {
     departmentOrRole?: string[];
     applyTo?: string[];
     excludeTargets?: string[];
-    metricType?: 'Sales Amount' | 'Number of Orders' | 'Number of Videos' | 'Leads Generated' | 'Revenue' | 'Profit' | 'Custom KPI';
+    metricType?: 'Sales Amount' | 'Number of Orders' | 'Number of Videos' | 'Leads Generated' | 'Revenue' | 'Profit' | 'Custom KPI' | 'Face-showing Videos';
     metricUnit?: 'USD' | 'Count' | '%';
     calculationPeriod?: 'Daily' | 'Weekly' | 'Monthly' | 'Per Order' | 'Custom Range';
     resetEveryPeriod?: boolean;
@@ -409,6 +409,7 @@ export interface IncentiveResult {
     calculatedValue: number;
     isCustom?: boolean;
     breakdownJson?: string;
+    Timestamp?: string;
 }
 
 export interface Movie {

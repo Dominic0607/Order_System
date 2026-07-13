@@ -25,38 +25,43 @@ const EditOrderSummary: React.FC<EditOrderSummaryProps> = ({
     orderDiscount, onOrderDiscountChange,
     onSave, onDelete, onCancelOrder, onUnReturn, onConfirmReturn, hasReturnPhoto, fulfillmentStatus, loading
 }) => {
-    const { hasPermission } = useContext(AppContext);
+    const { hasPermission, advancedSettings } = useContext(AppContext);
+    const isLightMode = advancedSettings?.themeMode === 'light';
 
     const isShipped = fulfillmentStatus === 'Shipped' || fulfillmentStatus === 'Delivered';
     const isCancelled = fulfillmentStatus === 'Cancelled' || fulfillmentStatus === 'Returned';
 
     return (
-        <div className="flex-shrink-0 bg-[#1E2329] border-t-4 border-[#FCD535] border-l border-r border-b border-[#2B3139] rounded-none p-3 lg:p-4 flex flex-col lg:flex-row gap-4 lg:gap-6 items-center justify-between shadow-[0_-8px_30px_rgba(0,0,0,0.3)]">
+        <div className={`flex-shrink-0 border-t-4 border-l border-r border-b rounded-none p-3 lg:p-4 flex flex-col lg:flex-row gap-4 lg:gap-6 items-center justify-between shadow-[0_-8px_30px_rgba(0,0,0,0.3)] transition-all duration-300 ${
+            isLightMode 
+                ? 'bg-white border-t-blue-500 border-slate-200 shadow-[0_-8px_30px_rgba(148,163,184,0.08)]' 
+                : 'bg-[#1E2329] border-t-[#FCD535] border-[#2B3139] shadow-[0_-8px_30px_rgba(0,0,0,0.3)]'
+        }`}>
             {/* Stats Group */}
             <div className="flex flex-wrap gap-4 sm:gap-8 items-center justify-center lg:justify-start w-full lg:w-auto">
                 <div className="text-center lg:text-left">
-                    <p className="text-[9px] font-black text-[#848E9C] uppercase tracking-widest mb-1">Subtotal</p>
-                    <p className="text-lg lg:text-xl font-black text-[#EAECEF] tabular-nums tracking-tighter">${(Number(subtotal) || 0).toFixed(2)}</p>
+                    <p className={`text-[9px] font-black uppercase tracking-widest mb-1 ${isLightMode ? 'text-slate-400' : 'text-[#848E9C]'}`}>Subtotal</p>
+                    <p className={`text-lg lg:text-xl font-black tabular-nums tracking-tighter ${isLightMode ? 'text-slate-800' : 'text-[#EAECEF]'}`}>${(Number(subtotal) || 0).toFixed(2)}</p>
                 </div>
                 
-                <div className="w-[1px] h-8 bg-[#2B3139] hidden sm:block"></div>
+                <div className={`w-[1px] h-8 hidden sm:block ${isLightMode ? 'bg-slate-200' : 'bg-[#2B3139]'}`}></div>
                 
                 <div className="text-center lg:text-left">
-                    <p className="text-[9px] font-black text-[#848E9C] uppercase tracking-widest mb-1">Ship Fee</p>
+                    <p className={`text-[9px] font-black uppercase tracking-widest mb-1 ${isLightMode ? 'text-slate-400' : 'text-[#848E9C]'}`}>Ship Fee</p>
                     <div className="flex items-center gap-1">
-                        <span className="text-[11px] text-[#FCD535] font-black">$</span>
+                        <span className={`text-[11px] font-black ${isLightMode ? 'text-blue-500' : 'text-[#FCD535]'}`}>$</span>
                         <input 
                             type="text" 
                             inputMode="decimal"
                             name="Shipping Fee (Customer)" 
                             value={shippingFee} 
                             onChange={onShippingFeeChange} 
-                            className="w-16 bg-transparent border-b border-[#2B3139] text-center font-black text-lg text-[#EAECEF] outline-none focus:border-[#FCD535] transition-all py-0.5 tabular-nums" 
+                            className={`w-16 bg-transparent border-b text-center font-black text-lg outline-none transition-all py-0.5 tabular-nums ${isLightMode ? 'border-slate-200 text-slate-800 focus:border-blue-500' : 'border-[#2B3139] text-[#EAECEF] focus:border-[#FCD535]'}`} 
                         />
                     </div>
                 </div>
 
-                <div className="w-[1px] h-8 bg-[#2B3139] hidden sm:block"></div>
+                <div className={`w-[1px] h-8 hidden sm:block ${isLightMode ? 'bg-slate-200' : 'bg-[#2B3139]'}`}></div>
 
                 <div className="text-center lg:text-left">
                     <p className="text-[9px] font-black text-red-500 uppercase tracking-widest mb-1">Discount</p>
@@ -67,16 +72,16 @@ const EditOrderSummary: React.FC<EditOrderSummaryProps> = ({
                             inputMode="decimal"
                             value={orderDiscount} 
                             onChange={onOrderDiscountChange} 
-                            className="w-16 bg-transparent border-b border-[#2B3139] text-center font-black text-lg text-red-500 outline-none focus:border-red-500 transition-all py-0.5 tabular-nums" 
+                            className={`w-16 bg-transparent border-b text-center font-black text-lg text-red-500 outline-none focus:border-red-500 transition-all py-0.5 tabular-nums ${isLightMode ? 'border-red-500/20' : 'border-[#2B3139]'}`} 
                         />
                     </div>
                 </div>
                 
-                <div className="w-[1px] h-8 bg-[#2B3139] hidden lg:block"></div>
+                <div className={`w-[1px] h-8 hidden lg:block ${isLightMode ? 'bg-slate-200' : 'bg-[#2B3139]'}`}></div>
                 
-                <div className="text-center lg:text-left bg-[#FCD535]/5 px-4 py-1.5 border border-[#FCD535]/10">
-                    <p className="text-[10px] font-black text-[#FCD535] uppercase tracking-[0.2em] mb-0.5">Grand Total</p>
-                    <p className="text-3xl lg:text-4xl font-black text-[#FCD535] tabular-nums tracking-tighter drop-shadow-[0_0_15px_rgba(252,213,53,0.3)]">
+                <div className={`text-center lg:text-left px-4 py-1.5 border ${isLightMode ? 'bg-blue-500/5 border-blue-500/10' : 'bg-[#FCD535]/5 border-[#FCD535]/10'}`}>
+                    <p className={`text-[10px] font-black uppercase tracking-[0.2em] mb-0.5 ${isLightMode ? 'text-blue-600' : 'text-[#FCD535]'}`}>Grand Total</p>
+                    <p className={`text-3xl lg:text-4xl font-black tabular-nums tracking-tighter ${isLightMode ? 'text-blue-600 drop-shadow-[0_0_15px_rgba(59,130,246,0.25)]' : 'text-[#FCD535] drop-shadow-[0_0_15px_rgba(252,213,53,0.3)]'}`}>
                         ${(Number(grandTotal) || 0).toFixed(2)}
                     </p>
                 </div>
@@ -138,7 +143,11 @@ const EditOrderSummary: React.FC<EditOrderSummaryProps> = ({
                         type="button" 
                         onClick={onDelete} 
                         disabled={loading}
-                        className="flex-1 lg:flex-none px-4 lg:px-6 py-2.5 bg-[#2B3139] hover:bg-[#F6465D] text-[#848E9C] hover:text-white rounded-none font-black uppercase text-[10px] tracking-widest transition-all border-2 border-transparent hover:border-[#F6465D] active:translate-y-[2px] flex items-center justify-center gap-2"
+                        className={`flex-1 lg:flex-none px-4 lg:px-6 py-2.5 rounded-none font-black uppercase text-[10px] tracking-widest transition-all border-2 active:translate-y-[2px] flex items-center justify-center gap-2 ${
+                            isLightMode 
+                                ? 'bg-slate-100 hover:bg-rose-500 border-transparent hover:border-rose-500 text-slate-500 hover:text-white' 
+                                : 'bg-[#2B3139] hover:bg-[#F6465D] text-[#848E9C] hover:text-white border-transparent hover:border-[#F6465D]'
+                        }`}
                     >
                         <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" strokeWidth="2.5"/></svg> 
                         Delete
@@ -149,7 +158,11 @@ const EditOrderSummary: React.FC<EditOrderSummaryProps> = ({
                 <button 
                     onClick={onSave} 
                     disabled={loading}
-                    className="flex-[2] lg:flex-none px-6 lg:px-10 py-2.5 bg-[#FCD535] hover:bg-[#F0B90B] text-[#181A20] rounded-none font-black uppercase text-[10px] lg:text-[11px] tracking-[0.15em] shadow-[4px_4px_0px_0px_rgba(252,213,53,0.2)] active:translate-x-[2px] active:translate-y-[2px] active:shadow-none transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed border-2 border-[#FCD535]"
+                    className={`flex-[2] lg:flex-none px-6 lg:px-10 py-2.5 rounded-none font-black uppercase text-[10px] lg:text-[11px] tracking-[0.15em] active:translate-x-[2px] active:translate-y-[2px] active:shadow-none transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed border-2 ${
+                        isLightMode 
+                            ? 'bg-blue-600 hover:bg-blue-500 text-white shadow-[4px_4px_0px_0px_rgba(37,99,235,0.2)] border-blue-600' 
+                            : 'bg-[#FCD535] hover:bg-[#F0B90B] text-[#181A20] shadow-[4px_4px_0px_0px_rgba(252,213,53,0.2)] border-[#FCD535]'
+                    }`}
                 >
                     {loading ? <Spinner size="xs" /> : <>
                         Save Order

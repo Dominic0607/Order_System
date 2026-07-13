@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { IncentiveCalculator, AppData } from '../../../types';
 import { MousePointer2, Target, Users, ShieldCheck, Box, UserX, Search, Info, X, CheckCircle2, AlertCircle, FileText } from 'lucide-react';
 import { getArrayCaseInsensitive, getValueCaseInsensitive } from '../../../constants/settingsConfig';
@@ -18,6 +18,13 @@ const Step3TargetEntities: React.FC<Step3TargetEntitiesProps> = ({ calcData, app
     const [selectedTeam, setSelectedTeam] = useState<string | null>(null);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [detailSearch, setDetailSearch] = useState('');
+
+    const allTeams = useMemo(() => {
+        const teams = new Set<string>();
+        appData.users?.forEach(u => u.Team?.split(',').forEach(tn => teams.add(tn.trim())));
+        appData.pages?.forEach(p => p.Team?.split(',').forEach(tn => teams.add(tn.trim())));
+        return Array.from(teams).filter(Boolean).sort();
+    }, [appData.users, appData.pages]);
 
     const isUserInTeam = (userTeamStr: string, teamName: string) => {
         if (!userTeamStr || !teamName) return false;
@@ -47,6 +54,9 @@ const Step3TargetEntities: React.FC<Step3TargetEntitiesProps> = ({ calcData, app
         return excludeTargets.some(rule => {
             if (rule.startsWith('Role:')) {
                 return user.Role === rule.replace('Role:', '');
+            }
+            if (rule.startsWith('Team:')) {
+                return isUserInTeam(user.Team, rule.replace('Team:', ''));
             }
             if (rule.startsWith('User:')) {
                 return user.UserName === rule.replace('User:', '');
@@ -121,7 +131,7 @@ const Step3TargetEntities: React.FC<Step3TargetEntitiesProps> = ({ calcData, app
                                 Teams Sync
                             </span>
                             <div className="flex flex-wrap gap-2">
-                                {Array.from(new Set(appData.pages?.map(p => p.Team))).filter(t => t).map(team => {
+                                {allTeams.map(team => {
                                     const isSelected = calcData.applyTo?.includes(`Team:${team}`);
                                     return (
                                         <div key={team} className="relative group">
@@ -209,6 +219,27 @@ const Step3TargetEntities: React.FC<Step3TargetEntitiesProps> = ({ calcData, app
                                             className={`px-3 py-1.5 rounded text-[10px] font-bold border transition-all uppercase tracking-widest ${calcData.excludeTargets?.includes(`Role:${roleName}`) ? 'bg-red-500/20 text-red-500 border-red-500/40' : 'bg-[#121212] border-[#1A1A1A] text-[#707A8A] hover:text-[#EAECEF]'}`}
                                         >
                                             {roleName}
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                        </div>
+
+                        <div className="space-y-3 pt-4 border-t border-[#1A1A1A]">
+                            <span className="text-[10px] font-black text-[#707A8A] uppercase tracking-[0.2em] flex items-center gap-2 italic">
+                                Exclusion Rules (Teams)
+                            </span>
+                            <div className="flex flex-wrap gap-2">
+                                {allTeams.map(team => {
+                                    const isExcluded = calcData.excludeTargets?.includes(`Team:${team}`);
+                                    return (
+                                        <button 
+                                            key={team} 
+                                            type="button" 
+                                            onClick={() => toggleExcludeTarget(`Team:${team}`)} 
+                                            className={`px-3 py-1.5 rounded text-[10px] font-bold border transition-all uppercase tracking-widest ${isExcluded ? 'bg-red-500/20 text-red-500 border-red-500/40' : 'bg-[#121212] border-[#1A1A1A] text-[#707A8A] hover:text-[#EAECEF]'}`}
+                                        >
+                                            {team}
                                         </button>
                                     );
                                 })}
@@ -466,11 +497,15 @@ const Step3TargetEntities: React.FC<Step3TargetEntitiesProps> = ({ calcData, app
                                                         </td>
                                                         <td className="px-4 py-3 text-right">
                                                             {(() => {
-                                                                const isExcludedGlobally = (calcData.excludeTargets || []).some(rule => (
-                                                                    rule === `User:${u.UserName}` || 
-                                                                    rule === u.UserName || 
-                                                                    rule === `Role:${u.Role}`
-                                                                ));
+                                                                const isExcludedGlobally = (calcData.excludeTargets || []).some(rule => {
+                                                                    if (rule === `User:${u.UserName}` || rule === u.UserName || rule === `Role:${u.Role}`) {
+                                                                        return true;
+                                                                    }
+                                                                    if (rule.startsWith('Team:')) {
+                                                                        return isUserInTeam(u.Team, rule.replace('Team:', ''));
+                                                                    }
+                                                                    return false;
+                                                                });
                                                                 const isExcludedForThisTeam = (calcData.excludeTargets || []).includes(`TeamUser:${selectedTeam}:${u.UserName}`);
 
                                                                 if (isExcludedGlobally) {

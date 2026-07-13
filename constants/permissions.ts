@@ -6,6 +6,7 @@ export const FEATURES = {
     // Orders Dashboard
     VIEW_ORDER_LIST: "view_order_list",
     EDIT_ORDER: "edit_order",
+    EDIT_ORDER_GLOBAL: "edit_order_global",
     DELETE_ORDER: "delete_order",
     VERIFY_ORDER: "verify_order",
     CREATE_ORDER: "create_order",

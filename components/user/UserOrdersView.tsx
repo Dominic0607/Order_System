@@ -24,7 +24,8 @@ interface UserOrdersViewProps {
 }
 
 const UserOrdersView: React.FC<UserOrdersViewProps> = ({ onAdd, onStatsUpdate, showColumnSelectorToggle = true, dateFilter: propDateFilter, customStart: propCustomStart, customEnd: propCustomEnd }) => {
-    const { currentUser, language, refreshData, appData, orders, isOrdersLoading, hasPermission, selectedTeam, setAppState } = useContext(AppContext);
+    const { currentUser, language, refreshData, appData, orders, isOrdersLoading, hasPermission, selectedTeam, setAppState, advancedSettings, isSidebarCollapsed } = useContext(AppContext);
+    const isLightMode = advancedSettings?.themeMode === 'light';
     const { ordersFetchError, fetchOrders } = useOrder();
     // State declarations
     const [viewOrders, setViewOrders] = useState<ParsedOrder[]>([]);
@@ -391,7 +392,25 @@ const UserOrdersView: React.FC<UserOrdersViewProps> = ({ onAdd, onStatsUpdate, s
         <div className="flex flex-col justify-center items-center h-[60vh] gap-6"><Spinner size="lg" /></div>
     );
 
-    if (editingOrder) return <div className="fixed inset-0 z-[100] bg-[#0B0E11] animate-reveal overflow-y-auto"><EditOrderPage order={editingOrder} onSaveSuccess={handleSaveEdit} onCancel={() => setEditingOrder(null)} /></div>;
+    if (editingOrder) {
+        const sidebarWidth = (() => {
+            if (typeof window !== 'undefined' && window.innerWidth < 1024) return '0px';
+            const uiTheme = advancedSettings?.uiTheme || 'default';
+            const collapsed = isSidebarCollapsed || false;
+            if (uiTheme === 'binance') return collapsed ? '64px' : '240px';
+            if (uiTheme === 'neumorphism') return collapsed ? '96px' : '288px';
+            return collapsed ? '80px' : '256px';
+        })();
+
+        return (
+            <div 
+                className={`fixed top-0 bottom-0 right-0 z-[100] flex flex-col ${isLightMode ? 'bg-[#f8fafc]' : 'bg-[#0B0E11]'}`}
+                style={{ left: sidebarWidth }}
+            >
+                <EditOrderPage order={editingOrder} onSaveSuccess={handleSaveEdit} onCancel={() => setEditingOrder(null)} />
+            </div>
+        );
+    }
 
     if (showReport) return <div className="animate-fade-in h-full overflow-auto bg-[var(--cm-bg)]"><UserSalesPageReport orders={permittedOrders} allOrders={permittedOrders} onBack={() => setShowReport(false)} team={selectedTeam || ''} onFilterChange={handleReportFilterChange} dateFilter={reportFilters.datePreset || dateRange} customStart={reportFilters.startDate || advancedFilters.startDate} customEnd={reportFilters.endDate || advancedFilters.endDate} /></div>;
 

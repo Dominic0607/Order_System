@@ -154,6 +154,10 @@ const OrdersListMobile: React.FC<OrdersListMobileProps> = ({
         if (isVerified) return currentUser.IsSystemAdmin || currentUser.Role === 'Admin';
         if (currentUser.IsSystemAdmin) return true;
         if (!hasPermission('edit_order')) return false;
+
+        // If they have edit_order_global permission, they can view and edit all orders without team or time limit
+        if (hasPermission('edit_order_global')) return true;
+
         const userTeams = (currentUser.Team || '').split(',').map(t => t.trim());
         if (!userTeams.includes(order.Team)) return false;
         const orderTime = getValidDate(order.Timestamp).getTime();

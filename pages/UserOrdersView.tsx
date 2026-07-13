@@ -12,7 +12,8 @@ import { FilterState } from '../components/orders/OrderFilters';
 
 
 const UserOrdersView: React.FC<{ team: string; onAdd: () => void }> = ({ team, onAdd }) => {
-    const { currentUser, refreshData, appData, orders, isOrdersLoading, fetchOrders, hasPermission } = useContext(AppContext);
+    const { currentUser, refreshData, appData, orders, isOrdersLoading, fetchOrders, hasPermission, advancedSettings, isSidebarCollapsed } = useContext(AppContext);
+    const isLightMode = advancedSettings?.themeMode === 'light';
     
     const [showReport, setShowReport] = useState(false);
     const [showShippingReport, setShowShippingReport] = useState(false);
@@ -205,7 +206,25 @@ const UserOrdersView: React.FC<{ team: string; onAdd: () => void }> = ({ team, o
         </div>
     );
 
-    if (editingOrder) return <div className="animate-fade-in"><EditOrderPage order={editingOrder} onSaveSuccess={handleSaveEdit} onCancel={() => setEditingOrder(null)} /></div>;
+    if (editingOrder) {
+        const sidebarWidth = (() => {
+            if (typeof window !== 'undefined' && window.innerWidth < 1024) return '0px';
+            const uiTheme = advancedSettings?.uiTheme || 'default';
+            const collapsed = isSidebarCollapsed || false;
+            if (uiTheme === 'binance') return collapsed ? '64px' : '240px';
+            if (uiTheme === 'neumorphism') return collapsed ? '96px' : '288px';
+            return collapsed ? '80px' : '256px';
+        })();
+
+        return (
+            <div 
+                className={`fixed top-0 bottom-0 right-0 z-[100] flex flex-col ${isLightMode ? 'bg-[#f8fafc]' : 'bg-[#0B0E11]'}`}
+                style={{ left: sidebarWidth }}
+            >
+                <EditOrderPage order={editingOrder} onSaveSuccess={handleSaveEdit} onCancel={() => setEditingOrder(null)} />
+            </div>
+        );
+    }
 
     if (drilldownFilters) return (
         <div className="animate-fade-in min-h-screen flex flex-col space-y-6">

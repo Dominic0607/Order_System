@@ -1,10 +1,10 @@
-
-import React, { useState } from 'react';
+import React, { useState, useContext } from 'react';
 import { AppData, ParsedOrder } from '../../../types';
 import ShippingMethodDropdown from '../../common/ShippingMethodDropdown';
 import DriverSelector from '../DriverSelector';
 import Modal from '../../common/Modal';
 import { convertGoogleDriveUrl } from '../../../utils/fileUtils';
+import { AppContext } from '../../../context/AppContext';
 
 interface EditLogisticsPanelProps {
     formData: ParsedOrder;
@@ -19,6 +19,8 @@ interface EditLogisticsPanelProps {
 const EditLogisticsPanel: React.FC<EditLogisticsPanelProps> = ({
     formData, appData, onChange, onShippingMethodSelect, onDriverSelect, onBankChange, bankLogo
 }) => {
+    const { advancedSettings } = useContext(AppContext);
+    const isLightMode = advancedSettings?.themeMode === 'light';
     const [isDriverModalOpen, setIsDriverModalOpen] = useState(false);
     
     const currentShippingMethod = appData.shippingMethods?.find(m => m.MethodName === formData['Internal Shipping Method']);
@@ -38,29 +40,56 @@ const EditLogisticsPanel: React.FC<EditLogisticsPanelProps> = ({
     }, [appData.bankAccounts, formData['Fulfillment Store']]);
 
     return (
-        <div className="flex flex-col gap-3 h-full">
+        <div className="flex flex-col gap-3">
             {/* Logistics & Payment Card */}
-            <div className="bg-[#1E2329] border border-[#2B3139] rounded-xl p-5 flex-shrink-0 h-full shadow-xl">
+            <div className={`border rounded-xl p-5 flex-shrink-0 shadow-xl ${
+                isLightMode 
+                    ? 'bg-white border-slate-200 shadow-slate-100' 
+                    : 'bg-[#1E2329] border-[#2B3139]'
+            }`}>
                 <div className="flex items-center gap-3 mb-6">
-                    <div className="w-10 h-10 rounded-lg bg-[#FCD535]/10 flex items-center justify-center border border-[#FCD535]/20">
-                        <svg className="w-5 h-5 text-[#FCD535]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17a2 2 0 11-4 0 2 2 0 014 0zM19 17a2 2 0 11-4 0 2 2 0 014 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16V6a1 1 0 00-1-1H4a1 1 0 00-1 1v10a1 1 0 001 1h1m8-1a1 1 0 01-1 1H9m4-1V8a1 1 0 011-1h2.586a1 1 0 01.707.293l3.414 3.414a1 1 0 01.293.707V16a1 1 0 01-1 1h-1m-6-1a1 1 0 001 1h1M5 17a2 2 0 104 0m-4 0a2 2 0 114 0m6 0a2 2 0 104 0m-4 0a2 2 0 114 0" /></svg>
+                    <div className={`w-10 h-10 rounded-lg flex items-center justify-center border ${
+                        isLightMode 
+                            ? 'bg-blue-50 border-blue-200 text-blue-500' 
+                            : 'bg-[#FCD535]/10 border-[#FCD535]/20 text-[#FCD535]'
+                    }`}>
+                        <svg className={`w-5 h-5 ${isLightMode ? 'text-blue-500' : 'text-[#FCD535]'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17a2 2 0 11-4 0 2 2 0 014 0zM19 17a2 2 0 11-4 0 2 2 0 014 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16V6a1 1 0 00-1-1H4a1 1 0 00-1 1v10a1 1 0 001 1h1m8-1a1 1 0 01-1 1H9m4-1V8a1 1 0 011-1h2.586a1 1 0 01.707.293l3.414 3.414a1 1 0 01.293.707V16a1 1 0 01-1 1h-1m-6-1a1 1 0 001 1h1M5 17a2 2 0 104 0m-4 0a2 2 0 114 0m6 0a2 2 0 104 0m-4 0a2 2 0 114 0" /></svg>
                     </div>
                     <div>
-                        <h3 className="text-sm font-bold text-[#EAECEF] uppercase tracking-wider">Logistics & Payment</h3>
-                        <p className="text-[10px] text-[#848E9C] font-medium uppercase tracking-widest mt-0.5">Shipping and financial details</p>
+                        <h3 className={`text-sm font-bold uppercase tracking-wider ${isLightMode ? 'text-slate-800' : 'text-[#EAECEF]'}`}>Logistics & Payment</h3>
+                        <p className={`text-[10px] font-medium uppercase tracking-widest mt-0.5 ${isLightMode ? 'text-slate-400' : 'text-[#848E9C]'}`}>Shipping and financial details</p>
                     </div>
                 </div>
 
                 <div className="space-y-6 relative z-10">
                     <div className="space-y-2">
-                        <label className="text-[10px] text-[#848E9C] font-bold uppercase tracking-widest ml-1">Shipping Method</label>
+                        <label className={`text-[10px] font-bold uppercase tracking-widest ml-1 ${isLightMode ? 'text-slate-400' : 'text-[#848E9C]'}`}>Shipping Method</label>
                         <ShippingMethodDropdown methods={appData.shippingMethods || []} selectedMethodName={formData['Internal Shipping Method'] || ''} onSelect={onShippingMethodSelect} />
+                    </div>
+
+                    <div className="space-y-2">
+                        <label className={`text-[10px] font-bold uppercase tracking-widest ml-1 ${isLightMode ? 'text-slate-400' : 'text-[#848E9C]'}`}>Fulfillment Warehouse (Distribution)</label>
+                        <select 
+                            name="Fulfillment Store" 
+                            value={formData['Fulfillment Store'] || ''} 
+                            onChange={onChange} 
+                            className={`w-full border rounded-lg py-2.5 px-3 font-bold text-xs uppercase outline-none transition-all appearance-none cursor-pointer h-11 ${
+                                isLightMode 
+                                    ? 'bg-slate-50 border-slate-200 text-slate-700 focus:bg-white focus:border-blue-500' 
+                                    : 'bg-[#0B0E11] border-[#2B3139] text-[#EAECEF] focus:border-[#FCD535]'
+                            }`}
+                        >
+                            <option value="">Select Warehouse</option>
+                            {(appData.stores || []).map((store: any) => (
+                                <option key={store.StoreName} value={store.StoreName}>{store.StoreName}</option>
+                            ))}
+                        </select>
                     </div>
                     
                     {currentShippingMethod?.RequireDriverSelection && (
-                        <div className="space-y-2 pt-4 border-t border-[#2B3139]">
+                        <div className={`space-y-2 pt-4 border-t ${isLightMode ? 'border-slate-200' : 'border-[#2B3139]'}`}>
                             <div className="flex items-center justify-between">
-                                <label className="text-[10px] font-bold text-[#848E9C] uppercase tracking-widest ml-1">Selected Driver</label>
+                                <label className={`text-[10px] font-bold uppercase tracking-widest ml-1 ${isLightMode ? 'text-slate-400' : 'text-[#848E9C]'}`}>Selected Driver</label>
                                 {!formData['Internal Shipping Details'] && <span className="text-[9px] text-[#F6465D] font-black animate-pulse">ACTION REQUIRED</span>}
                             </div>
                             
@@ -69,13 +98,17 @@ const EditLogisticsPanel: React.FC<EditLogisticsPanelProps> = ({
                                 className={`
                                     relative p-3 rounded-xl border transition-all cursor-pointer flex items-center gap-4
                                     ${selectedDriver 
-                                        ? 'bg-[#0B0E11] border-[#2B3139] hover:border-[#FCD535] group' 
-                                        : 'bg-[#0B0E11] border-[#F6465D]/30 border-dashed hover:border-[#F6465D]'}
+                                        ? (isLightMode 
+                                            ? 'bg-slate-50 border-slate-200 hover:border-blue-500 group' 
+                                            : 'bg-[#0B0E11] border-[#2B3139] hover:border-[#FCD535] group') 
+                                        : (isLightMode
+                                            ? 'bg-slate-50 border-rose-300 border-dashed hover:border-rose-500'
+                                            : 'bg-[#0B0E11] border-[#F6465D]/30 border-dashed hover:border-[#F6465D]')}
                                 `}
                             >
                                 {selectedDriver ? (
                                     <>
-                                        <div className="w-12 h-12 rounded-lg overflow-hidden border border-[#2B3139] group-hover:border-[#FCD535] transition-all">
+                                        <div className={`w-12 h-12 rounded-lg overflow-hidden border transition-all ${isLightMode ? 'border-slate-200 group-hover:border-blue-500' : 'border-[#2B3139] group-hover:border-[#FCD535]'}`}>
                                             <img 
                                                 src={convertGoogleDriveUrl(selectedDriver.ImageURL)} 
                                                 alt={selectedDriver.DriverName}
@@ -83,15 +116,15 @@ const EditLogisticsPanel: React.FC<EditLogisticsPanelProps> = ({
                                             />
                                         </div>
                                         <div className="flex-1 min-w-0">
-                                            <p className="text-[#EAECEF] font-bold text-sm truncate uppercase">{selectedDriver.DriverName}</p>
+                                            <p className={`font-bold text-sm truncate uppercase ${isLightMode ? 'text-slate-805' : 'text-[#EAECEF]'}`}>{selectedDriver.DriverName}</p>
                                             <div className="flex items-center gap-2 mt-1">
-                                                <span className="text-[9px] px-1.5 py-0.5 rounded bg-[#2B3139] text-[#848E9C] font-bold uppercase">Active Driver</span>
-                                                <span className="text-[9px] text-[#FCD535] font-bold">Tap to change</span>
+                                                <span className={`text-[9px] px-1.5 py-0.5 rounded font-bold uppercase ${isLightMode ? 'bg-slate-200 text-slate-500' : 'bg-[#2B3139] text-[#848E9C]'}`}>Active Driver</span>
+                                                <span className={`text-[9px] font-bold ${isLightMode ? 'text-blue-500' : 'text-[#FCD535]'}`}>Tap to change</span>
                                             </div>
                                         </div>
                                     </>
                                 ) : (
-                                    <div className="w-full py-2 flex items-center justify-center gap-2 text-[#848E9C] hover:text-[#FCD535]">
+                                    <div className={`w-full py-2 flex items-center justify-center gap-2 transition-colors ${isLightMode ? 'text-slate-400 hover:text-blue-600' : 'text-[#848E9C] hover:text-[#FCD535]'}`}>
                                         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" /></svg>
                                         <span className="font-bold text-xs uppercase tracking-widest">Assign Driver</span>
                                     </div>
@@ -102,10 +135,10 @@ const EditLogisticsPanel: React.FC<EditLogisticsPanelProps> = ({
 
                     <div className="grid grid-cols-2 gap-4 pt-2">
                         <div className="space-y-2">
-                            <label className="text-[10px] text-[#848E9C] font-bold uppercase tracking-widest ml-1">Internal Cost</label>
+                            <label className={`text-[10px] font-bold uppercase tracking-widest ml-1 ${isLightMode ? 'text-slate-400' : 'text-[#848E9C]'}`}>Internal Cost</label>
                             <div className="relative group">
                                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                    <span className="text-sm font-bold text-[#474D57] group-focus-within:text-[#FCD535] transition-colors">$</span>
+                                    <span className={`text-sm font-bold transition-colors ${isLightMode ? 'text-slate-400 group-focus-within:text-blue-500' : 'text-[#474D57] group-focus-within:text-[#FCD535]'}`}>$</span>
                                 </div>
                                 <input 
                                     type="text" 
@@ -113,21 +146,25 @@ const EditLogisticsPanel: React.FC<EditLogisticsPanelProps> = ({
                                     name="Internal Cost" 
                                     value={formData['Internal Cost']} 
                                     onChange={onChange} 
-                                    className="w-full bg-[#0B0E11] border border-[#2B3139] rounded-lg py-2.5 pl-7 pr-3 text-[#EAECEF] font-bold text-base outline-none focus:border-[#FCD535] transition-all" 
+                                    className={`w-full border rounded-lg py-2.5 pl-7 pr-3 font-bold text-base outline-none transition-all ${
+                                        isLightMode 
+                                            ? 'bg-slate-50 border-slate-200 text-slate-805 focus:bg-white focus:border-blue-500' 
+                                            : 'bg-[#0B0E11] border-[#2B3139] text-[#EAECEF] focus:border-[#FCD535]'
+                                    }`} 
                                     placeholder="0.00"
                                 />
                             </div>
                         </div>
                         <div className="space-y-2">
-                            <label className="text-[10px] text-[#848E9C] font-bold uppercase tracking-widest ml-1">Payment Status</label>
+                            <label className={`text-[10px] font-bold uppercase tracking-widest ml-1 ${isLightMode ? 'text-slate-400' : 'text-[#848E9C]'}`}>Payment Status</label>
                             <select 
                                 name="Payment Status" 
                                 value={formData['Payment Status']} 
                                 onChange={onChange} 
                                 className={`w-full py-2.5 px-3 rounded-lg font-bold text-xs uppercase outline-none transition-all border ${
                                     formData['Payment Status'] === 'Paid' 
-                                    ? 'bg-[#0ECB81]/10 text-[#0ECB81] border-[#0ECB81]/30 focus:border-[#0ECB81]' 
-                                    : 'bg-[#F6465D]/10 text-[#F6465D] border-[#F6465D]/30 focus:border-[#F6465D]'
+                                    ? (isLightMode ? 'bg-emerald-50 text-emerald-600 border-emerald-200 focus:border-emerald-500' : 'bg-[#0ECB81]/10 text-[#0ECB81] border-[#0ECB81]/30 focus:border-[#0ECB81]') 
+                                    : (isLightMode ? 'bg-rose-50 text-rose-600 border-rose-200 focus:border-rose-500' : 'bg-[#F6465D]/10 text-[#F6465D] border-[#F6465D]/30 focus:border-[#F6465D]')
                                 } cursor-pointer`}
                             >
                                 <option value="Unpaid">Unpaid</option>
@@ -137,10 +174,10 @@ const EditLogisticsPanel: React.FC<EditLogisticsPanelProps> = ({
                     </div>
 
                     {formData['Payment Status'] === 'Paid' && (
-                        <div className="space-y-3 pt-4 border-t border-[#2B3139] animate-fade-in">
+                        <div className={`space-y-3 pt-4 border-t animate-fade-in ${isLightMode ? 'border-slate-200' : 'border-[#2B3139]'}`}>
                             <div className="flex items-center justify-between px-1">
-                                <label className="text-[10px] text-[#848E9C] font-bold uppercase tracking-widest">Receiving Bank</label>
-                                <span className="text-[9px] font-bold text-[#FCD535] uppercase">{filteredBanks.length} Available</span>
+                                <label className={`text-[10px] font-bold uppercase tracking-widest ${isLightMode ? 'text-slate-400' : 'text-[#848E9C]'}`}>Receiving Bank</label>
+                                <span className={`text-[9px] font-bold uppercase ${isLightMode ? 'text-blue-600' : 'text-[#FCD535]'}`}>{filteredBanks.length} Available</span>
                             </div>
                             
                             <div className="grid grid-cols-2 gap-3 max-h-[220px] overflow-y-auto custom-scrollbar pr-1">
@@ -154,14 +191,14 @@ const EditLogisticsPanel: React.FC<EditLogisticsPanelProps> = ({
                                             className={`
                                                 group flex items-center gap-3 p-2.5 rounded-xl border transition-all
                                                 ${isSelected 
-                                                    ? 'bg-[#FCD535]/10 border-[#FCD535] shadow-[0_4px_12px_rgba(252,213,53,0.1)]' 
-                                                    : 'bg-[#0B0E11] border-[#2B3139] hover:border-[#474D57]'}
+                                                    ? (isLightMode ? 'bg-blue-50 border-blue-500 shadow-sm shadow-blue-500/5' : 'bg-[#FCD535]/10 border-[#FCD535] shadow-[0_4px_12px_rgba(252,213,53,0.1)]') 
+                                                    : (isLightMode ? 'bg-white border-slate-200 hover:border-slate-350' : 'bg-[#0B0E11] border-[#2B3139] hover:border-[#474D57]')}
                                             `}
                                         >
-                                            <div className={`w-9 h-9 rounded-lg overflow-hidden bg-white/10 border transition-all ${isSelected ? 'border-[#FCD535]' : 'border-[#2B3139] group-hover:border-[#474D57]'}`}>
+                                            <div className={`w-9 h-9 rounded-lg overflow-hidden bg-white/10 border transition-all ${isSelected ? (isLightMode ? 'border-blue-500' : 'border-[#FCD535]') : (isLightMode ? 'border-slate-200 group-hover:border-slate-350' : 'border-[#2B3139] group-hover:border-[#474D57]')}`}>
                                                 <img src={convertGoogleDriveUrl(bank.LogoURL)} className="w-full h-full object-contain" alt="" />
                                             </div>
-                                            <span className={`text-[10px] font-bold uppercase truncate transition-colors ${isSelected ? 'text-[#FCD535]' : 'text-[#848E9C] group-hover:text-[#EAECEF]'}`}>
+                                            <span className={`text-[10px] font-bold uppercase truncate transition-colors ${isSelected ? (isLightMode ? 'text-blue-600' : 'text-[#FCD535]') : (isLightMode ? 'text-slate-500 group-hover:text-slate-800' : 'text-[#848E9C] group-hover:text-[#EAECEF]')}`}>
                                                 {bank.BankName}
                                             </span>
                                         </button>
@@ -176,13 +213,13 @@ const EditLogisticsPanel: React.FC<EditLogisticsPanelProps> = ({
             {/* Driver Selection Modal */}
             {isDriverModalOpen && (
                 <Modal isOpen={true} onClose={() => setIsDriverModalOpen(false)} maxWidth="max-w-2xl">
-                    <div className="p-4 bg-[#1E2329] rounded-none border-2 border-[#FCD535]">
+                    <div className={`p-4 rounded-none border-2 ${isLightMode ? 'bg-white border-blue-500' : 'bg-[#1E2329] border-[#FCD535]'}`}>
                         <div className="flex justify-between items-center mb-6">
-                            <h3 className="text-xl font-black text-[#FCD535] uppercase tracking-tighter flex items-center gap-3">
-                                <div className="w-2 h-6 bg-[#FCD535]"></div>
+                            <h3 className={`text-xl font-black uppercase tracking-tighter flex items-center gap-3 ${isLightMode ? 'text-blue-600' : 'text-[#FCD535]'}`}>
+                                <div className={`w-2 h-6 ${isLightMode ? 'bg-blue-500' : 'bg-[#FCD535]'}`}></div>
                                 Select Driver
                             </h3>
-                            <button onClick={() => setIsDriverModalOpen(false)} className="p-1 text-[#848E9C] hover:text-[#F6465D] transition-colors">
+                            <button onClick={() => setIsDriverModalOpen(false)} className={`p-1 transition-colors ${isLightMode ? 'text-slate-400 hover:text-rose-500' : 'text-[#848E9C] hover:text-[#F6465D]'}`}>
                                 <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M6 18L18 6M6 6l12 12" /></svg>
                             </button>
                         </div>
