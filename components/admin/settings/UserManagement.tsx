@@ -19,27 +19,35 @@ const AVATAR_GRADIENTS = [
     'from-lime-500 to-green-600',
 ];
 
-const RoleBadge: React.FC<{ value: string }> = ({ value }) => (
+const RoleBadge: React.FC<{ value: string; isLightMode?: boolean }> = ({ value, isLightMode }) => (
     <div className="flex flex-wrap gap-1">
         {String(value).split(',').map((r, i) => r.trim() && (
-            <span key={i} className="px-2 py-0.5 bg-[#fcd535]/10 text-[#fcd535] text-[10px] font-black rounded-lg border border-[#fcd535]/20 whitespace-nowrap">
+            <span key={i} className={`px-2 py-0.5 text-[10px] font-black rounded-lg whitespace-nowrap border ${
+                isLightMode 
+                    ? 'bg-amber-50 text-amber-700 border-amber-200/60' 
+                    : 'bg-[#fcd535]/10 text-[#fcd535] border-[#fcd535]/20'
+            }`}>
                 {r.trim()}
             </span>
         ))}
     </div>
 );
 
-const TeamBadge: React.FC<{ value: string }> = ({ value }) => (
+const TeamBadge: React.FC<{ value: string; isLightMode?: boolean }> = ({ value, isLightMode }) => (
     <div className="flex flex-wrap gap-1">
         {String(value).split(',').map((tm, i) => tm.trim() && (
-            <span key={i} className="px-2 py-0.5 bg-blue-500/10 text-blue-400 text-[10px] font-black rounded-lg border border-blue-500/20 whitespace-nowrap">
+            <span key={i} className={`px-2 py-0.5 text-[10px] font-black rounded-lg whitespace-nowrap border ${
+                isLightMode 
+                    ? 'bg-blue-50 text-blue-600 border-blue-200/60' 
+                    : 'bg-blue-500/10 text-blue-400 border-blue-500/20'
+            }`}>
                 {tm.trim()}
             </span>
         ))}
     </div>
 );
 
-const UserAvatar: React.FC<{ name: string; avatarUrl: string; gradientClass: string }> = ({ name, avatarUrl, gradientClass }) => {
+const UserAvatar: React.FC<{ name: string; avatarUrl: string; gradientClass: string; isLightMode?: boolean }> = ({ name, avatarUrl, gradientClass, isLightMode }) => {
     const [imgFailed, setImgFailed] = useState(false);
     const words = name.trim().split(/\s+/);
     const initials = (words.length >= 2
@@ -51,7 +59,9 @@ const UserAvatar: React.FC<{ name: string; avatarUrl: string; gradientClass: str
         return (
             <img
                 src={convertGoogleDriveUrl(avatarUrl)}
-                className="w-9 h-9 rounded-xl object-cover bg-[#2b3139] border border-[#3d4451] flex-shrink-0"
+                className={`w-9 h-9 rounded-xl object-cover flex-shrink-0 border ${
+                    isLightMode ? 'bg-slate-100 border-slate-200 shadow-sm' : 'bg-[#2b3139] border-[#3d4451]'
+                }`}
                 alt={name}
                 onError={() => setImgFailed(true)}
             />
@@ -65,7 +75,8 @@ const UserAvatar: React.FC<{ name: string; avatarUrl: string; gradientClass: str
 };
 
 const UserManagement: React.FC = () => {
-    const { appData, refreshData, showNotification } = useContext(AppContext);
+    const { appData, refreshData, showNotification, advancedSettings } = useContext(AppContext);
+    const isLightMode = advancedSettings?.themeMode === 'light';
     const [searchQuery, setSearchQuery] = useState('');
     const [modal, setModal] = useState<{ isOpen: boolean; item: any | null }>({ isOpen: false, item: null });
     const [isLoading, setIsLoading] = useState(false);
@@ -188,27 +199,27 @@ const UserManagement: React.FC = () => {
 
             {/* ── Stats Cards ─────────────────────────────── */}
             <div className="grid grid-cols-3 gap-3 flex-shrink-0">
-                <div className="bg-[#1e2329] rounded-2xl p-4 border border-[#2b3139]">
-                    <p className="text-[#848e9c] text-[9px] uppercase tracking-widest font-black">អ្នកប្រើប្រាស់សរុប</p>
-                    <p className="text-3xl font-black text-[#eaecef] mt-1">{allUsers.length}</p>
-                    <p className="text-[10px] text-[#5e6673] mt-1 font-bold">Total Accounts</p>
+                <div className={`rounded-2xl p-4 border transition-all ${isLightMode ? 'bg-white border-slate-200 shadow-sm shadow-slate-100/40' : 'bg-[#1e2329] border-[#2b3139]'}`}>
+                    <p className={`text-[9px] uppercase tracking-widest font-black ${isLightMode ? 'text-slate-400' : 'text-[#848e9c]'}`}>អ្នកប្រើប្រាស់សរុប</p>
+                    <p className={`text-3xl font-black mt-1 ${isLightMode ? 'text-slate-800' : 'text-[#eaecef]'}`}>{allUsers.length}</p>
+                    <p className={`text-[10px] mt-1 font-bold ${isLightMode ? 'text-slate-500' : 'text-[#5e6673]'}`}>Total Accounts</p>
                 </div>
-                <div className="bg-[#1e2329] rounded-2xl p-4 border border-[#fcd535]/20">
-                    <p className="text-[#fcd535] text-[9px] uppercase tracking-widest font-black">System Admins</p>
-                    <p className="text-3xl font-black text-[#fcd535] mt-1">{adminCount}</p>
-                    <p className="text-[10px] text-[#5e6673] mt-1 font-bold">Full Access</p>
+                <div className={`rounded-2xl p-4 border transition-all ${isLightMode ? 'bg-white border-blue-200 shadow-sm shadow-blue-50/20' : 'bg-[#1e2329] border-[#fcd535]/20'}`}>
+                    <p className={`text-[9px] uppercase tracking-widest font-black ${isLightMode ? 'text-blue-600' : 'text-[#fcd535]'}`}>System Admins</p>
+                    <p className={`text-3xl font-black mt-1 ${isLightMode ? 'text-blue-600' : 'text-[#fcd535]'}`}>{adminCount}</p>
+                    <p className={`text-[10px] mt-1 font-bold ${isLightMode ? 'text-blue-500/70' : 'text-[#5e6673]'}`}>Full Access</p>
                 </div>
-                <div className="bg-[#1e2329] rounded-2xl p-4 border border-[#2b3139]">
-                    <p className="text-[#848e9c] text-[9px] uppercase tracking-widest font-black">ចំនួនក្រុម</p>
-                    <p className="text-3xl font-black text-[#eaecef] mt-1">{teamsCount}</p>
-                    <p className="text-[10px] text-[#5e6673] mt-1 font-bold">Active Teams</p>
+                <div className={`rounded-2xl p-4 border transition-all ${isLightMode ? 'bg-white border-slate-200 shadow-sm shadow-slate-100/40' : 'bg-[#1e2329] border-[#2b3139]'}`}>
+                    <p className={`text-[9px] uppercase tracking-widest font-black ${isLightMode ? 'text-slate-400' : 'text-[#848e9c]'}`}>ចំនួនក្រុម</p>
+                    <p className={`text-3xl font-black mt-1 ${isLightMode ? 'text-slate-800' : 'text-[#eaecef]'}`}>{teamsCount}</p>
+                    <p className={`text-[10px] mt-1 font-bold ${isLightMode ? 'text-slate-500' : 'text-[#5e6673]'}`}>Active Teams</p>
                 </div>
             </div>
 
             {/* ── Toolbar ──────────────────────────────────── */}
             <div className="flex gap-3 flex-shrink-0">
                 <div className="relative flex-grow">
-                    <div className="absolute left-4 top-1/2 -translate-y-1/2 text-[#848e9c] pointer-events-none">
+                    <div className={`absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none ${isLightMode ? 'text-slate-400' : 'text-[#848e9c]'}`}>
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={3}>
                             <path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                         </svg>
@@ -218,12 +229,16 @@ const UserManagement: React.FC = () => {
                         placeholder="ស្វែងរកតាមឈ្មោះ, Username, Role, ក្រុម, Telegram..."
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
-                        className="w-full py-3 pl-11 pr-4 bg-[#1e2329] border border-[#2b3139] rounded-2xl text-sm font-bold text-[#eaecef] placeholder:text-[#5e6673] focus:border-[#fcd535]/40 outline-none transition-all"
+                        className={`w-full py-3 pl-11 pr-4 border rounded-2xl text-sm font-bold outline-none transition-all ${
+                            isLightMode 
+                                ? 'bg-white border-slate-200 text-slate-800 placeholder:text-slate-400 focus:border-blue-500/50 shadow-sm shadow-slate-100/40' 
+                                : 'bg-[#1e2329] border-[#2b3139] text-[#eaecef] placeholder:text-[#5e6673] focus:border-[#fcd535]/40'
+                        }`}
                     />
                     {searchQuery && (
                         <button
                             onClick={() => setSearchQuery('')}
-                            className="absolute right-3 top-1/2 -translate-y-1/2 text-[#848e9c] hover:text-[#eaecef] transition-colors"
+                            className={`absolute right-3 top-1/2 -translate-y-1/2 transition-colors ${isLightMode ? 'text-slate-400 hover:text-slate-600' : 'text-[#848e9c] hover:text-[#eaecef]'}`}
                         >
                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" /></svg>
                         </button>
@@ -232,7 +247,11 @@ const UserManagement: React.FC = () => {
                 <button
                     onClick={handleRefresh}
                     disabled={isFetching}
-                    className="p-3 bg-[#1e2329] border border-[#2b3139] rounded-2xl text-[#848e9c] hover:text-[#eaecef] hover:border-[#3d4451] transition-all disabled:opacity-50"
+                    className={`p-3 border rounded-2xl transition-all disabled:opacity-50 ${
+                        isLightMode 
+                            ? 'bg-white border-slate-200 text-slate-500 hover:text-blue-600 hover:border-blue-200 shadow-sm shadow-slate-100/40' 
+                            : 'bg-[#1e2329] border-[#2b3139] text-[#848e9c] hover:text-[#eaecef] hover:border-[#3d4451]'
+                    }`}
                     title="Refresh"
                 >
                     <svg className={`w-4 h-4 ${isFetching ? 'animate-spin' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -248,24 +267,32 @@ const UserManagement: React.FC = () => {
             </div>
 
             {/* ── Desktop Table ─────────────────────────────── */}
-            <div className="hidden md:flex bg-[#1e2329] border border-[#2b3139] rounded-3xl overflow-hidden flex-col flex-grow relative">
+            <div className={`hidden md:flex border rounded-3xl overflow-hidden flex-col flex-grow relative ${
+                isLightMode 
+                    ? 'bg-white border-slate-200 shadow-sm shadow-slate-100/40' 
+                    : 'bg-[#1e2329] border-[#2b3139]'
+            }`}>
                 {isLoading && (
-                    <div className="absolute inset-0 bg-[#181a20]/70 z-50 flex items-center justify-center backdrop-blur-sm rounded-3xl">
+                    <div className={`absolute inset-0 z-50 flex items-center justify-center backdrop-blur-sm rounded-3xl ${
+                        isLightMode ? 'bg-white/70' : 'bg-[#181a20]/70'
+                    }`}>
                         <Spinner size="lg" />
                     </div>
                 )}
                 <div className="overflow-y-auto no-scrollbar flex-grow overflow-x-auto">
                     <table className="w-full min-w-[720px]">
                         <thead>
-                            <tr className="bg-[#181a20]/80 border-b border-[#2b3139] sticky top-0 z-10">
-                                <th className="w-12 py-3.5 text-center text-[9px] font-black text-[#848e9c] uppercase tracking-widest">#</th>
-                                <th className="py-3.5 px-4 text-left text-[9px] font-black text-[#848e9c] uppercase tracking-widest">អ្នកប្រើប្រាស់</th>
-                                <th className="py-3.5 px-4 text-left text-[9px] font-black text-[#848e9c] uppercase tracking-widest">Username</th>
-                                <th className="py-3.5 px-4 text-left text-[9px] font-black text-[#848e9c] uppercase tracking-widest">តួនាទី</th>
-                                <th className="py-3.5 px-4 text-left text-[9px] font-black text-[#848e9c] uppercase tracking-widest">ក្រុម</th>
-                                <th className="py-3.5 px-4 text-left text-[9px] font-black text-[#848e9c] uppercase tracking-widest">Telegram</th>
-                                <th className="py-3.5 px-4 text-center text-[9px] font-black text-[#848e9c] uppercase tracking-widest">Admin</th>
-                                <th className="w-28 py-3.5 text-center text-[9px] font-black text-[#848e9c] uppercase tracking-widest">Action</th>
+                            <tr className={`border-b sticky top-0 z-10 ${
+                                isLightMode ? 'bg-slate-50/90 border-slate-200 text-slate-800' : 'bg-[#181a20]/80 border-b border-[#2b3139]'
+                            }`}>
+                                <th className={`w-12 py-3.5 text-center text-[9px] font-black uppercase tracking-widest ${isLightMode ? 'text-slate-500' : 'text-[#848e9c]'}`}>#</th>
+                                <th className={`py-3.5 px-4 text-left text-[9px] font-black uppercase tracking-widest ${isLightMode ? 'text-slate-500' : 'text-[#848e9c]'}`}>អ្នកប្រើប្រាស់</th>
+                                <th className={`py-3.5 px-4 text-left text-[9px] font-black uppercase tracking-widest ${isLightMode ? 'text-slate-500' : 'text-[#848e9c]'}`}>Username</th>
+                                <th className={`py-3.5 px-4 text-left text-[9px] font-black uppercase tracking-widest ${isLightMode ? 'text-slate-500' : 'text-[#848e9c]'}`}>តួនាទី</th>
+                                <th className={`py-3.5 px-4 text-left text-[9px] font-black uppercase tracking-widest ${isLightMode ? 'text-slate-500' : 'text-[#848e9c]'}`}>ក្រុម</th>
+                                <th className={`py-3.5 px-4 text-left text-[9px] font-black uppercase tracking-widest ${isLightMode ? 'text-slate-500' : 'text-[#848e9c]'}`}>Telegram</th>
+                                <th className={`py-3.5 px-4 text-center text-[9px] font-black uppercase tracking-widest ${isLightMode ? 'text-slate-500' : 'text-[#848e9c]'}`}>Admin</th>
+                                <th className={`w-28 py-3.5 text-center text-[9px] font-black uppercase tracking-widest ${isLightMode ? 'text-slate-500' : 'text-[#848e9c]'}`}>Action</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -273,8 +300,12 @@ const UserManagement: React.FC = () => {
                                 <tr><td colSpan={8} className="py-20 text-center"><Spinner size="lg" /></td></tr>
                             ) : fetchError ? (
                                 <tr><td colSpan={8} className="py-20 text-center">
-                                    <p className="text-[#848e9c] font-bold mb-3">មានបញ្ហាក្នុងការទាញទិន្នន័យ</p>
-                                    <button onClick={() => loadUsers(true)} className="px-4 py-2 bg-[#2b3139] text-[#eaecef] rounded-xl text-xs font-black hover:bg-[#3d4451] transition-all">
+                                    <p className={`font-bold mb-3 ${isLightMode ? 'text-slate-500' : 'text-[#848e9c]'}`}>មានបញ្ហាក្នុងការទាញទិន្នន័យ</p>
+                                    <button onClick={() => loadUsers(true)} className={`px-4 py-2 rounded-xl text-xs font-black transition-all ${
+                                        isLightMode 
+                                            ? 'bg-slate-100 text-slate-700 hover:bg-slate-200' 
+                                            : 'bg-[#2b3139] text-[#eaecef] hover:bg-[#3d4451]'
+                                    }`}>
                                         ចុចដើម្បីសាកល្បងម្ដងទៀត
                                     </button>
                                 </td></tr>
@@ -289,17 +320,19 @@ const UserManagement: React.FC = () => {
                                 const gradient  = AVATAR_GRADIENTS[idx % AVATAR_GRADIENTS.length];
 
                                 return (
-                                    <tr key={idx} className="border-b border-[#2b3139]/50 hover:bg-[#2b3139]/25 transition-colors group">
-                                        <td className="py-3.5 text-center text-[#848e9c] font-bold text-xs">{idx + 1}</td>
+                                    <tr key={idx} className={`border-b hover:bg-blue-600/5 transition-colors group ${
+                                        isLightMode ? 'border-slate-100' : 'border-[#2b3139]/50 hover:bg-[#2b3139]/25'
+                                    }`}>
+                                        <td className={`py-3.5 text-center font-bold text-xs ${isLightMode ? 'text-slate-400' : 'text-[#848e9c]'}`}>{idx + 1}</td>
 
                                         {/* Full Name + Avatar */}
                                         <td className="py-3.5 px-4">
                                             <div className="flex items-center gap-3">
-                                                <UserAvatar name={fullName} avatarUrl={avatar} gradientClass={gradient} />
+                                                <UserAvatar name={fullName} avatarUrl={avatar} gradientClass={gradient} isLightMode={isLightMode} />
                                                 <div className="min-w-0">
-                                                    <p className="font-bold text-sm text-[#eaecef] truncate">{fullName || '—'}</p>
+                                                    <p className={`font-bold text-sm truncate ${isLightMode ? 'text-slate-800' : 'text-[#eaecef]'}`}>{fullName || '—'}</p>
                                                     {isAdmin && (
-                                                        <p className="text-[9px] text-[#fcd535] font-black uppercase tracking-widest mt-0.5">System Admin</p>
+                                                        <p className={`text-[9px] font-black uppercase tracking-widest mt-0.5 ${isLightMode ? 'text-blue-600' : 'text-[#fcd535]'}`}>System Admin</p>
                                                     )}
                                                 </div>
                                             </div>
@@ -307,34 +340,36 @@ const UserManagement: React.FC = () => {
 
                                         {/* Username */}
                                         <td className="py-3.5 px-4">
-                                            <code className="text-sm text-[#848e9c] bg-[#2b3139] px-2 py-0.5 rounded-lg font-mono">
+                                            <code className={`text-sm px-2 py-0.5 rounded-lg font-mono ${
+                                                isLightMode ? 'text-slate-600 bg-slate-100' : 'text-[#848e9c] bg-[#2b3139]'
+                                            }`}>
                                                 {userName || '—'}
                                             </code>
                                         </td>
 
                                         {/* Role badges */}
                                         <td className="py-3.5 px-4">
-                                            {role ? <RoleBadge value={role} /> : <span className="text-[#5e6673] text-xs">—</span>}
+                                            {role ? <RoleBadge value={role} isLightMode={isLightMode} /> : <span className={`text-xs ${isLightMode ? 'text-slate-400' : 'text-[#5e6673]'}`}>—</span>}
                                         </td>
 
                                         {/* Team badges */}
                                         <td className="py-3.5 px-4">
-                                            {team ? <TeamBadge value={team} /> : <span className="text-[#5e6673] text-xs">—</span>}
+                                            {team ? <TeamBadge value={team} isLightMode={isLightMode} /> : <span className={`text-xs ${isLightMode ? 'text-slate-400' : 'text-[#5e6673]'}`}>—</span>}
                                         </td>
 
                                         {/* Telegram */}
                                         <td className="py-3.5 px-4">
                                             {telegram
-                                                ? <span className="text-sm text-blue-300 font-mono">@{telegram}</span>
-                                                : <span className="text-[#5e6673] text-xs">—</span>
+                                                ? <span className={`text-sm font-mono ${isLightMode ? 'text-blue-600' : 'text-blue-300'}`}>@{telegram}</span>
+                                                : <span className={`text-xs ${isLightMode ? 'text-slate-400' : 'text-[#5e6673]'}`}>—</span>
                                             }
                                         </td>
 
                                         {/* Admin badge */}
                                         <td className="py-3.5 px-4 text-center">
                                             {isAdmin
-                                                ? <span className="px-2.5 py-1 bg-[#fcd535]/10 text-[#fcd535] text-[10px] font-black rounded-lg border border-[#fcd535]/30 whitespace-nowrap">✦ ADMIN</span>
-                                                : <span className="text-[#5e6673] text-xs">—</span>
+                                                ? <span className={`px-2.5 py-1 text-[10px] font-black rounded-lg border whitespace-nowrap ${isLightMode ? 'bg-amber-50 text-amber-700 border-amber-200' : 'bg-[#fcd535]/10 text-[#fcd535] border-[#fcd535]/30'}`}>✦ ADMIN</span>
+                                                : <span className={`text-xs ${isLightMode ? 'text-slate-400' : 'text-[#5e6673]'}`}>—</span>
                                             }
                                         </td>
 
@@ -343,14 +378,22 @@ const UserManagement: React.FC = () => {
                                             <div className="flex items-center justify-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                                                 <button
                                                     onClick={() => setModal({ isOpen: true, item: user })}
-                                                    className="p-2 bg-[#fcd535]/10 text-[#fcd535] rounded-lg hover:bg-[#fcd535] hover:text-black transition-all"
+                                                    className={`p-2 rounded-lg transition-all ${
+                                                        isLightMode 
+                                                            ? 'bg-amber-50 text-amber-600 hover:bg-amber-500 hover:text-white' 
+                                                            : 'bg-[#fcd535]/10 text-[#fcd535] hover:bg-[#fcd535] hover:text-black'
+                                                    }`}
                                                     title="កែសម្រួល"
                                                 >
                                                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" strokeWidth={2} /></svg>
                                                 </button>
                                                 <button
                                                     onClick={() => handleDelete(user)}
-                                                    className="p-2 bg-red-500/10 text-red-400 rounded-lg hover:bg-red-500 hover:text-white transition-all"
+                                                    className={`p-2 rounded-lg transition-all ${
+                                                        isLightMode 
+                                                            ? 'bg-red-50 text-red-600 hover:bg-red-500 hover:text-white' 
+                                                            : 'bg-red-500/10 text-red-400 hover:bg-red-500 hover:text-white'
+                                                    }`}
                                                     title="លុប"
                                                 >
                                                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" strokeWidth={2} /></svg>
@@ -361,7 +404,7 @@ const UserManagement: React.FC = () => {
                                 );
                             }) : (
                                 <tr>
-                                    <td colSpan={8} className="py-20 text-center text-[#848e9c] font-bold">
+                                    <td colSpan={8} className={`py-20 text-center font-bold ${isLightMode ? 'text-slate-500' : 'text-[#848e9c]'}`}>
                                         {searchQuery ? `រកមិនឃើញអ្នកប្រើប្រាស់ "${searchQuery}"` : 'មិនទាន់មានអ្នកប្រើប្រាស់ត្រូវបានបន្ថែម'}
                                     </td>
                                 </tr>
@@ -370,8 +413,10 @@ const UserManagement: React.FC = () => {
                     </table>
                 </div>
                 {/* Footer count */}
-                <div className="border-t border-[#2b3139] px-5 py-2.5 bg-[#181a20]/50 flex-shrink-0">
-                    <p className="text-[#848e9c] text-[11px] font-bold">
+                <div className={`px-5 py-2.5 flex-shrink-0 ${
+                    isLightMode ? 'border-t border-slate-200 bg-slate-50/50' : 'border-t border-[#2b3139] bg-[#181a20]/50'
+                }`}>
+                    <p className={`text-[11px] font-bold ${isLightMode ? 'text-slate-500' : 'text-[#848e9c]'}`}>
                         បង្ហាញ {filteredUsers.length} / {allUsers.length} នាក់
                         {searchQuery && ` · ស្វែងរក "${searchQuery}"`}
                     </p>
@@ -381,7 +426,9 @@ const UserManagement: React.FC = () => {
             {/* ── Mobile Cards ──────────────────────────────── */}
             <div className="md:hidden flex flex-col flex-grow overflow-y-auto no-scrollbar gap-3 pb-20 relative">
                 {isLoading && (
-                    <div className="absolute inset-0 bg-[#181a20]/70 z-50 flex items-center justify-center backdrop-blur-sm">
+                    <div className={`absolute inset-0 z-50 flex items-center justify-center backdrop-blur-sm ${
+                        isLightMode ? 'bg-white/70' : 'bg-[#181a20]/70'
+                    }`}>
                         <Spinner size="lg" />
                     </div>
                 )}
@@ -389,8 +436,12 @@ const UserManagement: React.FC = () => {
                     <div className="py-20 flex justify-center"><Spinner size="lg" /></div>
                 ) : fetchError ? (
                     <div className="py-20 text-center">
-                        <p className="text-[#848e9c] font-bold mb-3">មានបញ្ហាក្នុងការទាញទិន្នន័យ</p>
-                        <button onClick={() => loadUsers(true)} className="px-4 py-2 bg-[#2b3139] text-[#eaecef] rounded-xl text-xs font-black hover:bg-[#3d4451] transition-all">
+                        <p className={`font-bold mb-3 ${isLightMode ? 'text-slate-500' : 'text-[#848e9c]'}`}>មានបញ្ហាក្នុងការទាញទិន្នន័យ</p>
+                        <button onClick={() => loadUsers(true)} className={`px-4 py-2 rounded-xl text-xs font-black transition-all ${
+                            isLightMode 
+                                ? 'bg-slate-100 text-slate-700 hover:bg-slate-200' 
+                                : 'bg-[#2b3139] text-[#eaecef] hover:bg-[#3d4451]'
+                        }`}>
                             ចុចដើម្បីសាកល្បងម្ដងទៀត
                         </button>
                     </div>
@@ -405,35 +456,45 @@ const UserManagement: React.FC = () => {
                     const gradient  = AVATAR_GRADIENTS[idx % AVATAR_GRADIENTS.length];
 
                     return (
-                        <div key={idx} className="bg-[#1e2329] border border-[#2b3139] rounded-2xl p-4">
+                        <div key={idx} className={`border rounded-2xl p-4 ${
+                            isLightMode ? 'bg-white border-slate-200 shadow-sm shadow-slate-100/40' : 'bg-[#1e2329] border-[#2b3139]'
+                        }`}>
                             <div className="flex items-start gap-3">
-                                <UserAvatar name={fullName} avatarUrl={avatar} gradientClass={gradient} />
+                                <UserAvatar name={fullName} avatarUrl={avatar} gradientClass={gradient} isLightMode={isLightMode} />
                                 <div className="flex-grow min-w-0">
                                     <div className="flex items-center justify-between gap-2">
-                                        <p className="font-black text-sm text-[#eaecef] truncate">{fullName || '—'}</p>
+                                        <p className={`font-black text-sm truncate ${isLightMode ? 'text-slate-800' : 'text-[#eaecef]'}`}>{fullName || '—'}</p>
                                         {isAdmin && (
-                                            <span className="px-2 py-0.5 bg-[#fcd535]/10 text-[#fcd535] text-[9px] font-black rounded-lg border border-[#fcd535]/30 whitespace-nowrap flex-shrink-0">✦ ADMIN</span>
+                                            <span className={`px-2 py-0.5 text-[9px] font-black rounded-lg border whitespace-nowrap flex-shrink-0 ${isLightMode ? 'bg-amber-50 text-amber-700 border-amber-200' : 'bg-[#fcd535]/10 text-[#fcd535] border-[#fcd535]/30'}`}>✦ ADMIN</span>
                                         )}
                                     </div>
-                                    <code className="text-[11px] text-[#848e9c] font-mono">{userName}</code>
-                                    {role && <div className="mt-2"><RoleBadge value={role} /></div>}
-                                    {team && <div className="mt-1"><TeamBadge value={team} /></div>}
+                                    <code className={`text-[11px] font-mono ${isLightMode ? 'text-slate-500' : 'text-[#848e9c]'}`}>{userName}</code>
+                                    {role && <div className="mt-2"><RoleBadge value={role} isLightMode={isLightMode} /></div>}
+                                    {team && <div className="mt-1"><TeamBadge value={team} isLightMode={isLightMode} /></div>}
                                     {telegram && (
-                                        <p className="mt-1.5 text-[11px] text-blue-300 font-mono">@{telegram}</p>
+                                        <p className={`mt-1.5 text-[11px] font-mono ${isLightMode ? 'text-blue-600' : 'text-blue-300'}`}>@{telegram}</p>
                                     )}
                                 </div>
                             </div>
-                            <div className="flex gap-2 mt-3 border-t border-[#2b3139] pt-3">
+                            <div className={`flex gap-2 mt-3 border-t pt-3 ${isLightMode ? 'border-slate-100' : 'border-[#2b3139]'}`}>
                                 <button
                                     onClick={() => setModal({ isOpen: true, item: user })}
-                                    className="flex-1 py-2 bg-[#fcd535]/10 text-[#fcd535] rounded-xl text-xs font-black hover:bg-[#fcd535] hover:text-black transition-all active:scale-95 flex items-center justify-center gap-1.5"
+                                    className={`flex-1 py-2 rounded-xl text-xs font-black transition-all active:scale-95 flex items-center justify-center gap-1.5 ${
+                                        isLightMode 
+                                            ? 'bg-amber-50 text-amber-600 hover:bg-amber-500 hover:text-white' 
+                                            : 'bg-[#fcd535]/10 text-[#fcd535] hover:bg-[#fcd535] hover:text-black'
+                                    }`}
                                 >
                                     <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" strokeWidth={2} /></svg>
                                     កែសម្រួល
                                 </button>
                                 <button
                                     onClick={() => handleDelete(user)}
-                                    className="flex-1 py-2 bg-red-500/10 text-red-400 rounded-xl text-xs font-black hover:bg-red-500 hover:text-white transition-all active:scale-95 flex items-center justify-center gap-1.5"
+                                    className={`flex-1 py-2 rounded-xl text-xs font-black transition-all active:scale-95 flex items-center justify-center gap-1.5 ${
+                                        isLightMode 
+                                            ? 'bg-red-50 text-red-600 hover:bg-red-500 hover:text-white' 
+                                            : 'bg-red-500/10 text-red-400 hover:bg-red-500 hover:text-white'
+                                    }`}
                                 >
                                     <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" strokeWidth={2} /></svg>
                                     លុប
@@ -442,7 +503,7 @@ const UserManagement: React.FC = () => {
                         </div>
                     );
                 }) : (
-                    <div className="py-20 text-center text-[#848e9c] font-bold">
+                    <div className={`py-20 text-center font-bold ${isLightMode ? 'text-slate-500' : 'text-[#848e9c]'}`}>
                         {searchQuery ? `រកមិនឃើញ "${searchQuery}"` : 'មិនទាន់មានអ្នកប្រើប្រាស់'}
                     </div>
                 )}

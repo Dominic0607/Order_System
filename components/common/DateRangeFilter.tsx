@@ -54,14 +54,14 @@ const DateRangeFilter: React.FC<DateRangeFilterProps> = ({
     const isBinance = uiTheme === 'binance';
 
     return (
-        <div className={isBinance ? "flex items-center gap-2 max-w-full" : "space-y-4"}>
+        <div className={isBinance ? "flex items-center gap-2 max-w-full" : "space-y-2 sm:space-y-4"}>
             <div className={`flex items-center gap-2 ${isBinance ? 'overflow-x-auto scrollbar-hide' : 'flex-wrap'}`}>
-                <div className={`flex items-center gap-0.5 p-0.5 ${isBinance ? 'rounded-lg' : 'rounded-2xl'} border shadow-inner transition-colors duration-500 ${getContainerBg()}`}>
+                <div className={`flex items-center gap-0.5 p-0.5 ${isBinance ? 'rounded-lg' : 'rounded-xl sm:rounded-2xl'} border shadow-inner transition-colors duration-500 ${getContainerBg()}`}>
                     {(['today', 'this_week', 'this_month', 'custom'] as const).map(p => (
                         <button 
                             key={p} 
                             onClick={() => onRangeChange(p)} 
-                            className={`${isBinance ? 'px-3 py-1.5 text-[10px]' : 'px-5 py-2.5 text-[12px]'} font-black uppercase ${isBinance ? 'rounded' : 'rounded-xl'} transition-all active:scale-95 ${getButtonClass(dateRange === p)}`}
+                            className={`${isBinance ? 'px-3 py-1.5 text-[10px]' : 'px-3 py-1.5 sm:px-5 sm:py-2.5 text-[10.5px] sm:text-[12px]'} font-black uppercase ${isBinance ? 'rounded' : 'rounded-lg sm:rounded-xl'} transition-all active:scale-95 ${getButtonClass(dateRange === p)}`}
                         >
                             {t(p)}
                         </button>

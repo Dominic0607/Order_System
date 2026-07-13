@@ -313,11 +313,11 @@ const DashboardOverview: React.FC<DashboardOverviewProps> = ({
         : 'bg-[#0f172a]/98 border-white/10';
 
     return (
-        <div className="w-full max-w-[1600px] mx-auto py-6 px-4 sm:px-6 space-y-8 animate-fade-in pb-12">
+        <div className="w-full max-w-[1600px] mx-auto py-3 px-3 sm:py-6 sm:px-6 space-y-4 sm:space-y-8 animate-fade-in pb-12">
             {/* Header Section */}
-            <div className={`${defaultHeaderSurface} border rounded-2xl p-6 sm:p-8 flex flex-col xl:flex-row xl:items-center justify-between gap-6 shadow-sm`}>
+            <div className={`${defaultHeaderSurface} border rounded-2xl p-4 sm:p-8 flex flex-col xl:flex-row xl:items-center justify-between gap-4 sm:gap-6 shadow-sm`}>
                 <div className="min-w-0">
-                    <div className="flex items-center gap-3 mb-2">
+                    <div className="flex items-center gap-3 mb-1 sm:mb-2">
                         <span className="relative flex h-3 w-3">
                             {isSyncing && <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>}
                             <span className={`relative inline-flex rounded-full h-3 w-3 ${isSyncing ? 'bg-blue-500' : 'bg-emerald-500'}`}></span>
@@ -326,14 +326,14 @@ const DashboardOverview: React.FC<DashboardOverviewProps> = ({
                             {isSyncing ? (language === 'km' ? 'កំពុងធ្វើបច្ចុប្បន្នភាព' : 'Syncing Data...') : (language === 'km' ? 'ទិន្នន័យបច្ចុប្បន្ន' : 'Live Operations')}
                         </span>
                     </div>
-                    <h2 className={`text-3xl font-black ${isLightMode ? 'text-slate-900' : 'text-white'} tracking-tight`}>
+                    <h2 className={`text-xl sm:text-3xl font-black ${isLightMode ? 'text-slate-900' : 'text-white'} tracking-tight`}>
                         Admin Dashboard
                     </h2>
-                    <p className={`text-sm font-medium ${isLightMode ? 'text-slate-500' : 'text-slate-400'} mt-1`}>
+                    <p className={`text-sm font-medium ${isLightMode ? 'text-slate-500' : 'text-slate-400'} mt-1 hidden sm:block`}>
                         {language === 'km' ? 'សង្ខេបប្រតិបត្តិការ ការលក់ និងតំបន់ចែកចាយប្រចាំថ្ងៃ' : 'Comprehensive overview of sales, orders, and regional performance'}
                     </p>
                 </div>
-                <div className="w-full xl:w-auto bg-black/5 p-2 rounded-xl dark:bg-white/5 border border-transparent dark:border-white/5">
+                <div className="w-full xl:w-auto bg-black/5 p-1 sm:p-2 rounded-xl dark:bg-white/5 border border-transparent dark:border-white/5">
                     <DateRangeFilter
                         dateRange={dateFilter.preset as DateRangePreset}
                         onRangeChange={(r) => setDateFilter({ ...dateFilter, preset: r })}
@@ -346,89 +346,69 @@ const DashboardOverview: React.FC<DashboardOverviewProps> = ({
             </div>
 
             {/* BEGIN: Stats Cards */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div className="grid grid-cols-3 gap-2 sm:gap-6">
                 {/* Card 1: Revenue */}
-                <div className={`${defaultSurface} rounded-2xl border p-6 flex flex-col justify-between group overflow-hidden relative`}>
+                <div className={`${isLightMode ? 'bg-gradient-to-br from-blue-50/30 to-white border-blue-100/80 shadow-sm hover:shadow-md' : defaultSurface} rounded-2xl border p-2.5 sm:p-6 flex flex-row sm:flex-col justify-between items-center sm:items-start group overflow-hidden relative min-h-[72px] sm:min-h-0 transition-all`}>
                     {/* Subtle Background Glow */}
-                    <div className="absolute -top-10 -right-10 w-32 h-32 bg-blue-500/10 rounded-full blur-3xl pointer-events-none group-hover:bg-blue-500/20 transition-all"></div>
+                    <div className="absolute -top-10 -right-10 w-24 h-24 sm:w-32 sm:h-32 bg-blue-500/10 rounded-full blur-3xl pointer-events-none group-hover:bg-blue-500/20 transition-all"></div>
                     
-                    <div className="flex justify-between items-start mb-4">
-                        <div className={`h-12 w-12 rounded-xl ${isLightMode ? 'bg-blue-50 text-blue-600' : 'bg-blue-500/20 text-blue-400'} flex items-center justify-center border ${isLightMode ? 'border-blue-100' : 'border-blue-500/30'} shadow-sm`}>
-                            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                    <div className="flex items-center gap-2.5 sm:flex-col sm:items-start sm:w-full sm:mb-4">
+                        <div className={`h-8 w-8 sm:h-12 sm:w-12 rounded-lg sm:rounded-xl ${isLightMode ? 'bg-blue-100/60 text-blue-600' : 'bg-blue-500/20 text-blue-400'} flex items-center justify-center border ${isLightMode ? 'border-blue-200/50' : 'border-blue-500/30'} shadow-sm flex-shrink-0`}>
+                            <svg className="w-4 h-4 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                         </div>
-                        <span className={`text-[10px] font-black uppercase tracking-wider ${isLightMode ? 'text-green-600 bg-green-100' : 'text-emerald-400 bg-emerald-400/10'} px-2.5 py-1 rounded-lg`}>Trending</span>
-                    </div>
-                    <div>
-                        <p className={`text-[11px] font-black uppercase tracking-widest mb-1 ${isLightMode ? 'text-slate-500' : 'text-slate-400'}`}>
-                            {language === 'km' ? 'ចំណូលសរុប' : 'Total Revenue'}
-                        </p>
-                        <div className="flex items-baseline gap-1">
-                            <span className={`text-xl font-bold ${isLightMode ? 'text-blue-600' : 'text-blue-400'}`}>$</span>
-                            <p className={`text-4xl font-black ${isLightMode ? 'text-slate-900' : 'text-white'} tabular-nums tracking-tighter`}>
-                                {metrics.revenue.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                        <div className="flex flex-col min-w-0 sm:mt-1">
+                            <p className={`text-[8.5px] sm:text-[11px] font-black uppercase tracking-widest mb-0.5 sm:mb-1 ${isLightMode ? 'text-slate-500' : 'text-slate-400'} truncate`}>
+                                {language === 'km' ? 'ចំណូលសរុប' : 'Total Revenue'}
                             </p>
+                            <div className="flex items-baseline gap-0.5 sm:gap-1">
+                                <span className={`text-xs sm:text-xl font-bold ${isLightMode ? 'text-blue-600' : 'text-blue-400'}`}>$</span>
+                                <p className={`text-base sm:text-4xl font-black ${isLightMode ? 'text-slate-900' : 'text-white'} tabular-nums tracking-tighter`}>
+                                    {metrics.revenue.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                                </p>
+                            </div>
                         </div>
                     </div>
+                    <span className={`text-[10px] font-black uppercase tracking-wider ${isLightMode ? 'text-green-600 bg-green-100' : 'text-emerald-400 bg-emerald-400/10'} px-2.5 py-1 rounded-lg hidden sm:block absolute top-6 right-6`}>Trending</span>
                 </div>
 
                 {/* Card 2: Orders */}
-                <div className={`${defaultSurface} rounded-2xl border p-6 flex flex-col justify-between group overflow-hidden relative`}>
-                    <div className="absolute -top-10 -right-10 w-32 h-32 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none group-hover:bg-emerald-500/20 transition-all"></div>
+                <div className={`${isLightMode ? 'bg-gradient-to-br from-emerald-50/30 to-white border-emerald-100/80 shadow-sm hover:shadow-md' : defaultSurface} rounded-2xl border p-2.5 sm:p-6 flex flex-row sm:flex-col justify-between items-center sm:items-start group overflow-hidden relative min-h-[72px] sm:min-h-0 transition-all`}>
+                    <div className="absolute -top-10 -right-10 w-24 h-24 sm:w-32 sm:h-32 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none group-hover:bg-emerald-500/20 transition-all"></div>
                     
-                    <div className="flex justify-between items-start mb-4">
-                        <div className={`h-12 w-12 rounded-xl ${isLightMode ? 'bg-emerald-50 text-emerald-600' : 'bg-emerald-500/20 text-emerald-400'} flex items-center justify-center border ${isLightMode ? 'border-emerald-100' : 'border-emerald-500/30'} shadow-sm`}>
-                            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
+                    <div className="flex items-center gap-2.5 sm:flex-col sm:items-start sm:w-full sm:mb-4">
+                        <div className={`h-8 w-8 sm:h-12 sm:w-12 rounded-lg sm:rounded-xl ${isLightMode ? 'bg-emerald-100/60 text-emerald-600' : 'bg-emerald-500/20 text-emerald-400'} flex items-center justify-center border ${isLightMode ? 'border-emerald-200/50' : 'border-emerald-500/30'} shadow-sm flex-shrink-0`}>
+                            <svg className="w-4 h-4 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
                         </div>
-                        <span className={`text-[10px] font-black uppercase tracking-wider ${isLightMode ? 'text-blue-600 bg-blue-100' : 'text-blue-400 bg-blue-400/10'} px-2.5 py-1 rounded-lg`}>Active</span>
+                        <div className="flex flex-col min-w-0 sm:mt-1">
+                            <p className={`text-[8.5px] sm:text-[11px] font-black uppercase tracking-widest mb-0.5 sm:mb-1 ${isLightMode ? 'text-slate-500' : 'text-slate-400'} truncate`}>
+                                {language === 'km' ? 'ការកម្មង់សរុប' : 'Total Orders'}
+                            </p>
+                            <p className={`text-base sm:text-4xl font-black ${isLightMode ? 'text-slate-900' : 'text-white'} tabular-nums tracking-tighter`}>
+                                {metrics.orders.toLocaleString()}
+                            </p>
+                        </div>
                     </div>
-                    <div>
-                        <p className={`text-[11px] font-black uppercase tracking-widest mb-1 ${isLightMode ? 'text-slate-500' : 'text-slate-400'}`}>
-                            {language === 'km' ? 'ការកម្មង់សរុប' : 'Total Orders'}
-                        </p>
-                        <p className={`text-4xl font-black ${isLightMode ? 'text-slate-900' : 'text-white'} tabular-nums tracking-tighter`}>
-                            {metrics.orders.toLocaleString()}
-                        </p>
-                    </div>
+                    <span className={`text-[10px] font-black uppercase tracking-wider ${isLightMode ? 'text-blue-600 bg-blue-100' : 'text-blue-400 bg-blue-400/10'} px-2.5 py-1 rounded-lg hidden sm:block absolute top-6 right-6`}>Active</span>
                 </div>
 
                 {/* Card 3: Unpaid */}
-                <div className={`${defaultSurface} rounded-2xl border p-6 flex flex-col justify-between group overflow-hidden relative`}>
-                    <div className="absolute -top-10 -right-10 w-32 h-32 bg-orange-500/10 rounded-full blur-3xl pointer-events-none group-hover:bg-orange-500/20 transition-all"></div>
+                <div className={`${isLightMode ? 'bg-gradient-to-br from-orange-50/30 to-white border-orange-100/80 shadow-sm hover:shadow-md' : defaultSurface} rounded-2xl border p-2.5 sm:p-6 flex flex-row sm:flex-col justify-between items-center sm:items-start group overflow-hidden relative min-h-[72px] sm:min-h-0 transition-all`}>
+                    <div className="absolute -top-10 -right-10 w-24 h-24 sm:w-32 sm:h-32 bg-orange-500/10 rounded-full blur-3xl pointer-events-none group-hover:bg-orange-500/20 transition-all"></div>
                     
-                    <div className="flex justify-between items-start mb-4">
-                        <div className={`h-12 w-12 rounded-xl ${isLightMode ? 'bg-orange-50 text-orange-600' : 'bg-orange-500/20 text-orange-400'} flex items-center justify-center border ${isLightMode ? 'border-orange-100' : 'border-orange-500/30'} shadow-sm`}>
-                            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                    <div className="flex items-center gap-2.5 sm:flex-col sm:items-start sm:w-full sm:mb-4">
+                        <div className={`h-8 w-8 sm:h-12 sm:w-12 rounded-lg sm:rounded-xl ${isLightMode ? 'bg-orange-100/60 text-orange-600' : 'bg-orange-500/20 text-orange-400'} flex items-center justify-center border ${isLightMode ? 'border-orange-200/50' : 'border-orange-500/30'} shadow-sm flex-shrink-0`}>
+                            <svg className="w-4 h-4 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                         </div>
-                        {metrics.unpaid > 0 && <span className="flex h-2.5 w-2.5 relative mt-2 mr-1"><span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-orange-400 opacity-75"></span><span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-orange-500"></span></span>}
-                    </div>
-                    <div>
-                        <p className={`text-[11px] font-black uppercase tracking-widest mb-1 ${isLightMode ? 'text-slate-500' : 'text-slate-400'}`}>
-                            {language === 'km' ? 'មិនទាន់ទូទាត់' : 'Pending Payment'}
-                        </p>
-                        <p className={`text-4xl font-black ${metrics.unpaid > 0 ? (isLightMode ? 'text-orange-600' : 'text-orange-400') : (isLightMode ? 'text-slate-900' : 'text-white')} tabular-nums tracking-tighter`}>
-                            {metrics.unpaid.toLocaleString()}
-                        </p>
-                    </div>
-                </div>
-
-                {/* Card 4: System */}
-                <div className={`${defaultSurface} rounded-2xl border p-6 flex flex-col justify-between group overflow-hidden relative`}>
-                    <div className="absolute -top-10 -right-10 w-32 h-32 bg-purple-500/10 rounded-full blur-3xl pointer-events-none group-hover:bg-purple-500/20 transition-all"></div>
-                    
-                    <div className="flex justify-between items-start mb-4">
-                        <div className={`h-12 w-12 rounded-xl ${isLightMode ? 'bg-purple-50 text-purple-600' : 'bg-purple-500/20 text-purple-400'} flex items-center justify-center border ${isLightMode ? 'border-purple-100' : 'border-purple-500/30'} shadow-sm`}>
-                            <svg className={`w-6 h-6 ${isSyncing ? 'animate-spin' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+                        <div className="flex flex-col min-w-0 sm:mt-1">
+                            <p className={`text-[8.5px] sm:text-[11px] font-black uppercase tracking-widest mb-0.5 sm:mb-1 ${isLightMode ? 'text-slate-500' : 'text-slate-400'} truncate`}>
+                                {language === 'km' ? 'មិនទាន់ទូទាត់' : 'Pending Payment'}
+                            </p>
+                            <p className={`text-base sm:text-4xl font-black ${metrics.unpaid > 0 ? (isLightMode ? 'text-orange-600' : 'text-orange-400') : (isLightMode ? 'text-slate-900' : 'text-white')} tabular-nums tracking-tighter`}>
+                                {metrics.unpaid.toLocaleString()}
+                            </p>
                         </div>
-                        <span className={`text-[10px] font-black uppercase tracking-wider ${isSyncing ? (isLightMode ? 'text-blue-600 bg-blue-100' : 'text-blue-400 bg-blue-400/10') : (isLightMode ? 'text-slate-500 bg-slate-100' : 'text-slate-400 bg-white/5')} px-2.5 py-1 rounded-lg`}>System</span>
                     </div>
-                    <div>
-                        <p className={`text-[11px] font-black uppercase tracking-widest mb-1 ${isLightMode ? 'text-slate-500' : 'text-slate-400'}`}>
-                            {language === 'km' ? 'ស្ថានភាពសម័យកាល' : 'Sync Status'}
-                        </p>
-                        <p className={`text-2xl font-black ${isLightMode ? 'text-slate-900' : 'text-white'} tabular-nums tracking-tight`}>
-                            {isSyncing ? (language === 'km' ? 'កំពុងអាប់ដេត...' : 'Syncing...') : (language === 'km' ? 'ចុងក្រោយបំផុត' : 'Up to date')}
-                        </p>
-                    </div>
+                    {metrics.unpaid > 0 && <span className="flex h-1.5 w-1.5 sm:h-2.5 sm:w-2.5 absolute top-3 right-3 sm:top-6 sm:right-6"><span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-orange-400 opacity-75"></span><span className="relative inline-flex rounded-full h-1.5 w-1.5 sm:h-2.5 sm:w-2.5 bg-orange-500"></span></span>}
                 </div>
             </div>
 
@@ -452,7 +432,12 @@ const DashboardOverview: React.FC<DashboardOverviewProps> = ({
                             <thead className={isLightMode ? 'bg-slate-50/50' : 'bg-white/[0.02]'}>
                                 <tr>
                                     {['Order ID', 'Customer', 'Status', 'Date', 'Amount'].map(header => (
-                                        <th key={header} className={`px-6 py-4 text-left text-[10px] font-black ${isLightMode ? 'text-slate-500' : 'text-slate-400'} uppercase tracking-[0.2em]`}>
+                                        <th 
+                                            key={header} 
+                                            className={`px-6 py-4 text-left text-[10px] font-black ${isLightMode ? 'text-slate-500' : 'text-slate-400'} uppercase tracking-[0.2em] ${
+                                                header === 'Order ID' ? 'hidden md:table-cell' : ''
+                                            }`}
+                                        >
                                             {header}
                                         </th>
                                     ))}
@@ -461,7 +446,7 @@ const DashboardOverview: React.FC<DashboardOverviewProps> = ({
                             <tbody className={`divide-y ${isLightMode ? 'divide-slate-100 bg-white' : 'divide-white/5 bg-transparent'}`}>
                                 {filteredMetricsOrders.slice(0, 5).map((order, idx) => (
                                     <tr key={idx} className={`${isLightMode ? 'hover:bg-slate-50/80' : 'hover:bg-white/[0.02]'} transition-colors group cursor-default`}>
-                                        <td className="px-6 py-4 whitespace-nowrap">
+                                        <td className="px-6 py-4 whitespace-nowrap hidden md:table-cell">
                                             <span className={`text-xs font-black font-mono tracking-wider ${isLightMode ? 'text-blue-600 bg-blue-50' : 'text-blue-400 bg-blue-400/10'} px-2 py-1 rounded-md`}>
                                                 #{String(order['Order ID']).substring(0, 8)}
                                             </span>

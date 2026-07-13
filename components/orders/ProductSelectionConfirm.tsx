@@ -23,7 +23,8 @@ const ProductSelectionConfirm: React.FC<ProductSelectionConfirmProps> = ({
     onConfirm,
     showTagEditor = true
 }) => {
-    const { refreshData } = useContext(AppContext);
+    const { refreshData, advancedSettings } = useContext(AppContext);
+    const isLightMode = advancedSettings?.themeMode === 'light';
     const [localTags, setLocalTags] = useState('');
     const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
     const [isUploading, setIsUploading] = useState(false);

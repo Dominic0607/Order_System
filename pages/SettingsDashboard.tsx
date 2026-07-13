@@ -29,7 +29,8 @@ interface SettingsDashboardProps {
 }
 
 const SettingsDashboard: React.FC<SettingsDashboardProps> = ({ onBack, initialSection }) => {
-    const { appData, refreshData, logout, setMobilePageTitle, language, showNotification } = useContext(AppContext);
+    const { appData, refreshData, logout, setMobilePageTitle, language, showNotification, advancedSettings } = useContext(AppContext);
+    const isLightMode = advancedSettings?.themeMode === 'light';
     const t = translations[language];
     const [desktopSection, setDesktopSection] = useState<string>(initialSection || 'users');
     const [mobileSection, setMobileSection] = useState<string | null>(initialSection || null);
@@ -360,26 +361,40 @@ const SettingsDashboard: React.FC<SettingsDashboardProps> = ({ onBack, initialSe
     // Mobile Categories View
     if (!activeId) {
         return (
-            <div className="p-4 md:hidden animate-fade-in pb-10 bg-[#181a20] min-h-screen">
+            <div className={`p-4 md:hidden animate-fade-in pb-10 min-h-screen ${isLightMode ? 'bg-slate-50' : 'bg-[#181a20]'}`}>
                 <div className="flex justify-between items-center mb-6">
                     <div>
-                        <h1 className="text-xl font-bold text-[#eaecef] flex items-center gap-2">
-                            <div className="w-1 h-5 bg-[#fcd535] rounded-sm"></div>
+                        <h1 className={`text-xl font-bold flex items-center gap-2 ${isLightMode ? 'text-slate-800' : 'text-[#eaecef]'}`}>
+                            <div className={`w-1 h-5 rounded-sm ${isLightMode ? 'bg-blue-600' : 'bg-[#fcd535]'}`}></div>
                             {t.settings || 'ការកំណត់'}
                         </h1>
-                        <p className="text-[11px] text-[#848e9c] font-medium mt-1 uppercase tracking-widest">Settings & Management</p>
+                        <p className={`text-[11px] font-medium mt-1 uppercase tracking-widest ${isLightMode ? 'text-slate-400' : 'text-[#848e9c]'}`}>Settings & Management</p>
                     </div>
-                    <button onClick={onBack} className="p-2 text-[#848e9c] hover:text-[#eaecef] transition-all"><svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg></button>
+                    <button onClick={onBack} className={`p-2 transition-all ${isLightMode ? 'text-slate-400 hover:text-slate-600' : 'text-[#848e9c] hover:text-[#eaecef]'}`}><svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg></button>
                 </div>
-                <div className="grid grid-cols-1 border-t border-[#2b3139]">
+                <div className={`grid grid-cols-1 border-t ${isLightMode ? 'border-slate-200' : 'border-[#2b3139]'}`}>
                     {configSections.map(s => (
-                        <button key={s.id} onClick={() => setMobileSection(s.id)} className="flex items-center gap-4 bg-transparent border-b border-[#2b3139] p-4 hover:bg-[#2b3139]/30 active:bg-[#2b3139]/60 transition-all text-left group">
+                        <button 
+                            key={s.id} 
+                            onClick={() => setMobileSection(s.id)} 
+                            className={`flex items-center gap-4 bg-transparent border-b p-4 transition-all text-left group ${
+                                isLightMode 
+                                    ? 'border-slate-100 hover:bg-slate-100/50 active:bg-slate-100' 
+                                    : 'border-[#2b3139] hover:bg-[#2b3139]/30 active:bg-[#2b3139]/60'
+                            }`}
+                        >
                             <span className="text-2xl grayscale opacity-70 group-hover:grayscale-0 group-hover:opacity-100 transition-all">{s.icon}</span>
                             <div className="flex-grow">
-                                <h3 className="text-sm font-semibold text-[#eaecef] leading-tight group-hover:text-white transition-colors">{t[`section_${s.id}`] || s.title}</h3>
-                                <p className="text-[11px] text-[#5e6673] mt-0.5 line-clamp-1">{t[`desc_${s.id}`] || s.description}</p>
+                                <h3 className={`text-sm font-semibold leading-tight transition-colors ${
+                                    isLightMode ? 'text-slate-700 group-hover:text-slate-900' : 'text-[#eaecef] group-hover:text-white'
+                                }`}>{t[`section_${s.id}`] || s.title}</h3>
+                                <p className={`text-[11px] mt-0.5 line-clamp-1 ${
+                                    isLightMode ? 'text-slate-400' : 'text-[#5e6673]'
+                                }`}>{t[`desc_${s.id}`] || s.description}</p>
                             </div>
-                            <svg className="w-5 h-5 text-[#5e6673] group-hover:text-[#fcd535] transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
+                            <svg className={`w-5 h-5 transition-colors ${
+                                isLightMode ? 'text-slate-400 group-hover:text-blue-600' : 'text-[#5e6673] group-hover:text-[#fcd535]'
+                            }`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
                         </button>
                     ))}
                 </div>
@@ -392,20 +407,20 @@ const SettingsDashboard: React.FC<SettingsDashboardProps> = ({ onBack, initialSe
             {/* Header */}
             <div className="flex-shrink-0 flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 gap-4">
                 <div className="flex items-center gap-4">
-                    <button onClick={() => { if(window.innerWidth < 768) setMobileSection(null); else onBack(); }} className="md:hidden p-2 bg-gray-800 text-white rounded-xl border border-gray-700"><svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M15 19l-7-7 7-7" /></svg></button>
+                    <button onClick={() => { if(window.innerWidth < 768) setMobileSection(null); else onBack(); }} className={`md:hidden p-2 rounded-xl border ${isLightMode ? 'bg-white text-slate-700 border-slate-200' : 'bg-gray-800 text-white border-gray-700'}`}><svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M15 19l-7-7 7-7" /></svg></button>
                     <div>
-                        <h1 className="hidden sm:flex text-2xl lg:text-3xl font-black text-white items-center gap-3">
+                        <h1 className={`hidden sm:flex text-2xl lg:text-3xl font-black items-center gap-3 ${isLightMode ? 'text-slate-800' : 'text-white'}`}>
                              <span className="hidden md:inline">{activeSection?.icon}</span>
                              {t[`section_${activeSection?.id}`] || activeSection?.title}
                         </h1>
-                        <p className="text-xs lg:text-sm text-gray-500 font-bold uppercase tracking-[0.2em] mt-1">{t[`desc_${activeSection?.id}`] || activeSection?.description}</p>
+                        <p className={`text-xs lg:text-sm font-bold uppercase tracking-[0.2em] mt-1 ${isLightMode ? 'text-slate-400' : 'text-gray-500'}`}>{t[`desc_${activeSection?.id}`] || activeSection?.description}</p>
                     </div>
                 </div>
                 <div className="flex gap-2 w-full sm:w-auto">
                     {activeId !== 'telegramTemplates' && activeId !== 'permissions' && activeId !== 'database' && activeId !== 'users' && activeId !== 'products' && (
                         <div className="relative flex-grow sm:flex-grow-0 sm:min-w-[240px] lg:min-w-[320px] group">
                             <div className="relative flex items-center">
-                                <div className="absolute left-4 text-gray-500">
+                                <div className={`absolute left-4 ${isLightMode ? 'text-slate-400' : 'text-gray-500'}`}>
                                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={3}><path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
                                 </div>
                                 <input 
@@ -413,13 +428,21 @@ const SettingsDashboard: React.FC<SettingsDashboardProps> = ({ onBack, initialSe
                                     placeholder={t[`search_${activeSection?.id}`] || `Search ${activeSection?.title}...`}
                                     value={searchQuery}
                                     onChange={(e) => setSearchQuery(e.target.value)}
-                                    className="w-full !py-3 !pl-11 !pr-10 bg-gray-900/40 backdrop-blur-xl border border-white/5 rounded-2xl text-[13px] font-bold text-white placeholder:text-gray-600 focus:border-blue-500/50 outline-none transition-all shadow-lg"
+                                    className={`w-full !py-3 !pl-11 !pr-10 rounded-2xl text-[13px] font-bold outline-none transition-all shadow-md ${
+                                        isLightMode 
+                                            ? 'bg-white border border-slate-200 text-slate-800 placeholder:text-slate-400 focus:border-blue-500/50 shadow-slate-100/40' 
+                                            : 'bg-gray-900/40 backdrop-blur-xl border border-white/5 text-white placeholder:text-gray-600 focus:border-blue-500/50 shadow-lg'
+                                    }`}
                                 />
                             </div>
                         </div>
                     )}
 
-                    <button onClick={() => setIsUpdateModalOpen(true)} className="flex-1 sm:flex-none btn bg-gray-800 border border-gray-700 hover:text-red-400 px-4 transition-all flex items-center justify-center gap-2"><svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" strokeWidth={2}/></svg></button>
+                    <button onClick={() => setIsUpdateModalOpen(true)} className={`flex-1 sm:flex-none btn px-4 transition-all flex items-center justify-center gap-2 ${
+                        isLightMode 
+                            ? 'bg-white border border-slate-200 text-slate-600 hover:text-red-500 hover:border-red-200 hover:bg-red-50/50 shadow-md shadow-slate-100/40' 
+                            : 'bg-gray-800 border border-gray-700 hover:text-red-400 text-white'
+                    }`}><svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" strokeWidth={2}/></svg></button>
                     {activeId === 'driverRecommendations' && (
                         <button onClick={() => setIsExcelView(!isExcelView)} className="flex-1 sm:flex-none btn btn-secondary px-6 font-black">
                             {isExcelView ? t.table_view : t.excel_view}
@@ -429,25 +452,43 @@ const SettingsDashboard: React.FC<SettingsDashboardProps> = ({ onBack, initialSe
                     {activeId !== 'telegramTemplates' && activeId !== 'permissions' && activeId !== 'database' && activeId !== 'users' && activeId !== 'products' && (
                         <button onClick={() => setModal({ isOpen: true, sectionId: activeId, item: null })} className="flex-1 sm:flex-none btn btn-primary px-10 font-black">+ {t.add_new}</button>
                     )}
-                    <button onClick={onBack} className="hidden md:flex btn btn-secondary px-6">ត្រឡប់</button>
+                    <button onClick={onBack} className={`hidden md:flex btn px-6 ${
+                        isLightMode 
+                            ? 'bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 shadow-sm' 
+                            : 'btn-secondary'
+                    }`}>ត្រឡប់</button>
                 </div>
             </div>
 
             <div className="flex-1 flex flex-col md:flex-row gap-6 overflow-hidden">
-                <aside className="hidden md:flex flex-col w-64 flex-shrink-0 overflow-y-auto no-scrollbar pb-20 border-r border-[#2b3139] bg-[#181a20]">
+                <aside className={`hidden md:flex flex-col w-64 flex-shrink-0 overflow-y-auto no-scrollbar pb-20 border-r ${
+                    isLightMode ? 'border-slate-200 bg-white' : 'border-[#2b3139] bg-[#181a20]'
+                }`}>
                     {configSections.map(s => (
                         <button 
                             key={s.id} 
                             onClick={() => { setDesktopSection(s.id); setLocalData([]); }} 
-                            className={`group relative flex items-center gap-4 px-5 py-4 transition-all hover:bg-[#2b3139]/40 outline-none border-t border-[#2b3139]/20 first:border-0 ${
+                            className={`group relative flex items-center gap-4 px-5 py-4 transition-all outline-none border-t first:border-0 ${
+                                isLightMode 
+                                    ? 'border-slate-100 hover:bg-slate-50' 
+                                    : 'border-[#2b3139]/20 hover:bg-[#2b3139]/40'
+                            } ${
                                 desktopSection === s.id 
-                                ? 'bg-[#2b3139]/80 text-[#eaecef]' 
-                                : 'text-[#848e9c]'
+                                ? (isLightMode ? 'bg-slate-100 text-blue-600 font-extrabold' : 'bg-[#2b3139]/80 text-[#eaecef]') 
+                                : (isLightMode ? 'text-slate-600' : 'text-[#848e9c]')
                             }`}
                         >
-                            {desktopSection === s.id && <div className="absolute left-0 top-0 bottom-0 w-[4px] bg-[#fcd535]" />}
-                            <span className={`text-xl transition-all ${desktopSection === s.id ? 'scale-110 grayscale-0 opacity-100' : 'grayscale opacity-50 group-hover:grayscale-0 group-hover:opacity-80 scale-95'}`}>{s.icon}</span>
-                            <span className={`text-xs uppercase tracking-widest font-bold ${desktopSection === s.id ? 'text-[#eaecef]' : 'text-[#848e9c] group-hover:text-[#eaecef]'}`}>{t[`section_${s.id}`] || s.title}</span>
+                            {desktopSection === s.id && <div className={`absolute left-0 top-0 bottom-0 w-[4px] ${isLightMode ? 'bg-blue-600' : 'bg-[#fcd535]'}`} />}
+                            <span className={`text-xl transition-all ${
+                                desktopSection === s.id 
+                                    ? 'scale-110 grayscale-0 opacity-100' 
+                                    : (isLightMode ? 'grayscale opacity-70 group-hover:grayscale-0 group-hover:opacity-100 scale-95' : 'grayscale opacity-50 group-hover:grayscale-0 group-hover:opacity-80 scale-95')
+                            }`}>{s.icon}</span>
+                            <span className={`text-xs uppercase tracking-widest font-bold ${
+                                desktopSection === s.id 
+                                    ? (isLightMode ? 'text-blue-600' : 'text-[#eaecef]') 
+                                    : (isLightMode ? 'text-slate-600 group-hover:text-slate-900' : 'text-[#848e9c] group-hover:text-[#eaecef]')
+                            }`}>{t[`section_${s.id}`] || s.title}</span>
                         </button>
                     ))}
                 </aside>
@@ -469,9 +510,15 @@ const SettingsDashboard: React.FC<SettingsDashboardProps> = ({ onBack, initialSe
                     ) : (activeId === 'driverRecommendations' && isExcelView) ? (
                         <div className="flex-grow overflow-hidden"><DriverRecommendationExcel /></div>
                     ) : (
-                        <div className="bg-gray-800/30 border border-gray-700/50 rounded-3xl overflow-hidden shadow-2xl flex flex-col flex-grow relative">
+                        <div className={`border rounded-3xl overflow-hidden shadow-2xl flex flex-col flex-grow relative ${
+                            isLightMode 
+                                ? 'bg-white border-slate-200 shadow-slate-100/40' 
+                                : 'bg-gray-800/30 border-gray-700/50'
+                        }`}>
                             {isLoading && (
-                                <div className="absolute inset-0 bg-gray-950/50 backdrop-blur-sm z-50 flex items-center justify-center">
+                                <div className={`absolute inset-0 z-50 flex items-center justify-center ${
+                                    isLightMode ? 'bg-white/70 backdrop-blur-sm' : 'bg-gray-950/50 backdrop-blur-sm'
+                                }`}>
                                     <Spinner size="lg" />
                                 </div>
                             )}
@@ -479,24 +526,30 @@ const SettingsDashboard: React.FC<SettingsDashboardProps> = ({ onBack, initialSe
                             <div className="hidden md:block overflow-y-auto no-scrollbar flex-grow">
                                 <table className="admin-table w-full">
                                     <thead>
-                                        <tr className="bg-gray-900/50 border-b border-gray-700 sticky top-0 z-10 backdrop-blur-md">
+                                        <tr className={`border-b sticky top-0 z-10 backdrop-blur-md ${
+                                            isLightMode ? 'bg-slate-50/90 border-slate-200 text-slate-800' : 'bg-gray-900/50 border-gray-700 text-gray-200'
+                                        }`}>
                                             <th className="w-12 text-center">#</th>
                                             {activeSection?.fields.map(f => <th key={f.name}>{t[`field_${f.name}`] || f.label}</th>)}
                                             <th className="w-32 text-center uppercase tracking-widest text-[10px]">Action</th>
                                         </tr>
                                     </thead>
-                                    <tbody className="divide-y divide-gray-700/30">
+                                    <tbody className={`divide-y ${isLightMode ? 'divide-slate-100' : 'divide-gray-700/30'}`}>
                                         {dataList.length > 0 ? dataList.map((item: any, idx: number) => (
                                             <tr key={idx} className="hover:bg-blue-600/5 transition-colors group">
-                                                <td className="text-center text-gray-500 font-bold text-xs">{idx + 1}</td>
+                                                <td className={`text-center font-bold text-xs ${isLightMode ? 'text-slate-400' : 'text-gray-500'}`}>{idx + 1}</td>
                                                 {activeSection?.fields.map(f => {
                                                     const val = getValueCaseInsensitive(item, f.name);
                                                     return (
                                                         <td key={f.name} className="py-4">
                                                             {f.type === 'image_url' && val ? (
-                                                                <img src={convertGoogleDriveUrl(String(val))} className="w-10 h-10 rounded-xl object-contain bg-gray-900 border border-gray-700 p-1" alt="logo" />
+                                                                <img src={convertGoogleDriveUrl(String(val))} className={`w-10 h-10 rounded-xl object-contain p-1 border ${isLightMode ? 'bg-slate-50 border-slate-200' : 'bg-gray-900 border-gray-700'}`} alt="logo" />
                                                             ) : (
-                                                                <span className={`text-sm font-bold ${f.type === 'password' ? 'text-gray-600' : 'text-gray-200'}`}>
+                                                                <span className={`text-sm font-bold ${
+                                                                    f.type === 'password' 
+                                                                        ? (isLightMode ? 'text-slate-400' : 'text-gray-600') 
+                                                                        : (isLightMode ? 'text-slate-700' : 'text-gray-200')
+                                                                }`}>
                                                                     {f.type === 'password' ? '••••••••' : (typeof val === 'boolean' ? (val ? '✅ Active' : '❌ Inactive') : String(val || '-'))}
                                                                 </span>
                                                             )}
@@ -508,7 +561,7 @@ const SettingsDashboard: React.FC<SettingsDashboardProps> = ({ onBack, initialSe
                                                         {(activeId === 'stores' || activeId === 'deliveryGroups') && (
                                                             <button 
                                                                 onClick={() => handleTestTelegram(item, activeId)} 
-                                                                className="p-2 bg-emerald-500/10 text-emerald-400 rounded-lg hover:bg-emerald-500 hover:text-white transition-all"
+                                                                className={`p-2 rounded-lg transition-all ${isLightMode ? 'bg-emerald-50 text-emerald-600 hover:bg-emerald-500 hover:text-white' : 'p-2 bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500 hover:text-white'}`}
                                                                 title="Test Telegram Message"
                                                             >
                                                                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" strokeWidth={2}/></svg>
@@ -517,25 +570,25 @@ const SettingsDashboard: React.FC<SettingsDashboardProps> = ({ onBack, initialSe
                                                         {activeId === 'stores' && (
                                                             <button 
                                                                 onClick={() => handleSetupBot(item)} 
-                                                                className="p-2 bg-blue-500/10 text-blue-400 rounded-lg hover:bg-blue-500 hover:text-white transition-all"
+                                                                className={`p-2 rounded-lg transition-all ${isLightMode ? 'bg-blue-50 text-blue-600 hover:bg-blue-500 hover:text-white' : 'p-2 bg-blue-500/10 text-blue-400 hover:bg-blue-500 hover:text-white'}`}
                                                                 title="Setup Telegram Bot Webhook"
                                                             >
-                                                                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.64 6.8c-.15.31-.3.6-.45.89-.64 1.25-1.28 2.51-1.92 3.76-.11.22-.22.44-.33.67-.09.18-.18.36-.26.54l-.45.89c-.06.12-.11.23-.17.35-.11.23-.21.46-.32.69-.11.22-.22.44-.33.67-.11.23-.21.46-.32.69-.11.22-.22.44-.33.67-.11.23-.21.46-.32.69-.11.22-.22.44-.33.67-.11.23-.21.46-.32.69-.11.22-.22.44-.33.67-.11.23-.21.46-.32.69-.11.22-.22.44-.33.67-.11.23-.21.46-.32.69-.11.22-.22.44-.33.67-.11.23-.21.46-.32.69-.11.22-.22.44-.33.67-.11.23-.21.46-.32.69-.11.22-.22.44-.33.67-.11.23-.21.46-.32.69-.11.22-.22.44-.33.67zM12 4c4.41 0 8 3.59 8 8s-3.59 8-8 8-8-3.59-8-8 3.59-8 8-8z"/></svg>
+                                                                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.64 6.8c-.15.31-.3.6-.45.89-.64 1.25-1.28 2.51-1.92 3.76-.11.22-.22.44-.33.67-.09.18-.18.36-.26.54l-.45.89c-.06.12-.11.23-.17.35-.11.23-.21.46-.32.69-.11.22-.22.44-.33.67-.11.23-.21.46-.32.69-.11.22-.22.44-.33.67-.11.23-.21.46-.32.69-.11.22-.22.44-.33.67-.11.23-.21.46-.32.69-.11.22-.22.44-.33.67-.11.23-.21.46-.32.69-.11.22-.22.44-.33.67-.11.23-.21.46-.32.69-.11.22-.22.44-.33.67-.11.23-.21.46-.32.69-.11.22-.22.44-.33.67zM12 4c4.41 0 8 3.59 8 8s-3.59 8-8 8-8-3.59-8-8 3.59-8 8-8z"/></svg>
                                                             </button>
                                                         )}
-                                                        <button onClick={() => setModal({ isOpen: true, sectionId: activeId, item })} className="p-2 bg-amber-500/10 text-amber-400 rounded-lg hover:bg-amber-500 hover:text-white transition-all"><svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" strokeWidth={2}/></svg></button>
-                                                        <button onClick={() => handleDelete(activeSection!, item)} className="p-2 bg-red-500/10 text-red-400 rounded-lg hover:bg-red-500 hover:text-white transition-all"><svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" strokeWidth={2}/></svg></button>
+                                                        <button onClick={() => setModal({ isOpen: true, sectionId: activeId, item })} className={`p-2 rounded-lg transition-all ${isLightMode ? 'bg-amber-50 text-amber-600 hover:bg-amber-500 hover:text-white' : 'bg-amber-500/10 text-amber-400 hover:bg-amber-500 hover:text-white'}`}><svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" strokeWidth={2}/></svg></button>
+                                                        <button onClick={() => handleDelete(activeSection!, item)} className={`p-2 rounded-lg transition-all ${isLightMode ? 'bg-red-50 text-red-600 hover:bg-red-500 hover:text-white' : 'bg-red-500/10 text-red-400 hover:bg-red-500 hover:text-white'}`}><svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" strokeWidth={2}/></svg></button>
                                                     </div>
                                                 </td>
                                             </tr>
                                         )) : !isLoading && (
-                                            <tr><td colSpan={10} className="py-20 text-center"><div className="text-gray-500 font-bold mb-4">{fetchError ? 'មានបញ្ហាក្នុងការទាញទិន្នន័យ' : 'មិនមានទិន្នន័យត្រូវបានរកឃើញទេ'}</div><button onClick={() => fetchSectionData(activeId!, true)} className="btn btn-secondary text-xs">ចុចដើម្បីសាកល្បងម្ដងទៀត</button></td></tr>
+                                            <tr><td colSpan={10} className="py-20 text-center"><div className={`font-bold mb-4 ${isLightMode ? 'text-slate-500' : 'text-gray-500'}`}>{fetchError ? 'មានបញ្ហាក្នុងការទាញទិន្នន័យ' : 'មិនមានទិន្នន័យត្រូវបានរកឃើញទេ'}</div><button onClick={() => fetchSectionData(activeId!, true)} className="btn btn-secondary text-xs">ចុចដើម្បីសាកល្បងម្ដងទៀត</button></td></tr>
                                         )}
                                     </tbody>
                                 </table>
                             </div>
 
-                            <div className="md:hidden divide-y divide-gray-700/50 overflow-y-auto no-scrollbar flex-grow pb-20">
+                            <div className={`md:hidden divide-y overflow-y-auto no-scrollbar flex-grow pb-20 ${isLightMode ? 'divide-slate-100' : 'divide-gray-700/50'}`}>
                                 {dataList.length > 0 ? dataList.map((item: any, idx: number) => {
                                     const title = getValueCaseInsensitive(item, activeSection?.displayField || '');
                                     const imgField = activeSection?.fields.find(f => f.type === 'image_url');
@@ -543,12 +596,12 @@ const SettingsDashboard: React.FC<SettingsDashboardProps> = ({ onBack, initialSe
                                     return (
                                         <div key={idx} className="p-4 flex items-center justify-between">
                                             <div className="flex items-center gap-3 min-w-0">
-                                                {imgVal && <img src={convertGoogleDriveUrl(imgVal)} className="w-12 h-12 rounded-xl object-contain bg-gray-900 border border-gray-700 p-1 flex-shrink-0" alt="logo" />}
-                                                <div className="min-w-0"><h4 className="text-sm font-black text-white truncate">{String(title || '-')}</h4><p className="text-[10px] text-gray-500 font-bold uppercase mt-0.5">Item #{idx + 1}</p></div>
+                                                {imgVal && <img src={convertGoogleDriveUrl(imgVal)} className={`w-12 h-12 rounded-xl object-contain p-1 flex-shrink-0 border ${isLightMode ? 'bg-slate-50 border-slate-200' : 'bg-gray-900 border-gray-700'}`} alt="logo" />}
+                                                <div className="min-w-0"><h4 className={`text-sm font-black truncate ${isLightMode ? 'text-slate-800' : 'text-white'}`}>{String(title || '-')}</h4><p className={`text-[10px] font-bold uppercase mt-0.5 ${isLightMode ? 'text-slate-400' : 'text-gray-500'}`}>Item #{idx + 1}</p></div>
                                             </div>
                                             <div className="flex gap-2">
-                                                <button onClick={() => setModal({ isOpen: true, sectionId: activeId, item })} className="p-2.5 bg-gray-800 text-blue-400 rounded-xl border border-gray-700 active:scale-95 transition-all"><svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" strokeWidth={2}/></svg></button>
-                                                <button onClick={() => handleDelete(activeSection!, item)} className="p-2.5 bg-gray-800 text-red-400 rounded-xl border border-gray-700 active:scale-95 transition-all"><svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" strokeWidth={2}/></svg></button>
+                                                <button onClick={() => setModal({ isOpen: true, sectionId: activeId, item })} className={`p-2.5 rounded-xl border active:scale-95 transition-all ${isLightMode ? 'bg-slate-50 border-slate-200 text-blue-600 hover:bg-blue-50' : 'bg-gray-800 text-blue-400 border-gray-700'}`}><svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" strokeWidth={2}/></svg></button>
+                                                <button onClick={() => handleDelete(activeSection!, item)} className={`p-2.5 rounded-xl border active:scale-95 transition-all ${isLightMode ? 'bg-red-50 border-red-100 text-red-600 hover:bg-red-100' : 'bg-gray-800 text-red-400 border-gray-700'}`}><svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" strokeWidth={2}/></svg></button>
                                             </div>
                                         </div>
                                     );

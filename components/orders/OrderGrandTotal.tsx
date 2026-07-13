@@ -192,11 +192,15 @@ export const MobileGrandTotalCard: React.FC<MobileGrandTotalCardProps> = ({ tota
     if (totals.count === 0) return null;
 
     // Theme Variables
-    const cardBg = isBinance ? 'bg-[#1E2329]' : 'bg-[#0f172a]/95 backdrop-blur-3xl';
-    const cardBorder = isBinance ? 'border-[#2B3139]' : 'border-white/10';
-    const accentColor = isBinance ? 'text-[#FCD535]' : 'text-blue-400';
-    const greenText = isBinance ? 'text-[#0ECB81]' : 'text-emerald-500';
-    const redText = isBinance ? 'text-[#F6465D]' : 'text-red-500';
+    const isLightMode = advancedSettings?.themeMode === 'light';
+    const cardBg = isLightMode
+        ? 'bg-white border-slate-200/80 shadow-md'
+        : (isBinance ? 'bg-[#1E2329]' : 'bg-[#0f172a]/95 backdrop-blur-3xl');
+    const cardBorder = isLightMode ? 'border-slate-200/80' : (isBinance ? 'border-[#2B3139]' : 'border-white/10');
+    const textTitle = isLightMode ? 'text-slate-800' : 'text-white';
+    const textSubTitle = isLightMode ? 'text-slate-500' : 'text-gray-400';
+    const textMuted = isLightMode ? 'text-slate-400' : 'text-gray-500';
+    const kpiCellBg = isLightMode ? 'bg-slate-50/80 border border-slate-100/50' : 'bg-white/[0.02] border border-white/5';
 
     if (isBinance) {
         return (
@@ -250,81 +254,57 @@ export const MobileGrandTotalCard: React.FC<MobileGrandTotalCardProps> = ({ tota
     }
 
     return (
-        <div className={`${cardBg} border border-white/10 rounded-3xl p-6 shadow-2xl relative overflow-hidden animate-fade-in-up mt-6 mx-1`}>
+        <div className={`${cardBg} border ${cardBorder} rounded-2xl p-3.5 shadow-lg animate-fade-in-up mt-4 mx-1 relative overflow-hidden`}>
             {/* Ambient Background Accents */}
-            <div className="absolute top-0 right-0 w-48 h-48 bg-blue-600/10 rounded-full blur-[80px] -translate-y-1/2 translate-x-1/2 pointer-events-none"></div>
-            <div className="absolute bottom-0 left-0 w-40 h-40 bg-emerald-500/5 rounded-full blur-[60px] translate-y-1/2 -translate-x-1/2 pointer-events-none"></div>
+            <div className="absolute top-0 right-0 w-32 h-32 bg-blue-600/10 rounded-full blur-[60px] pointer-events-none"></div>
             
-            <div className="flex justify-between items-center mb-6">
-                <div className="flex items-center gap-3">
-                    <div className="w-1 h-8 rounded-full bg-gradient-to-b from-blue-600 to-indigo-600"></div>
-                    <div className="flex flex-col">
-                        <span className="text-[9px] font-black uppercase tracking-[0.2em] text-blue-400/70">
-                            {language === 'km' ? 'ស្ថិតិសរុប' : 'SUMMARY STATISTICS'}
-                        </span>
-                        <h3 className="text-lg font-black text-white uppercase tracking-wider">
-                            {totals.count} <span className="text-gray-500 font-bold text-xs">{language === 'km' ? 'ការកម្មង់' : 'Orders'}</span>
-                        </h3>
-                    </div>
+            <div className="flex justify-between items-center mb-3">
+                <div className="flex items-center gap-2">
+                    <div className="w-1 h-5 rounded-full bg-gradient-to-b from-blue-600 to-indigo-600"></div>
+                    <span className={`text-[10px] font-black uppercase tracking-[0.1em] ${isLightMode ? 'text-slate-700' : 'text-white'}`}>
+                        {language === 'km' ? 'ស្ថិតិសរុប' : 'Summary Statistics'}
+                    </span>
                 </div>
-                <div className="bg-white/5 px-3 py-1.5 rounded-xl border border-white/10 backdrop-blur-xl">
-                   <div className="flex items-center gap-1.5">
-                        <span className="w-1 h-1 bg-emerald-500 rounded-full animate-pulse"></span>
-                        <span className="text-[8px] font-black uppercase tracking-widest text-gray-300">Live</span>
-                   </div>
+                <div className={`px-2 py-0.5 rounded-lg text-[9px] font-black border ${isLightMode ? 'bg-slate-100 border-slate-200 text-slate-600' : 'bg-white/5 border-white/10 text-gray-300'}`}>
+                    {totals.count} {language === 'km' ? 'ការកម្មង់' : 'Orders'}
                 </div>
             </div>
-            
-            <div className="space-y-4 mb-6">
-                <div className="flex flex-col bg-white/[0.02] p-4 rounded-2xl border border-white/5 shadow-inner">
-                    <p className="text-[8px] font-black uppercase mb-1.5 tracking-[0.2em] text-gray-400">
-                        {language === 'km' ? 'ចំណូលសរុប (REVENUE)' : t.total_revenue}
-                    </p>
-                    <div className="flex items-baseline gap-1">
-                        <span className="text-emerald-500 font-black text-sm italic">$</span>
-                        <p className="text-3xl font-black tracking-tighter text-white">
+
+            <div className="grid grid-cols-12 gap-2.5 items-stretch">
+                {/* Left Column: Revenue (span 7) */}
+                <div className={`col-span-7 flex flex-col justify-center ${kpiCellBg} p-2.5 rounded-xl`}>
+                    <span className={`text-[8px] font-black uppercase tracking-wider mb-0.5 ${isLightMode ? 'text-slate-400' : 'text-gray-500'}`}>
+                        {language === 'km' ? 'ចំណូលសរុប' : 'Revenue'}
+                    </span>
+                    <div className="flex items-baseline gap-0.5">
+                        <span className="text-emerald-500 font-bold text-xs">$</span>
+                        <span className={`text-xl font-black tracking-tight ${isLightMode ? 'text-slate-900' : 'text-white'}`}>
                             {totals.grandTotal.toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 2 })}
-                        </p>
+                        </span>
                     </div>
                 </div>
 
-                <div className="grid grid-cols-1 gap-3">
-                    <div className="flex items-center justify-between bg-white/[0.01] px-4 py-3 rounded-xl border border-white/5">
-                        <div className="flex flex-col">
-                            <p className="text-[8px] font-black uppercase tracking-widest text-gray-500">
-                                {language === 'km' ? 'សេវាដឹកជញ្ជូន' : 'LOGISTICS'}
-                            </p>
-                            <div className="flex items-baseline gap-1 mt-0.5">
-                                <span className="text-orange-400 font-black text-[10px] italic">$</span>
-                                <p className="text-base font-black tracking-tighter text-white/80">
-                                    {totals.internalCost.toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 2 })}
-                                </p>
-                            </div>
-                        </div>
-                        
-                        <div className="flex gap-2">
-                            <div className="flex flex-col items-center px-2 py-1 rounded-lg border border-white/5 bg-white/5 min-w-[40px]">
-                                <span className={`text-[11px] font-black ${greenText}`}>{totals.paidCount}</span>
-                                <span className="text-[6px] font-black uppercase text-gray-500">Paid</span>
-                            </div>
-                            <div className="flex flex-col items-center px-2 py-1 rounded-lg border border-white/5 bg-white/5 min-w-[40px]">
-                                <span className={`text-[11px] font-black ${redText}`}>{totals.unpaidCount}</span>
-                                <span className="text-[6px] font-black uppercase text-gray-500">COD</span>
-                            </div>
+                {/* Right Column: Logistics & Badges (span 5) */}
+                <div className={`col-span-5 flex flex-col justify-between ${kpiCellBg} p-2.5 rounded-xl`}>
+                    <div className="flex flex-col mb-1.5">
+                        <span className={`text-[8px] font-black uppercase tracking-wider mb-0.5 ${isLightMode ? 'text-slate-400' : 'text-gray-500'}`}>
+                            {language === 'km' ? 'សេវាដឹក' : 'Logistics'}
+                        </span>
+                        <div className="flex items-baseline gap-0.5">
+                            <span className="text-orange-400 font-bold text-[9px]">$</span>
+                            <span className={`text-[13px] font-black ${isLightMode ? 'text-slate-700' : 'text-white/90'}`}>
+                                {totals.internalCost.toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 2 })}
+                            </span>
                         </div>
                     </div>
-                </div>
-            </div>
-
-            <div className="flex items-center justify-between border-t border-white/5 pt-4">
-                <div className="flex flex-col gap-0.5">
-                    <span className="text-[7px] font-black uppercase tracking-widest text-gray-600">Sync Status</span>
-                    <div className="flex items-center gap-1.5">
-                        <span className="px-1.5 py-0.5 rounded text-[7px] font-black bg-emerald-500/10 text-emerald-500 uppercase">Synced</span>
+                    <div className="flex gap-1">
+                        <span className={`flex-1 text-center py-0.5 rounded text-[8px] font-black bg-emerald-500/10 text-emerald-500`}>
+                            {totals.paidCount} P
+                        </span>
+                        <span className={`flex-1 text-center py-0.5 rounded text-[8px] font-black bg-red-500/10 text-red-500`}>
+                            {totals.unpaidCount} C
+                        </span>
                     </div>
-                </div>
-                <div className="text-[8px] font-bold text-gray-500 uppercase tracking-widest italic">
-                    ACC MANAGEMENT SYSTEM v2.0
                 </div>
             </div>
         </div>

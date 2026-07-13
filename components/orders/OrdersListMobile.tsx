@@ -96,23 +96,25 @@ const TelegramSendButton = memo(({
     orderId, 
     handleSendTelegram, 
     isUpdating, 
-    isBinance 
+    isBinance,
+    isLightMode
 }: { 
     orderId: string, 
     handleSendTelegram: (id: string) => void, 
     isUpdating: boolean, 
-    isBinance: boolean 
+    isBinance: boolean,
+    isLightMode: boolean
 }) => {
     return (
         <button 
             onClick={(e) => { e.stopPropagation(); handleSendTelegram(orderId); }} 
-            className={`w-10 h-10 flex items-center justify-center rounded-lg border transition-all active:scale-90 ${
+            className={`w-8 h-8 flex items-center justify-center rounded-lg border transition-all active:scale-90 ${
                 isBinance 
                 ? 'bg-[#FCD535] border-[#FCD535] text-[#181A20]' 
-                : 'bg-blue-600/10 text-blue-500 border-blue-500/20 active:bg-blue-600 active:text-white'
+                : (isLightMode ? 'bg-blue-55 text-blue-600 border-blue-200 hover:bg-blue-100/50' : 'bg-blue-600/10 text-blue-500 border-blue-500/20 active:bg-blue-600 active:text-white')
             }`}
         >
-            {isUpdating ? <Spinner size="xs" /> : <Globe size={18} strokeWidth={2.5} />}
+            {isUpdating ? <Spinner size="xs" /> : <Globe size={13} strokeWidth={2.5} />}
         </button>
     );
 });
@@ -128,6 +130,7 @@ const OrdersListMobile: React.FC<OrdersListMobileProps> = ({
     const t = translations[language];
     const [displayCount, setDisplayCount] = useState(20);
 
+    const isLightMode = advancedSettings?.themeMode === 'light';
     const isBinance = advancedSettings?.uiTheme === 'binance';
     
     const visibleOrders = useMemo(() => orders.slice(0, displayCount), [orders, displayCount]);
@@ -181,7 +184,11 @@ const OrdersListMobile: React.FC<OrdersListMobileProps> = ({
         const isCancelled = fs === 'Cancelled';
         const isReturned = fs === 'Returned';
 
-        // Enhancement: Find logos
+        const id1 = order['Telegram Message ID 1'];
+        const id2 = order['Telegram Message ID 2'];
+        const isChecking = id1 === 'CHECKING';
+        const isSent = (id1 && id2) && !isChecking;
+
         const displayPhone = formatPhone(order['Customer Phone']);
         const carrier = appData?.phoneCarriers?.find(c =>
             String(c.Prefixes || '').split(',').map(p => p.trim()).filter(Boolean).includes(displayPhone.substring(0, 3))
@@ -197,9 +204,9 @@ const OrdersListMobile: React.FC<OrdersListMobileProps> = ({
             <div 
                 key={order['Order ID']}
                 onClick={() => (selectedIds.size > 0 || isSelectionMode) ? onToggleSelect?.(order['Order ID']) : onView?.(order)}
-                className={`relative group bg-[var(--cm-card-bg)] border border-[var(--cm-border)] rounded-lg p-4 transition-all duration-300 active:scale-[0.99] overflow-hidden ${
-                    isSelected ? 'ring-2 ring-[var(--cm-accent)] shadow-[0_0_20px_rgba(240,185,11,0.2)]' : 'shadow-lg shadow-black/20'
-                } ${isCancelled || isReturned ? 'opacity-70' : ''}`}
+                className={`relative group border rounded-xl p-3 transition-all duration-300 active:scale-[0.99] overflow-hidden ${
+                    isLightMode ? 'bg-white border-slate-200/80 shadow-sm' : 'bg-[#0f172a]/60 border-white/5 shadow-lg'
+                } ${isSelected ? 'ring-2 ring-blue-500' : ''} ${isCancelled || isReturned ? 'opacity-70' : ''}`}
             >
                 {/* Status Indicator Bar */}
                 <div className={`absolute top-0 left-0 bottom-0 w-1 ${isPaid ? 'bg-emerald-500' : 'bg-red-500'}`} />
@@ -212,57 +219,60 @@ const OrdersListMobile: React.FC<OrdersListMobileProps> = ({
                 )}
 
                 {/* Card Header */}
-                <div className="flex justify-between items-start mb-4">
-                    <div className="flex items-center gap-3">
+                <div className="flex justify-between items-start mb-2.5">
+                    <div className="flex items-center gap-2">
                         {isSelectionMode ? (
                             <div 
                                 onClick={(e) => { e.stopPropagation(); onToggleSelect?.(order['Order ID']); }}
-                                className={`w-5 h-5 rounded-md flex items-center justify-center border transition-colors ${isSelected ? 'bg-[var(--cm-accent)] border-[var(--cm-accent)]' : 'border-[var(--cm-border)] bg-black/20'}`}
+                                className={`w-5 h-5 rounded-md flex items-center justify-center border transition-colors ${
+                                    isSelected ? 'bg-blue-600 border-blue-600' : (isLightMode ? 'border-slate-300 bg-slate-50' : 'border-white/10 bg-black/20')
+                                }`}
                             >
-                                {isSelected && <Check size={12} className="text-black" strokeWidth={4} />}
+                                {isSelected && <Check size={12} className="text-white" strokeWidth={4} />}
                             </div>
                         ) : isVisible('index') && (
-                            <span className="text-[10px] font-mono font-black text-[var(--cm-text-muted)] opacity-40">#{displayIndex}</span>
+                            <span className={`text-[10px] font-mono font-black ${isLightMode ? 'text-slate-400' : 'text-gray-500'} opacity-50`}>#{displayIndex}</span>
                         )}
-                        <div className="flex flex-col gap-1.5">
-                            {isVisible('orderId') && (
-                                <span className="text-[10px] font-mono font-bold text-[var(--cm-text-primary)]/80 tracking-tight">
-                                    ID: {order['Order ID'].substring(0, 8)}...
+                        <div className="flex flex-wrap items-center gap-1.5">
+                            {isVisible('status') && (
+                                <span className={`text-[9px] font-black px-1.5 py-0.5 rounded-sm border ${
+                                    isPaid 
+                                        ? (isLightMode ? 'bg-emerald-50 text-emerald-700 border-emerald-200/50' : 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20') 
+                                        : (isLightMode ? 'bg-red-50 text-red-700 border-red-200/50' : 'bg-red-500/10 text-red-500 border-red-500/20')
+                                }`}>
+                                    {isPaid ? 'PAID' : 'UNPAID'}
                                 </span>
                             )}
-                            <div className="flex flex-wrap items-center gap-2">
-                                {isVisible('status') && (
-                                    <span className={`text-[9px] font-black px-1.5 py-0.5 rounded-sm border ${isPaid ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' : 'bg-red-500/10 text-red-500 border-red-500/20'}`}>
-                                        {isPaid ? 'PAID' : 'UNPAID'}
-                                    </span>
-                                )}
-                                {isVisible('fulfillmentStatus') && <FulfillmentBadge status={fs} />}
-                                {(order['Cancel Reason'] || order['Return Reason']) && (
-                                    <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-sm border uppercase tracking-tight flex items-center gap-1 ${isCancelled ? 'bg-red-500/10 text-red-500 border-red-500/20' : 'bg-purple-500/10 text-purple-400 border-purple-500/20'}`}>
-                                        <Clock size={8} /> {order['Cancel Reason'] || order['Return Reason']}
-                                    </span>
-                                )}
-                                {showVerify && isVerified && (
-                                    <div className="flex items-center gap-1 text-emerald-500 text-[9px] font-black uppercase">
-                                        <Check size={10} strokeWidth={4}/> VERIFIED
-                                    </div>
-                                )}
-                                {isVisible('telegramStatus') && (
-                                    <TelegramStatusIcon 
-                                        order={order} 
-                                        handleSendTelegram={handleSendTelegram} 
-                                        isUpdating={updatingIds.has(order['Order ID'])}
-                                        isBinance={isBinance}
-                                        t={t}
-                                    />
-                                )}
-                            </div>
+                            {isVisible('fulfillmentStatus') && <FulfillmentBadge status={fs} />}
+                            {(order['Cancel Reason'] || order['Return Reason']) && (
+                                <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-sm border uppercase tracking-tight flex items-center gap-1 ${
+                                    isCancelled 
+                                        ? (isLightMode ? 'bg-red-50 text-red-700 border-red-200/50' : 'bg-red-500/10 text-red-500 border-red-500/20') 
+                                        : (isLightMode ? 'bg-purple-50 text-purple-700 border-purple-200/50' : 'bg-purple-500/10 text-purple-400 border-purple-500/20')
+                                }`}>
+                                    <Clock size={8} /> {order['Cancel Reason'] || order['Return Reason']}
+                                </span>
+                            )}
+                            {showVerify && isVerified && (
+                                <div className="flex items-center gap-0.5 text-emerald-500 text-[9px] font-black uppercase">
+                                    <Check size={9} strokeWidth={4}/> VERIFIED
+                                </div>
+                            )}
+                            {isVisible('telegramStatus') && (
+                                <TelegramStatusIcon 
+                                    order={order} 
+                                    handleSendTelegram={handleSendTelegram} 
+                                    isUpdating={updatingIds.has(order['Order ID'])}
+                                    isBinance={isBinance}
+                                    t={t}
+                                />
+                            )}
                         </div>
                     </div>
                     {isVisible('total') && (
                         <div className="text-right">
-                            <div className="text-[20px] font-black text-[var(--cm-text-primary)] tabular-nums leading-none tracking-tighter flex items-center justify-end">
-                                <span className="text-[12px] text-[var(--cm-accent)] mr-0.5 opacity-80">$</span>
+                            <div className={`text-[18px] font-black ${isLightMode ? 'text-slate-900' : 'text-white'} tabular-nums leading-none tracking-tighter flex items-center justify-end`}>
+                                <span className={`text-[11px] ${isLightMode ? 'text-blue-600' : 'text-blue-400'} mr-0.5 opacity-80`}>$</span>
                                 {orderTotal.toLocaleString(undefined, { minimumFractionDigits: 2 })}
                             </div>
                         </div>
@@ -270,21 +280,23 @@ const OrdersListMobile: React.FC<OrdersListMobileProps> = ({
                 </div>
 
                 {/* Main Content Area */}
-                <div className="flex gap-4 mb-4 pb-4 border-b border-[var(--cm-border)]/30">
+                <div className={`flex gap-3 mb-2.5 pb-2.5 border-b border-dashed ${isLightMode ? 'border-slate-200/80' : 'border-white/5'}`}>
                     {isVisible('productInfo') && (
-                        <div className="w-16 h-16 rounded-lg bg-black/20 border border-[var(--cm-border)]/50 shrink-0 relative overflow-hidden group-hover:border-[var(--cm-accent)]/50 transition-colors">
-                            {mainProduct?.ProductImage ? (
+                        <div className={`w-14 h-14 rounded-lg shrink-0 relative overflow-hidden border ${
+                            isLightMode ? 'bg-slate-100 border-slate-200/80' : 'bg-black/20 border-white/5'
+                        }`}>
+                            {mainProduct?.image ? (
                                 <img 
-                                    src={convertGoogleDriveUrl(mainProduct.ProductImage)} 
+                                    src={convertGoogleDriveUrl(mainProduct.image)} 
                                     className="w-full h-full object-cover" 
-                                    alt={mainProduct.ProductName || "Product"} 
+                                    alt={mainProduct.name || "Product"} 
                                     loading="lazy"
                                 />
                             ) : (
-                                <div className="w-full h-full flex items-center justify-center text-[8px] text-[var(--cm-text-muted)] font-black">NO IMAGE</div>
+                                <div className={`w-full h-full flex items-center justify-center text-[8px] font-black ${isLightMode ? 'text-slate-400' : 'text-gray-500'}`}>NO IMAGE</div>
                             )}
                             {productCount > 1 && (
-                                <div className="absolute bottom-0 right-0 bg-[var(--cm-accent)] text-black text-[9px] font-black px-1.5 py-0.5 rounded-tl-md shadow-sm">
+                                <div className="absolute bottom-0 right-0 bg-blue-600 text-white text-[9px] font-black px-1.5 py-0.5 rounded-tl-md shadow-sm">
                                     +{productCount - 1}
                                 </div>
                             )}
@@ -292,25 +304,27 @@ const OrdersListMobile: React.FC<OrdersListMobileProps> = ({
                     )}
                     <div className="flex-1 min-w-0">
                         {isVisible('customerName') && (
-                            <h3 className="text-[15px] font-black text-[var(--cm-text-primary)] truncate uppercase tracking-tight mb-0.5 group-hover:text-[var(--cm-accent)] transition-colors">
+                            <h3 className={`text-[14px] font-black truncate uppercase tracking-tight mb-0.5 transition-colors ${
+                                isLightMode ? 'text-slate-800 hover:text-blue-600' : 'text-white hover:text-blue-400'
+                            }`}>
                                 {order['Customer Name'] || 'Unknown Customer'}
                             </h3>
                         )}
-                        <div className="flex items-center gap-2 text-[12px] font-bold text-[var(--cm-accent)] mb-1.5">
+                        <div className={`flex items-center gap-1.5 text-[11px] font-bold mb-1 ${isLightMode ? 'text-blue-600' : 'text-blue-400'}`}>
                             {carrierLogo && (
                                 <img src={convertGoogleDriveUrl(carrierLogo)} className="w-3.5 h-3.5 object-contain" alt="" />
                             )}
                             <span>{order['Customer Phone']}</span>
                         </div>
                         {isVisible('location') && (
-                            <div className="flex items-start gap-1.5 text-[10px] text-[var(--cm-text-muted)] font-medium">
-                                <MapPin size={11} className="text-red-500 shrink-0 mt-0.5 opacity-80" />
+                            <div className={`flex items-start gap-1 text-[9.5px] font-medium ${isLightMode ? 'text-slate-500' : 'text-gray-400'}`}>
+                                <MapPin size={10} className="text-red-500 shrink-0 mt-0.5 opacity-80" />
                                 <span className="line-clamp-1">{order.Location || 'No location provided'}</span>
                             </div>
                         )}
                     </div>
                     {packagePhoto && (
-                        <div className="w-16 h-16 rounded-lg bg-black/20 border border-blue-500/30 shrink-0 relative overflow-hidden flex-none">
+                        <div className={`w-14 h-14 rounded-lg shrink-0 relative overflow-hidden flex-none border ${isLightMode ? 'border-blue-200' : 'border-blue-500/30'}`}>
                             <img 
                                 src={convertGoogleDriveUrl(packagePhoto)} 
                                 className="w-full h-full object-cover" 
@@ -325,92 +339,78 @@ const OrdersListMobile: React.FC<OrdersListMobileProps> = ({
                 </div>
 
                 {/* Footer Metadata & Actions */}
-                <div className="flex items-end justify-between">
-                    <div className="grid grid-cols-2 gap-x-4 gap-y-2 flex-1">
-                        {isVisible('fulfillment') && (
-                            <div className="min-w-0">
-                                <div className="text-[8px] font-black text-[var(--cm-text-muted)] uppercase flex items-center gap-1 mb-0.5">
-                                    <Warehouse size={8} /> Store
-                                </div>
-                                <div className="text-[10px] font-bold text-[var(--cm-text-primary)] truncate">{order['Fulfillment Store'] || '---'}</div>
-                            </div>
+                <div className="flex items-center justify-between">
+                    <div className="flex flex-wrap gap-1 items-center flex-1 min-w-0 mr-2">
+                        {isVisible('fulfillment') && order['Fulfillment Store'] && (
+                            <span className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[8px] font-bold ${
+                                isLightMode ? 'bg-slate-100 text-slate-600 border border-slate-200/60' : 'bg-white/5 text-gray-400 border border-white/5'
+                            }`}>
+                                <Warehouse size={8} /> {order['Fulfillment Store']}
+                            </span>
                         )}
-                        {isVisible('shippingService') && (
-                            <div className="min-w-0">
-                                <div className="text-[8px] font-black text-[var(--cm-text-muted)] uppercase flex items-center gap-1 mb-0.5">
-                                    <Truck size={8} /> Shipping
-                                </div>
-                                <div className="flex items-center gap-1.5">
-                                    {shippingLogo && <img src={convertGoogleDriveUrl(shippingLogo)} className="w-3.5 h-3.5 object-contain" alt="" />}
-                                    <span className="text-[10px] font-bold text-[var(--cm-text-primary)] truncate">{order['Internal Shipping Method'] || '---'}</span>
-                                </div>
-                            </div>
+                        {isVisible('shippingService') && order['Internal Shipping Method'] && (
+                            <span className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[8px] font-bold ${
+                                isLightMode ? 'bg-slate-100 text-slate-600 border border-slate-200/60' : 'bg-white/5 text-gray-400 border border-white/5'
+                            }`}>
+                                <Truck size={8} /> {order['Internal Shipping Method']}
+                            </span>
                         )}
-                        {!isVisible('shippingService') && isVisible('driver') && (
-                            <div className="min-w-0">
-                                <div className="text-[8px] font-black text-[var(--cm-text-muted)] uppercase flex items-center gap-1 mb-0.5">
-                                    <Truck size={8} /> Driver
-                                </div>
-                                <div className="text-[10px] font-bold text-[var(--cm-text-primary)] truncate">{order['Driver Name'] || '---'}</div>
-                            </div>
+                        {isVisible('pageInfo') && order.Page && (
+                            <span className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[8px] font-bold ${
+                                isLightMode ? 'bg-slate-100 text-slate-600 border border-slate-200/60' : 'bg-white/5 text-gray-400 border border-white/5'
+                            }`}>
+                                <Globe size={8} /> {order.Page}
+                            </span>
                         )}
                         {isVisible('date') && (
-                            <div>
-                                <div className="text-[8px] font-black text-[var(--cm-text-muted)] uppercase flex items-center gap-1 mb-0.5">
-                                    <Clock size={8} /> Time
-                                </div>
-                                <div className="text-[10px] font-bold text-[var(--cm-text-primary)]">
-                                    {getValidDate(order.Timestamp).toLocaleDateString('km-KH', { day: '2-digit', month: 'short' })}
-                                </div>
-                            </div>
-                        )}
-                        {isVisible('pageInfo') && (
-                            <div className="min-w-0">
-                                <div className="text-[8px] font-black text-[var(--cm-text-muted)] uppercase flex items-center gap-1 mb-0.5">
-                                    <Globe size={8} /> Source
-                                </div>
-                                <div className="text-[10px] font-bold text-[var(--cm-text-primary)] truncate italic">{order.Page || 'Direct'}</div>
-                            </div>
+                            <span className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[8px] font-bold ${
+                                isLightMode ? 'bg-slate-100 text-slate-600 border border-slate-200/60' : 'bg-white/5 text-gray-400 border border-white/5'
+                            }`}>
+                                <Clock size={8} /> {getValidDate(order.Timestamp).toLocaleDateString('km-KH', { day: '2-digit', month: 'short' })}
+                            </span>
                         )}
                     </div>
                     
-                    <div className="flex items-center gap-2 ml-4 shrink-0" onClick={e => e.stopPropagation()}>
+                    <div className="flex items-center gap-1.5 shrink-0" onClick={e => e.stopPropagation()}>
+                        {isVisible('telegramStatus') && !isSent && (
+                            <TelegramSendButton 
+                                orderId={order['Order ID']}
+                                handleSendTelegram={handleSendTelegram}
+                                isUpdating={updatingIds.has(order['Order ID'])}
+                                isBinance={isBinance}
+                                isLightMode={isLightMode}
+                            />
+                        )}
                         {isVisible('actions') && canEditOrder(order) && (
                             <button 
                                 onClick={(e) => { e.stopPropagation(); onEdit?.(order); }} 
-                                className="w-10 h-10 flex items-center justify-center bg-[var(--cm-card-bg2)] border border-[var(--cm-border)] text-[var(--cm-text-muted)] rounded-lg active:scale-90 transition-all hover:border-[var(--cm-accent)] hover:text-[var(--cm-accent)]"
-                            >
-                                <Edit2 size={16} />
-                            </button>
-                        )}
-                        {isVisible('telegramStatus') && (() => {
-                            const id1 = order['Telegram Message ID 1'];
-                            const id2 = order['Telegram Message ID 2'];
-                            const isChecking = id1 === 'CHECKING';
-                            const isSent = (id1 && id2) && !isChecking;
-
-                            if (!isSent) {
-                                return (
-                                    <TelegramSendButton 
-                                        orderId={order['Order ID']}
-                                        handleSendTelegram={handleSendTelegram}
-                                        isUpdating={updatingIds.has(order['Order ID'])}
-                                        isBinance={isBinance}
-                                    />
-                                );
-                            }
-                            return null;
-                        })()}
-                        {showVerify && !isSelectionMode && (
-                            <button 
-                                onClick={(e) => { e.stopPropagation(); toggleOrderVerified(order['Order ID'], isVerified); }}
-                                className={`w-10 h-10 flex items-center justify-center rounded-lg border transition-all active:scale-90 ${
-                                    isVerified 
-                                    ? 'bg-emerald-500/10 border-emerald-500 text-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.2)]' 
-                                    : 'bg-[var(--cm-card-bg2)] border-[var(--cm-border)] text-[var(--cm-text-muted)]'
+                                className={`w-8 h-8 flex items-center justify-center rounded-lg border transition-all active:scale-90 ${
+                                    isLightMode ? 'bg-slate-100 border-slate-200 text-slate-700 hover:bg-slate-200' : 'bg-white/5 border-white/5 text-gray-400'
                                 }`}
                             >
-                                {updatingIds.has(order['Order ID']) ? <Spinner size="xs" /> : <Check size={18} strokeWidth={3} />}
+                                <Edit2 size={13} strokeWidth={2.5} />
+                            </button>
+                        )}
+                        {isVisible('print') && (
+                            <button 
+                                onClick={(e) => { e.stopPropagation(); handlePrint(order); }} 
+                                className={`w-8 h-8 flex items-center justify-center rounded-lg border transition-all active:scale-90 ${
+                                    isLightMode ? 'bg-slate-100 border-slate-200 text-slate-700 hover:bg-slate-200' : 'bg-white/5 border-white/5 text-gray-400'
+                                }`}
+                            >
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" strokeWidth={2.5}/></svg>
+                            </button>
+                        )}
+                        {isVisible('check') && showVerify && !isSelectionMode && (
+                            <button 
+                                onClick={(e) => { e.stopPropagation(); toggleOrderVerified(order['Order ID'], isVerified); }} 
+                                className={`w-8 h-8 flex items-center justify-center rounded-lg border transition-all active:scale-90 ${
+                                    isVerified 
+                                        ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' 
+                                        : (isLightMode ? 'bg-slate-100 border-slate-200 text-slate-400 hover:bg-slate-200' : 'bg-white/5 border-white/5 text-gray-500')
+                                }`}
+                            >
+                                <Check size={14} strokeWidth={3} />
                             </button>
                         )}
                     </div>
@@ -450,8 +450,10 @@ const OrdersListMobile: React.FC<OrdersListMobileProps> = ({
             <div 
                 key={order['Order ID']} 
                 onClick={() => (isSelectionMode || selectedIds.size > 0) ? onToggleSelect?.(order['Order ID']) : onView?.(order)}
-                className={`relative flex items-center gap-3 px-4 py-3 border-b border-[var(--cm-border)] transition-colors active:bg-[var(--cm-card-bg2)] ${
-                    isSelected ? 'bg-[var(--cm-accent-light)]' : 'bg-[var(--cm-card-bg)]'
+                className={`relative flex items-center gap-3 px-4 py-3 border-b transition-colors active:bg-slate-100 ${
+                    isLightMode 
+                        ? (isSelected ? 'bg-blue-50/50 border-slate-100' : 'bg-white border-slate-100 hover:bg-slate-50/40') 
+                        : (isSelected ? 'bg-[var(--cm-accent-light)]' : 'bg-[var(--cm-card-bg)] border-[var(--cm-border)]')
                 }`}
             >
                 <div className={`absolute left-0 top-0 bottom-0 w-1 ${isPaid ? 'bg-emerald-500' : 'bg-red-500'}`} />
@@ -460,36 +462,44 @@ const OrdersListMobile: React.FC<OrdersListMobileProps> = ({
                     {isSelectionMode ? (
                         <div 
                             onClick={(e) => { e.stopPropagation(); onToggleSelect?.(order['Order ID']); }}
-                            className={`w-5 h-5 rounded flex items-center justify-center border transition-colors ${isSelected ? 'bg-[var(--cm-accent)] border-[var(--cm-accent)]' : 'border-[var(--cm-border)] bg-black/20'}`}
+                            className={`w-5 h-5 rounded flex items-center justify-center border transition-colors ${
+                                isSelected ? 'bg-blue-600 border-blue-600' : (isLightMode ? 'border-slate-300 bg-slate-50' : 'border-[var(--cm-border)] bg-black/20')
+                            }`}
                         >
-                            {isSelected && <Check size={12} className="text-black" strokeWidth={4} />}
+                            {isSelected && <Check size={12} className="text-white" strokeWidth={4} />}
                         </div>
                     ) : isVisible('index') && (
-                        <span className="text-[10px] font-mono font-bold text-[var(--cm-text-muted)] opacity-30">{displayIndex}</span>
+                        <span className={`text-[10px] font-mono font-bold opacity-30 ${isLightMode ? 'text-slate-400' : 'text-[var(--cm-text-muted)]'}`}>{displayIndex}</span>
                     )}
                 </div>
 
                 {/* Product Thumbnail (Replacing Customer/Carrier Logo logic here as requested by user context) */}
-                <div className="w-10 h-10 rounded-md bg-[var(--cm-card-bg2)] border border-[var(--cm-border)] shrink-0 relative overflow-hidden hidden xs:block">
-                    {mainProduct?.ProductImage ? (
+                <div className={`w-10 h-10 rounded-md shrink-0 relative overflow-hidden hidden xs:block border ${
+                    isLightMode ? 'bg-slate-100 border-slate-200' : 'bg-[var(--cm-card-bg2)] border-[var(--cm-border)]'
+                }`}>
+                    {mainProduct?.image ? (
                         <img 
-                            src={convertGoogleDriveUrl(mainProduct.ProductImage)} 
+                            src={convertGoogleDriveUrl(mainProduct.image)} 
                             className="w-full h-full object-cover" 
-                            alt={mainProduct.ProductName || "Product"} 
+                            alt={mainProduct.name || "Product"} 
                             loading="lazy"
                         />
                     ) : (
-                        <div className="w-full h-full flex items-center justify-center text-[8px] text-[var(--cm-text-muted)] font-black text-center leading-tight">NO<br/>IMG</div>
+                        <div className={`w-full h-full flex items-center justify-center text-[8px] font-black text-center leading-tight ${
+                            isLightMode ? 'text-slate-400' : 'text-[var(--cm-text-muted)]'
+                        }`}>NO<br/>IMG</div>
                     )}
                     {productCount > 1 && (
-                        <div className="absolute bottom-0 right-0 bg-[var(--cm-accent)] text-[var(--cm-accent-text)] text-[8px] font-black px-1 rounded-tl-sm shadow-sm">
+                        <div className="absolute bottom-0 right-0 bg-blue-600 text-white text-[8px] font-black px-1 rounded-tl-sm shadow-sm">
                             +{productCount - 1}
                         </div>
                     )}
                 </div>
 
                 {packagePhoto && (
-                    <div className="w-10 h-10 rounded-md bg-black/20 border border-[var(--cm-border)] overflow-hidden shrink-0 hidden xs:block relative">
+                    <div className={`w-10 h-10 rounded-md overflow-hidden shrink-0 hidden xs:block relative border ${
+                        isLightMode ? 'border-slate-200' : 'border-[var(--cm-border)] bg-black/20'
+                    }`}>
                         <img src={convertGoogleDriveUrl(packagePhoto)} className="w-full h-full object-cover" alt="PKG" />
                         <div className="absolute bottom-0 right-0 bg-blue-500 text-white text-[7px] font-black px-1 rounded-tl-sm">PKG</div>
                     </div>
@@ -498,23 +508,31 @@ const OrdersListMobile: React.FC<OrdersListMobileProps> = ({
                 <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-0.5">
                         {isVisible('customerName') && (
-                            <h3 className="text-[13px] font-black text-[var(--cm-text-primary)] truncate uppercase tracking-tight">
+                            <h3 className={`text-[13px] font-black truncate uppercase tracking-tight ${isLightMode ? 'text-slate-800' : 'text-[var(--cm-text-primary)]'}`}>
                                 {order['Customer Name']}
                             </h3>
                         )}
                         {isVisible('status') && (
-                            <span className={`text-[8px] font-black px-1 py-0.5 rounded-sm ${isPaid ? 'bg-emerald-500/10 text-emerald-500' : 'bg-red-500/10 text-red-500'}`}>
+                            <span className={`text-[8px] font-black px-1 py-0.5 rounded-sm ${
+                                isPaid 
+                                    ? (isLightMode ? 'bg-emerald-50 text-emerald-700' : 'bg-emerald-500/10 text-emerald-500') 
+                                    : (isLightMode ? 'bg-red-50 text-red-700' : 'bg-red-500/10 text-red-500')
+                            }`}>
                                 {isPaid ? 'PAID' : 'UNPAID'}
                             </span>
                         )}
                         {(order['Cancel Reason'] || order['Return Reason']) && (
-                            <span className={`text-[8px] font-bold px-1 py-0.5 rounded-sm border uppercase tracking-tighter flex items-center gap-0.5 ${order.FulfillmentStatus === 'Cancelled' ? 'bg-red-500/10 text-red-500 border-red-500/20' : 'bg-purple-500/10 text-purple-400 border-purple-500/20'}`}>
+                            <span className={`text-[8px] font-bold px-1 py-0.5 rounded-sm border uppercase tracking-tighter flex items-center gap-0.5 ${
+                                order.FulfillmentStatus === 'Cancelled' 
+                                    ? (isLightMode ? 'bg-red-50 border-red-200 text-red-700' : 'bg-red-500/10 text-red-500 border-red-500/20') 
+                                    : (isLightMode ? 'bg-purple-50 border-purple-200 text-purple-700' : 'bg-purple-500/10 text-purple-400 border-purple-500/20')
+                            }`}>
                                 <Clock size={7} /> {order['Cancel Reason'] || order['Return Reason']}
                             </span>
                         )}
                     </div>
-                    <div className="flex items-center gap-2 text-[10px] font-bold text-[var(--cm-text-muted)]">
-                        <div className="flex items-center gap-1 text-[var(--cm-accent)]">
+                    <div className={`flex items-center gap-2 text-[10px] font-bold ${isLightMode ? 'text-slate-400' : 'text-[var(--cm-text-muted)]'}`}>
+                        <div className={`flex items-center gap-1 ${isLightMode ? 'text-blue-600' : 'text-[var(--cm-accent)]'}`}>
                             {carrierLogo && <img src={convertGoogleDriveUrl(carrierLogo)} className="w-3 h-3 object-contain" alt="" />}
                             <span>{order['Customer Phone']}</span>
                         </div>
@@ -527,7 +545,7 @@ const OrdersListMobile: React.FC<OrdersListMobileProps> = ({
                     </div>
 
                     {isVisible('shippingService') && (
-                        <div className="flex items-center gap-1 text-[9px] font-medium text-[var(--cm-text-muted)] mt-1">
+                        <div className={`flex items-center gap-1 text-[9px] font-medium mt-1 ${isLightMode ? 'text-slate-400' : 'text-[var(--cm-text-muted)]'}`}>
                             {shippingLogo && <img src={convertGoogleDriveUrl(shippingLogo)} className="w-2.5 h-2.5 object-contain opacity-70" alt="" />}
                             <span className="truncate">{order['Internal Shipping Method']}</span>
                         </div>
@@ -537,8 +555,8 @@ const OrdersListMobile: React.FC<OrdersListMobileProps> = ({
                 <div className="flex items-center gap-3 shrink-0">
                     {isVisible('total') && (
                         <div className="text-right">
-                            <div className="text-[14px] font-black text-[var(--cm-text-primary)] italic tabular-nums leading-none">
-                                <span className="text-[10px] text-[var(--cm-accent)] mr-0.5">$</span>
+                            <div className={`text-[14px] font-black italic tabular-nums leading-none ${isLightMode ? 'text-slate-900' : 'text-[var(--cm-text-primary)]'}`}>
+                                <span className={`text-[10px] ${isLightMode ? 'text-blue-600' : 'text-[var(--cm-accent)]'} mr-0.5`}>$</span>
                                 {orderTotal.toLocaleString(undefined, { minimumFractionDigits: 0 })}
                             </div>
                         </div>
@@ -548,9 +566,11 @@ const OrdersListMobile: React.FC<OrdersListMobileProps> = ({
                         {isVisible('actions') && canEditOrder(order) && (
                             <button 
                                 onClick={(e) => { e.stopPropagation(); onEdit?.(order); }} 
-                                className="w-8 h-8 flex items-center justify-center bg-[var(--cm-card-bg2)] border border-[var(--cm-border)] text-[var(--cm-text-muted)] rounded-md active:scale-90 transition-all"
+                                className={`w-8 h-8 flex items-center justify-center rounded-md border active:scale-90 transition-all ${
+                                    isLightMode ? 'bg-slate-100 border-slate-200 text-slate-600 hover:bg-slate-200' : 'bg-[var(--cm-card-bg2)] border-[var(--cm-border)] text-[var(--cm-text-muted)]'
+                                }`}
                             >
-                                <Edit2 size={14} />
+                                <Edit2 size={13} />
                             </button>
                         )}
                         {isVisible('telegramStatus') && (
@@ -569,6 +589,7 @@ const OrdersListMobile: React.FC<OrdersListMobileProps> = ({
                                     handleSendTelegram={handleSendTelegram}
                                     isUpdating={updatingIds.has(order['Order ID'])}
                                     isBinance={isBinance}
+                                    isLightMode={isLightMode}
                                 />
                             )
                         )}
@@ -581,8 +602,10 @@ const OrdersListMobile: React.FC<OrdersListMobileProps> = ({
     return (
         <div className="flex flex-col space-y-6 animate-fade-in">
             {groupedData.length === 0 || (groupedData.length === 1 && groupedData[0].orders.length === 0) ? (
-                <div className="flex flex-col items-center justify-center py-20 text-[var(--cm-text-muted)] opacity-50">
-                    <div className="w-16 h-16 mb-4 rounded-full bg-[var(--cm-card-bg2)] flex items-center justify-center border border-[var(--cm-border)]">
+                <div className={`flex flex-col items-center justify-center py-20 opacity-50 ${isLightMode ? 'text-slate-400' : 'text-[var(--cm-text-muted)]'}`}>
+                    <div className={`w-16 h-16 mb-4 rounded-full flex items-center justify-center border ${
+                        isLightMode ? 'bg-slate-100 border-slate-200' : 'bg-[var(--cm-card-bg2)] border-[var(--cm-border)]'
+                    }`}>
                         <Clock size={32} strokeWidth={1} />
                     </div>
                     <p className="text-sm font-bold uppercase tracking-widest">{t.no_orders || 'No Orders Found'}</p>
@@ -600,14 +623,14 @@ const OrdersListMobile: React.FC<OrdersListMobileProps> = ({
                                     </>
                                 ) : (
                                     <>
-                                        <span className="text-[10px] font-black text-[var(--cm-accent)] uppercase tracking-[0.2em]">{group.label}</span>
-                                        <div className="h-px flex-1 bg-gradient-to-r from-[var(--cm-border)] to-transparent"></div>
+                                        <span className={`text-[10px] font-black uppercase tracking-[0.2em] ${isLightMode ? 'text-blue-600' : 'text-[var(--cm-accent)]'}`}>{group.label}</span>
+                                        <div className={`h-px flex-1 bg-gradient-to-r ${isLightMode ? 'from-slate-200 to-transparent' : 'from-[var(--cm-border)] to-transparent'}`}></div>
                                     </>
                                 )}
                             </div>
                         )}
                         
-                        <div className={viewMode === 'card' ? "grid grid-cols-1 gap-4 px-4" : "flex flex-col border-y border-[var(--cm-border)] shadow-xl"}>
+                        <div className={viewMode === 'card' ? "grid grid-cols-1 gap-4 px-4" : `flex flex-col border-y shadow-xl ${isLightMode ? 'border-slate-100 bg-white' : 'border-[var(--cm-border)] bg-[var(--cm-card-bg)]'}`}>
                             {group.orders.map((order, idx) => 
                                 viewMode === 'card' ? renderOrderCard(order, idx) : renderOrderListRow(order, idx)
                             )}
@@ -620,7 +643,11 @@ const OrdersListMobile: React.FC<OrdersListMobileProps> = ({
                 <div className="flex justify-center pt-4 pb-2 px-4">
                     <button 
                         onClick={handleLoadMore} 
-                        className="w-full py-4 bg-[var(--cm-card-bg2)] text-[var(--cm-text-muted)] rounded-lg text-[11px] font-black uppercase tracking-[0.3em] border border-[var(--cm-border)] active:scale-[0.98] active:bg-[var(--cm-card-bg)] transition-all shadow-lg hover:border-[var(--cm-accent)] hover:text-[var(--cm-accent)]"
+                        className={`w-full py-4 rounded-lg text-[11px] font-black uppercase tracking-[0.3em] border active:scale-[0.98] transition-all ${
+                            isLightMode 
+                                ? 'bg-slate-100 border-slate-200 text-slate-600 hover:bg-slate-200 hover:text-blue-600' 
+                                : 'bg-[var(--cm-card-bg2)] text-[var(--cm-text-muted)] border-[var(--cm-border)] active:bg-[var(--cm-card-bg)] shadow-lg hover:border-[var(--cm-accent)] hover:text-[var(--cm-accent)]'
+                        }`}
                     >
                         Load More Records
                     </button>

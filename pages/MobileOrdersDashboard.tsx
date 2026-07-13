@@ -25,8 +25,9 @@ interface MobileOrdersDashboardProps {
 
 const MobileOrdersDashboard: React.FC<MobileOrdersDashboardProps> = ({ onBack, initialFilters }) => {
     const { 
-        appData, refreshData, fetchOrders, orders, isOrdersLoading, language, isSyncing
+        appData, refreshData, fetchOrders, orders, isOrdersLoading, language, isSyncing, advancedSettings
     } = useContext(AppContext);
+    const isLightMode = advancedSettings?.themeMode === 'light';
     const { setIsBottomNavHidden } = useUI();
     
     const { playSuccess } = useSoundEffects();
@@ -37,7 +38,7 @@ const MobileOrdersDashboard: React.FC<MobileOrdersDashboardProps> = ({ onBack, i
     const optimisticUpdateRef = useRef<((ids: string[], status: string) => void) | null>(null);
     const [sortBy, setSortBy] = useState<string>('date');
     const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
-    const [viewMode, setViewMode] = useUrlState<'card' | 'list'>('viewMode', 'card');
+    const viewMode = 'card';
     
     // Server-side Pagination States
     const [currentPage, setCurrentPage] = useState(1);
@@ -201,106 +202,119 @@ const MobileOrdersDashboard: React.FC<MobileOrdersDashboardProps> = ({ onBack, i
     }
 
     return (
-        <div className="w-full h-full flex flex-col animate-reveal bg-[#020617] relative">
+        <div className={`w-full h-full flex flex-col animate-reveal relative transition-colors duration-300 ${isLightMode ? 'bg-slate-50' : 'bg-[#020617]'}`}>
             {/* Mobile Header */}
-            <div className="flex-shrink-0 px-4 py-4 flex items-center justify-between bg-[#0f172a]/60 backdrop-blur-2xl border-b border-white/5 sticky top-0 z-30">
-                <div className="flex items-center gap-3">
-                    <button onClick={() => onBack()} className="p-2 bg-white/5 rounded-xl border border-white/5 active:scale-90">
-                        <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M15 19l-7-7 7-7" strokeWidth={3}/></svg>
+            <div className={`flex-shrink-0 px-4 py-2 flex items-center justify-between border-b sticky top-0 z-30 transition-all ${
+                isLightMode ? 'bg-white border-slate-200' : 'bg-[#0f172a] border-white/5'
+            }`}>
+                <div className="flex items-center gap-2">
+                    <button onClick={() => onBack()} className={`p-1.5 rounded-lg border active:scale-90 ${
+                        isLightMode ? 'bg-slate-100 border-slate-200 text-slate-700' : 'bg-white/5 border-white/5'
+                    }`}>
+                        <svg className={`w-4 h-4 ${isLightMode ? 'text-slate-700' : 'text-gray-400'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M15 19l-7-7 7-7" strokeWidth={3}/></svg>
                     </button>
                     <div>
-                        <h1 className="text-sm font-black text-white uppercase tracking-tight">{t.manage_orders}</h1>
+                        <h1 className={`text-xs font-black uppercase tracking-tight ${isLightMode ? 'text-slate-800' : 'text-white'}`}>{t.manage_orders}</h1>
                         <div className="flex items-center gap-1.5 mt-0.5">
                             <span className={`w-1 h-1 rounded-full ${isSyncing ? 'bg-blue-400 animate-spin' : 'bg-emerald-500 animate-pulse'}`}></span>
-                            <span className="text-[7px] text-gray-500 font-black uppercase tracking-widest">{isSyncing ? 'Syncing' : 'Live Operations'}</span>
+                            <span className={`text-[6px] font-black uppercase tracking-widest ${isLightMode ? 'text-slate-400' : 'text-gray-500'}`}>{isSyncing ? 'Syncing' : 'Live Operations'}</span>
                         </div>
                     </div>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1.5">
                     {/* Mini Pagination for Mobile Header */}
                     {totalPages > 1 && (
-                        <div className="flex items-center bg-white/5 border border-white/10 rounded-lg p-0.5">
-                             <button onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage === 1} className="p-1 disabled:opacity-20"><svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M15 19l-7-7 7-7" strokeWidth={3}/></svg></button>
-                             <span className="text-[9px] font-black text-[#FCD535] px-1.5">{currentPage}/{totalPages}</span>
-                             <button onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages} className="p-1 disabled:opacity-20"><svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M9 5l7 7-7 7" strokeWidth={3}/></svg></button>
+                        <div className={`flex items-center border rounded-lg p-0.5 ${isLightMode ? 'bg-slate-55 border-slate-200' : 'bg-white/5 border-white/10'}`}>
+                             <button onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage === 1} className="p-0.5 disabled:opacity-20"><svg className={`w-3 h-3 ${isLightMode ? 'text-slate-700' : 'text-white'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M15 19l-7-7 7-7" strokeWidth={3}/></svg></button>
+                             <span className="text-[8px] font-black text-[#FCD535] px-1">{currentPage}/{totalPages}</span>
+                             <button onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages} className="p-0.5 disabled:opacity-20"><svg className={`w-3 h-3 ${isLightMode ? 'text-slate-700' : 'text-white'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M9 5l7 7-7 7" strokeWidth={3}/></svg></button>
                         </div>
                     )}
-                    <button onClick={() => setIsFilterModalOpen(true)} className="p-2.5 bg-blue-600/10 text-blue-400 border border-blue-500/20 rounded-xl relative">
-                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" strokeWidth={2}/></svg>
-                        {Object.values(filters).some(v => v && v !== 'all' && v !== 'this_month') && <span className="absolute top-1 right-1 w-2 h-2 bg-blue-500 rounded-full border-2 border-[#0f172a]"></span>}
+                    <button onClick={() => setIsFilterModalOpen(true)} className={`p-2 rounded-lg relative border ${
+                        isLightMode ? 'bg-blue-50 text-blue-600 border-blue-200' : 'bg-blue-600/10 text-blue-400 border-blue-500/20'
+                    }`}>
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" strokeWidth={2}/></svg>
+                        {Object.values(filters).some(v => v && v !== 'all' && v !== 'this_month') && <span className={`absolute top-0.5 right-0.5 w-1.5 h-1.5 bg-blue-500 rounded-full border ${isLightMode ? 'border-white' : 'border-[#0f172a]'}`}></span>}
                     </button>
                 </div>
             </div>
 
-            {/* Mobile Search Bar */}
-            <div className="px-4 py-3 bg-[#020617] sticky top-[65px] z-20 space-y-4">
-                <div className="relative group">
-                    <input 
-                        type="text" 
-                        placeholder={t.search_placeholder} 
-                        value={searchQuery} 
-                        onChange={e => { setSearchQuery(e.target.value); setCurrentPage(1); }}
-                        className="w-full bg-white/[0.03] border border-white/5 rounded-2xl py-3.5 pl-11 pr-4 text-sm font-bold text-white placeholder:text-gray-600 focus:bg-white/10 transition-all outline-none"
-                    />
-                    <div className="absolute left-4 top-0 bottom-0 flex items-center justify-center pointer-events-none text-gray-600 group-focus-within:text-blue-500 transition-colors">
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" strokeWidth={2.5}/></svg>
-                    </div>
-                </div>
-
-                <div className="flex items-center justify-between gap-3">
-                    <div className="flex bg-white/5 p-1 rounded-xl border border-white/5 flex-1">
-                        <button 
-                            onClick={() => setViewMode('card')}
-                            className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-[10px] font-black uppercase transition-all ${viewMode === 'card' ? 'bg-blue-600 text-white shadow-lg' : 'text-gray-500 hover:text-gray-400'}`}
-                        >
-                            <span>🗂️</span> {t.view_card}
-                        </button>
-                        <button 
-                            onClick={() => setViewMode('list')}
-                            className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-[10px] font-black uppercase transition-all ${viewMode === 'list' ? 'bg-blue-600 text-white shadow-lg' : 'text-gray-500 hover:text-gray-400'}`}
-                        >
-                            <span>📝</span> {t.view_list}
-                        </button>
+            {/* Mobile Search & Controls Panel */}
+            <div className={`px-4 py-2 sticky top-[49px] z-20 space-y-2 transition-colors duration-300 ${isLightMode ? 'bg-slate-50' : 'bg-[#020617]'}`}>
+                {/* Row 1: Search Input + Multi-Select + PDF */}
+                <div className="flex items-center gap-2">
+                    <div className="relative flex-1 group">
+                        <input 
+                            type="text" 
+                            placeholder={t.search_placeholder} 
+                            value={searchQuery} 
+                            onChange={e => { setSearchQuery(e.target.value); setCurrentPage(1); }}
+                            className={`w-full rounded-xl py-2 pl-9 pr-3 text-xs font-bold transition-all outline-none border ${
+                                isLightMode 
+                                    ? 'bg-white border-slate-200 text-slate-800 placeholder:text-slate-400 focus:bg-white focus:border-blue-500/50 focus:shadow-sm' 
+                                    : 'bg-white/[0.03] border-white/5 text-white placeholder:text-gray-600 focus:bg-white/10'
+                            }`}
+                        />
+                        <div className={`absolute left-3 top-0 bottom-0 flex items-center justify-center pointer-events-none transition-colors ${isLightMode ? 'text-slate-400' : 'text-gray-600'} group-focus-within:text-blue-500`}>
+                            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" strokeWidth={2.5}/></svg>
+                        </div>
                     </div>
                     
-                    <div className="flex items-center gap-2">
-                        <button 
-                            onClick={toggleSelectionMode}
-                            className={`flex items-center justify-center w-10 h-10 rounded-xl transition-all border ${isSelectionMode ? 'bg-blue-600 border-blue-500 text-white shadow-lg shadow-blue-900/40' : 'bg-white/5 border-white/5 text-gray-400'}`}
-                            title="Select Multiple"
-                        >
-                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" strokeWidth={2.5}/></svg>
-                        </button>
+                    <button 
+                        onClick={toggleSelectionMode}
+                        className={`flex items-center justify-center w-8.5 h-8.5 shrink-0 rounded-xl transition-all border ${
+                            isSelectionMode 
+                                ? 'bg-blue-600 border-blue-500 text-white shadow-lg' 
+                                : (isLightMode ? 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50' : 'bg-white/5 border-white/5 text-gray-400')
+                        }`}
+                        title="Select Multiple"
+                    >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" strokeWidth={2.5}/></svg>
+                    </button>
 
-                        <button 
-                            onClick={() => setIsPdfModalOpen(true)}
-                            className="flex items-center justify-center w-10 h-10 bg-red-600/10 text-red-400 border border-red-500/20 rounded-xl active:scale-95 transition-all"
-                        >
-                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" strokeWidth={2.5}/></svg>
-                        </button>
-                    </div>
+                    <button 
+                        onClick={() => setIsPdfModalOpen(true)}
+                        className={`flex items-center justify-center w-8.5 h-8.5 shrink-0 border rounded-xl active:scale-95 transition-all ${
+                            isLightMode 
+                                ? 'bg-red-50 text-red-600 border-red-200 hover:bg-red-100/50' 
+                                : 'bg-red-600/10 text-red-400 border-red-500/20'
+                        }`}
+                    >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" strokeWidth={2.5}/></svg>
+                    </button>
                 </div>
 
                 {isSelectionMode && (
-                    <div className="flex items-center justify-between px-1 py-1 bg-blue-600/10 border border-blue-500/20 rounded-xl animate-reveal">
-                        <button onClick={handleSelectAll} className="px-4 py-1.5 text-[10px] font-black text-blue-400 uppercase tracking-widest">
+                    <div className={`flex items-center justify-between px-1 py-1 border rounded-xl animate-reveal ${
+                        isLightMode ? 'bg-blue-50 border-blue-200' : 'bg-blue-600/10 border-blue-500/20'
+                    }`}>
+                        <button onClick={handleSelectAll} className={`px-4 py-1.5 text-[10px] font-black uppercase tracking-widest ${isLightMode ? 'text-blue-600' : 'text-blue-400'}`}>
                             {selectedIds.size === filteredOrders.length ? 'Deselect All' : 'Select All'}
                         </button>
-                        <span className="text-[10px] font-black text-blue-500 uppercase">{selectedIds.size} Selected</span>
-                        <button onClick={toggleSelectionMode} className="px-4 py-1.5 text-[10px] font-black text-gray-500 uppercase tracking-widest">Cancel</button>
+                        <span className={`text-[10px] font-black uppercase ${isLightMode ? 'text-blue-700' : 'text-blue-500'}`}>{selectedIds.size} Selected</span>
+                        <button onClick={toggleSelectionMode} className={`px-4 py-1.5 text-[10px] font-black uppercase tracking-widest ${isLightMode ? 'text-slate-500 hover:text-slate-700' : 'text-gray-500'}`}>Cancel</button>
                     </div>
                 )}
 
-                <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-0.5 px-0.5">
+                {/* Row 2: Date Presets */}
+                <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5">
                     {[
-                        { id: 'all', icon: '♾️', label: 'All' },
-                        { id: 'today', icon: '☀️', label: 'Today' },
-                        { id: 'yesterday', icon: '🌅', label: 'Yesterday' },
-                        { id: 'this_week', icon: '📅', label: 'Week' },
-                        { id: 'this_month', icon: '🗓️', label: 'Month' }
+                        { id: 'all', label: 'All' },
+                        { id: 'today', label: 'Today' },
+                        { id: 'yesterday', label: 'Yesterday' },
+                        { id: 'this_week', label: 'Week' },
+                        { id: 'this_month', label: 'Month' }
                     ].map(p => (
-                        <button key={p.id} onClick={() => { setFilters(prev => ({ ...prev, datePreset: p.id as any, startDate: '', endDate: '' })); setCurrentPage(1); }} className={`flex-shrink-0 flex items-center gap-2 px-4 py-2 rounded-2xl text-[10px] font-black uppercase tracking-widest border transition-all ${filters.datePreset === p.id ? 'bg-blue-600/10 border-blue-500/30 text-blue-400' : 'bg-white/5 border-white/5 text-gray-500'}`}>
-                            <span className="text-sm">{p.icon}</span> {p.label}
+                        <button 
+                            key={p.id} 
+                            onClick={() => { setFilters(prev => ({ ...prev, datePreset: p.id as any, startDate: '', endDate: '' })); setCurrentPage(1); }} 
+                            className={`flex-shrink-0 px-2.5 py-1 rounded-lg text-[9px] font-black uppercase tracking-wider border transition-all ${
+                                filters.datePreset === p.id 
+                                    ? (isLightMode ? 'bg-blue-50 border-blue-200 text-blue-600 font-extrabold shadow-sm' : 'bg-blue-600/10 border-blue-500/30 text-blue-400') 
+                                    : (isLightMode ? 'bg-white border-slate-200/80 text-slate-500 hover:bg-slate-50' : 'bg-white/5 border-white/5 text-gray-500')
+                            }`}
+                        >
+                            {p.label}
                         </button>
                     ))}
                 </div>
