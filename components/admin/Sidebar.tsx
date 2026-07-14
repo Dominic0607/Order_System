@@ -127,15 +127,21 @@ const Sidebar: React.FC<SidebarProps> = ({
                 };
             case 'neumorphism':
                 return {
-                    container: isMobile ? "bg-[#e0e5ec]" : `bg-[#e0e5ec] border-transparent ${isSidebarCollapsed ? 'w-24' : 'w-72'}`,
-                    itemActive: "text-blue-600 shadow-[inset_6px_6px_12px_#b8bec5,inset_-6px_-6px_12px_#ffffff] rounded-2xl",
-                    itemHover: "text-gray-500 hover:text-blue-500",
+                    container: isMobile 
+                        ? (isLightMode ? "bg-[#e0e5ec]" : "bg-[#171b22]")
+                        : `${isLightMode ? 'bg-[#e0e5ec]' : 'bg-[#171b22]'} border-transparent ${isSidebarCollapsed ? 'w-24' : 'w-72'}`,
+                    itemActive: isLightMode
+                        ? "text-blue-600 shadow-[inset_6px_6px_12px_#b8bec5,inset_-6px_-6px_12px_#ffffff] rounded-2xl"
+                        : "text-blue-400 shadow-[inset_4px_4px_8px_rgba(0,0,0,0.7),inset_-4px_-4px_8px_rgba(255,255,255,0.03)] rounded-2xl",
+                    itemHover: isLightMode
+                        ? "text-gray-500 hover:text-blue-500"
+                        : "text-slate-400 hover:text-blue-400",
                     accent: "#3b82f6",
-                    textPrimary: "text-gray-700",
-                    textSecondary: "text-gray-400",
+                    textPrimary: isLightMode ? "text-gray-700" : "text-slate-200",
+                    textSecondary: isLightMode ? "text-gray-400" : "text-slate-500",
                     border: "border-transparent",
-                    logoBg: "bg-[#e0e5ec]",
-                    groupTitle: "text-gray-400"
+                    logoBg: isLightMode ? "bg-[#e0e5ec]" : "bg-[#171b22]",
+                    groupTitle: isLightMode ? "text-gray-400" : "text-slate-600"
                 };
             case 'samsung':
                 return {
@@ -205,9 +211,17 @@ const Sidebar: React.FC<SidebarProps> = ({
 
     const sidebarLayerStyle = getSidebarLayerStyle();
 
+    const nmContainerShadow = isLightMode
+        ? 'shadow-[10px_10px_20px_#bebebe,-10px_-10px_20px_#ffffff]'
+        : 'shadow-[10px_10px_20px_rgba(0,0,0,0.55),-10px_-10px_20px_rgba(255,255,255,0.02)]';
+
+    const nmItemShadow = isLightMode
+        ? 'shadow-[6px_6px_12px_#bebebe,-6px_-6px_12px_#ffffff] hover:shadow-[inset_4px_4px_8px_#bebebe,inset_-4px_-4px_8px_#ffffff]'
+        : 'shadow-[6px_6px_12px_rgba(0,0,0,0.5),-6px_-6px_12px_rgba(255,255,255,0.02)] hover:shadow-[inset_4px_4px_8px_rgba(0,0,0,0.5),inset_-4px_-4px_8px_rgba(255,255,255,0.02)]';
+
     const containerClasses = isMobile 
         ? `w-full flex flex-col h-full ${styles.container}`
-        : `fixed left-0 top-0 h-screen border-r ${styles.border} z-50 transition-all duration-300 ease-in-out ${styles.container} flex flex-col ${uiTheme === 'neumorphism' ? 'shadow-[10px_10px_20px_#bebebe,-10px_-10px_20px_#ffffff]' : 'shadow-[25px_0_60px_rgba(0,0,0,0.03)]'}`;
+        : `fixed left-0 top-0 h-screen border-r ${styles.border} z-50 transition-all duration-300 ease-in-out ${styles.container} flex flex-col ${uiTheme === 'neumorphism' ? nmContainerShadow : 'shadow-[25px_0_60px_rgba(0,0,0,0.03)]'}`;
 
     return (
         <aside className={`${containerClasses} select-none backdrop-blur-2xl z-[100] ${!isMobile ? 'overflow-visible' : 'overflow-hidden'}`}>
@@ -319,7 +333,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                                                     ? `${styles.itemActive}` 
                                                     : `${styles.itemHover}`
                                                 }
-                                                ${uiTheme === 'neumorphism' && !isActive ? 'shadow-[6px_6px_12px_#bebebe,-6px_-6px_12px_#ffffff] hover:shadow-[inset_4px_4px_8px_#bebebe,inset_-4px_-4px_8px_#ffffff]' : ''}
+                                                ${uiTheme === 'neumorphism' && !isActive ? nmItemShadow : ''}
                                             `}
                                         >
                                             {/* Active Visual Indicator - Theme Specific */}

@@ -532,12 +532,13 @@ const RoleSelectionPage: React.FC<RoleSelectionPageProps> = ({ onSelect }) => {
             </div>
         );
     }
-    const BG = '#f0f4f8';
-    const S1 = '#cbd5e1';   // slate-300: extremely soft and friendly shadow dark
-    const S2 = '#ffffff';   // shadow light
-    const TXT = '#0f172a';  // slate-900: high contrast minimalist text
-    const TXT2 = '#334155'; // slate-700
-    const TXT3 = '#64748b'; // slate-500
+    const BG = isLightMode ? '#f0f4f8' : '#171b22';
+    const S1 = isLightMode ? 'rgba(163, 177, 198, 0.6)' : 'rgba(0, 0, 0, 0.7)';   // shadow dark
+    const S2 = isLightMode ? 'rgba(255, 255, 255, 0.95)' : 'rgba(255, 255, 255, 0.04)'; // shadow light
+    const TXT = isLightMode ? '#0f172a' : '#eaecef';  // text primary
+    const TXT2 = isLightMode ? '#334155' : '#848e9c'; // text secondary
+    const TXT3 = isLightMode ? '#64748b' : '#94a3b8'; // text muted
+    const accentBlue = isLightMode ? '#3b5fc4' : '#60a5fa';
     const VER = localStorage.getItem('system_update_acknowledged_version') || CLIENT_VERSION;
 
     const allRoles = [
@@ -658,7 +659,11 @@ const RoleSelectionPage: React.FC<RoleSelectionPageProps> = ({ onSelect }) => {
     return (
         <div
             className="min-h-screen w-full flex flex-col font-['Kantumruy_Pro'] overflow-hidden"
-            style={{ background: `linear-gradient(145deg, #e8edf5 0%, ${BG} 50%, #dce3ee 100%)` }}
+            style={{ 
+                background: isLightMode 
+                    ? `linear-gradient(145deg, #e8edf5 0%, ${BG} 50%, #dce3ee 100%)` 
+                    : `linear-gradient(145deg, #12151a 0%, ${BG} 50%, #1d212a 100%)` 
+            }}
         >
             <style>{`
                 /* ── Keyframes ── */
@@ -682,7 +687,7 @@ const RoleSelectionPage: React.FC<RoleSelectionPageProps> = ({ onSelect }) => {
                 /* ── Header Bar ── */
                 .nm-header {
                     background: ${BG};
-                    box-shadow: 0 4px 16px ${S1}99, 0 -1px 0 ${S2}cc inset;
+                    box-shadow: 0 4px 16px ${isLightMode ? 'rgba(163, 177, 198, 0.4)' : 'rgba(0, 0, 0, 0.4)'}, 0 -1px 0 ${isLightMode ? 'rgba(255, 255, 255, 0.7)' : 'rgba(255, 255, 255, 0.03)'} inset;
                     animation: nmSlideDown 0.5s cubic-bezier(0.22,1,0.36,1) both;
                 }
 
@@ -806,7 +811,7 @@ const RoleSelectionPage: React.FC<RoleSelectionPageProps> = ({ onSelect }) => {
                 /* ── Footer separator ── */
                 .nm-sep {
                     height: 1px;
-                    background: linear-gradient(90deg, transparent, ${S1}88, transparent);
+                    background: linear-gradient(90deg, transparent, ${isLightMode ? 'rgba(163, 177, 198, 0.4)' : 'rgba(0, 0, 0, 0.3)'}, transparent);
                 }
 
                 /* ── Stagger grid ── */
@@ -842,13 +847,13 @@ const RoleSelectionPage: React.FC<RoleSelectionPageProps> = ({ onSelect }) => {
                         {/* Avatar */}
                         <div className="relative mb-2 sm:mb-3.5">
                             <div 
-                                className="rounded-full p-1.5 transition-transform duration-500 hover:scale-105 border border-white"
+                                className={`rounded-full p-1.5 transition-transform duration-500 hover:scale-105 border ${isLightMode ? 'border-white' : 'border-white/5'}`}
                                 style={{
                                     background: BG,
                                     boxShadow: `4px 4px 12px ${S1}, -4px -4px 12px ${S2}`
                                 }}
                             >
-                                <div className="w-16 h-16 sm:w-24 sm:h-24 lg:w-28 lg:h-28 rounded-full overflow-hidden bg-slate-50">
+                                <div className={`w-16 h-16 sm:w-24 sm:h-24 lg:w-28 lg:h-28 rounded-full overflow-hidden ${isLightMode ? 'bg-slate-50' : 'bg-slate-900/40'}`}>
                                     <UserAvatar
                                         avatarUrl={currentUser.ProfilePictureURL}
                                         name={currentUser.FullName}
@@ -861,7 +866,7 @@ const RoleSelectionPage: React.FC<RoleSelectionPageProps> = ({ onSelect }) => {
                                 className="absolute bottom-1.5 right-1.5 sm:bottom-2 sm:right-2 w-3.5 h-3.5 sm:w-5 sm:h-5 rounded-full border-[2.5px] sm:border-[3px]"
                                 style={{
                                     backgroundColor: '#38a169',
-                                    borderColor: BG,
+                                    borderColor: BG
                                 }}
                             />
                         </div>
@@ -881,7 +886,7 @@ const RoleSelectionPage: React.FC<RoleSelectionPageProps> = ({ onSelect }) => {
                                     style={{
                                         background: BG,
                                         boxShadow: `inset 2px 2px 5px ${S1}, inset -2px -2px 5px ${S2}`,
-                                        color: '#3b5fc4'
+                                        color: accentBlue
                                     }}
                                 >
                                     {currentUser.Role || (language === 'km' ? 'អ្នកប្រើប្រាស់' : 'System User')}
@@ -897,7 +902,7 @@ const RoleSelectionPage: React.FC<RoleSelectionPageProps> = ({ onSelect }) => {
                             <div className="nm-sep flex-1 max-w-[60px]" />
                             <div
                                 className="w-2 h-2 rounded-full"
-                                style={{ background: '#3b5fc4', boxShadow: `0 0 8px rgba(59,95,196,0.5)` }}
+                                style={{ background: accentBlue, boxShadow: isLightMode ? '0 0 8px rgba(59,95,196,0.5)' : '0 0 8px rgba(96,165,250,0.5)' }}
                             />
                             <div className="nm-sep flex-1 max-w-[60px]" />
                         </div>
@@ -907,9 +912,9 @@ const RoleSelectionPage: React.FC<RoleSelectionPageProps> = ({ onSelect }) => {
                             style={{ color: TXT }}
                         >
                             {language === 'km' ? (
-                                <>ជ្រើសរើស <span style={{ color: '#3b5fc4' }}>ការចូល</span> ប្រព័ន្ធ</>
+                                <>ជ្រើសរើស <span style={{ color: accentBlue }}>ការចូល</span> ប្រព័ន្ធ</>
                             ) : (
-                                <>Select your <span style={{ color: '#3b5fc4' }}>Access</span> Portal</>
+                                <>Select your <span style={{ color: accentBlue }}>Access</span> Portal</>
                             )}
                         </h2>
                         <p
@@ -984,9 +989,11 @@ const RoleSelectionPage: React.FC<RoleSelectionPageProps> = ({ onSelect }) => {
                                     <div
                                         className="nm-icon-circle w-11 h-11 sm:w-14 sm:h-14 flex items-center justify-center shrink-0"
                                         style={{
-                                            background: role.accentLight,
+                                            background: isLightMode ? role.accentLight : (role.accent + '15'),
                                             color: role.accent,
-                                            boxShadow: `3px 3px 8px ${S1}88, -3px -3px 8px ${S2}cc, 0 0 0 1px ${role.accent}18`,
+                                            boxShadow: isLightMode 
+                                                ? `3px 3px 8px ${S1}88, -3px -3px 8px ${S2}cc, 0 0 0 1px ${role.accent}18`
+                                                : `inset 2px 2px 5px ${S1}, inset -2px -2px 5px ${S2}, 0 0 0 1px ${role.accent}20`,
                                         }}
                                     >
                                         <div className="w-6 h-6 sm:w-7 sm:h-7">{role.icon}</div>
