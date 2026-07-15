@@ -10,6 +10,7 @@ import ShippingReport from '../reports/ShippingReport';
 import { FilterState } from '../orders/OrderFilters';
 import { convertGoogleDriveUrl } from '../../utils/fileUtils';
 import UserAvatar from '../common/UserAvatar';
+import { safeParseDate } from '../../utils/dateUtils';
 
 interface ReportsViewProps {
     orders: ParsedOrder[];
@@ -86,8 +87,14 @@ const ReportsView: React.FC<ReportsViewProps> = ({ orders, reportType, dateFilte
             }
 
             if (o.Timestamp) {
-                const date = o.Timestamp.split(' ')[0];
-                dateMap[date] = (dateMap[date] || 0) + rev;
+                const parsed = safeParseDate(o.Timestamp);
+                if (parsed) {
+                    const year = parsed.getFullYear();
+                    const month = String(parsed.getMonth() + 1).padStart(2, '0');
+                    const day = String(parsed.getDate()).padStart(2, '0');
+                    const date = `${year}-${month}-${day}`;
+                    dateMap[date] = (dateMap[date] || 0) + rev;
+                }
             }
         });
 
@@ -186,7 +193,7 @@ const ReportsView: React.FC<ReportsViewProps> = ({ orders, reportType, dateFilte
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
                 <StatCard 
                     label={language === 'km' ? 'ចំណូលសរុប' : 'Total Revenue'} 
-                    value={`$${stats.revenue.toLocaleString(undefined, {minimumFractionDigits: 0})}`} 
+                    value={`$${stats.revenue.toLocaleString(undefined, {minimumFractionDigits: 0, maximumFractionDigits: 0})}`} 
                     icon={<i className="fa-solid fa-sack-dollar"></i>} 
                     colorClass={uiTheme === 'binance' ? "from-[#FCD535] to-[#f0c51d] !text-[#1E2329]" : "from-blue-600 to-indigo-600"} 
                     className="shadow-xl"
@@ -200,7 +207,7 @@ const ReportsView: React.FC<ReportsViewProps> = ({ orders, reportType, dateFilte
                 />
                 <StatCard 
                     label={language === 'km' ? 'ប្រាក់ចំណេញ' : 'Total Profit'} 
-                    value={`$${stats.totalProfit.toLocaleString(undefined, {minimumFractionDigits: 0})}`} 
+                    value={`$${stats.totalProfit.toLocaleString(undefined, {minimumFractionDigits: 0, maximumFractionDigits: 0})}`} 
                     icon={<i className="fa-solid fa-chart-line"></i>} 
                     colorClass={uiTheme === 'binance' ? "from-[#0ECB81] to-[#059669]" : "from-emerald-600 to-teal-600"} 
                     className="shadow-xl"

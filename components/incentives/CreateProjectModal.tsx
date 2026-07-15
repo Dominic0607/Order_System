@@ -1,11 +1,11 @@
-import React, { useState, useContext, useEffect } from 'react';
+import React, { useState, useContext, useEffect, useMemo } from 'react';
 import Modal from '../common/Modal';
 import { createProject, updateProject, deleteProject } from '../../services/incentiveService';
 import { AppContext } from '../../context/AppContext';
 import { translations } from '../../translations';
 import { IncentiveProject } from '../../types';
 import { WEB_APP_URL } from '../../constants';
-import { X, Trash2, Save, Plus, Terminal, Settings, Box, Database, Palette, Activity, Shield, Cpu, Zap } from 'lucide-react';
+import { X, Trash2, Save, Plus, Terminal, Settings, Box, Database, Palette, Activity, Shield, Cpu, Zap, Target } from 'lucide-react';
 
 interface CreateProjectModalProps {
     isOpen: boolean;
@@ -15,8 +15,15 @@ interface CreateProjectModalProps {
 }
 
 const CreateProjectModal: React.FC<CreateProjectModalProps> = ({ isOpen, onClose, onSuccess, initialData }) => {
-    const { language, currentUser } = useContext(AppContext);
+    const { language, currentUser, appData } = useContext(AppContext);
     const t = translations[language];
+
+    const allTeams = useMemo(() => {
+        const teams = new Set<string>();
+        appData?.users?.forEach(u => u.Team?.split(',').forEach(tn => teams.add(tn.trim())));
+        appData?.pages?.forEach(p => p.Team?.split(',').forEach(tn => teams.add(tn.trim())));
+        return Array.from(teams).filter(Boolean).sort();
+    }, [appData]);
 
     const [projectName, setProjectName] = useState('');
     const [colorCode, setColorCode] = useState('#F0B90B'); // Binance Yellow
@@ -231,6 +238,29 @@ const CreateProjectModal: React.FC<CreateProjectModalProps> = ({ isOpen, onClose
                                 <div className="absolute right-5 top-1/2 -translate-y-1/2 pointer-events-none">
                                     <div className={`w-2 h-2 rounded-full ${status === 'Active' ? 'bg-emerald-500 animate-pulse shadow-[0_0_10px_rgba(16,185,129,0.5)]' : status === 'Draft' ? 'bg-primary' : 'bg-red-500'}`}></div>
                                 </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Target Team Section */}
+                    <div className="space-y-3">
+                        <div className="flex items-center gap-2.5">
+                            <Target className="w-3.5 h-3.5 text-white/40" />
+                            <label className="text-[10px] font-black text-white/40 uppercase tracking-[0.2em]">{language === 'km' ? 'ក្រុមគោលដៅ (Target Team)' : 'Target Team'}</label>
+                        </div>
+                        <div className="relative">
+                            <select 
+                                value={targetTeam}
+                                onChange={e => setTargetTeam(e.target.value)}
+                                className="w-full h-[54px] bg-white/[0.03] border border-white/10 rounded-2xl px-5 text-[11px] font-black text-white focus:border-primary/50 outline-none cursor-pointer appearance-none uppercase tracking-widest"
+                            >
+                                <option value="">{language === 'km' ? 'ពិធីការសកល (គ្រប់ក្រុមទាំងអស់)' : 'GLOBAL_PROTOCOL (ALL TEAMS)'}</option>
+                                {allTeams.map(t => (
+                                    <option key={t} value={t}>{t.toUpperCase()}</option>
+                                ))}
+                            </select>
+                            <div className="absolute right-5 top-1/2 -translate-y-1/2 pointer-events-none">
+                                <Target className="w-4 h-4 text-white/20" />
                             </div>
                         </div>
                     </div>

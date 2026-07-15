@@ -544,14 +544,14 @@ const OrderRow = memo((props: any) => {
     const rowTone = isLightMode
         ? (index % 2 === 0 ? 'bg-white' : 'bg-[#f8fafc]')
         : index % 2 === 0
-            ? (isBinance ? 'bg-[#0B0E11]' : 'bg-[#020617]')
-            : (isBinance ? 'bg-[#101418]' : 'bg-[#07111f]');
+            ? (isBinance ? 'bg-[#0B0E11]' : 'bg-transparent')
+            : (isBinance ? 'bg-[#101418]' : 'bg-white/[0.015]');
 
     const rowBgClass = isVerified
         ? (isLightMode ? 'bg-[#0ECB81]/[0.08]' : 'bg-[#0ECB81]/[0.035]')
         : isSelected
             ? (isLightMode ? 'bg-blue-50/50' : 'bg-[#FCD535]/[0.08]')
-            : `${rowTone} ${isLightMode ? 'hover:bg-slate-100/60' : 'hover:bg-[#2B3139]/40'}`;
+            : `${rowTone} ${isLightMode ? 'hover:bg-slate-100/60' : isBinance ? 'hover:bg-[#2B3139]/40' : 'hover:bg-white/[0.03] hover:shadow-[inset_0_0_12px_rgba(255,255,255,0.01)]'}`;
 
     const rowStateClass = [
         'order-table-row',
@@ -777,7 +777,7 @@ const OrdersListDesktop: React.FC<OrdersListDesktopProps> = ({
     ]);
 
     return (
-        <div className={`${isLightMode ? 'bg-[#f8fafc] border-slate-200 theme-light text-slate-800' : isBinance ? 'bg-[#0B0E11] border-[#2B3139] theme-binance text-[#EAECEF]' : 'bg-[#020617] border-white/5 shadow-2xl theme-default text-[#EAECEF]'} rounded-none border flex flex-col h-full min-h-[400px] overflow-hidden relative`}>
+        <div className={`${isLightMode ? 'bg-[#f8fafc] border-slate-200 theme-light text-slate-800' : isBinance ? 'bg-[#0B0E11] border-[#2B3139] theme-binance text-[#EAECEF]' : 'bg-[#020617]/40 border-white/5 shadow-2xl backdrop-blur-xl theme-default text-[#EAECEF]'} rounded-3xl border flex flex-col h-full min-h-[400px] overflow-hidden relative transition-all duration-300`}>
             <style>{ORDER_LIST_STYLES}</style>
             <div className="flex-grow overflow-auto custom-scrollbar overscroll-contain">
                 <div style={{ minWidth: `${totalTableWidth}px`, height: '100%', display: 'flex', flexDirection: 'column' }}>
@@ -795,7 +795,7 @@ const OrdersListDesktop: React.FC<OrdersListDesktopProps> = ({
                         </div>
 
                         {/* Table Column Headers (Now below Grand Total) */}
-                        <div className={`${isLightMode ? 'bg-[#f1f5f9]' : isBinance ? 'bg-[#1E2329]' : 'bg-[#0f172a]/98 backdrop-blur-3xl'} table-border-b`}>
+                        <div className={`${isLightMode ? 'bg-[#f1f5f9]' : isBinance ? 'bg-[#1E2329]' : 'bg-[#0c1322]/50 backdrop-blur-xl border-b border-white/[0.04]'} table-border-b`}>
                             <div className="flex w-full box-border">
                                 {hasSelectionColumn && (
                                     <div className={`flex-shrink-0 flex items-center justify-center py-4 px-0.5 box-border ${showBorders ? 'table-border-r' : ''}`} style={{ width: '40px' }}>

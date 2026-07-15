@@ -416,124 +416,110 @@ const IncentiveExecutionView: React.FC<IncentiveExecutionViewProps> = ({ project
                         </div>
                     </div>
 
-                    <div className="flex items-center gap-2.5 overflow-x-auto no-scrollbar">
-                        {/* Month Picker */}
-                        <div 
+                    {/* ===== TOOLBAR: exec-header-bar ===== */}
+                    <div className="exec-header-bar flex items-center gap-2 overflow-x-auto no-scrollbar">
+
+                        {/* Month Picker — sunken pill */}
+                        <div
                             onClick={() => monthInputRef.current?.showPicker()}
-                            className="flex items-center gap-2.5 bg-violet-500/5 border border-violet-500/15 rounded-2xl p-1 px-3 h-11 shrink-0 month-picker-wrapper hover:border-violet-500/30 transition-colors cursor-pointer"
+                            className="exec-header-btn exec-header-pill month-picker-wrapper flex items-center gap-2 h-10 px-3.5 rounded-2xl shrink-0 cursor-pointer group"
                         >
-                            <Calendar className="w-4 h-4 text-violet-400" />
+                            <Calendar className="w-3.5 h-3.5 text-amber-400 shrink-0" />
                             <input
                                 ref={monthInputRef}
                                 type="month"
                                 value={selectedMonth}
                                 onChange={e => setSelectedMonth(e.target.value)}
-                                className="bg-transparent border-none p-0 text-white font-bold text-[11px] tracking-wide focus:ring-0 cursor-pointer outline-none min-w-[120px] month-picker-input"
+                                className="bg-transparent border-none p-0 font-bold text-[11px] tracking-wide focus:ring-0 cursor-pointer outline-none min-w-[96px] month-picker-input"
+                                style={{ color: 'inherit' }}
                             />
                         </div>
 
-                        {/* Cycle Status Badge */}
-                        <div className={`h-11 px-4 rounded-2xl text-[10px] font-bold tracking-wide border transition-all duration-500 flex items-center gap-2 shrink-0 cycle-status-badge ${
-                            isLocked ? 'bg-red-500/10 border-red-500/20 text-red-400 status-locked' : 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400 status-open'
-                        }`}>
-                            <div className={`w-2 h-2 rounded-full ${isLocked ? 'bg-red-500 animate-pulse' : 'bg-emerald-500'}`} />
-                            {isLocked 
-                                ? (language === 'km' ? 'បានចាក់សោ' : 'Locked') 
-                                : (language === 'km' ? 'កំពុងបើក' : 'Open')}
-                        </div>
+                        {/* Thin separator */}
+                        <div className="h-5 w-px bg-white/8 shrink-0" />
 
-                        {/* Auto Save Toggle */}
-                        <div className="flex items-center gap-3 bg-white/5 border border-white/10 rounded-2xl px-4 h-11 shrink-0 select-none">
-                            <span className="text-[10px] font-black text-white/40 tracking-wider uppercase">
-                                {language === 'km' ? 'រក្សាទុកស្វ័យប្រវត្ត' : 'Auto Save'}
+                        {/* Auto Save Toggle — inline pill */}
+                        <div className="exec-header-btn exec-header-pill flex items-center gap-2.5 h-10 px-3.5 rounded-2xl shrink-0 select-none">
+                            <span className="text-[10px] font-bold tracking-wider uppercase opacity-50 whitespace-nowrap">
+                                {language === 'km' ? 'រក្សាទុក' : 'Auto'}
                             </span>
                             <button
                                 type="button"
                                 onClick={toggleAutoSave}
-                                className={`w-9 h-5.5 rounded-full p-0.5 transition-all duration-300 relative ${
-                                    isAutoSave ? 'bg-[#F0B90B]' : 'bg-white/10'
+                                className={`exec-header-toggle w-8 h-4.5 rounded-full p-0.5 transition-all duration-300 ease-in-out relative shrink-0 ${
+                                    isAutoSave ? 'bg-amber-400' : 'bg-white/15'
                                 }`}
                                 title={language === 'km' ? 'បិទ/បើក ការរក្សាទុកស្វ័យប្រវត្ត' : 'Toggle Auto Save'}
                             >
-                                <div
-                                    className={`w-4 h-4 rounded-full bg-black shadow-md transition-all duration-300 ${
-                                        isAutoSave ? 'translate-x-4' : 'translate-x-0'
-                                    }`}
-                                />
+                                <div className={`w-3.5 h-3.5 rounded-full shadow transition-all duration-300 ${isAutoSave ? 'translate-x-3.5 bg-black/80' : 'translate-x-0 bg-white/60'}`} />
                             </button>
                         </div>
 
-                        {/* Manual Save Button */}
+                        {/* Manual Save — amber glow */}
                         {!isAutoSave && (
                             <button
                                 type="button"
                                 onClick={handleManualSave}
                                 disabled={!hasUnsavedChanges || isCalculating}
-                                className={`h-11 px-5 rounded-2xl text-[11px] font-bold tracking-wide transition-all border flex items-center gap-2.5 active:scale-95 shrink-0 ${
+                                className={`exec-header-btn h-10 px-4 rounded-2xl text-[10px] font-bold tracking-widest uppercase flex items-center gap-2 shrink-0 transition-all duration-200 active:scale-95 ${
                                     hasUnsavedChanges
-                                        ? 'bg-[#F0B90B] text-black border-[#F0B90B] shadow-lg shadow-[#F0B90B]/20 hover:bg-[#F0B90B]/90'
-                                        : 'bg-white/5 border-white/10 text-white/30 cursor-not-allowed'
+                                        ? 'exec-header-cta text-black'
+                                        : 'exec-header-pill text-white/25 cursor-not-allowed'
                                 }`}
                             >
-                                <Save className="w-4 h-4 shrink-0" />
-                                {language === 'km' ? 'រក្សាទុកទិន្នន័យ' : 'Save Changes'}
-                                {hasUnsavedChanges && (
-                                    <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse shrink-0" />
-                                )}
+                                <Save className="w-3.5 h-3.5 shrink-0" />
+                                {language === 'km' ? 'រក្សាទុក' : 'Save'}
+                                {hasUnsavedChanges && <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse shrink-0" />}
                             </button>
                         )}
 
-                        {/* Divider */}
-                        <div className="h-7 w-px bg-white/10 shrink-0 hidden lg:block" />
+                        {/* Thin separator */}
+                        <div className="h-5 w-px bg-white/8 shrink-0" />
 
                         {/* Export PDF */}
-                        <button 
-                            onClick={() => setIsPdfModalOpen(true)} 
-                            className="h-11 px-5 rounded-2xl text-[11px] font-bold tracking-wide bg-violet-500/8 border border-violet-500/20 text-violet-300 hover:text-violet-200 hover:bg-violet-500/15 transition-all flex items-center gap-2.5 active:scale-95 shrink-0 hover:border-violet-500/30"
+                        <button
+                            onClick={() => setIsPdfModalOpen(true)}
+                            className="exec-header-btn exec-header-pill h-10 px-4 rounded-2xl text-[10px] font-bold tracking-widest uppercase flex items-center gap-2 shrink-0 transition-all duration-200 active:scale-95 hover:exec-header-pill-hover"
                         >
-                            <FileText className="w-4 h-4 text-violet-400 shrink-0" />
-                            {language === 'km' ? 'នាំចេញ PDF' : 'Export PDF'}
+                            <FileText className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                            <span>{language === 'km' ? 'នាំចេញ PDF' : 'Export PDF'}</span>
                         </button>
 
                         {/* Commit / Unlock */}
-                        <button 
-                            onClick={toggleLock} 
-                            className={`h-11 px-5 rounded-2xl text-[11px] font-bold tracking-wide transition-all border flex items-center gap-2.5 active:scale-95 shrink-0 ${
-                                isLocked 
-                                    ? 'bg-red-500/10 border-red-500/20 text-red-400 hover:bg-red-500/20' 
-                                    : 'bg-amber-500/10 border-amber-500/20 text-amber-400 hover:bg-amber-500/15 hover:border-amber-500/30'
+                        <button
+                            onClick={toggleLock}
+                            className={`exec-header-btn h-10 px-4 rounded-2xl text-[10px] font-bold tracking-widest uppercase flex items-center gap-2 shrink-0 transition-all duration-200 active:scale-95 ${
+                                isLocked ? 'exec-header-danger' : 'exec-header-pill'
                             }`}
                         >
-                            {isLocked 
-                                ? <><Lock className="w-4 h-4 shrink-0" /> {language === 'km' ? 'ដោះសោ' : 'Unlock'}</> 
-                                : <><Unlock className="w-4 h-4 shrink-0" /> {language === 'km' ? 'បញ្ជាក់ការទូទាត់' : 'Commit Payout'}</>}
+                            {isLocked
+                                ? <><Lock className="w-3.5 h-3.5 shrink-0" />{language === 'km' ? 'ដោះសោ' : 'Unlock'}</>
+                                : <><Unlock className="w-3.5 h-3.5 text-amber-400 shrink-0" />{language === 'km' ? 'បញ្ជាក់ការទូទាត់' : 'Commit'}</>}
                         </button>
 
-                        {/* Manual Data Input Toggle */}
+                        {/* Manual Data Input */}
                         {project.dataSource === 'manual' && (
-                            <button 
-                                onClick={() => setShowInputPanel(!showInputPanel)} 
-                                className={`h-11 px-5 rounded-2xl text-[11px] font-bold tracking-wide transition-all border flex items-center gap-2.5 active:scale-95 shrink-0 ${
-                                    showInputPanel 
-                                        ? 'bg-gradient-to-r from-violet-600 to-purple-600 text-white border-violet-500 shadow-lg shadow-violet-500/25' 
-                                        : 'bg-violet-500/8 border-violet-500/20 text-violet-300 hover:bg-violet-500/15 hover:border-violet-500/30'
+                            <button
+                                onClick={() => setShowInputPanel(!showInputPanel)}
+                                className={`exec-header-btn h-10 px-4 rounded-2xl text-[10px] font-bold tracking-widest uppercase flex items-center gap-2 shrink-0 transition-all duration-200 active:scale-95 ${
+                                    showInputPanel ? 'exec-header-cta text-black' : 'exec-header-pill'
                                 }`}
                             >
-                                <Layout className="w-4 h-4 shrink-0" />
-                                {showInputPanel 
-                                    ? (language === 'km' ? 'បិទការបញ្ចូល' : 'Close Input') 
-                                    : (language === 'km' ? 'បញ្ចូលទិន្នន័យ' : 'Data Input')}
+                                <Layout className="w-3.5 h-3.5 shrink-0" />
+                                {showInputPanel
+                                    ? (language === 'km' ? 'បិទ' : 'Close')
+                                    : (language === 'km' ? 'បញ្ចូលទិន្នន័យ' : 'Input')}
                             </button>
                         )}
 
-                        {/* Refresh / Recalculate */}
-                        <button 
-                            onClick={() => loadDataAndCalculate()} 
-                            disabled={isCalculating} 
-                            className="w-11 h-11 bg-violet-500/8 hover:bg-violet-500/15 disabled:opacity-50 text-violet-300 hover:text-violet-200 rounded-2xl border border-violet-500/15 flex items-center justify-center transition-all shrink-0 active:scale-90 group hover:border-violet-500/30" 
+                        {/* Recalculate */}
+                        <button
+                            onClick={() => loadDataAndCalculate()}
+                            disabled={isCalculating}
+                            className="exec-header-btn exec-header-pill w-10 h-10 rounded-2xl flex items-center justify-center shrink-0 transition-all duration-200 active:scale-90 group disabled:opacity-40"
                             title={language === 'km' ? 'គណនាឡើងវិញ' : 'Recalculate'}
                         >
-                            <RefreshCw className={`w-5 h-5 group-hover:text-violet-300 ${isCalculating ? 'animate-spin text-violet-400' : 'text-violet-400/60'}`} />
+                            <RefreshCw className={`w-4 h-4 text-amber-400 ${isCalculating ? 'animate-spin' : 'group-hover:rotate-180 transition-transform duration-500'}`} />
                         </button>
                     </div>
                 </div>
@@ -558,9 +544,9 @@ const IncentiveExecutionView: React.FC<IncentiveExecutionViewProps> = ({ project
                             detail: topStaff 
                                 ? (language === 'km' ? `ទទួលបាន $${topStaff.reward.toFixed(2)}` : `Earned $${topStaff.reward.toFixed(2)}`) 
                                 : (language === 'km' ? 'រង់ចាំទិន្នន័យ' : 'Pending data'), 
-                            color: 'text-violet-400', accent: 'bg-violet-400', icon: Trophy,
-                            borderGlow: 'hover:border-violet-500/20',
-                            iconBg: 'bg-violet-500/10 border-violet-500/15'
+                            color: 'text-amber-400', accent: 'bg-amber-400', icon: Trophy,
+                            borderGlow: 'hover:border-amber-500/20',
+                            iconBg: 'bg-amber-500/10 border-amber-500/15'
                         },
                         { 
                             label: language === 'km' ? 'ការទូទាត់មធ្យម' : 'Average Payout', 

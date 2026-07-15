@@ -10,14 +10,14 @@
 }
 
 .incentive-surface input,
-.incentive-surface select,
-.incentive-surface textarea,
-.incentive-surface button {
+.theme-light .incentive-surface select,
+.theme-light .incentive-surface textarea,
+.theme-light .incentive-surface button {
   font-size: 0.875rem;
 }
 
-.incentive-surface table th,
-.incentive-surface table td {
+.theme-light .incentive-surface table th,
+.theme-light .incentive-surface table td {
   font-size: 0.875rem;
 }
 
@@ -689,62 +689,68 @@ body {
    ========================================== */
 
 /* Overall background override */
-.incentive-surface,
-.incentive-surface.min-h-screen,
-.incentive-surface.w-full.h-screen {
+.incentive-surface {
+    font-family: 'Kantumruy Pro', 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
+    /* Override primary color to amber/gold for dark mode — eliminates all blue accents */
+    --primary: #F0B90B;
+    --primary-glow: rgba(240, 185, 11, 0.25);
+}
+
+.theme-light .incentive-surface,
+.theme-light .incentive-surface.min-h-screen,
+.theme-light .theme-light .incentive-surface.w-full.h-screen {
     background-color: #eef2f7 !important;
     background-image: none !important;
     color: #0f172a !important;
-    font-family: 'Kantumruy Pro', 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
 }
 
 /* Force clean upright typography (remove all aggressive italics) */
-.incentive-surface,
-.incentive-surface *,
-.incentive-surface .italic,
-.incentive-surface [class*="italic"] {
+.theme-light .incentive-surface,
+.theme-light .incentive-surface *,
+.theme-light .incentive-surface .italic,
+.theme-light .incentive-surface [class*="italic"] {
     font-style: normal !important;
 }
 
 /* Map heavy 900 weights to clean bold 700 weights */
-.incentive-surface .font-black,
-.incentive-surface .font-extrabold,
-.incentive-surface [class*="font-black"],
-.incentive-surface [class*="font-extrabold"] {
+.theme-light .incentive-surface .font-black,
+.theme-light .incentive-surface .font-extrabold,
+.theme-light .incentive-surface [class*="font-black"],
+.theme-light .incentive-surface [class*="font-extrabold"] {
     font-weight: 700 !important;
 }
 
 /* Primary, secondary, heading text colors (force dark slate color on all text) */
-.incentive-surface,
-.incentive-surface span:not([class*="bg-"]):not([class*="text-"]):not([class*="badge"]):not(.animate-pulse),
-.incentive-surface h1,
-.incentive-surface h2,
-.incentive-surface h3,
-.incentive-surface h4,
-.incentive-surface h5,
-.incentive-surface h6,
-.incentive-surface p,
-.incentive-surface label,
-.incentive-surface div:not([class*="bg-"]):not([class*="text-"]):not([class*="overflow"]):not([class*="w-14"]):not(.relative),
-.incentive-surface td,
-.incentive-surface th {
+.theme-light .incentive-surface,
+.theme-light .incentive-surface span:not([class*="bg-"]):not([class*="text-"]):not([class*="badge"]):not(.animate-pulse),
+.theme-light .incentive-surface h1,
+.theme-light .incentive-surface h2,
+.theme-light .incentive-surface h3,
+.theme-light .incentive-surface h4,
+.theme-light .incentive-surface h5,
+.theme-light .incentive-surface h6,
+.theme-light .incentive-surface p,
+.theme-light .incentive-surface label,
+.theme-light .incentive-surface div:not([class*="bg-"]):not([class*="text-"]):not([class*="overflow"]):not([class*="w-14"]):not(.relative),
+.theme-light .incentive-surface td,
+.theme-light .incentive-surface th {
     color: #0f172a !important;
 }
 
 /* Muted / secondary text colors */
-.incentive-surface .text-\[\#707A8A\],
-.incentive-surface .text-white\/30,
-.incentive-surface .text-white\/40,
-.incentive-surface .text-white\/20,
-.incentive-surface [class*="text-[#707A8A]"],
-.incentive-surface [class*="text-[#848E9C]"] {
+.theme-light .incentive-surface .text-\[\#707A8A\],
+.theme-light .incentive-surface .text-white\/30,
+.theme-light .incentive-surface .text-white\/40,
+.theme-light .incentive-surface .text-white\/20,
+.theme-light .incentive-surface [class*="text-[#707A8A]"],
+.theme-light .incentive-surface [class*="text-[#848E9C]"] {
     color: #475569 !important;
 }
 
 /* Primary Neumorphic Cards (Extruded) - Only top level cards */
-.incentive-surface .page-card,
-.incentive-surface section.grid > div:not([class*="bg-[#F0B90B]"]):not([class*="bg-[#0ECB81]"]):not([class*="bg-red-500"]),
-.incentive-surface div[class*="rounded-\[32px\]"] {
+.theme-light .incentive-surface .page-card,
+.theme-light .incentive-surface section.grid > div:not([class*="bg-[#F0B90B]"]):not([class*="bg-[#0ECB81]"]):not([class*="bg-red-500"]),
+.theme-light .incentive-surface div[class*="rounded-\[32px\]"] {
     background-color: #eef2f7 !important;
     border: 1px solid rgba(255, 255, 255, 0.5) !important;
     box-shadow: 6px 6px 16px #cbd5e1, -6px -6px 16px #ffffff !important;
@@ -752,34 +758,46 @@ body {
     transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1) !important;
 }
 
-.incentive-surface div[class*="rounded-\[32px\]"]:hover {
+.theme-light .incentive-surface div[class*="rounded-\[32px\]"]:hover {
     transform: translateY(-4px) !important;
     box-shadow: 12px 12px 24px #b8c4d2, -12px -12px 24px #ffffff !important;
 }
 
 /* Inner cards and detail panels (Flat to avoid shadow soup) */
-.incentive-surface div[class*="bg-"]:not(.page-card):not(button):not(span):not(tr):not(td):not([class*="grid"]):not(section):not(main):not([class*="w-14"]),
-.incentive-surface .bg-\[\#121212\],
-.incentive-surface .bg-\[\#050505\],
-.incentive-surface .bg-\[\#080808\],
-.incentive-surface .bg-\[\#181A20\],
-.incentive-surface .bg-\[\#0B0E11\],
-.incentive-surface .bg-\[\#0A0A0A\] {
+.theme-light .incentive-surface div[class*="bg-"]:not(.page-card):not(button):not(span):not(tr):not(td):not([class*="grid"]):not(section):not(main):not([class*="w-14"]),
+.theme-light .incentive-surface .bg-\[\#121212\],
+.theme-light .incentive-surface .bg-\[\#050505\],
+.theme-light .incentive-surface .bg-\[\#080808\],
+.theme-light .incentive-surface .bg-\[\#181A20\],
+.theme-light .incentive-surface .bg-\[\#0B0E11\],
+.theme-light .incentive-surface .bg-\[\#0A0A0A\] {
     background-color: rgba(0, 0, 0, 0.02) !important;
     border: 1px solid rgba(0, 0, 0, 0.05) !important;
     box-shadow: none !important;
     border-radius: 12px !important;
 }
 
+/* Preserve red borders and red backgrounds in Light Mode for Exclusion panels */
+.theme-light .incentive-surface div.border-red-500\/10,
+.theme-light .incentive-surface div[class*="border-red-500"] {
+    background-color: rgba(239, 68, 68, 0.015) !important;
+    border: 1px solid rgba(239, 68, 68, 0.15) !important;
+}
+
+.theme-light .incentive-surface div.border-red-500\/10:hover,
+.theme-light .incentive-surface div[class*="border-red-500"]:hover {
+    border: 1px solid rgba(239, 68, 68, 0.3) !important;
+}
+
 /* Sunken / Inset elements: text/number inputs, selects, scroll-box wrappers */
-.incentive-surface input[type="text"],
-.incentive-surface input[type="number"],
-.incentive-surface select,
-.incentive-surface textarea,
-.incentive-surface .form-input,
-.incentive-surface .form-select,
-.incentive-surface .custom-scrollbar,
-.incentive-surface .border.border-\[\#1A1A1A\].bg-\[\#0A0A0A\].rounded {
+.theme-light .incentive-surface input[type="text"],
+.theme-light .incentive-surface input[type="number"],
+.theme-light .incentive-surface select,
+.theme-light .incentive-surface textarea,
+.theme-light .incentive-surface .form-input,
+.theme-light .incentive-surface .form-select,
+.theme-light .incentive-surface .custom-scrollbar,
+.theme-light .incentive-surface .border.border-\[\#1A1A1A\].bg-\[\#0A0A0A\].rounded {
     background-color: #f1f5f9 !important;
     border: none !important;
     box-shadow: inset 4px 4px 8px #cbd5e1, inset -4px -4px 8px #ffffff !important;
@@ -788,15 +806,15 @@ body {
 }
 
 /* Special scroll-box containers (inset look) */
-.incentive-surface div[class*="overflow-y-auto"],
-.incentive-surface div[class*="overflow-x-auto"] {
+.theme-light .incentive-surface div[class*="overflow-y-auto"],
+.theme-light .incentive-surface div[class*="overflow-x-auto"]:not(.exec-header-bar) {
     box-shadow: inset 4px 4px 8px #cbd5e1, inset -4px -4px 8px #ffffff !important;
     background-color: #f1f5f9 !important;
     border-radius: 12px !important;
 }
 
 /* Sunken (Inset) Icon Sockets */
-.incentive-surface div[class*="w-14"][class*="h-14"] {
+.theme-light .incentive-surface div[class*="w-14"][class*="h-14"] {
     background-color: #eef2f7 !important;
     border: none !important;
     box-shadow: inset 3px 3px 6px #cbd5e1, inset -3px -3px 6px #ffffff !important;
@@ -804,18 +822,18 @@ body {
 }
 
 /* Sunken element focus glows */
-.incentive-surface input[type="text"]:focus,
-.incentive-surface input[type="number"]:focus,
-.incentive-surface select:focus,
-.incentive-surface textarea:focus {
+.theme-light .incentive-surface input[type="text"]:focus,
+.theme-light .incentive-surface input[type="number"]:focus,
+.theme-light .incentive-surface select:focus,
+.theme-light .incentive-surface textarea:focus {
     box-shadow: inset 5px 5px 10px #b8c4d2, inset -5px -5px 10px #ffffff, 0 0 5px rgba(217, 119, 6, 0.15) !important;
     outline: none !important;
 }
 
 /* Neumorphic Interactive Buttons */
-.incentive-surface button,
-.incentive-surface .btn,
-.incentive-surface a.btn {
+.theme-light .incentive-surface button:not(.exec-header-btn),
+.theme-light .incentive-surface .btn:not(.exec-header-btn),
+.theme-light .incentive-surface a.btn:not(.exec-header-btn) {
     background-color: #eef2f7 !important;
     box-shadow: 4px 4px 8px #cbd5e1, -4px -4px 8px #ffffff !important;
     border: 1px solid rgba(255, 255, 255, 0.5) !important;
@@ -828,41 +846,55 @@ body {
 }
 
 /* Hover buttons (slightly softer extrusion) */
-.incentive-surface button:hover,
-.incentive-surface .btn:hover {
+.theme-light .incentive-surface button:not(.exec-header-btn):hover,
+.theme-light .incentive-surface .btn:not(.exec-header-btn):hover {
     color: #0f172a !important;
     box-shadow: 2px 2px 4px #cbd5e1, -2px -2px 4px #ffffff !important;
 }
 
 /* Active / Pressed buttons (Inset shadow) */
-.incentive-surface button:active,
-.incentive-surface .btn:active,
-.incentive-surface button.active,
-.incentive-surface button[aria-selected="true"],
-.incentive-surface .btn-active {
+.theme-light .incentive-surface button:not(.exec-header-btn):active,
+.theme-light .incentive-surface .btn:not(.exec-header-btn):active,
+.theme-light .incentive-surface button.active:not(.exec-header-btn),
+.theme-light .incentive-surface button[aria-selected="true"]:not(.exec-header-btn),
+.theme-light .incentive-surface .btn-active:not(.exec-header-btn) {
     background-color: #e2e8f0 !important;
     box-shadow: inset 4px 4px 8px #cbd5e1, inset -4px -4px 8px #ffffff !important;
     color: #b45309 !important;
 }
 
 /* Selection and Accent States (e.g. Yellow Selected Buttons) */
-.incentive-surface button[class*="bg-[#F0B90B]"],
-.incentive-surface button.bg-\[\#F0B90B\],
-.incentive-surface button[class*="bg-[#FCD535]"],
-.incentive-surface button.bg-\[\#FCD535\] {
-    background-color: #fffbeb !important;
-    box-shadow: inset 3px 3px 6px #fcd34d, inset -3px -3px 6px #ffffff !important;
-    color: #b45309 !important;
-    border: 1px solid rgba(217, 119, 6, 0.2) !important;
+.theme-light .incentive-surface button.bg-\[\#F0B90B\]:not(.exec-header-btn),
+.theme-light .incentive-surface button.bg-\[\#FCD535\]:not(.exec-header-btn) {
+    background-color: #F0B90B !important;
+    box-shadow: 0 4px 10px rgba(240, 185, 11, 0.3) !important;
+    color: #000000 !important;
+    border: 1px solid #F0B90B !important;
+    font-weight: 800 !important;
 }
 
-/* Excluded / Blocked Items (Soft Crimson Inset) */
-.incentive-surface button[class*="bg-red-500"],
-.incentive-surface .bg-red-500\/20,
-.incentive-surface span[class*="bg-red-500"],
-.incentive-surface tr[class*="bg-red-500"],
-.incentive-surface .bg-\[\#F6465D\]\/10,
-.incentive-surface span[class*="text-[#F6465D]"] {
+/* Excluded / Blocked Buttons (Vibrant Sunken Solid Red) */
+.theme-light .incentive-surface button.bg-red-500,
+.theme-light .incentive-surface button.tag-excluded {
+    background-color: #ef4444 !important; /* Solid red background */
+    box-shadow: inset 3px 3px 8px rgba(0, 0, 0, 0.35), inset -3px -3px 8px rgba(255, 255, 255, 0.25) !important; /* Dark & light inset shadows */
+    border: 1px solid #dc2626 !important;
+    color: #ffffff !important; /* White text */
+    font-weight: 800 !important;
+    transform: none !important; /* Disable scale/transform on hover to keep inset look stable */
+}
+.theme-light .incentive-surface button.bg-red-500:hover,
+.theme-light .incentive-surface button.tag-excluded:hover {
+    background-color: #dc2626 !important;
+    color: #ffffff !important;
+}
+
+/* Excluded / Blocked Indicators (Soft Crimson Inset) */
+.theme-light .incentive-surface .bg-red-500\/20,
+.theme-light .incentive-surface span[class*="bg-red-500"],
+.theme-light .incentive-surface tr[class*="bg-red-500"],
+.theme-light .incentive-surface .bg-\[\#F6465D\]\/10,
+.theme-light .incentive-surface span[class*="text-[#F6465D]"] {
     background-color: #fdf2f2 !important;
     box-shadow: inset 3px 3px 6px #f5c2c2, inset -3px -3px 6px #ffffff !important;
     color: #b91c1c !important;
@@ -870,10 +902,10 @@ body {
 }
 
 /* Eligible / Included Items (Soft Emerald Inset) */
-.incentive-surface button[class*="bg-[#0ECB81]"],
-.incentive-surface .bg-\[\#0ECB81\]\/20,
-.incentive-surface span[class*="bg-[#0ECB81]"],
-.incentive-surface tr[class*="bg-[#0ECB81]"] {
+.theme-light .incentive-surface button[class*="bg-[#0ECB81]"],
+.theme-light .incentive-surface .bg-\[\#0ECB81\]\/20,
+.theme-light .incentive-surface span[class*="bg-[#0ECB81]"],
+.theme-light .incentive-surface tr[class*="bg-[#0ECB81]"] {
     background-color: #e6fbf1 !important;
     box-shadow: inset 3px 3px 6px #c6f6d5, inset -3px -3px 6px #ffffff !important;
     color: #047857 !important;
@@ -881,8 +913,8 @@ body {
 }
 
 /* Role Matrix Active items */
-.incentive-surface button[class*="bg-[#2B3139]"],
-.incentive-surface button.bg-\[\#2B3139\] {
+.theme-light .incentive-surface button[class*="bg-[#2B3139]"],
+.theme-light .incentive-surface button.bg-\[\#2B3139\] {
     background-color: #fffbeb !important;
     box-shadow: inset 4px 4px 8px #cbd5e1, inset -4px -4px 8px #ffffff !important;
     color: #b45309 !important;
@@ -890,95 +922,95 @@ body {
 }
 
 /* Remove standard gradients & dropshadows to preserve soft neumorphic visuals */
-.incentive-surface .shadow-lg,
-.incentive-surface .shadow-2xl,
-.incentive-surface .shadow-xl,
-.incentive-surface .shadow-inner {
+.theme-light .incentive-surface .shadow-lg,
+.theme-light .incentive-surface .shadow-2xl,
+.theme-light .incentive-surface .shadow-xl,
+.theme-light .incentive-surface .shadow-inner {
     box-shadow: none !important;
 }
 
-.incentive-surface .bg-gradient-to-r,
-.incentive-surface .bg-gradient-to-b,
-.incentive-surface .bg-gradient-to-t {
+.theme-light .incentive-surface .bg-gradient-to-r,
+.theme-light .incentive-surface .bg-gradient-to-b,
+.theme-light .incentive-surface .bg-gradient-to-t {
     background-image: none !important;
 }
 
 /* Neumorphic Tables */
-.incentive-surface table {
+.theme-light .incentive-surface table {
     border-collapse: separate !important;
     border-spacing: 0 10px !important;
     background: transparent !important;
     width: 100% !important;
 }
 
-.incentive-surface table tr {
+.theme-light .incentive-surface table tr {
     background-color: #eef2f7 !important;
     box-shadow: 4px 4px 8px #cbd5e1, -4px -4px 8px #ffffff !important;
     border-radius: 12px !important;
 }
 
-.incentive-surface table tr:hover {
+.theme-light .incentive-surface table tr:hover {
     box-shadow: 2px 2px 4px #cbd5e1, -2px -2px 4px #ffffff !important;
 }
 
-.incentive-surface table td,
-.incentive-surface table th {
+.theme-light .incentive-surface table td,
+.theme-light .incentive-surface table th {
     border: none !important;
     background: transparent !important;
     padding: 10px 14px !important;
 }
 
-.incentive-surface table td:first-child {
+.theme-light .incentive-surface table td:first-child {
     border-top-left-radius: 12px !important;
     border-bottom-left-radius: 12px !important;
 }
 
-.incentive-surface table td:last-child {
+.theme-light .incentive-surface table td:last-child {
     border-top-right-radius: 12px !important;
     border-bottom-right-radius: 12px !important;
 }
 
 /* Table Header */
-.incentive-surface table thead tr {
+.theme-light .incentive-surface table thead tr {
     background-color: #e2e8f0 !important;
     box-shadow: inset 3px 3px 6px #cbd5e1, inset -3px -3px 6px #ffffff !important;
     border-radius: 8px !important;
 }
 
 /* Neumorphic scrollbar custom layout */
-.incentive-surface ::-webkit-scrollbar {
-    width: 6px;
-    height: 6px;
+.theme-light .incentive-surface ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
 }
-.incentive-surface ::-webkit-scrollbar-track {
+.theme-light .incentive-surface ::-webkit-scrollbar-track {
     background: #eef2f7;
     box-shadow: inset 1px 1px 3px #cbd5e1, inset -1px -1px 3px #ffffff;
-    border-radius: 3px;
+    border-radius: 4px;
 }
-.incentive-surface ::-webkit-scrollbar-thumb {
-    background: #e2e8f0;
-    box-shadow: 2px 2px 4px #cbd5e1, -2px -2px 4px #ffffff;
-    border-radius: 3px;
-}
-.incentive-surface ::-webkit-scrollbar-thumb:hover {
+.theme-light .incentive-surface ::-webkit-scrollbar-thumb {
     background: #cbd5e1;
+    box-shadow: 1px 1px 2px rgba(0,0,0,0.08);
+    border-radius: 4px;
+}
+.theme-light .incentive-surface ::-webkit-scrollbar-thumb:hover {
+    background: #94a3b8;
 }
 
 /* Accent Colors */
-.incentive-surface .text-primary,
-.incentive-surface .text-\[\#F0B90B\] {
+.theme-light .incentive-surface .text-primary,
+.theme-light .incentive-surface .text-\[\#F0B90B\] {
     color: #b45309 !important;
 }
-.incentive-surface .bg-primary\/5 {
+.theme-light .incentive-surface .bg-primary\/5 {
     background-color: rgba(180, 83, 9, 0.05) !important;
     box-shadow: inset 2px 2px 4px #cbd5e1, inset -2px -2px 4px #ffffff !important;
 }
-.incentive-surface .border-primary\/10 {
+.theme-light .incentive-surface .border-primary\/10 {
     border-color: rgba(180, 83, 9, 0.1) !important;
 }
 
 /* Header style - flat top with soft shadow */
-.incentive-surface header {
+.theme-light .incentive-surface header {
     background-color: #eef2f7 !important;
     box-shadow: 0 4px 10px rgba(0, 0, 0, 0.03) !important;
     border-bottom: 1px solid rgba(0, 0, 0, 0.02) !important;
@@ -986,47 +1018,47 @@ body {
 }
 
 /* Fix any white background overlays or border colors */
-.incentive-surface .border-t,
-.incentive-surface .border-b,
-.incentive-surface .border-r,
-.incentive-surface .border-l,
-.incentive-surface .border,
-.incentive-surface .divide-y > * {
+.theme-light .incentive-surface .border-t,
+.theme-light .incentive-surface .border-b,
+.theme-light .incentive-surface .border-r,
+.theme-light .incentive-surface .border-l,
+.theme-light .incentive-surface .border,
+.theme-light .incentive-surface .divide-y > * {
     border-color: rgba(0, 0, 0, 0.04) !important;
 }
 
 /* High-contrast colors for card titles and details */
-.incentive-surface h4[class*="text-xl"] {
+.theme-light .incentive-surface h4[class*="text-xl"] {
     color: #0f172a !important;
     font-weight: 800 !important;
 }
 
 /* Muted project properties (e.g. Protocol_ID label) */
-.incentive-surface span[class*="text-[10px]"],
-.incentive-surface p[class*="text-[10px]"] {
+.theme-light .incentive-surface span[class*="text-[10px]"],
+.theme-light .incentive-surface p[class*="text-[10px]"] {
     color: #475569 !important;
     font-weight: 700 !important;
 }
 
 /* Accent Zap / Electricity icon color override */
-.incentive-surface svg.lucide-zap {
+.theme-light .incentive-surface svg.lucide-zap {
     color: #b45309 !important;
     filter: drop-shadow(0 0 4px rgba(180, 83, 9, 0.15)) !important;
 }
 
 /* Card inner stats icons */
-.incentive-surface svg.lucide-cpu,
-.incentive-surface svg.lucide-activity {
+.theme-light .incentive-surface svg.lucide-cpu,
+.theme-light .incentive-surface svg.lucide-activity {
     color: #475569 !important;
 }
 
 /* Card Footer / Bottom Buttons Styling */
-.incentive-surface div[class*="border-t"][class*="bg-white\/\[0\.02\]"] {
+.theme-light .incentive-surface div[class*="border-t"][class*="bg-white\/\[0\.02\]"] {
     background-color: rgba(0, 0, 0, 0.01) !important;
     border-top: 1px solid rgba(0, 0, 0, 0.04) !important;
 }
 
-.incentive-surface div[class*="border-t"] button {
+.theme-light .incentive-surface div[class*="border-t"] button {
     background-color: #eef2f7 !important;
     box-shadow: 4px 4px 8px #cbd5e1, -4px -4px 8px #ffffff !important;
     color: #334155 !important;
@@ -1034,18 +1066,18 @@ body {
     border-radius: 12px !important;
 }
 
-.incentive-surface div[class*="border-t"] button:hover {
+.theme-light .incentive-surface div[class*="border-t"] button:hover {
     box-shadow: 2px 2px 4px #cbd5e1, -2px -2px 4px #ffffff !important;
     color: #0f172a !important;
 }
 
-.incentive-surface div[class*="border-t"] button:active {
+.theme-light .incentive-surface div[class*="border-t"] button:active {
     box-shadow: inset 3px 3px 6px #cbd5e1, inset -3px -3px 6px #ffffff !important;
     background-color: #e2e8f0 !important;
 }
 
 /* Pixel-perfect Search Icon Alignment and Focus Glows */
-.incentive-surface svg.lucide-search {
+.theme-light .incentive-surface svg.lucide-search {
     top: 50% !important;
     transform: translateY(-50%) !important;
     margin-top: -1px !important; /* Center visually to match placeholder height */
@@ -1054,43 +1086,43 @@ body {
     opacity: 0.7 !important;
 }
 
-.incentive-surface div.group:focus-within svg.lucide-search {
+.theme-light .incentive-surface div.group:focus-within svg.lucide-search {
     color: #b45309 !important; /* Active amber-gold focus highlight */
     opacity: 1 !important;
     filter: drop-shadow(0 0 3px rgba(180, 83, 9, 0.25)) !important;
 }
 
 /* Sidebar backdrop, header, and inner card overrides */
-.incentive-surface aside,
-.incentive-surface aside[class*="bg-"] {
+.theme-light .incentive-surface aside,
+.theme-light .incentive-surface aside[class*="bg-"] {
     background-color: #f1f5f9 !important; /* Soft slate-100 sidebar backdrop */
     border-right: 1px solid rgba(0, 0, 0, 0.05) !important;
     border-bottom: 1px solid rgba(0, 0, 0, 0.05) !important;
 }
 
-.incentive-surface aside div[class*="bg-black/20"],
-.incentive-surface aside .bg-black\/20 {
+.theme-light .incentive-surface aside div[class*="bg-black/20"],
+.theme-light .incentive-surface aside .bg-black\/20 {
     background-color: rgba(0, 0, 0, 0.02) !important;
     border-top: 1px solid rgba(0, 0, 0, 0.04) !important;
 }
 
-.incentive-surface aside div[class*="bg-white/"] {
+.theme-light .incentive-surface aside div[class*="bg-white/"] {
     background-color: #eef2f7 !important; /* Matches main card background */
     border: 1px solid rgba(0, 0, 0, 0.04) !important;
     box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.02) !important;
 }
 
-.incentive-surface aside h3,
-.incentive-surface aside span[class*="text-white"],
-.incentive-surface aside p[class*="text-white"],
-.incentive-surface aside div[class*="text-white"] {
+.theme-light .incentive-surface aside h3,
+.theme-light .incentive-surface aside span[class*="text-white"],
+.theme-light .incentive-surface aside p[class*="text-white"],
+.theme-light .incentive-surface aside div[class*="text-white"] {
     color: #475569 !important; /* High contrast gray/slate */
     font-weight: 700 !important;
 }
 
 /* Extruded/Sunken Icon sockets for detail page */
-.incentive-surface div[class*="w-14"][class*="h-14"],
-.incentive-surface div[class*="w-16"][class*="h-16"] {
+.theme-light .incentive-surface div[class*="w-14"][class*="h-14"],
+.theme-light .incentive-surface div[class*="w-16"][class*="h-16"] {
     background-color: #eef2f7 !important;
     border: none !important;
     box-shadow: inset 3px 3px 6px #cbd5e1, inset -3px -3px 6px #ffffff !important;
@@ -1098,50 +1130,50 @@ body {
 }
 
 /* Extruded Node Boxes for Tier formula details */
-.incentive-surface div[class*="bg-black/40"],
-.incentive-surface .bg-black\/40 {
+.theme-light .incentive-surface div[class*="bg-black/40"],
+.theme-light .incentive-surface .bg-black\/40 {
     background-color: #eef2f7 !important;
     border: 1px solid rgba(255, 255, 255, 0.6) !important;
     box-shadow: 3px 3px 6px #cbd5e1, -3px -3px 6px #ffffff !important;
     border-radius: 12px !important;
 }
 
-.incentive-surface div[class*="bg-black/40"] span[class*="text-white"],
-.incentive-surface .bg-black\/40 span[class*="text-white"],
-.incentive-surface div[class*="bg-black/40"] span:not(.text-primary):not(.text-emerald-400),
-.incentive-surface .bg-black\/40 span:not(.text-primary):not(.text-emerald-400) {
+.theme-light .incentive-surface div[class*="bg-black/40"] span[class*="text-white"],
+.theme-light .incentive-surface .bg-black\/40 span[class*="text-white"],
+.theme-light .incentive-surface div[class*="bg-black/40"] span:not(.text-primary):not(.text-emerald-400),
+.theme-light .incentive-surface .bg-black\/40 span:not(.text-primary):not(.text-emerald-400) {
     color: #475569 !important;
 }
 
-.incentive-surface div[class*="bg-white/5"].w-4,
-.incentive-surface div[class*="bg-white/5"].h-\[2px\] {
+.theme-light .incentive-surface div[class*="bg-white/5"].w-4,
+.theme-light .incentive-surface div[class*="bg-white/5"].h-\[2px\] {
     background-color: #cbd5e1 !important; /* Slate-300 connector pins */
 }
 
 /* Deploy and active formula buttons */
-.incentive-surface button[class*="DEPLOY_"],
-.incentive-surface button[class*="bg-white/"] {
+.theme-light .incentive-surface button[class*="DEPLOY_"],
+.theme-light .incentive-surface button[class*="bg-white/"] {
     background-color: #eef2f7 !important;
     box-shadow: 3px 3px 6px #cbd5e1, -3px -3px 6px #ffffff !important;
     color: #334155 !important;
     border: 1px solid rgba(255, 255, 255, 0.5) !important;
 }
 
-.incentive-surface button[class*="DEPLOY_"]:hover,
-.incentive-surface button[class*="bg-white/"]:hover {
+.theme-light .incentive-surface button[class*="DEPLOY_"]:hover,
+.theme-light .incentive-surface button[class*="bg-white/"]:hover {
     box-shadow: 2px 2px 4px #cbd5e1, -2px -2px 4px #ffffff !important;
     color: #0f172a !important;
 }
 
-.incentive-surface button[class*="DEPLOY_"]:active,
-.incentive-surface button[class*="bg-white/"]:active {
+.theme-light .incentive-surface button[class*="DEPLOY_"]:active,
+.theme-light .incentive-surface button[class*="bg-white/"]:active {
     box-shadow: inset 3px 3px 6px #b8c4d2, inset -3px -3px 6px #ffffff !important;
     background-color: #e2e8f0 !important;
 }
 
 /* Sunken tray for nodes inside the formula card */
-.incentive-surface div[class*="bg-white/\[0\.01\]"],
-.incentive-surface div[class*="bg-white/0.01"] {
+.theme-light .incentive-surface div[class*="bg-white/\[0\.01\]"],
+.theme-light .incentive-surface div[class*="bg-white/0.01"] {
     background-color: #e2e8f0 !important; /* Slightly darker than card body background */
     box-shadow: inset 4px 4px 8px #cbd5e1, inset -4px -4px 8px #ffffff !important;
     border-radius: 20px !important;
@@ -1151,8 +1183,8 @@ body {
 }
 
 /* Extruded Node Boxes inside the sunken tray */
-.incentive-surface div[class*="bg-white/\[0\.01\]"] div[class*="bg-black/40"],
-.incentive-surface div[class*="bg-white/0.01"] .bg-black\/40 {
+.theme-light .incentive-surface div[class*="bg-white/\[0\.01\]"] div[class*="bg-black/40"],
+.theme-light .incentive-surface div[class*="bg-white/0.01"] .bg-black\/40 {
     background-color: #eef2f7 !important; /* Extrudes out from the tray */
     border: 1px solid rgba(255, 255, 255, 0.6) !important;
     box-shadow: 3px 3px 6px #b8c4d2, -3px -3px 6px #ffffff !important;
@@ -1160,31 +1192,31 @@ body {
 }
 
 /* Glowing Neon Socket Indicators */
-.incentive-surface svg.lucide-zap {
+.theme-light .incentive-surface svg.lucide-zap {
     color: #b45309 !important; /* Rich honey-amber */
     filter: drop-shadow(0 0 5px rgba(180, 83, 9, 0.45)) !important;
 }
 
-.incentive-surface svg.lucide-trending-up {
+.theme-light .incentive-surface svg.lucide-trending-up {
     color: #047857 !important; /* Deep emerald green */
     filter: drop-shadow(0 0 5px rgba(4, 120, 87, 0.45)) !important;
 }
 
 /* Hide connectors completely to support cleaner wrap layouts */
-.incentive-surface div[class*="bg-white/5"].w-4,
-.incentive-surface div[class*="bg-white/5"].h-\[2px\] {
+.theme-light .incentive-surface div[class*="bg-white/5"].w-4,
+.theme-light .incentive-surface div[class*="bg-white/5"].h-\[2px\] {
     display: none !important;
 }
 
 /* Hide vertical dividers inside node cards */
-.incentive-surface div[class*="bg-black/40"] div[class*="w-px"],
-.incentive-surface .bg-black\/40 div[class*="w-px"] {
+.theme-light .incentive-surface div[class*="bg-black/40"] div[class*="w-px"],
+.theme-light .incentive-surface .bg-black\/40 div[class*="w-px"] {
     display: none !important;
 }
 
 /* Format node card subPeriod (W1, W2 etc.) labels */
-.incentive-surface div[class*="bg-black/40"] span.text-primary,
-.incentive-surface .bg-black\/40 span.text-primary {
+.theme-light .incentive-surface div[class*="bg-black/40"] span.text-primary,
+.theme-light .incentive-surface .bg-black\/40 span.text-primary {
     color: #b45309 !important;
     font-size: 9px !important;
     font-weight: 800 !important;
@@ -1192,16 +1224,16 @@ body {
 }
 
 /* Format node card target amount text */
-.incentive-surface div[class*="bg-black/40"] span[class*="text-white/50"],
-.incentive-surface .bg-black\/40 span[class*="text-white/50"] {
+.theme-light .incentive-surface div[class*="bg-black/40"] span[class*="text-white/50"],
+.theme-light .incentive-surface .bg-black\/40 span[class*="text-white/50"] {
     color: #475569 !important;
     font-size: 12px !important;
     font-weight: 700 !important;
 }
 
 /* Format reward values inside node cards as inset pills */
-.incentive-surface div[class*="bg-black/40"] span.text-emerald-400,
-.incentive-surface .bg-black\/40 span.text-emerald-400 {
+.theme-light .incentive-surface div[class*="bg-black/40"] span.text-emerald-400,
+.theme-light .incentive-surface .bg-black\/40 span.text-emerald-400 {
     background-color: #e6fbf1 !important; /* Soft mint green */
     color: #047857 !important; /* Deep emerald text */
     padding: 4px 10px !important;
@@ -1212,57 +1244,57 @@ body {
 }
 
 /* Ensure status dot background colors inside Neumorphic surface display correctly */
-.incentive-surface div[class*="rounded-full"][class*="bg-"] {
+.theme-light .incentive-surface div[class*="rounded-full"][class*="bg-"] {
     background-color: currentColor !important;
 }
 
 /* Glowing Neon Trophy Indicator */
-.incentive-surface svg.lucide-trophy {
+.theme-light .incentive-surface svg.lucide-trophy {
     color: #b45309 !important; /* Rich honey-amber */
     filter: drop-shadow(0 0 5px rgba(180, 83, 9, 0.45)) !important;
 }
 
 /* Fix template selector button text and headings contrast inside Builder Modal */
-.incentive-surface button .text-white {
+.theme-light .incentive-surface button .text-white {
     color: #0f172a !important; /* Dark Slate for titles */
 }
 
-.incentive-surface button .text-white\/40,
-.incentive-surface button .text-white\/30 {
+.theme-light .incentive-surface button .text-white\/40,
+.theme-light .incentive-surface button .text-white\/30 {
     color: #475569 !important; /* Dark Gray for descriptions */
 }
 
 /* Refine heading font-weights inside Neumorphic surface (700 bold instead of 900 heavy black) */
-.incentive-surface h2,
-.incentive-surface h3,
-.incentive-surface h4,
-.incentive-surface .font-black {
+.theme-light .incentive-surface h2,
+.theme-light .incentive-surface h3,
+.theme-light .incentive-surface h4,
+.theme-light .incentive-surface .font-black {
     font-weight: 700 !important;
     letter-spacing: -0.015em !important;
 }
 
 /* Improve contrast of faint gray label texts on Neumorphic background */
-.incentive-surface label,
-.incentive-surface span[class*="text-[#848E9C]"],
-.incentive-surface span[class*="text-[#707A8A]"],
-.incentive-surface p[class*="text-[#848E9C]"],
-.incentive-surface div[class*="text-[#707A8A]"],
-.incentive-surface .text-white\/30 {
+.theme-light .incentive-surface label,
+.theme-light .incentive-surface span[class*="text-[#848E9C]"],
+.theme-light .incentive-surface span[class*="text-[#707A8A]"],
+.theme-light .incentive-surface p[class*="text-[#848E9C]"],
+.theme-light .incentive-surface div[class*="text-[#707A8A]"],
+.theme-light .incentive-surface .text-white\/30 {
     color: #475569 !important; /* Dark Slate Gray */
     font-weight: 600 !important;
 }
 
 /* Preserve active stepper button backgrounds */
-.incentive-surface button[class*="bg-[#FCD535]"],
-.incentive-surface button[class*="bg-\[\#FCD535\]"] {
+.theme-light .incentive-surface button[class*="bg-[#FCD535]"],
+.theme-light .incentive-surface button[class*="bg-\[\#FCD535\]"] {
     background-color: #FCD535 !important;
     border-color: #FCD535 !important;
     color: #000000 !important;
     box-shadow: 0 0 15px rgba(252, 213, 53, 0.45) !important;
 }
 
-.incentive-surface button[class*="bg-[#0ECB81]"],
-.incentive-surface button[class*="bg-\[\#0ECB81\]"] {
+.theme-light .incentive-surface button[class*="bg-[#0ECB81]"],
+.theme-light .incentive-surface button[class*="bg-\[\#0ECB81\]"] {
     background-color: #0ECB81 !important;
     border-color: #0ECB81 !important;
     color: #000000 !important;
@@ -1270,79 +1302,79 @@ body {
 }
 
 /* Preserve active progress bar line indicators */
-.incentive-surface div[class*="h-[2px]"][class*="bg-[#FCD535]"],
-.incentive-surface div[class*="h-\[2px\]"][class*="bg-\[\#FCD535\]"] {
+.theme-light .incentive-surface div[class*="h-[2px]"][class*="bg-[#FCD535]"],
+.theme-light .incentive-surface div[class*="h-\[2px\]"][class*="bg-\[\#FCD535\]"] {
     background-color: #FCD535 !important;
     box-shadow: 0 0 10px rgba(252, 213, 53, 0.5) !important;
 }
 
-.incentive-surface div[class*="h-[2px]"][class*="bg-[#0ECB81]"],
-.incentive-surface div[class*="h-\[2px\]"][class*="bg-\[\#0ECB81\]"] {
+.theme-light .incentive-surface div[class*="h-[2px]"][class*="bg-[#0ECB81]"],
+.theme-light .incentive-surface div[class*="h-\[2px\]"][class*="bg-\[\#0ECB81\]"] {
     background-color: #0ECB81 !important;
     box-shadow: 0 0 10px rgba(14, 203, 129, 0.5) !important;
 }
 
 /* Style primary action buttons to have rich contrasting background fills (Neumorphic Primary) */
-.incentive-surface button[class*="h-14"][class*="bg-[#FCD535]"],
-.incentive-surface button[class*="h-14"][class*="bg-\[\#FCD535\]"],
-.incentive-surface button[class*="h-12"][class*="bg-[#FCD535]"],
-.incentive-surface button[class*="h-12"][class*="bg-\[\#FCD535\]"],
-.incentive-surface button.bg-\[\#FCD535\] {
+.theme-light .incentive-surface button[class*="h-14"][class*="bg-[#FCD535]"],
+.theme-light .incentive-surface button[class*="h-14"][class*="bg-\[\#FCD535\]"],
+.theme-light .incentive-surface button[class*="h-12"][class*="bg-[#FCD535]"],
+.theme-light .incentive-surface button[class*="h-12"][class*="bg-\[\#FCD535\]"],
+.theme-light .incentive-surface button.bg-\[\#FCD535\] {
     background-color: #b45309 !important; /* Rich amber bg */
     color: #ffffff !important; /* High contrast text */
     border: 1px solid rgba(180, 83, 9, 0.2) !important;
     box-shadow: 3px 3px 6px #cbd5e1, -3px -3px 6px #ffffff !important;
 }
 
-.incentive-surface button[class*="h-14"][class*="bg-[#0ECB81]"],
-.incentive-surface button[class*="h-14"][class*="bg-\[\#0ECB81\]"],
-.incentive-surface button[class*="h-12"][class*="bg-[#0ECB81]"],
-.incentive-surface button[class*="h-12"][class*="bg-\[\#0ECB81\]"],
-.incentive-surface button.bg-\[\#0ECB81\] {
+.theme-light .incentive-surface button[class*="h-14"][class*="bg-[#0ECB81]"],
+.theme-light .incentive-surface button[class*="h-14"][class*="bg-\[\#0ECB81\]"],
+.theme-light .incentive-surface button[class*="h-12"][class*="bg-[#0ECB81]"],
+.theme-light .incentive-surface button[class*="h-12"][class*="bg-\[\#0ECB81\]"],
+.theme-light .incentive-surface button.bg-\[\#0ECB81\] {
     background-color: #047857 !important; /* Deep emerald bg */
     color: #ffffff !important;
     border: 1px solid rgba(4, 120, 87, 0.2) !important;
     box-shadow: 3px 3px 6px #cbd5e1, -3px -3px 6px #ffffff !important;
 }
 
-.incentive-surface button[class*="bg-[#FCD535]"] svg,
-.incentive-surface button[class*="bg-\[\#FCD535\]"] svg,
-.incentive-surface button[class*="bg-[#0ECB81]"] svg,
-.incentive-surface button[class*="bg-\[\#0ECB81\]"] svg {
+.theme-light .incentive-surface button[class*="bg-[#FCD535]"] svg,
+.theme-light .incentive-surface button[class*="bg-\[\#FCD535\]"] svg,
+.theme-light .incentive-surface button[class*="bg-[#0ECB81]"] svg,
+.theme-light .incentive-surface button[class*="bg-\[\#0ECB81\]"] svg {
     color: #ffffff !important;
 }
 
 /* Styling for selected template card in Neumorphic theme */
-.incentive-surface button.selected-template-card {
+.theme-light .incentive-surface button.selected-template-card {
     background-color: #e2e8f0 !important; /* Slightly darker sunken gray */
     box-shadow: inset 3px 3px 6px #cbd5e1, inset -3px -3px 6px #ffffff !important;
 }
 
-.incentive-surface button.selected-template-card.border-achievement {
+.theme-light .incentive-surface button.selected-template-card.border-achievement {
     border: 2px solid #b45309 !important;
 }
 
-.incentive-surface button.selected-template-card.border-commission {
+.theme-light .incentive-surface button.selected-template-card.border-commission {
     border: 2px solid #047857 !important;
 }
 
 /* Neumorphic Segment Controller Active Tab */
-.incentive-surface button.active-segment-tab {
+.theme-light .incentive-surface button.active-segment-tab {
     background-color: #cbd5e0 !important; /* Sunken gray background */
     box-shadow: inset 2px 2px 4px #94a3b8, inset -2px -2px 4px #ffffff !important;
     font-weight: 800 !important;
 }
 
-.incentive-surface button.active-segment-tab.active-achievement {
+.theme-light .incentive-surface button.active-segment-tab.active-achievement {
     color: #b45309 !important; /* Gold/Amber active text */
 }
 
-.incentive-surface button.active-segment-tab.active-commission {
+.theme-light .incentive-surface button.active-segment-tab.active-commission {
     color: #047857 !important; /* Green active text */
 }
 
 /* Fix disabled buttons in Neumorphic theme */
-.incentive-surface button:disabled {
+.theme-light .incentive-surface button:disabled {
     opacity: 0.35 !important;
     cursor: not-allowed !important;
     pointer-events: none !important;
@@ -1350,32 +1382,32 @@ body {
 }
 
 /* Custom Header Improvements for Neumorphism & Default Themes */
-.incentive-surface .month-picker-wrapper {
+.theme-light .incentive-surface .month-picker-wrapper:not(.exec-header-bar *) {
     background-color: #f1f5f9 !important;
     box-shadow: inset 3px 3px 6px #cbd5e1, inset -3px -3px 6px #ffffff !important;
     border: none !important;
 }
 
-.incentive-surface .month-picker-input {
+.theme-light .incentive-surface .month-picker-input:not(.exec-header-bar *) {
     color: #334155 !important;
 }
 
-.incentive-surface input[type="month"]::-webkit-calendar-picker-indicator {
+.theme-light .incentive-surface input[type="month"]::-webkit-calendar-picker-indicator {
     display: none !important;
 }
 
-.incentive-surface .cycle-status-badge {
+.theme-light .incentive-surface .cycle-status-badge:not(.exec-header-bar *) {
     border-radius: 12px !important;
 }
 
-.incentive-surface .cycle-status-badge.status-open {
+.theme-light .incentive-surface .cycle-status-badge.status-open:not(.exec-header-bar *) {
     background-color: #e6fbf1 !important;
     color: #047857 !important;
     border: 1px solid rgba(4, 120, 87, 0.2) !important;
     box-shadow: inset 2px 2px 4px #c6f6d5, inset -2px -2px 4px #ffffff !important;
 }
 
-.incentive-surface .cycle-status-badge.status-locked {
+.theme-light .incentive-surface .cycle-status-badge.status-locked:not(.exec-header-bar *) {
     background-color: #fdf2f2 !important;
     color: #b91c1c !important;
     border: 1px solid rgba(185, 28, 28, 0.2) !important;
@@ -1383,57 +1415,902 @@ body {
 }
 
 /* Payout Ledger Table Contrast Improvements */
-.incentive-surface table .text-white\/10,
-.incentive-surface table [class*="text-white/10"] {
+.theme-light .incentive-surface table .text-white\/10,
+.theme-light .incentive-surface table [class*="text-white/10"] {
     color: #64748b !important; /* Slate 500 for rank numbers (02, 03, etc.) */
 }
 
-.incentive-surface table .text-white\/20,
-.incentive-surface table [class*="text-white/20"] {
+.theme-light .incentive-surface table .text-white\/20,
+.theme-light .incentive-surface table [class*="text-white/20"] {
     color: #475569 !important; /* Slate 600 for staff username/role secondary text */
 }
 
-.incentive-surface table .text-white\/30,
-.incentive-surface table [class*="text-white/30"] {
+.theme-light .incentive-surface table .text-white\/30,
+.theme-light .incentive-surface table [class*="text-white/30"] {
     color: #334155 !important; /* Slate 700 for performance bar percentage text */
 }
 
-.incentive-surface p[class*="text-white/30"],
-.incentive-surface p.text-white\/30 {
+.theme-light .incentive-surface p[class*="text-white/30"],
+.theme-light .incentive-surface p.text-white\/30 {
     color: #475569 !important; /* Slate 600 for section subheadings */
 }
 
 /* Progress Bar Track Contrast */
-.incentive-surface table div[class*="bg-white/5"] {
+.theme-light .incentive-surface table div[class*="bg-white/5"] {
     background-color: #cbd5e1 !important; /* Slate 300 track for readability */
 }
 
 /* Breakdown Badge Improvements (Light Theme Overrides) */
-.incentive-surface table .bg-black\/40,
-.incentive-surface table [class*="bg-black/40"] {
+.theme-light .incentive-surface table .bg-black\/40,
+.theme-light .incentive-surface table [class*="bg-black/40"] {
     background-color: #f1f5f9 !important;
     border-color: #cbd5e1 !important;
     box-shadow: inset 1px 1px 2px rgba(255, 255, 255, 0.8), 2px 2px 5px rgba(0, 0, 0, 0.05) !important;
 }
 
-.incentive-surface table .bg-black\/40 span.text-white\/40,
-.incentive-surface table [class*="bg-black/40"] span[class*="text-white/40"],
-.incentive-surface table [class*="bg-black/40"] span.text-white\/40 {
+.theme-light .incentive-surface table .bg-black\/40 span.text-white\/40,
+.theme-light .incentive-surface table [class*="bg-black/40"] span[class*="text-white/40"],
+.theme-light .incentive-surface table [class*="bg-black/40"] span.text-white\/40 {
     color: #334155 !important; /* Slate 700 for badge label text */
 }
 
-.incentive-surface table .bg-black\/40 svg.text-white\/20,
-.incentive-surface table [class*="bg-black/40"] svg[class*="text-white/20"] {
+.theme-light .incentive-surface table .bg-black\/40 svg.text-white\/20,
+.theme-light .incentive-surface table [class*="bg-black/40"] svg[class*="text-white/20"] {
     color: #64748b !important; /* Slate 500 for badge icons (Cpu, etc.) */
 }
 
-.incentive-surface table .bg-black\/40 div.bg-white\/10,
-.incentive-surface table [class*="bg-black/40"] div[class*="bg-white/10"] {
+.theme-light .incentive-surface table .bg-black\/40 div.bg-white\/10,
+.theme-light .incentive-surface table [class*="bg-black/40"] div[class*="bg-white/10"] {
     background-color: #cbd5e1 !important; /* Slate 300 for badge dividers */
 }
 
-.incentive-surface table .bg-black\/40 span.text-emerald-400,
-.incentive-surface table [class*="bg-black/40"] span.text-emerald-400,
-.incentive-surface table [class*="bg-black/40"] span[class*="text-emerald-400"] {
+.theme-light .incentive-surface table .bg-black\/40 span.text-emerald-400,
+.theme-light .incentive-surface table [class*="bg-black/40"] span.text-emerald-400,
+.theme-light .incentive-surface table [class*="bg-black/40"] span[class*="text-emerald-400"] {
     color: #059669 !important; /* Emerald 600 for positive reward amount contrast */
 }
+
+/* WebKit Date/Month Picker Value Text Colors for Dark/Light Themes */
+.theme-light .exec-header-bar input[type="month"]::-webkit-datetime-edit,
+.theme-light .exec-header-bar input[type="month"]::-webkit-datetime-edit-fields-wrapper,
+.theme-light .exec-header-bar input[type="month"]::-webkit-datetime-edit-text,
+.theme-light .exec-header-bar input[type="month"]::-webkit-datetime-edit-month-field,
+.theme-light .exec-header-bar input[type="month"]::-webkit-datetime-edit-year-field {
+    color: #0f172a !important;
+}
+
+.theme-dark .exec-header-bar input[type="month"]::-webkit-datetime-edit,
+.theme-dark .exec-header-bar input[type="month"]::-webkit-datetime-edit-fields-wrapper,
+.theme-dark .exec-header-bar input[type="month"]::-webkit-datetime-edit-text,
+.theme-dark .exec-header-bar input[type="month"]::-webkit-datetime-edit-month-field,
+.theme-dark .exec-header-bar input[type="month"]::-webkit-datetime-edit-year-field {
+    color: #ffffff !important;
+}
+
+/* ==========================================
+   CALCULATOR BUILDER — LIGHT MODE NEUMORPHIC
+   Targets: CalculatorBuilder.tsx + StepN builder pages
+   ========================================== */
+
+/* === Background scaffold === */
+.theme-light .incentive-surface.w-full.h-screen {
+    background-color: #eef2f7 !important;
+    background-image: none !important; /* kill grid lines */
+}
+
+/* === Builder Header Card (was bg-[#0B0E11]) === */
+.theme-light .incentive-surface div.bg-\[\#0B0E11\],
+.theme-light .incentive-surface div[class*="bg-[#0B0E11]"] {
+    background-color: #eef2f7 !important;
+    border: 1px solid rgba(255, 255, 255, 0.7) !important;
+    box-shadow: 6px 6px 16px #cbd5e1, -6px -6px 16px #ffffff !important;
+}
+
+/* === Inner chip/pill inside header (was bg-[#181A20]) === */
+.theme-light .incentive-surface div.bg-\[\#181A20\],
+.theme-light .incentive-surface div[class*="bg-[#181A20]"] {
+    background-color: #e2e8f0 !important;
+    box-shadow: inset 2px 2px 4px #cbd5e1, inset -2px -2px 4px #ffffff !important;
+    border: 1px solid rgba(255, 255, 255, 0.5) !important;
+    border-radius: 6px !important;
+}
+
+/* Text in chips (Protocol V2.5, dot indicators) */
+.theme-light .incentive-surface div.bg-\[\#181A20\] span,
+.theme-light .incentive-surface div[class*="bg-[#181A20]"] span {
+    color: #475569 !important;
+}
+
+/* Close button for builder */
+.theme-light .incentive-surface button.hover\:bg-\[\#F6465D\]\/10 {
+    background-color: #eef2f7 !important;
+    box-shadow: 4px 4px 8px #cbd5e1, -4px -4px 8px #ffffff !important;
+    border: 1px solid rgba(255, 255, 255, 0.5) !important;
+    color: #475569 !important;
+}
+.theme-light .incentive-surface button.hover\:bg-\[\#F6465D\]\/10:hover {
+    box-shadow: 2px 2px 4px #cbd5e1, -2px -2px 4px #ffffff !important;
+    color: #b91c1c !important;
+}
+
+/* === Stepper progress connector track (bg-[#2B3139]) === */
+.theme-light .incentive-surface div.bg-\[\#2B3139\],
+.theme-light .incentive-surface div[class*="bg-[#2B3139]"]:not(button) {
+    background-color: #cbd5e1 !important;
+    box-shadow: none !important;
+    border: none !important;
+}
+
+/* === Inactive stepper button (was bg-[#0B0E11] border-[#2B3139]) === */
+.theme-light .incentive-surface button.bg-\[\#0B0E11\],
+.theme-light .incentive-surface button[class*="bg-[#0B0E11]"] {
+    background-color: #eef2f7 !important;
+    box-shadow: 4px 4px 8px #cbd5e1, -4px -4px 8px #ffffff !important;
+    border: 1px solid rgba(255, 255, 255, 0.5) !important;
+    color: #94a3b8 !important;
+}
+
+/* === Content Panel / Logic Studio Container (second bg-[#0B0E11]) === */
+.theme-light .incentive-surface div[class*="bg-[#0B0E11]"][class*="border"][class*="rounded-sm"],
+.theme-light .incentive-surface div[class*="bg-[#0B0E11]"][class*="min-h-"] {
+    background-color: #eef2f7 !important;
+    border: 1px solid rgba(255, 255, 255, 0.7) !important;
+    box-shadow: 6px 6px 16px #cbd5e1, -6px -6px 16px #ffffff !important;
+    border-radius: 20px !important;
+}
+
+/* Decorative Terminal watermark inside panel */
+.theme-light .incentive-surface div[class*="bg-[#0B0E11]"] .lucide-terminal {
+    opacity: 0.03 !important;
+    color: #475569 !important;
+}
+
+/* === Sticky Footer Bar (was bg-[#0B0E11] border-t border-[#2B3139]) === */
+.theme-light .incentive-surface div.bg-\[\#0B0E11\].border-t,
+.theme-light .incentive-surface div[class*="bg-[#0B0E11]"][class*="border-t"][class*="shrink-0"] {
+    background-color: #e2e8f0 !important;
+    box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.06), inset 0 2px 4px rgba(255, 255, 255, 0.8) !important;
+    border-top: 1px solid rgba(255, 255, 255, 0.7) !important;
+}
+
+/* Footer "Previous" back button */
+.theme-light .incentive-surface div[class*="shrink-0"] button.bg-\[\#181A20\],
+.theme-light .incentive-surface div[class*="shrink-0"] button[class*="bg-[#181A20]"] {
+    background-color: #eef2f7 !important;
+    box-shadow: 4px 4px 8px #cbd5e1, -4px -4px 8px #ffffff !important;
+    border: 1px solid rgba(255, 255, 255, 0.5) !important;
+    color: #475569 !important;
+    border-radius: 10px !important;
+}
+.theme-light .incentive-surface div[class*="shrink-0"] button.bg-\[\#181A20\]:hover,
+.theme-light .incentive-surface div[class*="shrink-0"] button[class*="bg-[#181A20]"]:hover {
+    box-shadow: 2px 2px 4px #cbd5e1, -2px -2px 4px #ffffff !important;
+    color: #0f172a !important;
+}
+
+/* === Step 3 — Role/Team selector tags === */
+
+/* Inclusion Master area header */
+.theme-light .incentive-surface div.border-b.border-\[\#1A1A1A\] {
+    border-bottom: 1px solid rgba(0, 0, 0, 0.06) !important;
+}
+
+/* Step section icon socket */
+.theme-light .incentive-surface div.bg-\[\#050505\].border.border-\[\#1A1A1A\] {
+    background-color: #eef2f7 !important;
+    border: none !important;
+    box-shadow: inset 2px 2px 4px #cbd5e1, inset -2px -2px 4px #ffffff !important;
+    border-radius: 8px !important;
+}
+
+/* === BUILDER TAGS — INACTIVE (unselected) ===
+   Targets bg-[#121212] / bg-[#2B3139] / bg-[#1A1D23] dark defaults */
+.theme-light .incentive-surface button.tag-inactive {
+    background-color: #eef2f7 !important;
+    box-shadow: 3px 3px 6px #cbd5e1, -3px -3px 6px #ffffff !important;
+    border: 1px solid rgba(203, 213, 225, 0.7) !important;
+    border-radius: 8px !important;
+    color: #475569 !important;
+}
+.theme-light .incentive-surface button.tag-inactive:hover {
+    box-shadow: 2px 2px 4px #cbd5e1, -2px -2px 4px #ffffff !important;
+    color: #0f172a !important;
+}
+
+/* Selected Exclusion styling is handled globally under Excluded/Blocked buttons */
+
+/* Also handle generic bg-[#2B3139]/bg-[#121212] buttons that don't have helper class yet */
+.theme-light .incentive-surface button[class*="bg-[#2B3139]"],
+.theme-light .incentive-surface button.bg-\[\#2B3139\],
+.theme-light .incentive-surface button[class*="bg-[#1A1D23]"],
+.theme-light .incentive-surface button[class*="bg-[#121212]"],
+.theme-light .incentive-surface button.bg-\[\#121212\],
+.theme-light .incentive-surface span[class*="bg-[#2B3139]"] {
+    background-color: #eef2f7 !important;
+    box-shadow: 3px 3px 6px #cbd5e1, -3px -3px 6px #ffffff !important;
+    border: 1px solid rgba(203, 213, 225, 0.6) !important;
+    border-radius: 8px !important;
+    color: #475569 !important;
+}
+.theme-light .incentive-surface button[class*="bg-[#2B3139]"]:hover,
+.theme-light .incentive-surface button.bg-\[\#2B3139\]:hover,
+.theme-light .incentive-surface button[class*="bg-[#121212]"]:hover,
+.theme-light .incentive-surface button.bg-\[\#121212\]:hover {
+    box-shadow: 2px 2px 4px #cbd5e1, -2px -2px 4px #ffffff !important;
+    color: #0f172a !important;
+}
+
+/* INCLUSION MASTER TAG — SELECTED (bg-[#FCD535]/20 etc. via Tailwind) */
+.theme-light .incentive-surface button[class*="bg-[#FCD535]"] {
+    background-color: #fef9c3 !important;
+    box-shadow: inset 3px 3px 6px #fde68a, inset -3px -3px 6px #ffffff !important;
+    border: 2px solid rgba(180, 83, 9, 0.4) !important;
+    border-radius: 8px !important;
+    color: #92400e !important;
+    font-weight: 800 !important;
+}
+
+/* INCLUSION MASTER TAG — SELECTED (amber-500/20) */
+.theme-light .incentive-surface button[class*="bg-amber-500"] {
+    background-color: #fef9c3 !important;
+    box-shadow: inset 3px 3px 6px #fde68a, inset -3px -3px 6px #ffffff !important;
+    border: 2px solid rgba(180, 83, 9, 0.4) !important;
+    border-radius: 8px !important;
+    color: #92400e !important;
+    font-weight: 800 !important;
+}
+
+/* ELIGIBLE TAG (emerald) */
+.theme-light .incentive-surface button[class*="bg-[#0ECB81]"] {
+    background-color: #e6fbf1 !important;
+    box-shadow: inset 2px 2px 4px #a7f3d0, inset -2px -2px 4px #ffffff !important;
+    border: 2px solid rgba(4, 120, 87, 0.3) !important;
+    border-radius: 8px !important;
+    color: #047857 !important;
+    font-weight: 800 !important;
+}
+
+/* Sub-section dividers and labels inside Step3 */
+.theme-light .incentive-surface h4[class*="uppercase"],
+.theme-light .incentive-surface p[class*="font-mono"] {
+    color: #475569 !important;
+}
+
+/* Sub-section panel backgrounds (inclusion panel, exclusion panel cards) */
+.theme-light .incentive-surface div[class*="rounded-lg"][class*="bg-[#0A0A0A]"],
+.theme-light .incentive-surface div[class*="rounded-xl"][class*="bg-[#0A0A0A]"],
+.theme-light .incentive-surface div[class*="bg-[#0A0A0A]"] {
+    background-color: #f1f5f9 !important;
+    border: 1px solid rgba(255, 255, 255, 0.6) !important;
+    box-shadow: inset 3px 3px 6px #cbd5e1, inset -3px -3px 6px #ffffff !important;
+    border-radius: 16px !important;
+}
+
+/* "Info" / "Preview" box inside Step3 */
+.theme-light .incentive-surface div[class*="border"][class*="bg-amber"],
+.theme-light .incentive-surface div[class*="bg-amber-500\\/5"] {
+    background-color: #fef9e7 !important;
+    border: 1px solid rgba(180, 83, 9, 0.15) !important;
+    box-shadow: inset 2px 2px 4px #fde68a, inset -2px -2px 4px #ffffff !important;
+    border-radius: 12px !important;
+}
+
+/* Compensation Prerequisite / Measurement rows at bottom of Step3 */
+.theme-light .incentive-surface select,
+.theme-light .incentive-surface select option {
+    background-color: #eef2f7 !important;
+    color: #0f172a !important;
+}
+
+/* ===================================================
+   EXEC-HEADER-BAR TOOLBAR — LIGHT & DARK PILL STYLES
+   =================================================== */
+
+/* Light: pill base */
+.theme-light .exec-header-bar .exec-header-pill {
+    background-color: #eef2f7 !important;
+    box-shadow: 4px 4px 8px #cbd5e1, -4px -4px 8px #ffffff !important;
+    border: 1px solid rgba(255, 255, 255, 0.7) !important;
+    color: #334155 !important;
+    border-radius: 14px !important;
+}
+.theme-light .exec-header-bar .exec-header-pill:hover {
+    box-shadow: 2px 2px 4px #cbd5e1, -2px -2px 4px #ffffff !important;
+    color: #0f172a !important;
+}
+
+/* Light: CTA (amber fill) */
+.theme-light .exec-header-bar .exec-header-cta {
+    background-color: #b45309 !important;
+    box-shadow: 3px 3px 6px #cbd5e1, -3px -3px 6px #ffffff !important;
+    border: 1px solid rgba(180, 83, 9, 0.2) !important;
+    color: #ffffff !important;
+    border-radius: 14px !important;
+}
+
+/* Light: Danger (red locked) */
+.theme-light .exec-header-bar .exec-header-danger {
+    background-color: #fef2f2 !important;
+    box-shadow: inset 2px 2px 4px #fecaca, inset -2px -2px 4px #ffffff !important;
+    border: 1px solid rgba(185, 28, 28, 0.2) !important;
+    color: #b91c1c !important;
+    border-radius: 14px !important;
+}
+
+/* Dark: pill base */
+.theme-dark .exec-header-bar .exec-header-pill {
+    background-color: #1a1e28 !important;
+    box-shadow: 4px 4px 8px #0f1219, -4px -4px 8px #252a3b !important;
+    border: 1px solid rgba(255, 255, 255, 0.04) !important;
+    color: rgba(255, 255, 255, 0.75) !important;
+    border-radius: 14px !important;
+}
+.theme-dark .exec-header-bar .exec-header-pill:hover {
+    box-shadow: 2px 2px 4px #0f1219, -2px -2px 4px #252a3b !important;
+    color: rgba(255, 255, 255, 0.95) !important;
+}
+
+/* Dark: CTA (amber fill) */
+.theme-dark .exec-header-bar .exec-header-cta {
+    background-color: #F0B90B !important;
+    box-shadow: 0 4px 12px rgba(240, 185, 11, 0.35) !important;
+    border: 1px solid rgba(240, 185, 11, 0.3) !important;
+    border-radius: 14px !important;
+}
+
+/* Dark: Danger (red locked) */
+.theme-dark .exec-header-bar .exec-header-danger {
+    background-color: rgba(185, 28, 28, 0.12) !important;
+    box-shadow: inset 2px 2px 4px #0b0d14, inset -2px -2px 4px #22263a !important;
+    border: 1px solid rgba(248, 113, 113, 0.25) !important;
+    color: #f87171 !important;
+    border-radius: 14px !important;
+}
+
+/* Both themes: toggle button inside pill (exempted from global button overrides) */
+.exec-header-bar .exec-header-toggle {
+    all: unset !important;
+    display: flex !important;
+    align-items: center !important;
+    cursor: pointer !important;
+    border-radius: 9999px !important;
+    padding: 2px !important;
+    transition: background-color 0.3s ease !important;
+    flex-shrink: 0 !important;
+}
+
+
+/* ==========================================
+   DARK NEUMORPHIC SKIN FOR INCENTIVE SECTION
+   Dark base: #1a1e28 | Shadows: #0f1219 / #252a3b
+   ========================================== */
+
+/* Background */
+.theme-dark .incentive-surface,
+.theme-dark .incentive-surface.min-h-screen,
+.theme-dark .incentive-surface.w-full.h-screen {
+    background-color: #1a1e28 !important;
+    background-image: none !important;
+    color: rgba(255, 255, 255, 0.88) !important;
+}
+
+/* Force clean upright typography */
+.theme-dark .incentive-surface,
+.theme-dark .incentive-surface *,
+.theme-dark .incentive-surface .italic,
+.theme-dark .incentive-surface [class*="italic"] {
+    font-style: normal !important;
+}
+
+/* Map heavy 900 weights to 700 */
+.theme-dark .incentive-surface .font-black,
+.theme-dark .incentive-surface .font-extrabold,
+.theme-dark .incentive-surface [class*="font-black"],
+.theme-dark .incentive-surface [class*="font-extrabold"] {
+    font-weight: 700 !important;
+}
+
+/* Primary text color */
+.theme-dark .incentive-surface,
+.theme-dark .incentive-surface h1,
+.theme-dark .incentive-surface h2,
+.theme-dark .incentive-surface h3,
+.theme-dark .incentive-surface h4,
+.theme-dark .incentive-surface h5,
+.theme-dark .incentive-surface h6,
+.theme-dark .incentive-surface p,
+.theme-dark .incentive-surface label,
+.theme-dark .incentive-surface div:not([class*="bg-"]):not([class*="text-"]):not([class*="overflow"]):not([class*="w-14"]):not(.relative),
+.theme-dark .incentive-surface td,
+.theme-dark .incentive-surface th {
+    color: rgba(255, 255, 255, 0.88) !important;
+}
+
+/* Muted / secondary text */
+.theme-dark .incentive-surface .text-\[\#707A8A\],
+.theme-dark .incentive-surface .text-white\/30,
+.theme-dark .incentive-surface .text-white\/40,
+.theme-dark .incentive-surface .text-white\/20,
+.theme-dark .incentive-surface [class*="text-[#707A8A]"],
+.theme-dark .incentive-surface [class*="text-[#848E9C]"] {
+    color: rgba(255, 255, 255, 0.38) !important;
+}
+
+/* Top-level Neumorphic Cards (Extruded) */
+.theme-dark .incentive-surface .page-card,
+.theme-dark .incentive-surface section.grid > div:not([class*="bg-[#F0B90B]"]):not([class*="bg-[#0ECB81]"]):not([class*="bg-red-500"]),
+.theme-dark .incentive-surface div[class*="rounded-\[32px\]"] {
+    background-color: #1a1e28 !important;
+    border: 1px solid rgba(255, 255, 255, 0.04) !important;
+    box-shadow: 6px 6px 16px #0f1219, -6px -6px 16px #252a3b !important;
+    border-radius: 24px !important;
+    transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
+.theme-dark .incentive-surface div[class*="rounded-\[32px\]"]:hover {
+    transform: translateY(-4px) !important;
+    box-shadow: 12px 12px 24px #0a0d16, -12px -12px 24px #2d3347 !important;
+}
+
+/* Inner cards / flat panels */
+.theme-dark .incentive-surface div[class*="bg-"]:not(.page-card):not(button):not(span):not(tr):not(td):not([class*="grid"]):not(section):not(main):not([class*="w-14"]),
+.theme-dark .incentive-surface .bg-\[\#121212\],
+.theme-dark .incentive-surface .bg-\[\#050505\],
+.theme-dark .incentive-surface .bg-\[\#080808\],
+.theme-dark .incentive-surface .bg-\[\#181A20\],
+.theme-dark .incentive-surface .bg-\[\#0B0E11\],
+.theme-dark .incentive-surface .bg-\[\#0A0A0A\] {
+    background-color: rgba(255, 255, 255, 0.02) !important;
+    border: 1px solid rgba(255, 255, 255, 0.04) !important;
+    box-shadow: none !important;
+    border-radius: 12px !important;
+}
+
+/* Sunken inputs / selects / textareas */
+.theme-dark .incentive-surface input[type="text"],
+.theme-dark .incentive-surface input[type="number"],
+.theme-dark .incentive-surface select,
+.theme-dark .incentive-surface textarea,
+.theme-dark .incentive-surface .form-input,
+.theme-dark .incentive-surface .form-select,
+.theme-dark .incentive-surface .custom-scrollbar,
+.theme-dark .incentive-surface .border.border-\[\#1A1A1A\].bg-\[\#0A0A0A\].rounded {
+    background-color: #14171f !important;
+    border: none !important;
+    box-shadow: inset 4px 4px 8px #0b0d14, inset -4px -4px 8px #22263a !important;
+    border-radius: 10px !important;
+    color: rgba(255, 255, 255, 0.88) !important;
+}
+
+/* Scroll-box containers (inset) */
+.theme-dark .incentive-surface div[class*="overflow-y-auto"],
+.theme-dark .incentive-surface div[class*="overflow-x-auto"]:not(.exec-header-bar) {
+    box-shadow: inset 4px 4px 8px #0b0d14, inset -4px -4px 8px #22263a !important;
+    background-color: #14171f !important;
+    border-radius: 12px !important;
+}
+
+/* Inset Icon Sockets */
+.theme-dark .incentive-surface div[class*="w-14"][class*="h-14"] {
+    background-color: #1a1e28 !important;
+    border: none !important;
+    box-shadow: inset 3px 3px 6px #0b0d14, inset -3px -3px 6px #22263a !important;
+    border-radius: 16px !important;
+}
+
+/* Focus glow on inputs */
+.theme-dark .incentive-surface input[type="text"]:focus,
+.theme-dark .incentive-surface input[type="number"]:focus,
+.theme-dark .incentive-surface select:focus,
+.theme-dark .incentive-surface textarea:focus {
+    box-shadow: inset 5px 5px 10px #0b0d14, inset -5px -5px 10px #22263a, 0 0 6px rgba(240, 185, 11, 0.2) !important;
+    outline: none !important;
+}
+
+/* Interactive Buttons */
+.theme-dark .incentive-surface button:not(.exec-header-btn),
+.theme-dark .incentive-surface .btn:not(.exec-header-btn),
+.theme-dark .incentive-surface a.btn:not(.exec-header-btn) {
+    background-color: #1a1e28 !important;
+    box-shadow: 4px 4px 8px #0f1219, -4px -4px 8px #252a3b !important;
+    border: 1px solid rgba(255, 255, 255, 0.04) !important;
+    border-radius: 10px !important;
+    color: rgba(255, 255, 255, 0.7) !important;
+    font-weight: 700 !important;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.05em !important;
+}
+
+/* Hover buttons */
+.theme-dark .incentive-surface button:not(.exec-header-btn):hover,
+.theme-dark .incentive-surface .btn:not(.exec-header-btn):hover {
+    color: rgba(255, 255, 255, 0.95) !important;
+    box-shadow: 2px 2px 4px #0f1219, -2px -2px 4px #252a3b !important;
+}
+
+/* Active / Pressed buttons (inset) */
+.theme-dark .incentive-surface button:not(.exec-header-btn):active,
+.theme-dark .incentive-surface .btn:not(.exec-header-btn):active,
+.theme-dark .incentive-surface button.active:not(.exec-header-btn),
+.theme-dark .incentive-surface button[aria-selected="true"]:not(.exec-header-btn),
+.theme-dark .incentive-surface .btn-active:not(.exec-header-btn) {
+    background-color: #14171f !important;
+    box-shadow: inset 4px 4px 8px #0b0d14, inset -4px -4px 8px #22263a !important;
+    color: #F0B90B !important;
+}
+
+/* Amber / Gold Selected Buttons (Solid Gold) */
+.theme-dark .incentive-surface button.bg-\[\#F0B90B\]:not(.exec-header-btn),
+.theme-dark .incentive-surface button.bg-\[\#FCD535\]:not(.exec-header-btn) {
+    background-color: #F0B90B !important;
+    box-shadow: 0 4px 14px rgba(240, 185, 11, 0.4) !important;
+    color: #12161f !important;
+    border: 1px solid #F0B90B !important;
+    font-weight: 800 !important;
+}
+
+/* Excluded / Blocked Buttons (Vibrant Sunken Solid Red) */
+.theme-dark .incentive-surface button.bg-red-500,
+.theme-dark .incentive-surface button.tag-excluded {
+    background-color: #e11d48 !important; /* Solid rose/red background */
+    box-shadow: inset 3px 3px 8px rgba(0, 0, 0, 0.45), inset -3px -3px 8px rgba(255, 255, 255, 0.2) !important; /* Dark & light inset shadows */
+    border: 1px solid #be123c !important;
+    color: #ffffff !important; /* White text */
+    font-weight: 800 !important;
+    transform: none !important;
+}
+.theme-dark .incentive-surface button.bg-red-500:hover,
+.theme-dark .incentive-surface button.tag-excluded:hover {
+    background-color: #be123c !important;
+    color: #ffffff !important;
+}
+
+/* Excluded items indicators (Crimson inset) */
+.theme-dark .incentive-surface .bg-red-500\/20,
+.theme-dark .incentive-surface span[class*="bg-red-500"],
+.theme-dark .incentive-surface tr[class*="bg-red-500"],
+.theme-dark .incentive-surface .bg-\[\#F6465D\]\/10,
+.theme-dark .incentive-surface span[class*="text-[#F6465D]"] {
+    background-color: rgba(185, 28, 28, 0.1) !important;
+    box-shadow: inset 3px 3px 6px #0b0d14, inset -3px -3px 6px #22263a !important;
+    color: #f87171 !important;
+    border: 1px solid rgba(248, 113, 113, 0.2) !important;
+}
+
+/* Eligible items (Emerald inset) */
+.theme-dark .incentive-surface button[class*="bg-[#0ECB81]"],
+.theme-dark .incentive-surface .bg-\[\#0ECB81\]\/20,
+.theme-dark .incentive-surface span[class*="bg-[#0ECB81]"],
+.theme-dark .incentive-surface tr[class*="bg-[#0ECB81]"] {
+    background-color: rgba(5, 150, 105, 0.1) !important;
+    box-shadow: inset 3px 3px 6px #0b0d14, inset -3px -3px 6px #22263a !important;
+    color: #34d399 !important;
+    border: 1px solid rgba(52, 211, 153, 0.2) !important;
+}
+
+/* Role Matrix Active items */
+.theme-dark .incentive-surface button[class*="bg-[#2B3139]"],
+.theme-dark .incentive-surface button.bg-\[\#2B3139\] {
+    background-color: rgba(240, 185, 11, 0.08) !important;
+    box-shadow: inset 4px 4px 8px #0b0d14, inset -4px -4px 8px #22263a !important;
+    color: #F0B90B !important;
+    border: 1px solid rgba(240, 185, 11, 0.15) !important;
+}
+
+/* Remove standard dropshadows */
+.theme-dark .incentive-surface .shadow-lg,
+.theme-dark .incentive-surface .shadow-2xl,
+.theme-dark .incentive-surface .shadow-xl,
+.theme-dark .incentive-surface .shadow-inner {
+    box-shadow: none !important;
+}
+
+/* Remove gradients */
+.theme-dark .incentive-surface .bg-gradient-to-r,
+.theme-dark .incentive-surface .bg-gradient-to-b,
+.theme-dark .incentive-surface .bg-gradient-to-t {
+    background-image: none !important;
+}
+
+/* Neumorphic Tables */
+.theme-dark .incentive-surface table {
+    border-collapse: separate !important;
+    border-spacing: 0 10px !important;
+    background: transparent !important;
+    width: 100% !important;
+}
+
+.theme-dark .incentive-surface table tr {
+    background-color: #1a1e28 !important;
+    box-shadow: 4px 4px 8px #0f1219, -4px -4px 8px #252a3b !important;
+    border-radius: 12px !important;
+}
+
+.theme-dark .incentive-surface table tr:hover {
+    box-shadow: 2px 2px 4px #0f1219, -2px -2px 4px #252a3b !important;
+}
+
+.theme-dark .incentive-surface table td,
+.theme-dark .incentive-surface table th {
+    border: none !important;
+    background: transparent !important;
+    padding: 10px 14px !important;
+}
+
+.theme-dark .incentive-surface table td:first-child {
+    border-top-left-radius: 12px !important;
+    border-bottom-left-radius: 12px !important;
+}
+
+.theme-dark .incentive-surface table td:last-child {
+    border-top-right-radius: 12px !important;
+    border-bottom-right-radius: 12px !important;
+}
+
+/* Table Header (sunken) */
+.theme-dark .incentive-surface table thead tr {
+    background-color: #14171f !important;
+    box-shadow: inset 3px 3px 6px #0b0d14, inset -3px -3px 6px #22263a !important;
+    border-radius: 8px !important;
+}
+
+/* Neumorphic Scrollbar */
+.theme-dark .incentive-surface ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+.theme-dark .incentive-surface ::-webkit-scrollbar-track {
+    background: #1a1e28;
+    box-shadow: inset 1px 1px 3px #0f1219, inset -1px -1px 3px #252a3b;
+    border-radius: 3px;
+}
+.theme-dark .incentive-surface ::-webkit-scrollbar-thumb {
+    background: #252a3b;
+    box-shadow: 2px 2px 4px #0f1219, -2px -2px 4px #2d3347;
+    border-radius: 3px;
+}
+.theme-dark .incentive-surface ::-webkit-scrollbar-thumb:hover {
+    background: #2d3347;
+}
+
+/* Sidebar (dark) */
+.theme-dark .incentive-surface aside,
+.theme-dark .incentive-surface aside[class*="bg-"] {
+    background-color: #14171f !important;
+    box-shadow: 4px 0 8px #0f1219 !important;
+    border-right: 1px solid rgba(255, 255, 255, 0.04) !important;
+}
+
+/* Header (dark raised) */
+.theme-dark .incentive-surface header {
+    background-color: #1a1e28 !important;
+    box-shadow: 0 4px 12px #0f1219, 0 -2px 6px #252a3b !important;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.04) !important;
+    border-radius: 0 !important;
+}
+
+/* Divider lines */
+.theme-dark .incentive-surface .border-t,
+.theme-dark .incentive-surface .border-b,
+.theme-dark .incentive-surface .border-r,
+.theme-dark .incentive-surface .border-l,
+.theme-dark .incentive-surface .border,
+.theme-dark .incentive-surface .divide-y > * {
+    border-color: rgba(255, 255, 255, 0.05) !important;
+}
+
+/* Month picker (sunken dark) */
+.theme-dark .incentive-surface .month-picker-wrapper {
+    background-color: #14171f !important;
+    box-shadow: inset 3px 3px 6px #0b0d14, inset -3px -3px 6px #22263a !important;
+    border: none !important;
+}
+
+/* Accent amber text */
+.theme-dark .incentive-surface .text-primary,
+.theme-dark .incentive-surface .text-\[\#F0B90B\] {
+    color: #F0B90B !important;
+}
+
+/* Breakdown badges dark neumorphic */
+.theme-dark .incentive-surface table .bg-black\/40,
+.theme-dark .incentive-surface table [class*="bg-black/40"] {
+    background-color: #14171f !important;
+    border-color: rgba(255, 255, 255, 0.06) !important;
+    box-shadow: inset 2px 2px 4px #0b0d14, inset -2px -2px 4px #22263a !important;
+}
+
+/* Breakdown badge text */
+.theme-dark .incentive-surface table .bg-black\/40 span:not(.text-primary):not(.text-emerald-400),
+.theme-dark .incentive-surface table [class*="bg-black/40"] span:not(.text-primary):not(.text-emerald-400) {
+    color: rgba(255, 255, 255, 0.55) !important;
+}
+
+.theme-dark .incentive-surface table .bg-black\/40 span.text-emerald-400,
+.theme-dark .incentive-surface table [class*="bg-black/40"] span.text-emerald-400,
+.theme-dark .incentive-surface table [class*="bg-black/40"] span[class*="text-emerald-400"] {
+    color: #34d399 !important;
+}
+
+/* ===================================================
+   ADDITIONAL TARGET SCOPE & MODAL UI IMPROVEMENTS
+   =================================================== */
+
+/* Light Mode: fix invisible white text using Tailwind dark-mode classes */
+.theme-light .incentive-surface .text-\[\#EAECEF\],
+.theme-light .incentive-surface [class*="text-[#EAECEF]"],
+.theme-light .incentive-surface .text-white {
+    color: #0f172a !important;
+}
+
+/* Light Mode: input placeholder color adjustments */
+.theme-light .incentive-surface input::placeholder,
+.theme-light .incentive-surface input::-webkit-input-placeholder {
+    color: #94a3b8 !important;
+    opacity: 0.8 !important;
+}
+
+/* Sunken (Inset) Icon Sockets - Extend to w-12 and w-10 sizes */
+.theme-light .incentive-surface div[class*="w-12"][class*="h-12"],
+.theme-light .incentive-surface div[class*="w-10"][class*="h-10"] {
+    background-color: #eef2f7 !important;
+    border: none !important;
+    box-shadow: inset 2px 2px 4px #cbd5e1, inset -2px -2px 4px #ffffff !important;
+    border-radius: 10px !important;
+}
+
+.theme-dark .incentive-surface div[class*="w-12"][class*="h-12"],
+.theme-dark .incentive-surface div[class*="w-10"][class*="h-10"] {
+    background-color: #1a1e28 !important;
+    border: none !important;
+    box-shadow: inset 3px 3px 6px #0b0d14, inset -3px -3px 6px #22263a !important;
+    border-radius: 10px !important;
+}
+
+/* Incentive Modal Content Container - Solid backgrounds to prevent overlapping bleed-through */
+.theme-light .incentive-modal-content {
+    background-color: #ffffff !important;
+    color: #0f172a !important;
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04) !important;
+    border: 1px solid rgba(0, 0, 0, 0.08) !important;
+}
+
+.theme-dark .incentive-modal-content {
+    background-color: #151922 !important;
+    color: rgba(255, 255, 255, 0.9) !important;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5) !important;
+    border: 1px solid rgba(255, 255, 255, 0.08) !important;
+}
+
+/* Header inside Modal */
+.theme-light .incentive-modal-content div[class*="bg-white/\[0\.02\]"] {
+    background-color: rgba(0, 0, 0, 0.02) !important;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.06) !important;
+}
+
+.theme-dark .incentive-modal-content div[class*="bg-white/\[0\.02\]"] {
+    background-color: rgba(255, 255, 255, 0.02) !important;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05) !important;
+}
+
+/* Table Row Hovers inside Modal */
+.theme-light .incentive-modal-content tr:hover {
+    background-color: rgba(0, 0, 0, 0.03) !important;
+}
+
+.theme-dark .incentive-modal-content tr:hover {
+    background-color: rgba(255, 255, 255, 0.03) !important;
+}
+
+/* Inner cards inside Modal (summary metrics, page cards) - Neumorphic Inset */
+.theme-light .incentive-modal-content div[class*="bg-[#121212]"]:not(button) {
+    background-color: #f1f5f9 !important;
+    box-shadow: inset 2px 2px 5px #cbd5e1, inset -2px -2px 5px #ffffff !important;
+    border: 1px solid rgba(0, 0, 0, 0.02) !important;
+    border-radius: 8px !important;
+}
+
+.theme-dark .incentive-modal-content div[class*="bg-[#121212]"]:not(button) {
+    background-color: #14171f !important;
+    box-shadow: inset 2px 2px 5px #0b0d14, inset -2px -2px 5px #22263a !important;
+    border: 1px solid rgba(255, 255, 255, 0.02) !important;
+    border-radius: 8px !important;
+}
+
+/* Profile Picture Placeholders in Modal */
+.theme-light .incentive-modal-content div[class*="bg-[#1A1A1A]"] {
+    background-color: #cbd5e1 !important;
+    border-color: rgba(0, 0, 0, 0.1) !important;
+    color: #475569 !important;
+}
+
+/* ===================================================
+   SEGMENT CONTROLLER (TOGGLE BUTTONS) DESIGN SYSTEM
+   =================================================== */
+
+/* --- Light Mode: Segment Controller --- */
+.theme-light .incentive-surface .segment-container {
+    background-color: #cbd5e0 !important; /* Sunken container backdrop */
+    box-shadow: inset 3px 3px 6px #94a3b8, inset -3px -3px 6px #ffffff !important;
+    border: 1px solid rgba(0, 0, 0, 0.02) !important;
+    border-radius: 12px !important;
+}
+
+/* Inactive Segment Buttons in Light Mode */
+.theme-light .incentive-surface .segment-container button {
+    background: transparent !important;
+    box-shadow: none !important;
+    border: none !important;
+    color: #475569 !important;
+    font-weight: 700 !important;
+}
+.theme-light .incentive-surface .segment-container button:hover {
+    color: #0f172a !important;
+    background: rgba(255, 255, 255, 0.2) !important;
+}
+
+/* Active Segment Buttons in Light Mode */
+.theme-light .incentive-surface .segment-container button.active-segment-tab {
+    background-color: #ffffff !important;
+    box-shadow: 2px 2px 6px #cbd5e1, -2px -2px 6px #ffffff !important;
+    border: 1px solid rgba(0, 0, 0, 0.03) !important;
+    border-radius: 8px !important;
+    font-weight: 800 !important;
+}
+
+.theme-light .incentive-surface .segment-container button.active-segment-tab.active-achievement {
+    color: #b45309 !important; /* Gold/Amber active text */
+    background-color: #fffbeb !important;
+    border: 1px solid rgba(217, 119, 6, 0.15) !important;
+}
+
+.theme-light .incentive-surface .segment-container button.active-segment-tab.active-commission {
+    color: #047857 !important; /* Green active text */
+    background-color: #e6fbf1 !important;
+    border: 1px solid rgba(4, 120, 87, 0.15) !important;
+}
+
+/* --- Dark Mode: Segment Controller --- */
+.theme-dark .incentive-surface .segment-container {
+    background-color: #12161f !important;
+    box-shadow: inset 3px 3px 6px #080b11, inset -3px -3px 6px #1d222f !important;
+    border: 1px solid rgba(255, 255, 255, 0.02) !important;
+    border-radius: 12px !important;
+}
+
+/* Inactive Segment Buttons in Dark Mode */
+.theme-dark .incentive-surface .segment-container button {
+    background: transparent !important;
+    box-shadow: none !important;
+    border: none !important;
+    color: rgba(255, 255, 255, 0.45) !important;
+    font-weight: 700 !important;
+}
+.theme-dark .incentive-surface .segment-container button:hover {
+    color: rgba(255, 255, 255, 0.95) !important;
+    background: rgba(255, 255, 255, 0.03) !important;
+}
+
+/* Active Segment Buttons in Dark Mode */
+.theme-dark .incentive-surface .segment-container button.active-segment-tab {
+    font-weight: 800 !important;
+    border-radius: 8px !important;
+}
+
+.theme-dark .incentive-surface .segment-container button.active-segment-tab.active-achievement {
+    background-color: #F0B90B !important;
+    color: #12161f !important;
+    box-shadow: 0 4px 12px rgba(240, 185, 11, 0.35) !important;
+    border: 1px solid rgba(240, 185, 11, 0.2) !important;
+}
+
+.theme-dark .incentive-surface .segment-container button.active-segment-tab.active-commission {
+    background-color: #0ECB81 !important;
+    color: #12161f !important;
+    box-shadow: 0 4px 12px rgba(14, 203, 129, 0.35) !important;
+    border: 1px solid rgba(14, 203, 129, 0.2) !important;
+}
+
+/* Selected Exclusion styling is handled globally under Excluded/Blocked buttons */
+

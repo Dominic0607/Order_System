@@ -1,8 +1,10 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useContext } from 'react';
 import { IncentiveCalculator, AppData } from '../../../types';
 import { MousePointer2, Target, Users, ShieldCheck, Box, UserX, Search, Info, X, CheckCircle2, AlertCircle, FileText } from 'lucide-react';
 import { getArrayCaseInsensitive, getValueCaseInsensitive } from '../../../constants/settingsConfig';
 import Modal from '../../common/Modal';
+import { AppContext } from '../../../context/AppContext';
+import { translations } from '../../../translations';
 
 interface Step3TargetEntitiesProps {
     calcData: Partial<IncentiveCalculator>;
@@ -13,6 +15,8 @@ interface Step3TargetEntitiesProps {
 }
 
 const Step3TargetEntities: React.FC<Step3TargetEntitiesProps> = ({ calcData, appData, updateField, toggleApplyTo, toggleExcludeTarget }) => {
+    const { language } = useContext(AppContext);
+    const t = translations[language];
     const roles = getArrayCaseInsensitive(appData, 'roles');
     const [userSearch, setUserSearch] = useState('');
     const [selectedTeam, setSelectedTeam] = useState<string | null>(null);
@@ -53,25 +57,42 @@ const Step3TargetEntities: React.FC<Step3TargetEntitiesProps> = ({ calcData, app
         const excludeTargets = calcData.excludeTargets || [];
         return excludeTargets.some(rule => {
             if (rule.startsWith('Role:')) {
-                return user.Role === rule.replace('Role:', '');
-            }
-            if (rule.startsWith('Team:')) {
-                return isUserInTeam(user.Team, rule.replace('Team:', ''));
+                const match = user.Role === rule.replace('Role:', '');
+                if (match && user.FullName.toLowerCase().includes("oudom")) {
+                    console.log("🔍 [DIAGNOSTIC] Oudom is excluded by Role rule:", rule, "User Role:", user.Role);
+                }
+                return match;
             }
             if (rule.startsWith('User:')) {
-                return user.UserName === rule.replace('User:', '');
+                const match = user.UserName === rule.replace('User:', '');
+                if (match && user.FullName.toLowerCase().includes("oudom")) {
+                    console.log("🔍 [DIAGNOSTIC] Oudom is excluded by User rule:", rule, "Username:", user.UserName);
+                }
+                return match;
             }
             if (rule.startsWith('TeamUser:')) {
                 const parts = rule.replace('TeamUser:', '').split(':');
                 if (parts.length === 2) {
                     const [teamName, userName] = parts;
                     if (contextTeam) {
-                        return user.UserName === userName && teamName.trim().toLowerCase() === contextTeam.trim().toLowerCase();
+                        const match = user.UserName === userName && teamName.trim().toLowerCase() === contextTeam.trim().toLowerCase();
+                        if (match && user.FullName.toLowerCase().includes("oudom")) {
+                            console.log("🔍 [DIAGNOSTIC] Oudom is excluded by TeamUser rule (context):", rule);
+                        }
+                        return match;
                     }
-                    return user.UserName === userName && isUserInTeam(user.Team, teamName);
+                    const match = user.UserName === userName && isUserInTeam(user.Team, teamName);
+                    if (match && user.FullName.toLowerCase().includes("oudom")) {
+                        console.log("🔍 [DIAGNOSTIC] Oudom is excluded by TeamUser rule:", rule);
+                    }
+                    return match;
                 }
             }
-            return rule === user.UserName;
+            const exactMatch = rule === user.UserName;
+            if (exactMatch && user.FullName.toLowerCase().includes("oudom")) {
+                console.log("🔍 [DIAGNOSTIC] Oudom is excluded by exact match rule:", rule);
+            }
+            return exactMatch;
         });
     };
 
@@ -91,8 +112,8 @@ const Step3TargetEntities: React.FC<Step3TargetEntitiesProps> = ({ calcData, app
                     <Users className="w-5 h-5 text-[#F0B90B]" />
                 </div>
                 <div>
-                    <h3 className="text-lg font-black text-[#EAECEF] uppercase tracking-[0.2em]">Target Scope Definition</h3>
-                    <p className="text-[9px] font-mono text-[#707A8A] uppercase tracking-widest mt-0.5">Map protocol to specific roles, teams, or metrics</p>
+                    <h3 className="text-lg font-black text-[#EAECEF] uppercase tracking-[0.2em]">{t.target_scope_title || 'Target Scope Definition'}</h3>
+                    <p className="text-[9px] font-mono text-[#707A8A] uppercase tracking-widest mt-0.5">{t.target_scope_desc || 'Map protocol to specific roles, teams, or metrics'}</p>
                 </div>
             </div>
 
@@ -101,15 +122,15 @@ const Step3TargetEntities: React.FC<Step3TargetEntitiesProps> = ({ calcData, app
                 <div className="space-y-4">
                     <div className="flex items-center gap-2 mb-1">
                         <MousePointer2 className="w-3.5 h-3.5 text-[#707A8A]" />
-                        <label className="text-[9px] font-black text-[#707A8A] uppercase tracking-[0.2em]">Inclusion Matrix</label>
+                        <label className="text-[9px] font-black text-[#707A8A] uppercase tracking-[0.2em]">{t.inclusion_matrix || 'Inclusion Matrix'}</label>
                     </div>
-                    <div className="bg-[#050505] border border-[#1A1A1A] rounded p-5 max-h-[400px] overflow-y-auto space-y-6 custom-scrollbar transition-all hover:border-[#F0B90B]/20">
-                        <div className="space-y-3">
-                            <span className="text-[10px] font-black text-[#F0B90B] uppercase tracking-[0.2em] flex items-center gap-2">
+                    <div className="bg-[#050505] border border-[#1A1A1A] rounded p-5 pb-8 h-[480px] overflow-y-auto space-y-6 custom-scrollbar transition-all hover:border-[#F0B90B]/20">
+                        <div className="space-y-3 pb-4">
+                            <span className="text-[10px] font-black text-primary uppercase tracking-[0.2em] flex items-center gap-2">
                                 <ShieldCheck className="w-3 h-3" />
-                                Roles Protocol
+                                {t.roles_protocol || 'Roles Protocol'}
                             </span>
-                            <div className="flex flex-wrap gap-2">
+                            <div className="flex flex-wrap gap-x-3 gap-y-2.5">
                                 {roles.map((r, idx) => {
                                     const roleName = getValueCaseInsensitive(r, 'RoleName') || getValueCaseInsensitive(r, 'Role');
                                     return (
@@ -125,12 +146,12 @@ const Step3TargetEntities: React.FC<Step3TargetEntitiesProps> = ({ calcData, app
                                 })}
                             </div>
                         </div>
-                        <div className="space-y-3 pt-4 border-t border-[#1A1A1A]">
-                            <span className="text-[10px] font-black text-[#F0B90B] uppercase tracking-[0.2em] flex items-center gap-2">
+                        <div className="space-y-3 pt-4 border-t border-[#1A1A1A] pb-4">
+                            <span className="text-[10px] font-black text-primary uppercase tracking-[0.2em] flex items-center gap-2">
                                 <Users className="w-3 h-3" />
-                                Teams Sync
+                                {t.teams_sync || 'Teams Sync'}
                             </span>
-                            <div className="flex flex-wrap gap-2">
+                            <div className="flex flex-wrap gap-x-3 gap-y-2.5">
                                 {allTeams.map(team => {
                                     const isSelected = calcData.applyTo?.includes(`Team:${team}`);
                                     return (
@@ -146,22 +167,22 @@ const Step3TargetEntities: React.FC<Step3TargetEntitiesProps> = ({ calcData, app
                                             >
                                                 {team}
                                             </button>
-                                            <button
-                                                type="button"
+                                            <span
+                                                role="button"
                                                 onClick={(e) => {
                                                     e.stopPropagation();
                                                     setSelectedTeam(team);
                                                     setIsModalOpen(true);
                                                 }}
-                                                className={`absolute right-1 top-1/2 -translate-y-1/2 p-1 rounded-full transition-all ${
+                                                className={`absolute right-1 top-1/2 -translate-y-1/2 p-1 rounded-full transition-all cursor-pointer ${
                                                     isSelected 
                                                     ? 'text-black hover:bg-black/10' 
-                                                    : 'text-[#707A8A] hover:text-[#EAECEF] hover:bg-[#1C2025]'
+                                                    : 'text-slate-400 dark:text-[#707A8A] hover:text-slate-900 dark:hover:text-[#EAECEF] hover:bg-slate-200 dark:hover:bg-[#1C2025]'
                                                 }`}
                                                 title="View Team Details"
                                             >
                                                 <Info className="w-3.5 h-3.5" />
-                                            </button>
+                                            </span>
                                         </div>
                                     );
                                 })}
@@ -174,22 +195,22 @@ const Step3TargetEntities: React.FC<Step3TargetEntitiesProps> = ({ calcData, app
                 <div className="space-y-4">
                     <div className="flex items-center gap-2 mb-1">
                         <UserX className="w-3.5 h-3.5 text-red-500" />
-                        <label className="text-[9px] font-black text-red-500/80 uppercase tracking-[0.2em]">Exclusion List</label>
+                        <label className="text-[9px] font-black text-red-500/80 uppercase tracking-[0.2em]">{t.exclusion_list || 'Exclusion List'}</label>
                     </div>
-                    <div className="bg-[#050505] border border-red-500/10 rounded p-5 max-h-[400px] overflow-y-auto space-y-6 custom-scrollbar transition-all hover:border-red-500/30">
-                        <div className="space-y-4">
+                    <div className="bg-[#050505] border border-red-500/10 rounded p-5 pb-8 h-[480px] overflow-y-auto space-y-6 custom-scrollbar transition-all hover:border-red-500/30">
+                        <div className="space-y-4 pb-4">
                             <div className="relative">
                                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[#707A8A]" />
                                 <input 
                                     type="text"
                                     value={userSearch}
                                     onChange={e => setUserSearch(e.target.value)}
-                                    placeholder="SEARCH STAFF TO EXCLUDE..."
+                                    placeholder={t.search_staff_exclude || "SEARCH STAFF TO EXCLUDE..."}
                                     className="w-full bg-[#121212] border border-[#1A1A1A] rounded-xl pl-9 pr-4 py-2.5 text-[10px] font-bold text-[#EAECEF] focus:border-red-500/40 outline-none transition-all placeholder:text-[#333]"
                                 />
                             </div>
                             
-                            <div className="flex flex-wrap gap-2 min-h-[40px]">
+                            <div className="flex flex-wrap gap-x-3 gap-y-2.5 min-h-[40px]">
                                 {filteredUsers.map(u => (
                                     <button 
                                         key={u.UserName}
@@ -198,17 +219,17 @@ const Step3TargetEntities: React.FC<Step3TargetEntitiesProps> = ({ calcData, app
                                         className={`px-3 py-1.5 rounded-lg text-[10px] font-bold border transition-all uppercase tracking-widest flex items-center gap-2 ${calcData.excludeTargets?.includes(`User:${u.UserName}`) ? 'bg-red-500 text-white border-red-500 shadow-lg shadow-red-500/20' : 'bg-[#121212] border-[#1A1A1A] text-[#707A8A] hover:text-[#EAECEF] hover:border-red-500/20'}`}
                                     >
                                         {u.FullName}
-                                        {calcData.excludeTargets?.includes(`User:${u.UserName}`) && <UserX size={10} />}
+                                        {calcData.excludeTargets?.includes(`User:${u.UserName}`) && <UserX size={10} fill="currentColor" />}
                                     </button>
                                 ))}
                             </div>
                         </div>
 
-                        <div className="space-y-3 pt-4 border-t border-[#1A1A1A]">
+                        <div className="space-y-3 pt-4 border-t border-[#1A1A1A] pb-4">
                             <span className="text-[10px] font-black text-[#707A8A] uppercase tracking-[0.2em] flex items-center gap-2 italic">
-                                Exclusion Rules (Roles)
+                                {t.exclusion_rules_roles || 'Exclusion Rules (Roles)'}
                             </span>
-                            <div className="flex flex-wrap gap-2">
+                            <div className="flex flex-wrap gap-x-3 gap-y-2.5">
                                 {roles.map((r, idx) => {
                                     const roleName = getValueCaseInsensitive(r, 'RoleName') || getValueCaseInsensitive(r, 'Role');
                                     return (
@@ -216,20 +237,21 @@ const Step3TargetEntities: React.FC<Step3TargetEntitiesProps> = ({ calcData, app
                                             key={roleName || idx} 
                                             type="button" 
                                             onClick={() => toggleExcludeTarget(`Role:${roleName}`)} 
-                                            className={`px-3 py-1.5 rounded text-[10px] font-bold border transition-all uppercase tracking-widest ${calcData.excludeTargets?.includes(`Role:${roleName}`) ? 'bg-red-500/20 text-red-500 border-red-500/40' : 'bg-[#121212] border-[#1A1A1A] text-[#707A8A] hover:text-[#EAECEF]'}`}
+                                            className={`px-3 py-1.5 rounded text-[10px] font-bold border transition-all uppercase tracking-widest flex items-center gap-2 ${calcData.excludeTargets?.includes(`Role:${roleName}`) ? 'tag-excluded bg-red-500/20 text-red-500 border-red-500/40' : 'tag-inactive bg-[#121212] border-[#1A1A1A] text-[#707A8A] hover:text-[#EAECEF]'}`}
                                         >
                                             {roleName}
+                                            {calcData.excludeTargets?.includes(`Role:${roleName}`) && <UserX size={10} fill="currentColor" />}
                                         </button>
                                     );
                                 })}
                             </div>
                         </div>
 
-                        <div className="space-y-3 pt-4 border-t border-[#1A1A1A]">
+                        <div className="space-y-3 pt-4 border-t border-[#1A1A1A] pb-4">
                             <span className="text-[10px] font-black text-[#707A8A] uppercase tracking-[0.2em] flex items-center gap-2 italic">
-                                Exclusion Rules (Teams)
+                                {t.exclusion_rules_teams || 'Exclusion Rules (Teams)'}
                             </span>
-                            <div className="flex flex-wrap gap-2">
+                            <div className="flex flex-wrap gap-x-3 gap-y-2.5">
                                 {allTeams.map(team => {
                                     const isExcluded = calcData.excludeTargets?.includes(`Team:${team}`);
                                     return (
@@ -237,9 +259,10 @@ const Step3TargetEntities: React.FC<Step3TargetEntitiesProps> = ({ calcData, app
                                             key={team} 
                                             type="button" 
                                             onClick={() => toggleExcludeTarget(`Team:${team}`)} 
-                                            className={`px-3 py-1.5 rounded text-[10px] font-bold border transition-all uppercase tracking-widest ${isExcluded ? 'bg-red-500/20 text-red-500 border-red-500/40' : 'bg-[#121212] border-[#1A1A1A] text-[#707A8A] hover:text-[#EAECEF]'}`}
+                                            className={`px-3 py-1.5 rounded text-[10px] font-bold border transition-all uppercase tracking-widest flex items-center gap-2 ${isExcluded ? 'tag-excluded bg-red-500/20 text-red-500 border-red-500/40' : 'tag-inactive bg-[#121212] border-[#1A1A1A] text-[#707A8A] hover:text-[#EAECEF]'}`}
                                         >
                                             {team}
+                                            {isExcluded && <UserX size={10} fill="currentColor" />}
                                         </button>
                                     );
                                 })}
@@ -253,7 +276,9 @@ const Step3TargetEntities: React.FC<Step3TargetEntitiesProps> = ({ calcData, app
                 <div className="space-y-3">
                     <div className="flex items-center gap-2">
                         <Target className="w-3.5 h-3.5 text-[#707A8A]" />
-                        <label className="text-[9px] font-black text-[#707A8A] uppercase tracking-[0.2em]">Core Performance Metric</label>
+                        <label className="text-[9px] font-black text-[#707A8A] uppercase tracking-[0.2em]">
+                            {t.core_perf_metric || 'Core Performance Metric'}
+                        </label>
                     </div>
                     <select 
                         value={calcData.metricType} 
@@ -279,9 +304,11 @@ const Step3TargetEntities: React.FC<Step3TargetEntitiesProps> = ({ calcData, app
                 <div className="space-y-3">
                     <div className="flex items-center gap-2">
                         <Box className="w-3.5 h-3.5 text-[#707A8A]" />
-                        <label className="text-[9px] font-black text-[#707A8A] uppercase tracking-[0.2em]">Measurement Unit</label>
+                        <label className="text-[9px] font-black text-[#707A8A] uppercase tracking-[0.2em]">
+                            {t.measurement_unit || 'Measurement Unit'}
+                        </label>
                     </div>
-                    <div className="flex p-1 bg-[#050505] rounded border border-[#1A1A1A]">
+                    <div className="flex p-1 bg-[#050505] rounded border border-[#1A1A1A] segment-container">
                         {['USD', 'Count', '%'].map(u => {
                             const isActive = calcData.metricUnit === u;
                             const isAchievement = calcData.type === 'Achievement';
@@ -306,9 +333,11 @@ const Step3TargetEntities: React.FC<Step3TargetEntitiesProps> = ({ calcData, app
                 <div className="space-y-3">
                     <div className="flex items-center gap-2">
                         <Users className="w-3.5 h-3.5 text-[#707A8A]" />
-                        <label className="text-[9px] font-black text-[#707A8A] uppercase tracking-[0.2em]">Incentive Scale Level</label>
+                        <label className="text-[9px] font-black text-[#707A8A] uppercase tracking-[0.2em]">
+                            {t.incentive_scale_level || 'Incentive Scale Level'}
+                        </label>
                     </div>
-                    <div className="flex p-1 bg-[#050505] rounded border border-[#1A1A1A]">
+                    <div className="flex p-1 bg-[#050505] rounded border border-[#1A1A1A] segment-container">
                         {['Individual', 'Team'].map(level => {
                             const isActive = (calcData.calculationLevel || 'Individual') === level;
                             const isAchievement = calcData.type === 'Achievement';
@@ -316,7 +345,14 @@ const Step3TargetEntities: React.FC<Step3TargetEntitiesProps> = ({ calcData, app
                                 <button
                                     key={level}
                                     type="button"
-                                    onClick={() => updateField('calculationLevel', level)}
+                                    onClick={() => {
+                                        updateField('calculationLevel', level);
+                                        if (level === 'Individual') {
+                                            updateField('distributionRule', { ...calcData.distributionRule, method: 'Individual' });
+                                        } else {
+                                            updateField('distributionRule', { ...calcData.distributionRule, method: 'Equal Split' });
+                                        }
+                                    }}
                                     className={`flex-1 py-2 rounded text-[10px] font-black uppercase tracking-widest transition-all ${
                                         isActive
                                             ? `active-segment-tab ${isAchievement ? 'active-achievement' : 'active-commission'}`
@@ -333,7 +369,7 @@ const Step3TargetEntities: React.FC<Step3TargetEntitiesProps> = ({ calcData, app
 
             {/* Team Detail Modal */}
             <Modal isOpen={isModalOpen && selectedTeam !== null} onClose={() => setIsModalOpen(false)} maxWidth="max-w-2xl">
-                <div className="incentive-surface bg-[#050505] border border-white/10 shadow-[0_30px_60px_rgba(0,0,0,0.6)] overflow-hidden text-[#EAECEF] font-sans rounded-xl relative">
+                <div className="incentive-surface incentive-modal-content overflow-hidden font-sans rounded-xl relative">
                     {/* Visual Accent */}
                     <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-[#F0B90B] to-transparent opacity-50"></div>
                     <div className="absolute -top-24 -right-24 w-48 h-48 rounded-full blur-[100px] opacity-20 bg-[#F0B90B]"></div>
@@ -498,11 +534,12 @@ const Step3TargetEntities: React.FC<Step3TargetEntitiesProps> = ({ calcData, app
                                                         <td className="px-4 py-3 text-right">
                                                             {(() => {
                                                                 const isExcludedGlobally = (calcData.excludeTargets || []).some(rule => {
+                                                                    const match = rule === `User:${u.UserName}` || rule === u.UserName || rule === `Role:${u.Role}`;
+                                                                    if (match && u.FullName.toLowerCase().includes("oudom")) {
+                                                                        console.log("🔍 [DIAGNOSTIC] Oudom Rattanak excluded by rule:", rule, "Username:", u.UserName, "Role:", u.Role, "All Rules:", calcData.excludeTargets);
+                                                                    }
                                                                     if (rule === `User:${u.UserName}` || rule === u.UserName || rule === `Role:${u.Role}`) {
                                                                         return true;
-                                                                    }
-                                                                    if (rule.startsWith('Team:')) {
-                                                                        return isUserInTeam(u.Team, rule.replace('Team:', ''));
                                                                     }
                                                                     return false;
                                                                 });

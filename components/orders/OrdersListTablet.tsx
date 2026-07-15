@@ -51,6 +51,7 @@ const OrdersListTablet: React.FC<OrdersListTabletProps> = ({
     const { appData, previewImage, currentUser, advancedSettings, language, hasPermission } = useContext(AppContext);
     const t = translations[language];
     const isBinance = advancedSettings?.uiTheme === 'binance';
+    const isLightMode = advancedSettings?.themeMode === 'light';
 
     // Helper for robust date parsing
     const getSafeDateObj = (dateStr: string) => {
@@ -150,8 +151,8 @@ const OrdersListTablet: React.FC<OrdersListTabletProps> = ({
                             ) : (
                                 <>
                                     <div className="w-1.5 h-5 bg-purple-500 rounded-full"></div>
-                                    <span className="text-xs font-black text-gray-400 uppercase tracking-[0.2em] italic">{groupBy}: <span className="text-white">{group.label}</span></span>
-                                    <span className="text-xs text-gray-600 font-bold ml-auto">{group.orders.length} items</span>
+                                    <span className={`text-xs font-black uppercase tracking-[0.2em] italic ${isLightMode ? 'text-slate-500' : 'text-gray-400'}`}>{groupBy}: <span className={isLightMode ? 'text-slate-800 font-black' : 'text-white'}>{group.label}</span></span>
+                                    <span className={`text-xs ${isLightMode ? 'text-slate-400' : 'text-gray-655'} font-bold ml-auto`}>{group.orders.length} items</span>
                                 </>
                             )}
                         </div>
@@ -175,12 +176,20 @@ const OrdersListTablet: React.FC<OrdersListTabletProps> = ({
                             const isReturned = fs === 'Returned';
                             const packagePhoto = order['Package Photo'];
 
+                            const rowBgClass = isSelected
+                                ? (isLightMode ? 'bg-blue-55 border-blue-300' : 'bg-blue-600/20 border-blue-500/50')
+                                : isVerified
+                                    ? (isLightMode ? 'bg-emerald-50/50 border-emerald-200' : 'bg-emerald-500/5 border-emerald-500/10')
+                                    : (isLightMode 
+                                        ? 'bg-white border-slate-200 shadow-sm hover:bg-slate-50' 
+                                        : 'bg-[#1e293b]/40 border-white/5 hover:bg-[#1e293b]/60');
+
                             if (viewMode === 'list') {
                                 return (
                                     <div 
                                         key={order['Order ID']}
                                         onClick={() => onView && onView(order)}
-                                        className={`flex items-center gap-4 p-4 rounded-2xl border transition-all active:scale-[0.99] cursor-pointer relative overflow-hidden ${isSelected ? 'bg-blue-600/20 border-blue-500/50' : isVerified ? 'bg-emerald-500/5 border-emerald-500/10' : 'bg-[#1e293b]/40 border-white/5'} ${isCancelled || isReturned ? 'opacity-60 grayscale-[0.5]' : ''} ${isCancelled ? 'is-cancelled-node' : ''}`}
+                                        className={`flex items-center gap-4 p-4 rounded-2xl border transition-all active:scale-[0.99] cursor-pointer relative overflow-hidden ${rowBgClass} ${isCancelled || isReturned ? 'opacity-60 grayscale-[0.5]' : ''} ${isCancelled ? 'is-cancelled-node' : ''}`}
                                     >
                                         <style>{`
                                             .is-cancelled-node * {
@@ -201,29 +210,29 @@ const OrdersListTablet: React.FC<OrdersListTabletProps> = ({
                                             </div>
                                         )}
                                         <div className="flex-shrink-0" onClick={e => e.stopPropagation()}>
-                                            <input type="checkbox" checked={isSelected} onChange={() => onToggleSelect && onToggleSelect(order['Order ID'])} className="h-5 w-5 rounded-lg border-white/10 bg-white/5 text-blue-500 focus:ring-0" />
+                                            <input type="checkbox" checked={isSelected} onChange={() => onToggleSelect && onToggleSelect(order['Order ID'])} className={`h-5 w-5 rounded-lg border-gray-300 focus:ring-0 ${isLightMode ? 'bg-white text-blue-600' : 'bg-white/5 text-blue-500'}`} />
                                         </div>
-                                        <div className="w-10 h-10 rounded-lg bg-black/40 border border-white/5 p-0.5 flex-shrink-0">
-                                            {logoUrl ? <img src={logoUrl} className="w-full h-full object-cover rounded-md" alt="" /> : <div className="w-full h-full flex items-center justify-center text-[8px] text-gray-600">N/A</div>}
+                                        <div className={`w-10 h-10 rounded-lg p-0.5 flex-shrink-0 border ${isLightMode ? 'bg-slate-100 border-slate-200' : 'bg-black/40 border-white/5'}`}>
+                                            {logoUrl ? <img src={logoUrl} className="w-full h-full object-cover rounded-md" alt="" /> : <div className={`w-full h-full flex items-center justify-center text-[8px] ${isLightMode ? 'text-slate-400' : 'text-gray-600'}`}>N/A</div>}
                                         </div>
                                         {packagePhoto && (
-                                            <div className="w-10 h-10 rounded-lg bg-black/20 border border-blue-500/30 overflow-hidden shrink-0 relative hidden sm:block">
+                                            <div className={`w-10 h-10 rounded-lg bg-black/20 border overflow-hidden shrink-0 relative hidden sm:block ${isLightMode ? 'border-blue-200' : 'border-blue-500/30'}`}>
                                                 <img src={convertGoogleDriveUrl(packagePhoto)} className="w-full h-full object-cover" alt="PKG" />
                                             </div>
                                         )}
                                         <div className="flex-grow min-w-0 grid grid-cols-4 gap-4 items-center">
                                             <div className="col-span-1 min-w-0">
-                                                <h4 className="text-[13px] font-black text-white truncate">{order['Customer Name']}</h4>
+                                                <h4 className={`text-[13px] font-black truncate ${isLightMode ? 'text-slate-800' : 'text-white'}`}>{order['Customer Name']}</h4>
                                                 <div className="flex items-center gap-1 mt-0.5">
                                                     {carrierLogo && <img src={carrierLogo} className="w-3 h-3 object-contain" alt="" />}
-                                                    <p className="text-[11px] font-bold text-blue-400 font-mono">{displayPhone}</p>
+                                                    <p className={`text-[11px] font-bold font-mono ${isLightMode ? 'text-blue-600' : 'text-blue-400'}`}>{displayPhone}</p>
                                                 </div>
                                             </div>
                                             <div className="col-span-1 flex flex-col gap-1 items-start">
-                                                <span className={`text-[10px] font-black uppercase px-2 py-1 rounded-lg border ${isPaid ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' : 'bg-orange-500/10 text-orange-500 border-orange-500/20'}`}>{order['Payment Status']}</span>
+                                                <span className={`text-[10px] font-black uppercase px-2 py-1 rounded-lg border ${isPaid ? (isLightMode ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20') : (isLightMode ? 'bg-orange-50 text-orange-700 border-orange-200' : 'bg-orange-500/10 text-orange-500 border-orange-500/20')}`}>{order['Payment Status']}</span>
                                                 <div className="flex items-center gap-1">
                                                     {shippingLogo && <img src={shippingLogo} className="w-3 h-3 object-contain opacity-80" alt="" />}
-                                                    <span className="text-[9px] text-gray-400 font-bold uppercase truncate">{order['Internal Shipping Method']}</span>
+                                                    <span className={`text-[9px] font-bold uppercase truncate ${isLightMode ? 'text-slate-500' : 'text-gray-400'}`}>{order['Internal Shipping Method']}</span>
                                                 </div>
                                             </div>
                                             <div className="col-span-1">
@@ -236,12 +245,12 @@ const OrdersListTablet: React.FC<OrdersListTabletProps> = ({
                                                 </div>
                                             </div>
                                             <div className="col-span-1 text-right">
-                                                <p className="text-sm font-black text-white tracking-tighter italic">${(Number(order['Grand Total']) || 0).toFixed(2)}</p>
+                                                <p className={`text-sm font-black tracking-tighter italic ${isLightMode ? 'text-slate-900' : 'text-white'}`}>${(Number(order['Grand Total']) || 0).toFixed(2)}</p>
                                             </div>
                                         </div>
                                         {showVerify && (
                                             <div className="flex-shrink-0 flex items-center gap-2" onClick={e => e.stopPropagation()}>
-                                                <button onClick={() => toggleOrderVerified(order['Order ID'], isVerified)} className={`w-10 h-10 rounded-xl border flex items-center justify-center transition-all ${isVerified ? 'bg-emerald-500 border-emerald-400 text-white' : 'bg-gray-800 border-gray-700 text-gray-500'}`}>
+                                                <button onClick={() => toggleOrderVerified(order['Order ID'], isVerified)} className={`w-10 h-10 rounded-xl border flex items-center justify-center transition-all ${isVerified ? 'bg-emerald-500 border-emerald-400 text-white' : isLightMode ? 'bg-slate-100 border-slate-200 text-slate-400 hover:border-blue-500' : 'bg-gray-800 border-gray-700 text-gray-500'}`}>
                                                     {isUpdating ? <Spinner size="xs" /> : <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={3}><path d="M5 13l4 4L19 7" /></svg>}
                                                 </button>
                                             </div>
@@ -250,16 +259,18 @@ const OrdersListTablet: React.FC<OrdersListTabletProps> = ({
                                 );
                             }
 
-                            return (
+                             return (
                                 <div 
                                     key={order['Order ID']} 
                                     className={`
                                         relative rounded-[2.5rem] p-6 shadow-xl transition-all duration-300 overflow-hidden group flex flex-col justify-between
                                         ${isSelected 
-                                            ? 'bg-blue-900/20 border-2 border-blue-500/50 shadow-blue-900/20' 
+                                            ? (isLightMode ? 'bg-blue-50 border-2 border-blue-400 shadow-blue-100/50' : 'bg-blue-900/20 border-2 border-blue-500/50 shadow-blue-900/20') 
                                             : isVerified 
-                                                ? 'bg-emerald-900/10 border border-emerald-500/20 shadow-emerald-900/10' 
-                                                : 'bg-[#1e293b]/60 border border-white/5 shadow-black/30 backdrop-blur-md hover:bg-[#1e293b]/80'
+                                                ? (isLightMode ? 'bg-emerald-50/50 border border-emerald-200 shadow-emerald-50' : 'bg-emerald-900/10 border border-emerald-500/20 shadow-emerald-900/10') 
+                                                : (isLightMode 
+                                                    ? 'bg-white border border-slate-200 shadow-slate-100/40 hover:bg-slate-50' 
+                                                    : 'bg-[#1e293b]/60 border border-white/5 shadow-black/30 backdrop-blur-md hover:bg-[#1e293b]/80')
                                         }
                                         ${isCancelled || isReturned ? 'opacity-60 grayscale-[0.5]' : ''}
                                         ${isCancelled ? 'is-cancelled-node' : ''}
@@ -283,42 +294,42 @@ const OrdersListTablet: React.FC<OrdersListTabletProps> = ({
                                             )}
                                         </div>
                                     )}
-                                    <div className="flex justify-between items-start mb-5">
-                                        <div className="flex items-center gap-3">
-                                            {onToggleSelect && (
-                                                <input 
-                                                    type="checkbox" 
-                                                    className="h-6 w-6 rounded-lg border-gray-600 bg-gray-800 text-blue-500 cursor-pointer focus:ring-0"
-                                                    checked={isSelected}
-                                                    onChange={() => onToggleSelect(order['Order ID'])}
-                                                />
-                                            )}
-                                            <button onClick={() => handleCopy(order['Order ID'])} className={`flex items-center gap-2 px-3 py-1.5 rounded-xl border transition-all active:scale-95 ${isThisCopied ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30' : 'bg-black/30 text-gray-400 border-white/5 hover:text-white'}`}>
-                                                <span className="text-[11px] font-black uppercase tracking-widest font-mono">#{order['Order ID'].substring(0, 8)}</span>
-                                            </button>
-                                        </div>
-                                        <span className={`px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-wider border ${isPaid ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 'bg-red-500/10 text-red-400 border border-red-500/20'}`}>
-                                            {order['Payment Status']}
-                                        </span>
-                                    </div>
+                                     <div className="flex justify-between items-start mb-5">
+                                         <div className="flex items-center gap-3">
+                                             {onToggleSelect && (
+                                                 <input 
+                                                     type="checkbox" 
+                                                     className={`h-6 w-6 rounded-lg border-gray-300 cursor-pointer focus:ring-0 ${isLightMode ? 'bg-white text-blue-650' : 'bg-gray-800 text-blue-500'}`}
+                                                     checked={isSelected}
+                                                     onChange={() => onToggleSelect(order['Order ID'])}
+                                                 />
+                                             )}
+                                             <button onClick={() => handleCopy(order['Order ID'])} className={`flex items-center gap-2 px-3 py-1.5 rounded-xl border transition-all active:scale-95 ${isThisCopied ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30' : isLightMode ? 'bg-slate-100 text-slate-500 border-slate-200 hover:text-slate-800' : 'bg-black/30 text-gray-400 border-white/5 hover:text-white'}`}>
+                                                 <span className="text-[11px] font-black uppercase tracking-widest font-mono">#{order['Order ID'].substring(0, 8)}</span>
+                                             </button>
+                                         </div>
+                                         <span className={`px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-wider border ${isPaid ? (isLightMode ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20') : (isLightMode ? 'bg-red-50 text-red-700 border-red-200' : 'bg-red-500/10 text-red-400 border border-red-500/20')}`}>
+                                             {order['Payment Status']}
+                                         </span>
+                                     </div>
 
                                     <div className="flex items-start gap-5 mb-6 relative">
-                                        <div className="relative w-14 h-14 rounded-2xl bg-black/40 border border-white/10 p-0.5 flex-shrink-0">
-                                            {logoUrl ? <img src={logoUrl} className="w-full h-full object-cover rounded-xl" alt="" /> : <div className="w-full h-full flex items-center justify-center text-[10px] text-gray-600">N/A</div>}
+                                        <div className={`relative w-14 h-14 rounded-2xl p-0.5 flex-shrink-0 border ${isLightMode ? 'bg-slate-100 border-slate-200' : 'bg-black/40 border-white/10'}`}>
+                                            {logoUrl ? <img src={logoUrl} className="w-full h-full object-cover rounded-xl" alt="" /> : <div className={`w-full h-full flex items-center justify-center text-[10px] ${isLightMode ? 'text-slate-400' : 'text-gray-600'}`}>N/A</div>}
                                         </div>
                                         <div className="min-w-0 flex-1">
-                                            <h3 className="text-white font-black text-base truncate">{order['Customer Name']}</h3>
+                                            <h3 className={`font-black text-base truncate ${isLightMode ? 'text-slate-800' : 'text-white'}`}>{order['Customer Name']}</h3>
                                             <div className="flex items-center gap-1.5">
                                                 {carrierLogo && <img src={carrierLogo} className="w-3.5 h-3.5 object-contain" alt="" />}
-                                                <p className="text-blue-400 font-mono font-bold text-sm">{displayPhone}</p>
+                                                <p className={`font-mono font-bold text-sm ${isLightMode ? 'text-blue-600' : 'text-blue-400'}`}>{displayPhone}</p>
                                             </div>
-                                            <div className="text-[11px] text-gray-500 font-bold truncate flex items-center gap-1 mt-1">
+                                            <div className={`text-[11px] font-bold truncate flex items-center gap-1 mt-1 ${isLightMode ? 'text-slate-400' : 'text-gray-550'}`}>
                                                 <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /><path d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
                                                 {order.Location}
                                             </div>
                                         </div>
                                         {packagePhoto && (
-                                            <div className="w-14 h-14 rounded-2xl bg-black/40 border border-blue-500/30 overflow-hidden flex-shrink-0 relative hidden sm:block">
+                                            <div className={`w-14 h-14 rounded-2xl bg-black/40 overflow-hidden flex-shrink-0 relative hidden sm:block border ${isLightMode ? 'border-blue-200' : 'border-blue-500/30'}`}>
                                                 <img src={convertGoogleDriveUrl(packagePhoto)} className="w-full h-full object-cover" alt="PKG" />
                                                 <div className="absolute bottom-0 right-0 bg-blue-500 text-white text-[8px] font-black px-1 rounded-tl-md">
                                                     PKG
@@ -328,36 +339,36 @@ const OrdersListTablet: React.FC<OrdersListTabletProps> = ({
                                     </div>
 
                                     <div className="mt-auto">
-                                        <div className="flex justify-between items-end mb-5 pt-4 border-t border-white/5">
+                                        <div className={`flex justify-between items-end mb-5 pt-4 border-t ${isLightMode ? 'border-slate-200' : 'border-white/5'}`}>
                                             <div>
-                                                <p className="text-2xl font-black text-white tracking-tight italic">${(Number(order['Grand Total']) || 0).toFixed(2)}</p>
+                                                <p className={`text-2xl font-black tracking-tight italic ${isLightMode ? 'text-slate-900' : 'text-white'}`}>${(Number(order['Grand Total']) || 0).toFixed(2)}</p>
                                             </div>
 
                                             <div className="text-right">
                                                 <div className="flex items-center justify-end gap-1.5">
                                                     {shippingLogo && <img src={shippingLogo} className="w-4 h-4 object-contain opacity-80" alt="" />}
-                                                    <span className="text-[11px] font-black text-orange-400 uppercase tracking-wide">{order['Internal Shipping Method']}</span>
+                                                    <span className="text-[11px] font-black text-orange-450 uppercase tracking-wide">{order['Internal Shipping Method']}</span>
                                                 </div>
                                             </div>
                                         </div>
 
                                         <div className="flex items-center gap-3">
-                                            <button onClick={() => onView && onView(order)} className="w-12 h-12 flex items-center justify-center bg-white/5 text-gray-400 hover:text-white rounded-2xl border border-white/10 transition-all active:scale-90">
+                                            <button onClick={() => onView && onView(order)} className={`w-12 h-12 flex items-center justify-center rounded-2xl border transition-all active:scale-90 ${isLightMode ? 'bg-slate-100 text-slate-500 border-slate-200 hover:text-slate-800 hover:bg-slate-200' : 'bg-white/5 text-gray-400 hover:text-white border-white/10'}`}>
                                                 <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5}><path d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path d="M2.458 12C3.732 7.943 7.523 5 12 5c3.478 0 6.991 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
                                             </button>
                                             {onEdit && (
                                                 allowEdit ? (
-                                                    <button onClick={() => onEdit(order)} className="flex-1 py-3 bg-blue-600/10 text-blue-400 hover:bg-blue-600 hover:text-white rounded-2xl border border-blue-500/20 font-black text-[11px] uppercase tracking-widest transition-all active:scale-95">Edit</button>
+                                                    <button onClick={() => onEdit(order)} className={`flex-1 py-3 rounded-2xl border font-black text-[11px] uppercase tracking-widest transition-all active:scale-95 ${isLightMode ? 'bg-blue-50 text-blue-650 border-blue-200 hover:bg-blue-600 hover:text-white' : 'bg-blue-600/10 text-blue-400 border-blue-500/20 hover:bg-blue-600 hover:text-white'}`}>Edit</button>
                                                 ) : (
-                                                    <button disabled className="flex-1 py-3 bg-gray-800 text-gray-600 rounded-2xl border border-white/5 font-black text-[11px] uppercase tracking-widest cursor-not-allowed">Locked</button>
+                                                    <button disabled className={`flex-1 py-3 rounded-2xl border font-black text-[11px] uppercase tracking-widest cursor-not-allowed ${isLightMode ? 'bg-slate-100 text-slate-400 border-slate-200' : 'bg-gray-800 text-gray-600 border-white/5'}`}>Locked</button>
                                                 )
                                             )}
-                                            <button onClick={() => handlePrint(order)} className="w-12 h-12 flex items-center justify-center bg-gray-800 text-gray-400 hover:text-white rounded-2xl border border-white/10 transition-all active:scale-90">
+                                            <button onClick={() => handlePrint(order)} className={`w-12 h-12 flex items-center justify-center rounded-2xl border transition-all active:scale-90 ${isLightMode ? 'bg-slate-100 text-slate-500 border-slate-200 hover:bg-slate-200 hover:text-slate-800' : 'bg-gray-800 text-gray-400 hover:text-white border-white/10'}`}>
                                                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" /></svg>
                                             </button>
                                             {showVerify && (
                                                 <div className="relative">
-                                                    <input type="checkbox" checked={isVerified} onChange={() => toggleOrderVerified(order['Order ID'], isVerified)} className={`w-12 h-12 rounded-2xl appearance-none border transition-all cursor-pointer ${isVerified ? 'bg-emerald-500 border-emerald-400' : 'bg-gray-800 border-gray-600'}`} />
+                                                    <input type="checkbox" checked={isVerified} onChange={() => toggleOrderVerified(order['Order ID'], isVerified)} className={`w-12 h-12 rounded-2xl appearance-none border transition-all cursor-pointer ${isVerified ? 'bg-emerald-500 border-emerald-400' : isLightMode ? 'bg-slate-100 border-slate-200 hover:border-blue-500' : 'bg-gray-800 border-gray-600'}`} />
                                                     <div className="absolute inset-0 flex items-center justify-center pointer-events-none">{isUpdating ? <Spinner size="sm" /> : isVerified ? <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={3}><path d="M5 13l4 4L19 7" /></svg> : <span className="text-[10px] font-black text-gray-500 uppercase">OK</span>}</div>
                                                 </div>
                                             )}

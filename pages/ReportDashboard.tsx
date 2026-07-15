@@ -36,10 +36,11 @@ const ReportDashboard: React.FC<ReportDashboardProps> = ({ activeReport, onBack,
             case 'binance':
                 return {
                     headerBg: 'bg-[#1E2329] border-[#2B3139]',
+                    titleText: 'text-[#EAECEF]',
                     accentText: 'text-[#FCD535]',
                     accentBg: 'bg-[#FCD535]',
                     dotColor: 'bg-[#FCD535]',
-                    filterBtn: 'border-[#2B3139] hover:bg-[#2B3139] text-[#848E9C]',
+                    filterBtn: 'border-[#2B3139] bg-[#2B3139]/40 hover:bg-[#2B3139] text-[#848E9C]',
                     modalBg: 'bg-[#0B0E11]',
                     modalBorder: 'border-[#2B3139]',
                     modalIndicator: 'bg-[#FCD535] shadow-[0_0_15px_rgba(252,213,53,0.4)]',
@@ -48,10 +49,11 @@ const ReportDashboard: React.FC<ReportDashboardProps> = ({ activeReport, onBack,
             case 'netflix':
                 return {
                     headerBg: 'bg-[#141414] border-white/5',
+                    titleText: 'text-white',
                     accentText: 'text-[#e50914]',
                     accentBg: 'bg-[#e50914]',
                     dotColor: 'bg-[#e50914]',
-                    filterBtn: 'border-white/10 hover:bg-white/5 text-gray-400',
+                    filterBtn: 'border-white/10 bg-white/5 hover:bg-white/10 text-gray-400',
                     modalBg: 'bg-[#141414]',
                     modalBorder: 'border-white/5',
                     modalIndicator: 'bg-[#e50914] shadow-[0_0_15px_rgba(229,9,20,0.4)]',
@@ -59,13 +61,16 @@ const ReportDashboard: React.FC<ReportDashboardProps> = ({ activeReport, onBack,
                 };
             default:
                 return {
-                    headerBg: 'bg-gray-800/20 border-white/5',
-                    accentText: 'text-blue-400',
+                    headerBg: isLightMode ? 'bg-white border-slate-200/80 shadow-sm' : 'bg-white/[0.02] border-white/[0.08]',
+                    titleText: isLightMode ? 'text-slate-900' : 'text-white',
+                    accentText: isLightMode ? 'text-blue-600' : 'text-blue-400',
                     accentBg: 'bg-blue-600',
                     dotColor: 'bg-blue-500',
-                    filterBtn: 'border-gray-700 hover:bg-gray-700 text-gray-300',
-                    modalBg: 'bg-[#0f172a]',
-                    modalBorder: 'border-white/5',
+                    filterBtn: isLightMode 
+                        ? 'border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-700 shadow-sm' 
+                        : 'border-white/10 bg-white/5 hover:bg-white/10 text-gray-300',
+                    modalBg: isLightMode ? 'bg-white' : 'bg-[#0f172a]',
+                    modalBorder: isLightMode ? 'border-slate-200' : 'border-white/5',
                     modalIndicator: 'bg-blue-600 shadow-[0_0_20px_rgba(37,99,235,0.5)]',
                     primaryBtn: 'bg-blue-600 text-white hover:bg-blue-700'
                 };
@@ -272,27 +277,27 @@ const ReportDashboard: React.FC<ReportDashboardProps> = ({ activeReport, onBack,
     return (
         <div className="animate-fade-in space-y-4 pb-20 select-none">
             {/* Header (Compact) */}
-            <div className={`flex flex-col sm:flex-row justify-between items-center gap-3 ${styles.headerBg} p-3 lg:p-4 rounded-md border backdrop-blur-md`}>
-                <div>
-                    <h1 className="hidden sm:block text-lg font-black text-white uppercase tracking-tight italic leading-none">{reportTitles[activeReport]}</h1>
-                    <div className="flex items-center gap-2 mt-1">
+            <div className={`flex flex-col sm:flex-row justify-between items-center gap-4 ${styles.headerBg} p-5 lg:px-6 lg:py-4 rounded-3xl border backdrop-blur-xl transition-all duration-300 shadow-[0_4px_20px_rgba(0,0,0,0.01)]`}>
+                <div className="text-center sm:text-left">
+                    <h1 className={`hidden sm:block text-lg font-black ${styles.titleText} uppercase tracking-widest leading-none`}>{reportTitles[activeReport]}</h1>
+                    <div className="flex items-center justify-center sm:justify-start gap-2.5 mt-2">
                         <span className={`w-1.5 h-1.5 rounded-full ${styles.dotColor} animate-pulse`}></span>
-                        <p className={`text-[9px] ${styles.accentText} font-black uppercase tracking-widest`}>
+                        <p className={`text-[10px] ${styles.accentText} font-black uppercase tracking-widest`}>
                             {activeReport === 'incentive' 
                                 ? (language === 'km' ? 'របាយការណ៍ប្រាក់លើកទឹកចិត្តបុគ្គលិកប្រចាំខែ' : 'MONTHLY STAFF INCENTIVE AND PAYOUT RECORDS')
                                 : `${calculatedRange} ${activeFilterCount > 0 ? ` • ${activeFilterCount} Active` : ''}`}
                         </p>
                     </div>
                 </div>
-                <div className="flex gap-2 w-full sm:w-auto">
+                <div className="flex gap-2.5 w-full sm:w-auto">
                     {activeReport !== 'incentive' && (
                         <button 
                             onClick={() => setIsFilterOpen(true)} 
-                            className={`relative flex-1 sm:flex-none py-2 px-4 rounded-md border ${styles.filterBtn} flex items-center justify-center gap-2 transition-all active:scale-95 text-[10px] font-black uppercase`}
+                            className={`relative flex-1 sm:flex-none py-3 px-6 rounded-2xl border ${styles.filterBtn} flex items-center justify-center gap-2.5 transition-all duration-300 hover:scale-[1.02] active:scale-95 text-[10px] font-black uppercase tracking-wider shadow-sm`}
                         >
                             <svg className={`w-3.5 h-3.5 ${styles.accentText}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" /></svg>
                             Filters
-                            {activeFilterCount > 0 && <span className={`absolute -top-1 -right-1 w-4 h-4 ${styles.accentBg} text-white text-[8px] font-black rounded-full flex items-center justify-center border border-gray-900`}>{activeFilterCount}</span>}
+                            {activeFilterCount > 0 && <span className={`absolute -top-1.5 -right-1.5 w-5 h-5 ${styles.accentBg} text-white text-[9px] font-black rounded-full flex items-center justify-center border-2 ${isLightMode ? 'border-white shadow-sm' : 'border-gray-950 shadow-md'}`}>{activeFilterCount}</span>}
                         </button>
                     )}
                 </div>

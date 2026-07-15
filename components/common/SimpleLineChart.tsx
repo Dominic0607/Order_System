@@ -1,140 +1,145 @@
-import React, { useState } from 'react';
+import React, { useContext, useMemo } from 'react';
+import { AppContext } from '../../context/AppContext';
+import {
+    AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer
+} from 'recharts';
 
 interface ChartData {
-    label: string;
+    label?: string;
+    name?: string;
     value: number;
 }
 
 interface SimpleLineChartProps {
     data: ChartData[];
-    title: string;
+    title?: string;
+    color?: string;
 }
 
-const SimpleLineChart: React.FC<SimpleLineChartProps> = ({ data, title }) => {
-    const [tooltip, setTooltip] = useState<{ visible: boolean; x: number; y: number; content: string } | null>(null);
+const SimpleLineChart: React.FC<SimpleLineChartProps> = ({ data, title, color }) => {
+    const { advancedSettings } = useContext(AppContext);
+    const uiTheme = advancedSettings?.uiTheme || 'default';
+    const isLightMode = advancedSettings?.themeMode === 'light';
+
+    // Normalize data structure dynamically to handle various key schemas
+    const formattedData = useMemo(() => {
+        if (!data || data.length === 0) return [];
+        return data.map(d => ({
+            name: d.label || d.name || '',
+            value: Number(d.value) || 0
+        }));
+    }, [data]);
+
+    // Theme-specific colors and visual aesthetics
+    const themeConfig = useMemo(() => {
+        switch (uiTheme) {
+            case 'binance':
+                return {
+                    strokeColor: color || '#FCD535',
+                    fillColor: color || '#FCD535',
+                    gridColor: '#2B3139',
+                    textColor: '#848E9C',
+                    tooltipBg: '#1E2329',
+                    tooltipBorder: '#2B3139',
+                    tooltipText: '#EAECEF',
+                };
+            case 'netflix':
+                return {
+                    strokeColor: color || '#E50914',
+                    fillColor: color || '#E50914',
+                    gridColor: 'rgba(255,255,255,0.05)',
+                    textColor: '#9ca3af',
+                    tooltipBg: '#181818',
+                    tooltipBorder: 'rgba(255,255,255,0.05)',
+                    tooltipText: '#ffffff',
+                };
+            default:
+                return {
+                    strokeColor: color || '#3b82f6',
+                    fillColor: color || '#3b82f6',
+                    gridColor: isLightMode ? '#e2e8f0' : 'rgba(255,255,255,0.08)',
+                    textColor: isLightMode ? '#64748b' : '#94a3b8',
+                    tooltipBg: isLightMode ? '#ffffff' : '#1e293b',
+                    tooltipBorder: isLightMode ? '#e2e8f0' : 'rgba(255,255,255,0.08)',
+                    tooltipText: isLightMode ? '#0f172a' : '#f8fafc',
+                };
+        }
+    }, [uiTheme, isLightMode, color]);
 
     if (!data || data.length === 0) {
         return (
-            <div className="flex items-center justify-center h-full text-gray-500 min-h-[300px]">
-                No data available for chart.
+            <div className="flex flex-col items-center justify-center h-full min-h-[300px] opacity-35 uppercase font-black tracking-widest text-[10px]">
+                <i className="fa-solid fa-chart-line text-4xl mb-4"></i>
+                No data available for chart
             </div>
         );
     }
 
-    const chartHeight = 300;
-    const chartWidth = 500;
-    const yAxisWidth = 50;
-    const xAxisHeight = 40;
-    const padding = { top: 20, right: 20, bottom: xAxisHeight, left: yAxisWidth };
-
-    const maxValue = Math.max(...data.map(d => d.value), 0);
-    const yScale = maxValue === 0 ? 0 : (chartHeight - padding.top - padding.bottom) / maxValue;
-    const xScale = (chartWidth - padding.left - padding.right) / (data.length - 1 || 1);
-
-    const getPath = () => {
-        if (data.length < 2) return '';
-        let path = `M ${padding.left},${chartHeight - padding.bottom - data[0].value * yScale}`;
-        data.slice(1).forEach((d, i) => {
-            const x = padding.left + (i + 1) * xScale;
-            const y = chartHeight - padding.bottom - d.value * yScale;
-            path += ` L ${x},${y}`;
-        });
-        return path;
+    // Custom Glassmorphic Tooltip
+    const CustomTooltip = ({ active, payload, label }: any) => {
+        if (!active || !payload?.length) return null;
+        const val = payload[0].value;
+        return (
+            <div 
+                className="p-3 shadow-2xl backdrop-blur-xl border text-[11px] font-bold rounded-2xl"
+                style={{
+                    backgroundColor: themeConfig.tooltipBg,
+                    borderColor: themeConfig.tooltipBorder,
+                    color: themeConfig.tooltipText,
+                }}
+            >
+                <div className="opacity-60 mb-1">{label}</div>
+                <div className="text-[13px] font-black tabular-nums" style={{ color: themeConfig.strokeColor }}>
+                    ${Number(val).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 })}
+                </div>
+            </div>
+        );
     };
-
-    const handleMouseOver = (e: React.MouseEvent, d: ChartData) => {
-        const rect = e.currentTarget.getBoundingClientRect();
-        const content = `${d.label}: $${d.value.toLocaleString(undefined, {maximumFractionDigits: 2})}`;
-        setTooltip({ visible: true, x: rect.left + window.scrollX, y: rect.top + window.scrollY, content });
-    };
-
-    const handleMouseOut = () => {
-        setTooltip(null);
-    };
-
-    const getTicks = (max: number) => {
-        if (max === 0) return [0];
-        const numTicks = 5;
-        const interval = Math.ceil(max / numTicks / 10) * 10;
-        if (interval === 0) return [0, max];
-        return Array.from({ length: numTicks + 1 }, (_, i) => i * interval).filter(tick => tick <= max * 1.1);
-    };
-    const yTicks = getTicks(maxValue);
 
     return (
-        <div className="relative w-full">
-            <h3 className="text-sm sm:text-lg font-black mb-6 text-white text-center uppercase tracking-widest">{title}</h3>
-            <div className="w-full overflow-hidden">
-                <svg viewBox={`0 0 ${chartWidth} ${chartHeight}`} className="w-full h-auto" preserveAspectRatio="xMinYMin meet">
-                    {/* Y-Axis and Grid Lines */}
-                    <g className="y-axis">
-                        {yTicks.map(tick => (
-                            <g key={tick} transform={`translate(0, ${chartHeight - padding.bottom - (tick * yScale)})`}>
-                                <line x1={padding.left - 5} y1="0" x2={chartWidth - padding.right} y2="0" stroke="#374151" />
-                                <text x={padding.left - 10} y="3" textAnchor="end" fill="#9ca3af" fontSize="12">
-                                    {tick >= 1000 ? `${(tick / 1000).toFixed(0)}k` : tick}
-                                </text>
-                            </g>
-                        ))}
-                    </g>
-
-                    {/* X-Axis Labels */}
-                    <g className="x-axis">
-                         {data.map((d, i) => {
-                            // Only show certain labels if there are many to prevent overlapping
-                            const total = data.length;
-                            const skip = total > 10 ? Math.ceil(total / 6) : (total > 6 ? 2 : 1);
-                            if (i % skip !== 0 && i !== total - 1) return null;
-                            
-                            return (
-                                <text
-                                    key={i}
-                                    x={padding.left + i * xScale}
-                                    y={chartHeight - padding.bottom + 20}
-                                    textAnchor="middle"
-                                    fill="#9ca3af"
-                                    fontSize="10"
-                                    className="font-bold"
-                                >
-                                    {d.label}
-                                </text>
-                            );
-                        })}
-                    </g>
-                    
-                    {/* Line path */}
-                    <path d={getPath()} fill="none" stroke="#3b82f6" strokeWidth="2" />
-
-                    {/* Data Points and Tooltip Triggers */}
-                    {data.map((d, i) => (
-                        <circle
-                            key={i}
-                            cx={padding.left + i * xScale}
-                            cy={chartHeight - padding.bottom - d.value * yScale}
-                            r="4"
-                            fill="#3b82f6"
-                            stroke="#111827"
-                            strokeWidth="2"
-                            onMouseOver={(e) => handleMouseOver(e, d)}
-                            onMouseOut={handleMouseOut}
-                            className="cursor-pointer"
-                        />
-                    ))}
-                </svg>
-            </div>
-             {tooltip && (
-                <div
-                    className="fixed p-2 text-xs text-white bg-gray-900 border border-gray-600 rounded-md shadow-lg z-50"
-                    style={{
-                        left: tooltip.x,
-                        top: tooltip.y - 35,
-                        pointerEvents: 'none',
-                        transform: 'translateX(-50%)',
-                    }}
-                >
-                    {tooltip.content}
-                </div>
+        <div className="relative w-full h-full flex flex-col">
+            {title && (
+                <h3 className="text-sm font-black mb-6 text-center uppercase tracking-widest" style={{ color: themeConfig.textColor }}>
+                    {title}
+                </h3>
             )}
+            <div className="flex-grow w-full relative min-h-[280px]">
+                <ResponsiveContainer width="100%" height="100%">
+                    <AreaChart data={formattedData} margin={{ top: 10, right: 10, left: -15, bottom: 0 }}>
+                        <defs>
+                            <linearGradient id="chartGradient" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="5%" stopColor={themeConfig.fillColor} stopOpacity={0.25}/>
+                                <stop offset="95%" stopColor={themeConfig.fillColor} stopOpacity={0}/>
+                            </linearGradient>
+                        </defs>
+                        <CartesianGrid strokeDasharray="3 3" stroke={themeConfig.gridColor} vertical={false} />
+                        <XAxis 
+                            dataKey="name" 
+                            tick={{ fill: themeConfig.textColor, fontSize: 10, fontWeight: '700' }}
+                            axisLine={false}
+                            tickLine={false}
+                            dy={10}
+                        />
+                        <YAxis 
+                            tick={{ fill: themeConfig.textColor, fontSize: 10, fontWeight: '700' }}
+                            axisLine={false}
+                            tickLine={false}
+                            tickFormatter={(v) => `$${v >= 1000 ? `${(v / 1000).toFixed(0)}k` : v}`}
+                            dx={-5}
+                        />
+                        <Tooltip content={<CustomTooltip />} cursor={{ stroke: themeConfig.gridColor, strokeWidth: 1 }} />
+                        <Area 
+                            type="monotone" 
+                            dataKey="value" 
+                            stroke={themeConfig.strokeColor} 
+                            strokeWidth={3} 
+                            fillOpacity={1} 
+                            fill="url(#chartGradient)" 
+                            activeDot={{ r: 6, strokeWidth: 0, fill: themeConfig.strokeColor }}
+                        />
+                    </AreaChart>
+                </ResponsiveContainer>
+            </div>
         </div>
     );
 };

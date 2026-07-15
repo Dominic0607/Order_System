@@ -248,11 +248,17 @@ const ShippingReport: React.FC<ShippingReportProps> = ({ orders, appData, dateFi
             stores[sName].orders += 1;
 
             if (o.Timestamp) {
-                const date = o.Timestamp.split(' ')[0];
-                if (!dateMap[date]) dateMap[date] = { cost: 0, fees: 0, count: 0 };
-                dateMap[date].cost += (Number(o['Internal Cost']) || 0);
-                dateMap[date].fees += (Number(o['Shipping Fee (Customer)']) || 0);
-                dateMap[date].count += 1;
+                const parsed = safeParseDate(o.Timestamp);
+                if (parsed) {
+                    const year = parsed.getFullYear();
+                    const month = String(parsed.getMonth() + 1).padStart(2, '0');
+                    const day = String(parsed.getDate()).padStart(2, '0');
+                    const date = `${year}-${month}-${day}`;
+                    if (!dateMap[date]) dateMap[date] = { cost: 0, fees: 0, count: 0 };
+                    dateMap[date].cost += (Number(o['Internal Cost']) || 0);
+                    dateMap[date].fees += (Number(o['Shipping Fee (Customer)']) || 0);
+                    dateMap[date].count += 1;
+                }
             }
         });
 

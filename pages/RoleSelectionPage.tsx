@@ -336,6 +336,249 @@ const RoleSelectionPage: React.FC<RoleSelectionPageProps> = ({ onSelect }) => {
             return valA - valB;
         });
 
+        if (uiTheme === 'default') {
+            return (
+                <div className={`min-h-screen w-full flex flex-col items-center justify-start relative font-['Kantumruy_Pro'] overflow-y-auto pt-24 sm:pt-28 pb-12 px-4 sm:px-6 lg:px-8 transition-all duration-500 ${styles.bg}`} style={styles.bgStyle}>
+                    {/* Background decorative glows */}
+                    <div className="fixed inset-0 pointer-events-none opacity-20 z-0">
+                        <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] rounded-full blur-[120px]" style={{ backgroundColor: styles.decorDot }}></div>
+                        <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] rounded-full blur-[120px]" style={{ backgroundColor: '#10b981' }}></div>
+                    </div>
+
+                    <style>{`
+                        .selection-btn { transition: all 0.3s cubic-bezier(0.2,0.8,0.2,1); }
+                        .selection-btn:hover { transform: translateY(-4px); }
+                        .selection-btn:active { transform: scale(0.98); }
+                        .shimmer { position: absolute; top:0; left:-100%; width:50%; height:100%; background: linear-gradient(90deg,transparent,rgba(255,255,255,0.04),transparent); transition: 0.6s; }
+                        .selection-btn:hover .shimmer { left:100%; transition: 0.8s; }
+                        @keyframes fadeInUp { from { opacity:0; transform:translateY(15px); } to { opacity:1; transform:translateY(0); } }
+                        .animate-reveal { animation: fadeInUp 0.5s cubic-bezier(0.2,0.8,0.2,1) forwards; }
+                        @keyframes wiggle {
+                            0% { transform: rotate(-0.5deg); }
+                            100% { transform: rotate(0.5deg); }
+                        }
+                        .wiggle {
+                            animation: wiggle 0.2s ease-in-out infinite alternate;
+                            pointer-events: auto !important;
+                        }
+                    `}</style>
+
+                    <div className="w-full max-w-5xl z-10 flex flex-col gap-6 sm:my-auto animate-reveal px-2 sm:px-0">
+                        {/* Mobile View: Clean Native-App Style Layout */}
+                        <div className="w-full max-w-md mx-auto flex flex-col gap-5 sm:hidden">
+                            {/* Mobile Title Section */}
+                            <div className="px-1 text-center">
+                                <h2 className="text-2xl font-extrabold tracking-tight text-slate-800 dark:text-white leading-none">
+                                    {language === 'km' ? (
+                                        <>ជ្រើសរើស <span className={styles.titleSpan}>ការចូល</span></>
+                                    ) : (
+                                        <>Select <span className={styles.titleSpan}>Access</span></>
+                                    )}
+                                </h2>
+                                <p className={`text-[10px] font-bold uppercase tracking-[0.15em] mt-2 ${styles.subtitleText}`}>
+                                    {t.role_subtext}
+                                </p>
+                            </div>
+
+                            {isReorderMode && (
+                                <div className="flex justify-end w-full mb-1 z-50 px-1">
+                                    <button 
+                                        onClick={() => setIsReorderMode(false)}
+                                        className="flex items-center gap-1.5 px-4 py-1.5 rounded-full bg-emerald-500 hover:bg-emerald-600 text-white font-black text-[10px] tracking-wider uppercase shadow-md transition-all active:scale-95"
+                                    >
+                                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7"/></svg>
+                                        Done (រួចរាល់)
+                                    </button>
+                                </div>
+                            )}
+
+                            {/* Mobile Role Grid */}
+                            <div className="flex flex-col gap-3">
+                                {sortedRoles.map((role: any, idx: number) => (
+                                    <button 
+                                        key={role.id} 
+                                        onClick={() => {
+                                            if (isReorderMode) return;
+                                            role.onClick();
+                                        }} 
+                                        className={`selection-btn group relative overflow-hidden flex flex-row py-3.5 px-5 w-full items-center justify-start rounded-2xl transition-all duration-300 ${isReorderMode ? 'wiggle' : ''} ${styles.card}`}
+                                    >
+                                        <div className="shimmer"></div>
+                                        <div className={`${styles.cardIconBg} flex items-center justify-center shrink-0`}>
+                                            <div className="w-6 h-6 flex items-center justify-center text-current">{role.icon}</div>
+                                        </div>
+                                        <div className="flex flex-col flex-grow text-left gap-1 ml-4">
+                                            <h3 className={`text-[14px] font-extrabold tracking-tight leading-tight transition-colors ${styles.cardTitle}`}>
+                                                {role.label}
+                                            </h3>
+                                            <p className={`text-[10px] font-medium leading-snug ${styles.cardSub}`}>
+                                                {role.sublabel}
+                                            </p>
+                                        </div>
+                                        {!isReorderMode ? (
+                                            <div className={`shrink-0 transition-transform duration-300 group-hover:translate-x-1 ${styles.cardArrowColor}`}>
+                                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round">
+                                                    <path d="M5 12h14M12 5l7 7-7 7"/>
+                                                </svg>
+                                            </div>
+                                        ) : (
+                                            <div className="flex items-center gap-1.5 z-50 shrink-0" onClick={(e) => e.stopPropagation()}>
+                                                {idx > 0 && (
+                                                    <button 
+                                                        onClick={() => moveCard(sortedRoles, idx, 'prev')}
+                                                        className="w-7 h-7 rounded-full flex items-center justify-center bg-white/90 border border-slate-200 shadow-sm text-slate-700 active:scale-90"
+                                                    >
+                                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7"/></svg>
+                                                    </button>
+                                                )}
+                                                {idx < sortedRoles.length - 1 && (
+                                                    <button 
+                                                        onClick={() => moveCard(sortedRoles, idx, 'next')}
+                                                        className="w-7 h-7 rounded-full flex items-center justify-center bg-white/90 border border-slate-200 shadow-sm text-slate-700 active:scale-90"
+                                                    >
+                                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7"/></svg>
+                                                    </button>
+                                                )}
+                                            </div>
+                                        )}
+                                    </button>
+                                ))}
+                            </div>
+
+                            {/* Mobile Footer */}
+                            <div className="animate-reveal flex flex-col items-center gap-2 pb-6 pt-4 shrink-0" style={{ animationDelay: '0.45s' }}>
+                                <div className="h-px w-16 bg-gradient-to-r from-transparent via-current to-transparent opacity-10"></div>
+                                <div className="flex items-center gap-2 mt-1">
+                                    <img src={APP_LOGO_URL} alt="Logo" className="w-3 h-3 grayscale opacity-25" />
+                                    <span className={`text-[8px] font-black uppercase tracking-[0.4em] ${styles.subtitleText}`}>
+                                        O-System Core v{VER}
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Desktop/Tablet Card Container View */}
+                        <div className="w-full max-w-5xl z-10 flex-col items-center gap-6 my-auto animate-reveal hidden sm:flex">
+                            <div className={`w-full rounded-[32px] border ${
+                                isLightMode 
+                                ? 'bg-white/80 border-slate-200/80 shadow-[0_25px_50px_rgba(0,0,0,0.03)]' 
+                                : 'bg-[#0b101d]/75 border-white/10 shadow-[0_35px_70px_rgba(0,0,0,0.5)]'
+                            } backdrop-blur-3xl p-8 lg:p-10 flex flex-col gap-8 relative overflow-hidden`}>
+                                
+                                {/* Unified Header: Welcome Info Only */}
+                                <div className="flex items-center justify-between gap-6 pb-6 border-b border-slate-200/10">
+                                    <div>
+                                        <h2 className="text-3xl lg:text-4xl font-extrabold tracking-tight text-slate-800 dark:text-white leading-none">
+                                            {language === 'km' ? (
+                                                <>ជ្រើសរើស <span className={styles.titleSpan}>ការចូល</span></>
+                                            ) : (
+                                                <>Select <span className={styles.titleSpan}>Access</span></>
+                                            )}
+                                        </h2>
+                                        <p className={`text-[11px] font-bold uppercase tracking-[0.3em] mt-2 ${styles.subtitleText}`}>
+                                            {t.role_subtext}
+                                        </p>
+                                    </div>
+                                    <div className="text-right shrink-0">
+                                        <div className="flex items-center gap-2 bg-slate-500/5 border border-slate-500/10 px-3.5 py-1.5 rounded-xl">
+                                            <div className="w-2.5 h-2.5 bg-emerald-500 rounded-full animate-pulse"></div>
+                                            <span className="text-[11px] font-extrabold text-slate-400 uppercase tracking-wider">
+                                                {language === 'km' ? 'ប្រព័ន្ធដំណើរការធម្មតា' : 'System Operational'}
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {isReorderMode && (
+                                    <div className="flex justify-end w-full mb-2 z-50">
+                                        <button 
+                                            onClick={() => setIsReorderMode(false)}
+                                            className="flex items-center gap-1.5 px-4 py-1.5 rounded-full bg-emerald-500 hover:bg-emerald-600 text-white font-black text-[10px] tracking-wider uppercase shadow-md transition-all active:scale-95"
+                                        >
+                                            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7"/></svg>
+                                            Done (រួចរាល់)
+                                        </button>
+                                    </div>
+                                )}
+
+                                {/* Access Portals Grid */}
+                                <div className="grid grid-cols-2 lg:grid-cols-3 gap-5">
+                                    {sortedRoles.map((role: any, idx: number) => (
+                                        <button 
+                                            key={role.id} 
+                                            onClick={() => {
+                                                if (isReorderMode) return;
+                                                role.onClick();
+                                            }} 
+                                            className={`selection-btn group relative overflow-hidden flex flex-col p-6 w-full h-[155px] items-start justify-start rounded-3xl transition-all duration-300 ${isReorderMode ? 'wiggle' : ''} ${styles.card}`}
+                                        >
+                                            <div className="shimmer"></div>
+                                            
+                                            <div className="flex items-start justify-between w-full">
+                                                <div className={`${styles.cardIconBg} flex items-center justify-center shrink-0 transition-all duration-300 group-hover:scale-105`}>
+                                                    <div className="w-6 h-6 flex items-center justify-center text-current">{role.icon}</div>
+                                                </div>
+                                                
+                                                {!isReorderMode && (
+                                                    <div className={`transition-transform duration-300 group-hover:translate-x-1 ${styles.cardArrowColor}`}>
+                                                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round">
+                                                            <path d="M5 12h14M12 5l7 7-7 7"/>
+                                                        </svg>
+                                                    </div>
+                                                )}
+                                            </div>
+                                            
+                                            <div className="flex flex-col text-left gap-0.5 mt-2">
+                                                <h3 className={`text-[15px] font-extrabold tracking-tight leading-tight transition-colors ${styles.cardTitle}`}>
+                                                    {role.label}
+                                                </h3>
+                                                <p className={`text-[11px] font-medium leading-snug ${styles.cardSub}`}>
+                                                    {role.sublabel}
+                                                </p>
+                                            </div>
+                                            
+                                            {isReorderMode && (
+                                                <div className="absolute top-6 right-6 flex items-center gap-1.5 z-50 shrink-0" onClick={(e) => e.stopPropagation()}>
+                                                    {idx > 0 && (
+                                                        <button 
+                                                            onClick={() => moveCard(sortedRoles, idx, 'prev')}
+                                                            className="w-7 h-7 rounded-full flex items-center justify-center bg-white/90 border border-slate-200 shadow-sm text-slate-700 hover:bg-slate-50 transition-all active:scale-90"
+                                                        >
+                                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7"/></svg>
+                                                        </button>
+                                                    )}
+                                                    {idx < sortedRoles.length - 1 && (
+                                                        <button 
+                                                            onClick={() => moveCard(sortedRoles, idx, 'next')}
+                                                            className="w-7 h-7 rounded-full flex items-center justify-center bg-white/90 border border-slate-200 shadow-sm text-slate-700 hover:bg-slate-50 transition-all active:scale-90"
+                                                        >
+                                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7"/></svg>
+                                                        </button>
+                                                    )}
+                                                </div>
+                                            )}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+
+                            {/* Desktop Footer */}
+                            <div className="animate-reveal flex flex-col items-center gap-2 pb-2 shrink-0" style={{ animationDelay: '0.45s' }}>
+                                <div className="h-px w-20 bg-gradient-to-r from-transparent via-current to-transparent opacity-10"></div>
+                                <div className="flex items-center gap-2 mt-1">
+                                    <img src={APP_LOGO_URL} alt="Logo" className="w-3 h-3 grayscale opacity-25" />
+                                    <span className={`text-[8px] sm:text-[9px] font-black uppercase tracking-[0.4em] ${styles.subtitleText}`}>
+                                        O-System Core v{VER}
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
+
         return (
             <div className={`min-h-screen w-full flex flex-col items-center justify-start relative font-['Kantumruy_Pro'] overflow-y-auto pt-16 sm:pt-20 pb-8 px-4 sm:px-6 lg:px-8 transition-all duration-300 ${styles.bg}`} style={styles.bgStyle}>
                 {/* Background decorative glows */}

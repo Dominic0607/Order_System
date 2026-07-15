@@ -385,19 +385,19 @@ const DesktopOrdersDashboard: React.FC<DesktopOrdersDashboardProps> = ({ onBack,
                         <div className="flex items-center gap-1.5">
                             <span className={`text-[9px] font-bold ${isLightMode ? 'text-slate-400' : isBinance ? 'text-[#848E9C]' : 'text-gray-500'} uppercase tracking-wider`}>Sort</span>
                             <select value={sortBy} onChange={e => setSortBy(e.target.value)} className={`bg-transparent border-none text-[10px] font-bold ${isLightMode ? 'text-blue-600' : isBinance ? 'text-[#EAECEF]' : 'text-blue-400'} focus:ring-0 cursor-pointer`}>
-                                <option value="date">Date</option>
-                                <option value="total">Revenue</option>
-                                <option value="customer">Customer</option>
+                                <option value="date" className={isLightMode ? 'bg-white text-slate-850' : isBinance ? 'bg-[#1E2329] text-[#EAECEF]' : 'bg-[#0f172a] text-white'}>Date</option>
+                                <option value="total" className={isLightMode ? 'bg-white text-slate-850' : isBinance ? 'bg-[#1E2329] text-[#EAECEF]' : 'bg-[#0f172a] text-white'}>Revenue</option>
+                                <option value="customer" className={isLightMode ? 'bg-white text-slate-850' : isBinance ? 'bg-[#1E2329] text-[#EAECEF]' : 'bg-[#0f172a] text-white'}>Customer</option>
                             </select>
                         </div>
                         <div className={`w-px h-3 ${isLightMode ? 'bg-slate-200' : isBinance ? 'bg-[#2B3139]' : 'bg-white/10'}`}></div>
                         <div className="flex items-center gap-1.5">
                             <span className={`text-[9px] font-bold ${isLightMode ? 'text-slate-400' : isBinance ? 'text-[#848E9C]' : 'text-gray-500'} uppercase tracking-wider`}>Group</span>
                             <select value={groupBy} onChange={e => setGroupBy(e.target.value)} className={`bg-transparent border-none text-[10px] font-bold ${isLightMode ? 'text-purple-600' : isBinance ? 'text-[#EAECEF]' : 'text-purple-400'} focus:ring-0 cursor-pointer`}>
-                                <option value="none">None</option>
-                                <option value="Page">Page</option>
-                                <option value="Team">Team</option>
-                                <option value="Fulfillment Store">Warehouse</option>
+                                <option value="none" className={isLightMode ? 'bg-white text-slate-850' : isBinance ? 'bg-[#1E2329] text-[#EAECEF]' : 'bg-[#0f172a] text-white'}>None</option>
+                                <option value="Page" className={isLightMode ? 'bg-white text-slate-850' : isBinance ? 'bg-[#1E2329] text-[#EAECEF]' : 'bg-[#0f172a] text-white'}>Page</option>
+                                <option value="Team" className={isLightMode ? 'bg-white text-slate-850' : isBinance ? 'bg-[#1E2329] text-[#EAECEF]' : 'bg-[#0f172a] text-white'}>Team</option>
+                                <option value="Fulfillment Store" className={isLightMode ? 'bg-white text-slate-850' : isBinance ? 'bg-[#1E2329] text-[#EAECEF]' : 'bg-[#0f172a] text-white'}>Warehouse</option>
                             </select>
                         </div>
                     </div>

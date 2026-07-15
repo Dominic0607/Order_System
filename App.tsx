@@ -96,6 +96,7 @@ const AppContent: React.FC = () => {
         };
         checkSystemVersion();
     }, []);
+
     const [advancedSettings, setAdvancedSettings] = useState<AdvancedSettings>(() => {
         const saved = localStorage.getItem('advancedSettings');
         const defaultSettings: AdvancedSettings = { 
@@ -103,7 +104,7 @@ const AppContent: React.FC = () => {
             enablePrivacyMode: false, 
             notificationVolume: 0.5, 
             notificationSound: 'default',
-            uiTheme: 'neumorphism',
+            uiTheme: 'default',
             themeMode: 'light',
             glassIntensity: 20,
             borderRadius: 24,
@@ -116,13 +117,8 @@ const AppContent: React.FC = () => {
         if (saved) {
             try {
                 const parsed = JSON.parse(saved);
-                // === v1.1.0 MIGRATION ===
-                // If user has old 'default' uiTheme saved but NO v1.1.0 migration flag,
-                // it means they haven't updated yet — keep their saved settings intact.
-                // Once they click Update in SystemUpdateModal, the theme auto-switches.
-                // If they have no uiTheme at all (very old save), treat as neumorphism.
                 if (!parsed.uiTheme) {
-                    parsed.uiTheme = 'neumorphism';
+                    parsed.uiTheme = 'default';
                     parsed.themeMode = parsed.themeMode || 'light';
                 }
                 return { ...defaultSettings, ...parsed };
@@ -750,7 +746,7 @@ const AppContent: React.FC = () => {
             {newVersionAvailable && (
                 <SystemUpdateModal newVersion={newVersionAvailable} currentVersion={CLIENT_VERSION} language={language} />
             )}
-            <div className={`theme-wrapper h-screen w-full overflow-hidden flex flex-col ${advancedSettings.uiTheme ? `ui-${advancedSettings.uiTheme}` : ''} ${advancedSettings.themeMode ? `theme-${advancedSettings.themeMode}` : 'theme-dark'}`}>
+            <div className={`theme-wrapper h-screen w-full overflow-hidden flex flex-col ${advancedSettings.uiTheme ? `ui-${advancedSettings.uiTheme}` : ''} ${advancedSettings.themeMode ? `theme-${advancedSettings.themeMode}` : 'theme-dark'} ${advancedSettings.themeMode === 'dark' || !advancedSettings.themeMode ? 'dark' : ''}`}>
                 {/* GLOBAL PREMIUM BACKGROUND */}
                 <div className="fixed inset-0 w-screen h-[100dvh] overflow-hidden pointer-events-none z-0" style={{ backgroundColor: 'var(--bg-dark)' }}>
                     {advancedSettings.uiTheme !== 'binance' && (

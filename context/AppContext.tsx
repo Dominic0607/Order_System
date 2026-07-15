@@ -20,6 +20,8 @@ export interface AdvancedSettings {
     borderRadius?: number; // 0 to 40
     animationSpeed?: 'none' | 'slow' | 'normal' | 'fast';
     fontStyle?: 'standard' | 'modern' | 'mono';
+    compactMode?: boolean;
+    autoSyncInterval?: number; // in seconds
 }
 
 export interface AppContextType {

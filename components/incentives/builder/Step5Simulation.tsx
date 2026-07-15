@@ -78,33 +78,50 @@ const Step5Simulation: React.FC<Step5SimulationProps> = ({ calcData, previewInpu
                 </div>
 
                 <div className="space-y-6">
-                    <div className="space-y-4">
-                        <div className="flex items-center gap-2 mb-1">
-                            <GitBranch className="w-3.5 h-3.5 text-[#707A8A]" />
-                            <label className="text-[9px] font-black text-[#707A8A] uppercase tracking-[0.2em]">Distribution_Protocol</label>
-                        </div>
-                        <div className="bg-[#050505] p-2 rounded border border-[#1A1A1A] space-y-1">
-                            {['Equal Split', 'Percentage Allocation'].map(m => (
-                                <button key={m} onClick={() => updateField('distributionRule', { ...calcData.distributionRule, method: m as any })} className={`w-full h-11 flex items-center justify-between px-4 rounded transition-all uppercase tracking-widest ${calcData.distributionRule?.method === m ? 'bg-[#2B3139] text-[#F0B90B]' : 'text-[#707A8A] hover:text-[#EAECEF]'}`}>
-                                    <span className="text-[10px] font-black">{m.replace(' ', '_')}</span>
-                                    {calcData.distributionRule?.method === m && <div className="w-1.5 h-1.5 rounded-full bg-[#F0B90B] shadow-[0_0_8px_#F0B90B]" />}
-                                </button>
-                            ))}
-                        </div>
-                    </div>
+                    {calcData.calculationLevel === 'Team' ? (
+                        <>
+                            <div className="space-y-4">
+                                <div className="flex items-center gap-2 mb-1">
+                                    <GitBranch className="w-3.5 h-3.5 text-[#707A8A]" />
+                                    <label className="text-[9px] font-black text-[#707A8A] uppercase tracking-[0.2em]">Distribution_Protocol</label>
+                                </div>
+                                <div className="bg-[#050505] p-2 rounded border border-[#1A1A1A] space-y-1">
+                                    {['Equal Split', 'Percentage Allocation'].map(m => (
+                                        <button key={m} onClick={() => updateField('distributionRule', { ...calcData.distributionRule, method: m as any })} className={`w-full h-11 flex items-center justify-between px-4 rounded transition-all uppercase tracking-widest ${calcData.distributionRule?.method === m ? 'bg-[#2B3139] text-[#F0B90B]' : 'text-[#707A8A] hover:text-[#EAECEF]'}`}>
+                                            <span className="text-[10px] font-black">{m.replace(' ', '_')}</span>
+                                            {calcData.distributionRule?.method === m && <div className="w-1.5 h-1.5 rounded-full bg-[#F0B90B] shadow-[0_0_8px_#F0B90B]" />}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
 
-                    <div className="bg-[#080808] border border-[#1A1A1A] p-5 rounded relative group overflow-hidden">
-                        <div className="flex items-center gap-3 mb-3">
-                            <Info className="w-4 h-4 text-[#F0B90B]" />
-                            <h4 className="text-[10px] font-black text-[#EAECEF] uppercase tracking-[0.2em]">Topo_Guideline</h4>
+                            <div className="bg-[#080808] border border-[#1A1A1A] p-5 rounded relative group overflow-hidden">
+                                <div className="flex items-center gap-3 mb-3">
+                                    <Info className="w-4 h-4 text-[#F0B90B]" />
+                                    <h4 className="text-[10px] font-black text-[#EAECEF] uppercase tracking-[0.2em]">Topo_Guideline</h4>
+                                </div>
+                                <div className="text-[10px] text-[#707A8A] font-bold leading-relaxed uppercase tracking-widest">
+                                    Define how earned yield assets are distributed among identified entity nodes in the target group.
+                                </div>
+                                <div className="absolute -bottom-4 -right-4 opacity-[0.03] group-hover:opacity-[0.07] transition-opacity">
+                                    <GitBranch className="w-20 h-20 rotate-45" />
+                                </div>
+                            </div>
+                        </>
+                    ) : (
+                        <div className="bg-[#080808] border border-[#1A1A1A] p-6 rounded-[20px] relative group overflow-hidden space-y-4">
+                            <div className="flex items-center gap-3">
+                                <Info className="w-4 h-4 text-[#0ECB81]" />
+                                <h4 className="text-[10px] font-black text-[#EAECEF] uppercase tracking-[0.2em]">Individual Payout Active</h4>
+                            </div>
+                            <div className="text-[10px] text-[#707A8A] font-bold leading-relaxed uppercase tracking-widest">
+                                This protocol calculates rewards individually for each eligible employee based on their personal performance. No team-level splits or distributions are required.
+                            </div>
+                            <div className="absolute -bottom-4 -right-4 opacity-[0.03] group-hover:opacity-[0.07] transition-opacity">
+                                <GitBranch className="w-20 h-20 rotate-45 text-[#0ECB81]" />
+                            </div>
                         </div>
-                        <div className="text-[10px] text-[#707A8A] font-bold leading-relaxed uppercase tracking-widest">
-                            Define how earned yield assets are distributed among identified entity nodes in the target group.
-                        </div>
-                        <div className="absolute -bottom-4 -right-4 opacity-[0.03] group-hover:opacity-[0.07] transition-opacity">
-                            <GitBranch className="w-20 h-20 rotate-45" />
-                        </div>
-                    </div>
+                    )}
                 </div>
             </div>
         </div>

@@ -13,8 +13,14 @@ export interface AdvancedSettings {
     orderEditGracePeriod?: number;
     placingOrderGracePeriod?: number;
     packagingGracePeriod?: number;
-    uiTheme?: 'default' | 'neumorphism' | 'samsung' | 'netflix';
+    uiTheme?: 'default' | 'neumorphism' | 'samsung' | 'netflix' | 'finance' | 'binance';
     themeMode?: 'light' | 'dark';
+    glassIntensity?: number;
+    borderRadius?: number;
+    animationSpeed?: 'none' | 'slow' | 'normal' | 'fast';
+    fontStyle?: 'standard' | 'modern' | 'mono';
+    compactMode?: boolean;
+    autoSyncInterval?: number;
 }
 
 interface UIContextType {

@@ -158,8 +158,8 @@ func CalculatePayout(calc IncentiveCalculator, val float64, subPeriod string, ma
 				for sp, spVal := range marathonValues {
 					maxReward := 0.0
 					for _, t := range tiers {
-						// Match tier to this sub-period or default
-						if t.SubPeriod == sp || (t.SubPeriod == "" && sp == defaultSubGroup) {
+						// Match tier to this sub-period or default (empty SubPeriod matches all sub-periods)
+						if t.SubPeriod == sp || t.SubPeriod == "" {
 							if spVal >= t.Target {
 								reward := t.RewardAmount
 								if t.RewardType == RewardTypePercentage {
@@ -282,11 +282,15 @@ func (r *IncentiveRules) IsIncluded(u User) bool {
 		return true
 	}
 	for _, target := range r.ApplyTo {
-		if strings.HasPrefix(target, "Role:") && u.Role == strings.TrimPrefix(target, "Role:") {
-			return true
+		lowerTarget := strings.ToLower(target)
+		if strings.HasPrefix(lowerTarget, "role:") {
+			val := target[5:]
+			if strings.EqualFold(strings.TrimSpace(u.Role), strings.TrimSpace(val)) {
+				return true
+			}
 		}
-		if strings.HasPrefix(target, "Team:") {
-			targetTeam := strings.TrimPrefix(target, "Team:")
+		if strings.HasPrefix(lowerTarget, "team:") {
+			targetTeam := target[5:]
 			userTeams := strings.Split(u.Team, ",")
 			for _, ut := range userTeams {
 				if strings.EqualFold(strings.TrimSpace(ut), strings.TrimSpace(targetTeam)) {
@@ -294,8 +298,11 @@ func (r *IncentiveRules) IsIncluded(u User) bool {
 				}
 			}
 		}
-		if strings.HasPrefix(target, "User:") && u.UserName == strings.TrimPrefix(target, "User:") {
-			return true
+		if strings.HasPrefix(lowerTarget, "user:") {
+			val := target[5:]
+			if strings.EqualFold(strings.TrimSpace(u.UserName), strings.TrimSpace(val)) {
+				return true
+			}
 		}
 	}
 	return false
@@ -304,11 +311,15 @@ func (r *IncentiveRules) IsIncluded(u User) bool {
 func (r *IncentiveRules) IsExcludedForTeam(u User, teamName string) bool {
 	normalizedTeamName := NormalizeTeamKey(teamName)
 	for _, target := range r.ExcludeTargets {
-		if strings.HasPrefix(target, "Role:") && u.Role == strings.TrimPrefix(target, "Role:") {
-			return true
+		lowerTarget := strings.ToLower(target)
+		if strings.HasPrefix(lowerTarget, "role:") {
+			val := target[5:]
+			if strings.EqualFold(strings.TrimSpace(u.Role), strings.TrimSpace(val)) {
+				return true
+			}
 		}
-		if strings.HasPrefix(target, "Team:") {
-			targetTeam := strings.TrimPrefix(target, "Team:")
+		if strings.HasPrefix(lowerTarget, "team:") {
+			targetTeam := target[5:]
 			userTeams := strings.Split(u.Team, ",")
 			for _, ut := range userTeams {
 				if strings.EqualFold(strings.TrimSpace(ut), strings.TrimSpace(targetTeam)) {
@@ -316,20 +327,56 @@ func (r *IncentiveRules) IsExcludedForTeam(u User, teamName string) bool {
 				}
 			}
 		}
-		if strings.HasPrefix(target, "User:") && u.UserName == strings.TrimPrefix(target, "User:") {
-			return true
+		if strings.HasPrefix(lowerTarget, "user:") {
+			val := target[5:]
+			if strings.EqualFold(strings.TrimSpace(u.UserName), strings.TrimSpace(val)) {
+				return true
+			}
 		}
-		if strings.HasPrefix(target, "TeamUser:") {
-			parts := strings.SplitN(strings.TrimPrefix(target, "TeamUser:"), ":", 2)
+		if strings.HasPrefix(lowerTarget, "teamuser:") {
+			parts := strings.SplitN(target[9:], ":", 2)
 			if len(parts) == 2 {
 				tgtTeam := NormalizeTeamKey(parts[0])
 				tgtUser := parts[1]
-				if u.UserName == tgtUser && normalizedTeamName == tgtTeam {
+				if strings.EqualFold(strings.TrimSpace(u.UserName), strings.TrimSpace(tgtUser)) && normalizedTeamName == tgtTeam {
 					return true
 				}
 			}
 		}
-		if target == u.UserName {
+		if strings.EqualFold(strings.TrimSpace(target), strings.TrimSpace(u.UserName)) {
+			return true
+		}
+	}
+	return false
+}
+
+func (r *IncentiveRules) IsExcludedForTeamIndividually(u User, teamName string) bool {
+	normalizedTeamName := NormalizeTeamKey(teamName)
+	for _, target := range r.ExcludeTargets {
+		lowerTarget := strings.ToLower(target)
+		if strings.HasPrefix(lowerTarget, "role:") {
+			val := target[5:]
+			if strings.EqualFold(strings.TrimSpace(u.Role), strings.TrimSpace(val)) {
+				return true
+			}
+		}
+		if strings.HasPrefix(lowerTarget, "user:") {
+			val := target[5:]
+			if strings.EqualFold(strings.TrimSpace(u.UserName), strings.TrimSpace(val)) {
+				return true
+			}
+		}
+		if strings.HasPrefix(lowerTarget, "teamuser:") {
+			parts := strings.SplitN(target[9:], ":", 2)
+			if len(parts) == 2 {
+				tgtTeam := NormalizeTeamKey(parts[0])
+				tgtUser := parts[1]
+				if strings.EqualFold(strings.TrimSpace(u.UserName), strings.TrimSpace(tgtUser)) && normalizedTeamName == tgtTeam {
+					return true
+				}
+			}
+		}
+		if strings.EqualFold(strings.TrimSpace(target), strings.TrimSpace(u.UserName)) {
 			return true
 		}
 	}
@@ -338,22 +385,22 @@ func (r *IncentiveRules) IsExcludedForTeam(u User, teamName string) bool {
 
 func (r *IncentiveRules) IsExcluded(u User) bool {
 	for _, target := range r.ExcludeTargets {
-		if strings.HasPrefix(target, "Role:") && u.Role == strings.TrimPrefix(target, "Role:") {
-			return true
-		}
-		if strings.HasPrefix(target, "Team:") {
-			targetTeam := strings.TrimPrefix(target, "Team:")
-			userTeams := strings.Split(u.Team, ",")
-			for _, ut := range userTeams {
-				if strings.EqualFold(strings.TrimSpace(ut), strings.TrimSpace(targetTeam)) {
-					return true
-				}
+		lowerTarget := strings.ToLower(target)
+		if strings.HasPrefix(lowerTarget, "role:") {
+			val := target[5:]
+			if strings.EqualFold(strings.TrimSpace(u.Role), strings.TrimSpace(val)) {
+				return true
 			}
 		}
-		if strings.HasPrefix(target, "User:") && u.UserName == strings.TrimPrefix(target, "User:") {
-			return true
+		// Note: We do NOT check "team:" exclusions here. Excluding a team excludes the team
+		// as a collective calculation unit, but does not exclude its members from individual calculations.
+		if strings.HasPrefix(lowerTarget, "user:") {
+			val := target[5:]
+			if strings.EqualFold(strings.TrimSpace(u.UserName), strings.TrimSpace(val)) {
+				return true
+			}
 		}
-		if target == u.UserName {
+		if strings.EqualFold(strings.TrimSpace(target), strings.TrimSpace(u.UserName)) {
 			return true
 		}
 	}
@@ -367,7 +414,7 @@ func (r *IncentiveRules) IsUserEligible(u User) bool {
 func (r *IncentiveRules) IsTeamApplicable(teamName string) bool {
 	hasTeamFilters := false
 	for _, target := range r.ApplyTo {
-		if strings.HasPrefix(target, "Team:") {
+		if strings.HasPrefix(strings.ToLower(target), "team:") {
 			hasTeamFilters = true
 			break
 		}
@@ -377,8 +424,9 @@ func (r *IncentiveRules) IsTeamApplicable(teamName string) bool {
 	}
 	normalizedTeamName := NormalizeTeamKey(teamName)
 	for _, target := range r.ApplyTo {
-		if strings.HasPrefix(target, "Team:") {
-			targetTeam := NormalizeTeamKey(strings.TrimPrefix(target, "Team:"))
+		lowerTarget := strings.ToLower(target)
+		if strings.HasPrefix(lowerTarget, "team:") {
+			targetTeam := NormalizeTeamKey(target[5:])
 			if normalizedTeamName == targetTeam {
 				return true
 			}
@@ -847,7 +895,7 @@ func ProcessIncentiveCalculation(db *gorm.DB, projectID uint, month string) ([]I
 							teamName := NormalizeTeamKey(ut)
 							if teamName != "" && rules.IsTeamApplicable(teamName) {
 								applicableTeamCount++
-								if rules.IsExcludedForTeam(userObj, teamName) {
+								if rules.IsExcludedForTeamIndividually(userObj, teamName) {
 									teamExcludedCount++
 								}
 							}

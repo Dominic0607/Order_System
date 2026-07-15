@@ -79,7 +79,7 @@ const DesktopAdminLayout: React.FC<DesktopAdminLayoutProps> = ({
     const getPageBg = () => {
         if (uiTheme === 'binance') return 'bg-[#090B0F]';
         if (uiTheme === 'netflix') return 'bg-[#141414]';
-        if (uiTheme === 'neumorphism') return 'bg-[#e0e5ec]';
+        if (uiTheme === 'neumorphism') return isLightMode ? 'bg-[#e0e5ec]' : 'bg-[#171b22]';
         if (uiTheme === 'finance') return 'bg-[#0b0e14]';
         return isLightMode ? 'bg-slate-50' : 'bg-[#080b12]';
     };
