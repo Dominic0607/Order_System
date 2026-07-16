@@ -388,50 +388,60 @@ const IncentivePdfExportModal: React.FC<IncentivePdfExportModalProps> = ({
 
     return (
         <Modal isOpen={isOpen} onClose={onClose} maxWidth="max-w-md">
-            <div className="bg-[#121212] border border-[#1A1A1A] shadow-2xl rounded overflow-hidden text-[#EAECEF] font-sans">
-                <div className="p-8 text-center space-y-8">
+            <div className="incentive-surface text-slate-800 dark:text-[#EAECEF] font-sans">
+                <div className="p-8 text-center space-y-6">
+                    {/* Glowing Icon Socket */}
                     <div className="relative inline-block">
-                        <div className="w-20 h-20 bg-[#050505] rounded border border-[#1A1A1A] flex items-center justify-center mx-auto shadow-inner">
-                            <Terminal className="w-10 h-10 text-[#F0B90B]" />
+                        <div className="export-icon-socket w-16 h-16 rounded-2xl flex items-center justify-center mx-auto shadow-inner">
+                            <Terminal className="w-7 h-7 text-amber-500 dark:text-[#F0B90B]" />
                         </div>
-                        <div className="absolute -bottom-2 -right-2 w-8 h-8 bg-[#0ECB81]/10 rounded-full flex items-center justify-center border border-[#0ECB81]/30">
-                            <Activity className="w-4 h-4 text-[#0ECB81] animate-pulse" />
+                        <div className="absolute -bottom-1 -right-1 w-6 h-6 bg-emerald-500/10 rounded-full flex items-center justify-center border border-emerald-500/30">
+                            <Activity className="w-3.5 h-3.5 text-emerald-500 animate-pulse" />
                         </div>
                     </div>
                     
-                    <div>
-                        <h3 className="text-sm font-black text-[#EAECEF] uppercase tracking-[0.3em] mb-2">{t.export || 'Generate_Protocol_Report'}</h3>
-                        <p className="text-[10px] text-[#707A8A] font-bold uppercase tracking-widest">Finalizing asset distribution records</p>
+                    {/* Header Text */}
+                    <div className="space-y-1">
+                        <h3 className="text-lg font-bold text-slate-800 dark:text-white tracking-wide">
+                            {language === 'km' ? 'ទាញយកទិន្នន័យ' : 'Download Data'}
+                        </h3>
+                        <p className="text-[11px] text-slate-500 dark:text-slate-400 font-bold uppercase tracking-widest">
+                            {language === 'km' ? 'កំពុងបញ្ចប់ការរៀបចំឯកសារចែកចាយទ្រព្យសកម្ម' : 'Finalizing asset distribution records'}
+                        </p>
                     </div>
 
-                    <div className="bg-[#080808] border border-[#1A1A1A] p-5 rounded space-y-4">
-                        <div className="space-y-1.5">
-                            <p className="text-[9px] text-[#707A8A] font-black uppercase tracking-widest flex items-center justify-center gap-2">
-                                <Info className="w-3 h-3" /> Station_Identity
+                    {/* Details Box */}
+                    <div className="export-details-card p-5 rounded-2xl space-y-4">
+                        <div className="space-y-1">
+                            <p className="text-[10px] text-slate-500 dark:text-slate-400 font-bold uppercase tracking-wider flex items-center justify-center gap-1.5">
+                                <Info className="w-3.5 h-3.5 shrink-0" /> {language === 'km' ? 'អត្តសញ្ញាណស្ថានីយ' : 'Station Identity'}
                             </p>
-                            <p className="text-xs font-bold text-[#EAECEF] uppercase tracking-[0.1em]">{projectName}</p>
+                            <p className="text-sm font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wide">{projectName}</p>
                         </div>
-                        <div className="h-px bg-[#1A1A1A] w-1/2 mx-auto"></div>
-                        <div className="space-y-1.5">
-                            <p className="text-[9px] text-[#707A8A] font-black uppercase tracking-widest">Temporal_Period</p>
-                            <p className="text-xs font-mono font-black text-[#F0B90B] uppercase">{selectedMonth}</p>
+                        <div className="h-px bg-slate-200 dark:bg-white/10 w-1/3 mx-auto"></div>
+                        <div className="space-y-1">
+                            <p className="text-[10px] text-slate-500 dark:text-slate-400 font-bold uppercase tracking-wider">
+                                {language === 'km' ? 'វដ្តទូទាត់' : 'Temporal Period'}
+                            </p>
+                            <p className="text-sm font-mono font-bold text-amber-600 dark:text-[#F0B90B] uppercase">{formatMonthKhmer(selectedMonth, language)}</p>
                         </div>
                     </div>
 
-                    <div className="flex flex-col gap-3 pt-2">
+                    {/* Action Buttons */}
+                    <div className="flex flex-col gap-2.5 pt-2">
                         <button 
                             onClick={generatePDF}
                             disabled={isGenerating}
-                            className="w-full h-12 bg-[#F0B90B] hover:bg-[#D4A50A] text-black rounded font-black uppercase text-[10px] tracking-[0.2em] transition-all flex items-center justify-center gap-3 disabled:opacity-30 disabled:grayscale active:scale-[0.98]"
+                            className="w-full h-11 bg-[#F0B90B] hover:bg-[#d9a308] disabled:opacity-30 text-slate-900 rounded-xl font-bold uppercase text-xs tracking-wider transition-all flex items-center justify-center gap-2 shadow-lg shadow-amber-500/10 active:scale-[0.98]"
                         >
-                            {isGenerating ? <Spinner size="sm" /> : <Download className="w-4 h-4 stroke-[3]" />}
-                            {isGenerating ? 'Processing_Data...' : 'Download_PDF_Package'}
+                            {isGenerating ? <Spinner size="sm" /> : <Download className="w-4 h-4 stroke-[2.5]" />}
+                            {isGenerating ? (language === 'km' ? 'កំពុងដំណើរការ...' : 'Generating PDF...') : (language === 'km' ? 'ទាញយកឯកសារ PDF' : 'Download PDF Package')}
                         </button>
                         <button 
                             onClick={onClose}
-                            className="w-full h-10 bg-[#050505] text-[#707A8A] hover:text-[#EAECEF] rounded font-black uppercase text-[9px] tracking-widest transition-all border border-[#1A1A1A] hover:border-[#2B3139]"
+                            className="w-full h-10 bg-slate-100 hover:bg-slate-200 dark:bg-white/5 dark:hover:bg-white/10 text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white rounded-xl font-bold uppercase text-[10px] tracking-widest transition-all border border-slate-200/50 dark:border-white/5"
                         >
-                            {t.cancel || 'Abort_Operation'}
+                            {language === 'km' ? 'បោះបង់' : 'Cancel'}
                         </button>
                     </div>
                 </div>

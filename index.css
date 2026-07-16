@@ -764,9 +764,9 @@ body {
 }
 
 /* Inner cards and detail panels (Flat to avoid shadow soup) */
-.theme-light .incentive-surface div[class*="bg-"]:not(.page-card):not(button):not(span):not(tr):not(td):not([class*="grid"]):not(section):not(main):not([class*="w-14"]),
-.theme-light .incentive-surface .bg-\[\#121212\],
-.theme-light .incentive-surface .bg-\[\#050505\],
+.theme-light .incentive-surface div[class*="bg-"]:not(.page-card):not(button):not(span):not(tr):not(td):not([class*="grid"]):not(section):not(main):not([class*="w-14"]):not(.kpi-icon-socket),
+.theme-light .incentive-surface .bg-\[\#121212\]:not(.kpi-card),
+.theme-light .incentive-surface .bg-\[\#050505\]:not(.kpi-card),
 .theme-light .incentive-surface .bg-\[\#080808\],
 .theme-light .incentive-surface .bg-\[\#181A20\],
 .theme-light .incentive-surface .bg-\[\#0B0E11\],
@@ -791,7 +791,7 @@ body {
 
 /* Sunken / Inset elements: text/number inputs, selects, scroll-box wrappers */
 .theme-light .incentive-surface input[type="text"],
-.theme-light .incentive-surface input[type="number"],
+.theme-light .incentive-surface input[type="number"]:not(.stepper-input),
 .theme-light .incentive-surface select,
 .theme-light .incentive-surface textarea,
 .theme-light .incentive-surface .form-input,
@@ -823,7 +823,7 @@ body {
 
 /* Sunken element focus glows */
 .theme-light .incentive-surface input[type="text"]:focus,
-.theme-light .incentive-surface input[type="number"]:focus,
+.theme-light .incentive-surface input[type="number"]:not(.stepper-input):focus,
 .theme-light .incentive-surface select:focus,
 .theme-light .incentive-surface textarea:focus {
     box-shadow: inset 5px 5px 10px #b8c4d2, inset -5px -5px 10px #ffffff, 0 0 5px rgba(217, 119, 6, 0.15) !important;
@@ -831,9 +831,9 @@ body {
 }
 
 /* Neumorphic Interactive Buttons */
-.theme-light .incentive-surface button:not(.exec-header-btn),
-.theme-light .incentive-surface .btn:not(.exec-header-btn),
-.theme-light .incentive-surface a.btn:not(.exec-header-btn) {
+.theme-light .incentive-surface button:not(.exec-header-btn):not(.segment-btn):not(.stepper-btn),
+.theme-light .incentive-surface .btn:not(.exec-header-btn):not(.segment-btn):not(.stepper-btn),
+.theme-light .incentive-surface a.btn:not(.exec-header-btn):not(.segment-btn):not(.stepper-btn) {
     background-color: #eef2f7 !important;
     box-shadow: 4px 4px 8px #cbd5e1, -4px -4px 8px #ffffff !important;
     border: 1px solid rgba(255, 255, 255, 0.5) !important;
@@ -846,18 +846,18 @@ body {
 }
 
 /* Hover buttons (slightly softer extrusion) */
-.theme-light .incentive-surface button:not(.exec-header-btn):hover,
-.theme-light .incentive-surface .btn:not(.exec-header-btn):hover {
+.theme-light .incentive-surface button:not(.exec-header-btn):not(.segment-btn):not(.stepper-btn):hover,
+.theme-light .incentive-surface .btn:not(.exec-header-btn):not(.segment-btn):not(.stepper-btn):hover {
     color: #0f172a !important;
     box-shadow: 2px 2px 4px #cbd5e1, -2px -2px 4px #ffffff !important;
 }
 
 /* Active / Pressed buttons (Inset shadow) */
-.theme-light .incentive-surface button:not(.exec-header-btn):active,
-.theme-light .incentive-surface .btn:not(.exec-header-btn):active,
-.theme-light .incentive-surface button.active:not(.exec-header-btn),
-.theme-light .incentive-surface button[aria-selected="true"]:not(.exec-header-btn),
-.theme-light .incentive-surface .btn-active:not(.exec-header-btn) {
+.theme-light .incentive-surface button:not(.exec-header-btn):not(.segment-btn):not(.stepper-btn):active,
+.theme-light .incentive-surface .btn:not(.exec-header-btn):not(.segment-btn):not(.stepper-btn):active,
+.theme-light .incentive-surface button.active:not(.exec-header-btn):not(.segment-btn):not(.stepper-btn),
+.theme-light .incentive-surface button[aria-selected="true"]:not(.exec-header-btn):not(.segment-btn):not(.stepper-btn),
+.theme-light .incentive-surface .btn-active:not(.exec-header-btn):not(.segment-btn):not(.stepper-btn) {
     background-color: #e2e8f0 !important;
     box-shadow: inset 4px 4px 8px #cbd5e1, inset -4px -4px 8px #ffffff !important;
     color: #b45309 !important;
@@ -1708,75 +1708,196 @@ body {
 
 /* Light: pill base */
 .theme-light .exec-header-bar .exec-header-pill {
-    background-color: #eef2f7 !important;
-    box-shadow: 4px 4px 8px #cbd5e1, -4px -4px 8px #ffffff !important;
-    border: 1px solid rgba(255, 255, 255, 0.7) !important;
-    color: #334155 !important;
-    border-radius: 14px !important;
+    background-color: #ffffff !important;
+    border: 1px solid rgba(15, 23, 42, 0.08) !important;
+    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.03), 0 1px 2px rgba(15, 23, 42, 0.06) !important;
+    color: #475569 !important;
+    border-radius: 12px !important;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
 }
 .theme-light .exec-header-bar .exec-header-pill:hover {
-    box-shadow: 2px 2px 4px #cbd5e1, -2px -2px 4px #ffffff !important;
+    background-color: #f8fafc !important;
+    border-color: rgba(15, 23, 42, 0.15) !important;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03) !important;
     color: #0f172a !important;
 }
 
 /* Light: CTA (amber fill) */
 .theme-light .exec-header-bar .exec-header-cta {
-    background-color: #b45309 !important;
-    box-shadow: 3px 3px 6px #cbd5e1, -3px -3px 6px #ffffff !important;
-    border: 1px solid rgba(180, 83, 9, 0.2) !important;
-    color: #ffffff !important;
-    border-radius: 14px !important;
+    background-color: #F0B90B !important;
+    border: 1px solid #d97706 !important;
+    box-shadow: 0 2px 4px rgba(240, 185, 11, 0.2) !important;
+    color: #0f172a !important;
+    border-radius: 12px !important;
+    font-weight: 700 !important;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+.theme-light .exec-header-bar .exec-header-cta:hover {
+    background-color: #f5c127 !important;
+    box-shadow: 0 4px 10px rgba(240, 185, 11, 0.35) !important;
+    transform: translateY(-1px) !important;
 }
 
 /* Light: Danger (red locked) */
 .theme-light .exec-header-bar .exec-header-danger {
     background-color: #fef2f2 !important;
-    box-shadow: inset 2px 2px 4px #fecaca, inset -2px -2px 4px #ffffff !important;
-    border: 1px solid rgba(185, 28, 28, 0.2) !important;
+    border: 1px solid #fca5a5 !important;
+    color: #dc2626 !important;
+    box-shadow: 0 1px 2px rgba(220, 38, 38, 0.05) !important;
+    border-radius: 12px !important;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+.theme-light .exec-header-bar .exec-header-danger:hover {
+    background-color: #fee2e2 !important;
+    border-color: #f87171 !important;
     color: #b91c1c !important;
-    border-radius: 14px !important;
 }
 
 /* Dark: pill base */
 .theme-dark .exec-header-bar .exec-header-pill {
-    background-color: #1a1e28 !important;
-    box-shadow: 4px 4px 8px #0f1219, -4px -4px 8px #252a3b !important;
-    border: 1px solid rgba(255, 255, 255, 0.04) !important;
-    color: rgba(255, 255, 255, 0.75) !important;
-    border-radius: 14px !important;
+    background-color: rgba(30, 41, 59, 0.4) !important;
+    border: 1px solid rgba(255, 255, 255, 0.08) !important;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15) !important;
+    color: rgba(255, 255, 255, 0.8) !important;
+    border-radius: 12px !important;
+    backdrop-filter: blur(8px) !important;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
 }
 .theme-dark .exec-header-bar .exec-header-pill:hover {
-    box-shadow: 2px 2px 4px #0f1219, -2px -2px 4px #252a3b !important;
-    color: rgba(255, 255, 255, 0.95) !important;
+    background-color: rgba(30, 41, 59, 0.6) !important;
+    border-color: rgba(255, 255, 255, 0.15) !important;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25) !important;
+    color: #ffffff !important;
+}
+
+/* Active Auto Save Pill State */
+.theme-light .exec-header-bar .exec-header-pill.auto-save-active {
+    background-color: #e8f5e9 !important; /* light green tint */
+    border-color: #a5d6a7 !important; /* soft green border */
+    color: #2e7d32 !important; /* dark green text */
+}
+.theme-dark .exec-header-bar .exec-header-pill.auto-save-active {
+    background-color: rgba(14, 203, 129, 0.1) !important;
+    border-color: rgba(14, 203, 129, 0.2) !important;
+    color: #0ecb81 !important;
 }
 
 /* Dark: CTA (amber fill) */
 .theme-dark .exec-header-bar .exec-header-cta {
     background-color: #F0B90B !important;
-    box-shadow: 0 4px 12px rgba(240, 185, 11, 0.35) !important;
-    border: 1px solid rgba(240, 185, 11, 0.3) !important;
-    border-radius: 14px !important;
+    border: 1px solid rgba(240, 185, 11, 0.4) !important;
+    box-shadow: 0 4px 12px rgba(240, 185, 11, 0.25) !important;
+    color: #0f172a !important;
+    border-radius: 12px !important;
+    font-weight: 700 !important;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+.theme-dark .exec-header-bar .exec-header-cta:hover {
+    background-color: #f5c127 !important;
+    box-shadow: 0 6px 16px rgba(240, 185, 11, 0.4) !important;
+    transform: translateY(-1px) !important;
 }
 
 /* Dark: Danger (red locked) */
 .theme-dark .exec-header-bar .exec-header-danger {
-    background-color: rgba(185, 28, 28, 0.12) !important;
-    box-shadow: inset 2px 2px 4px #0b0d14, inset -2px -2px 4px #22263a !important;
-    border: 1px solid rgba(248, 113, 113, 0.25) !important;
+    background-color: rgba(239, 68, 68, 0.12) !important;
+    border: 1px solid rgba(239, 68, 68, 0.25) !important;
     color: #f87171 !important;
-    border-radius: 14px !important;
+    box-shadow: 0 4px 12px rgba(239, 68, 68, 0.1) !important;
+    border-radius: 12px !important;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+.theme-dark .exec-header-bar .exec-header-danger:hover {
+    background-color: rgba(239, 68, 68, 0.18) !important;
+    border-color: rgba(239, 68, 68, 0.35) !important;
+    color: #ff8787 !important;
+}
+
+/* Toolbar Buttons Disabled States */
+.theme-light .exec-header-bar button:disabled,
+.theme-light .exec-header-bar button.cursor-not-allowed {
+    background-color: #f1f5f9 !important;
+    border-color: #e2e8f0 !important;
+    color: #94a3b8 !important;
+    box-shadow: none !important;
+    cursor: not-allowed !important;
+    opacity: 0.75 !important;
+}
+.theme-dark .exec-header-bar button:disabled,
+.theme-dark .exec-header-bar button.cursor-not-allowed {
+    background-color: rgba(255, 255, 255, 0.03) !important;
+    border-color: rgba(255, 255, 255, 0.05) !important;
+    color: rgba(255, 255, 255, 0.2) !important;
+    box-shadow: none !important;
+    cursor: not-allowed !important;
+    opacity: 0.75 !important;
 }
 
 /* Both themes: toggle button inside pill (exempted from global button overrides) */
 .exec-header-bar .exec-header-toggle {
     all: unset !important;
-    display: flex !important;
-    align-items: center !important;
-    cursor: pointer !important;
+    display: inline-block !important;
+    width: 38px !important;
+    height: 22px !important;
     border-radius: 9999px !important;
-    padding: 2px !important;
-    transition: background-color 0.3s ease !important;
+    padding: 3px !important;
+    transition: background-color 0.2s ease !important;
     flex-shrink: 0 !important;
+    cursor: pointer !important;
+    box-sizing: border-box !important;
+    position: relative !important;
+}
+
+.exec-header-bar .exec-header-toggle-handle {
+    width: 16px !important;
+    height: 16px !important;
+    border-radius: 9999px !important;
+    background-color: #ffffff !important;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2) !important;
+    transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    transform: translateX(0) !important;
+}
+
+.exec-header-bar .exec-header-toggle.active .exec-header-toggle-handle {
+    transform: translateX(16px) !important;
+}
+
+/* Toggle Active State Colors */
+.theme-light .exec-header-bar .exec-header-toggle {
+    background-color: #cbd5e1 !important;
+}
+.theme-light .exec-header-bar .exec-header-toggle.active {
+    background-color: #0ecb81 !important;
+}
+.theme-dark .exec-header-bar .exec-header-toggle {
+    background-color: rgba(255, 255, 255, 0.15) !important;
+}
+.theme-dark .exec-header-bar .exec-header-toggle.active {
+    background-color: #0ecb81 !important;
+}
+
+/* Extra Circular override for back & refresh buttons */
+.exec-header-bar .exec-header-circle-btn {
+    border-radius: 9999px !important;
+}
+
+/* PDF Export Modal custom components for Theme support */
+.theme-light .incentive-surface .export-icon-socket {
+    background-color: #f1f5f9 !important;
+    border: 1px solid #e2e8f0 !important;
+}
+.theme-dark .incentive-surface .export-icon-socket {
+    background-color: rgba(255, 255, 255, 0.03) !important;
+    border: 1px solid rgba(255, 255, 255, 0.08) !important;
+}
+
+.theme-light .incentive-surface .export-details-card {
+    background-color: #f8fafc !important;
+    border: 1px solid #e2e8f0 !important;
+}
+.theme-dark .incentive-surface .export-details-card {
+    background-color: rgba(0, 0, 0, 0.2) !important;
+    border: 1px solid rgba(255, 255, 255, 0.04) !important;
 }
 
 
@@ -1853,9 +1974,9 @@ body {
 }
 
 /* Inner cards / flat panels */
-.theme-dark .incentive-surface div[class*="bg-"]:not(.page-card):not(button):not(span):not(tr):not(td):not([class*="grid"]):not(section):not(main):not([class*="w-14"]),
-.theme-dark .incentive-surface .bg-\[\#121212\],
-.theme-dark .incentive-surface .bg-\[\#050505\],
+.theme-dark .incentive-surface div[class*="bg-"]:not(.page-card):not(button):not(span):not(tr):not(td):not([class*="grid"]):not(section):not(main):not([class*="w-14"]):not(.kpi-icon-socket),
+.theme-dark .incentive-surface .bg-\[\#121212\]:not(.kpi-card),
+.theme-dark .incentive-surface .bg-\[\#050505\]:not(.kpi-card),
 .theme-dark .incentive-surface .bg-\[\#080808\],
 .theme-dark .incentive-surface .bg-\[\#181A20\],
 .theme-dark .incentive-surface .bg-\[\#0B0E11\],
@@ -1868,7 +1989,7 @@ body {
 
 /* Sunken inputs / selects / textareas */
 .theme-dark .incentive-surface input[type="text"],
-.theme-dark .incentive-surface input[type="number"],
+.theme-dark .incentive-surface input[type="number"]:not(.stepper-input),
 .theme-dark .incentive-surface select,
 .theme-dark .incentive-surface textarea,
 .theme-dark .incentive-surface .form-input,
@@ -1900,7 +2021,7 @@ body {
 
 /* Focus glow on inputs */
 .theme-dark .incentive-surface input[type="text"]:focus,
-.theme-dark .incentive-surface input[type="number"]:focus,
+.theme-dark .incentive-surface input[type="number"]:not(.stepper-input):focus,
 .theme-dark .incentive-surface select:focus,
 .theme-dark .incentive-surface textarea:focus {
     box-shadow: inset 5px 5px 10px #0b0d14, inset -5px -5px 10px #22263a, 0 0 6px rgba(240, 185, 11, 0.2) !important;
@@ -1908,9 +2029,9 @@ body {
 }
 
 /* Interactive Buttons */
-.theme-dark .incentive-surface button:not(.exec-header-btn),
-.theme-dark .incentive-surface .btn:not(.exec-header-btn),
-.theme-dark .incentive-surface a.btn:not(.exec-header-btn) {
+.theme-dark .incentive-surface button:not(.exec-header-btn):not(.segment-btn):not(.stepper-btn),
+.theme-dark .incentive-surface .btn:not(.exec-header-btn):not(.segment-btn):not(.stepper-btn),
+.theme-dark .incentive-surface a.btn:not(.exec-header-btn):not(.segment-btn):not(.stepper-btn) {
     background-color: #1a1e28 !important;
     box-shadow: 4px 4px 8px #0f1219, -4px -4px 8px #252a3b !important;
     border: 1px solid rgba(255, 255, 255, 0.04) !important;
@@ -1923,18 +2044,18 @@ body {
 }
 
 /* Hover buttons */
-.theme-dark .incentive-surface button:not(.exec-header-btn):hover,
-.theme-dark .incentive-surface .btn:not(.exec-header-btn):hover {
+.theme-dark .incentive-surface button:not(.exec-header-btn):not(.segment-btn):not(.stepper-btn):hover,
+.theme-dark .incentive-surface .btn:not(.exec-header-btn):not(.segment-btn):not(.stepper-btn):hover {
     color: rgba(255, 255, 255, 0.95) !important;
     box-shadow: 2px 2px 4px #0f1219, -2px -2px 4px #252a3b !important;
 }
 
 /* Active / Pressed buttons (inset) */
-.theme-dark .incentive-surface button:not(.exec-header-btn):active,
-.theme-dark .incentive-surface .btn:not(.exec-header-btn):active,
-.theme-dark .incentive-surface button.active:not(.exec-header-btn),
-.theme-dark .incentive-surface button[aria-selected="true"]:not(.exec-header-btn),
-.theme-dark .incentive-surface .btn-active:not(.exec-header-btn) {
+.theme-dark .incentive-surface button:not(.exec-header-btn):not(.segment-btn):not(.stepper-btn):active,
+.theme-dark .incentive-surface .btn:not(.exec-header-btn):not(.segment-btn):not(.stepper-btn):active,
+.theme-dark .incentive-surface button.active:not(.exec-header-btn):not(.segment-btn):not(.stepper-btn),
+.theme-dark .incentive-surface button[aria-selected="true"]:not(.exec-header-btn):not(.segment-btn):not(.stepper-btn),
+.theme-dark .incentive-surface .btn-active:not(.exec-header-btn):not(.segment-btn):not(.stepper-btn) {
     background-color: #14171f !important;
     box-shadow: inset 4px 4px 8px #0b0d14, inset -4px -4px 8px #22263a !important;
     color: #F0B90B !important;
@@ -2314,3 +2435,357 @@ body {
 
 /* Selected Exclusion styling is handled globally under Excluded/Blocked buttons */
 
+/* ===================================================
+   KPI CARDS & ICON SOCKETS — THEMED DESIGN SYSTEM
+   =================================================== */
+
+.theme-light .incentive-surface .kpi-card {
+    background-color: #ffffff !important;
+    border: 1px solid #e2e8f0 !important;
+    box-shadow: 0 4px 6px -1px rgba(15, 23, 42, 0.02), 0 2px 4px -1px rgba(15, 23, 42, 0.02) !important;
+    border-radius: 20px !important;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+.theme-light .incentive-surface .kpi-card:hover {
+    transform: translateY(-4px) !important;
+    box-shadow: 0 12px 24px -4px rgba(15, 23, 42, 0.06), 0 4px 12px -2px rgba(15, 23, 42, 0.04) !important;
+    border-color: #cbd5e1 !important;
+}
+
+.theme-dark .incentive-surface .kpi-card {
+    background-color: rgba(30, 41, 59, 0.3) !important;
+    border: 1px solid rgba(255, 255, 255, 0.06) !important;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15) !important;
+    border-radius: 20px !important;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+.theme-dark .incentive-surface .kpi-card:hover {
+    transform: translateY(-4px) !important;
+    border-color: rgba(255, 255, 255, 0.12) !important;
+    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.25) !important;
+}
+
+/* Icon Sockets */
+.incentive-surface .kpi-icon-socket {
+    width: 48px !important;
+    height: 48px !important;
+    border-radius: 14px !important;
+    transition: all 0.3s ease !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    flex-shrink: 0 !important;
+}
+
+/* Light Theme Icon Sockets */
+.theme-light .incentive-surface .kpi-icon-socket.socket-payout,
+.theme-light .incentive-surface .kpi-icon-socket.socket-top {
+    background-color: #fef3c7 !important;
+    border: 1px solid #fde68a !important;
+}
+.theme-light .incentive-surface .kpi-icon-socket.socket-payout svg,
+.theme-light .incentive-surface .kpi-icon-socket.socket-top svg {
+    color: #b45309 !important;
+}
+
+.theme-light .incentive-surface .kpi-icon-socket.socket-average {
+    background-color: #f3e8ff !important;
+    border: 1px solid #e9d5ff !important;
+}
+.theme-light .incentive-surface .kpi-icon-socket.socket-average svg {
+    color: #6b21a8 !important;
+}
+
+.theme-light .incentive-surface .kpi-icon-socket.socket-staff {
+    background-color: #fdf2f8 !important;
+    border: 1px solid #fbcfe8 !important;
+}
+.theme-light .incentive-surface .kpi-icon-socket.socket-staff svg {
+    color: #9d174d !important;
+}
+
+/* Dark Theme Icon Sockets */
+.theme-dark .incentive-surface .kpi-icon-socket.socket-payout,
+.theme-dark .incentive-surface .kpi-icon-socket.socket-top {
+    background-color: rgba(240, 185, 11, 0.1) !important;
+    border: 1px solid rgba(240, 185, 11, 0.2) !important;
+}
+.theme-dark .incentive-surface .kpi-icon-socket.socket-payout svg,
+.theme-dark .incentive-surface .kpi-icon-socket.socket-top svg {
+    color: #F0B90B !important;
+}
+
+.theme-dark .incentive-surface .kpi-icon-socket.socket-average {
+    background-color: rgba(168, 85, 247, 0.1) !important;
+    border: 1px solid rgba(168, 85, 247, 0.2) !important;
+}
+.theme-dark .incentive-surface .kpi-icon-socket.socket-average svg {
+    color: #c084fc !important;
+}
+
+.theme-dark .incentive-surface .kpi-icon-socket.socket-staff {
+    background-color: rgba(232, 121, 249, 0.1) !important;
+    border: 1px solid rgba(232, 121, 249, 0.2) !important;
+}
+.theme-dark .incentive-surface .kpi-icon-socket.socket-staff svg {
+    color: #f472b6 !important;
+}
+
+/* ===================================================
+   SLIDING SEGMENT CONTROL — THEMED DESIGN SYSTEM
+   =================================================== */
+
+/* Container */
+.incentive-surface .segment-container {
+    display: flex !important;
+    align-items: center !important;
+    gap: 4px !important;
+    padding: 3px !important;
+    border-radius: 14px !important;
+    box-shadow: none !important;
+    transition: all 0.25s ease !important;
+}
+
+.theme-light .incentive-surface .segment-container {
+    background-color: #f1f5f9 !important; /* slate-100 */
+    border: 1px solid #e2e8f0 !important; /* slate-200 */
+}
+
+.theme-dark .incentive-surface .segment-container {
+    background-color: rgba(0, 0, 0, 0.25) !important;
+    border: 1px solid rgba(255, 255, 255, 0.05) !important;
+}
+
+/* Base Button */
+.incentive-surface .segment-btn {
+    height: 36px !important;
+    padding: 0 18px !important;
+    font-size: 12px !important;
+    font-weight: 800 !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.05em !important;
+    border-radius: 10px !important;
+    border: none !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    cursor: pointer !important;
+}
+
+/* Light Theme Inactive / Active States */
+.theme-light .incentive-surface .segment-btn {
+    color: #64748b !important; /* slate-500 */
+}
+.theme-light .incentive-surface .segment-btn:hover {
+    color: #1e293b !important; /* slate-800 */
+}
+.theme-light .incentive-surface .segment-btn.active-segment {
+    background-color: #ffffff !important;
+    color: #b45309 !important; /* amber-700 / Brand accent */
+    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.08), 0 1px 2px rgba(15, 23, 42, 0.04) !important;
+    border: 1px solid rgba(240, 185, 11, 0.1) !important;
+}
+
+/* Dark Theme Inactive / Active States */
+.theme-dark .incentive-surface .segment-btn {
+    color: rgba(255, 255, 255, 0.45) !important;
+}
+.theme-dark .incentive-surface .segment-btn:hover {
+    color: rgba(255, 255, 255, 0.8) !important;
+}
+.theme-dark .incentive-surface .segment-btn.active-segment {
+    background-color: #2b3139 !important; /* Binance dark slate active button */
+    color: #F0B90B !important; /* Binance Gold */
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2) !important;
+}
+
+/* ===================================================
+   PROTOCOL SIMULATION LAB — THEMED DESIGN SYSTEM
+   =================================================== */
+
+/* Simulation Cards */
+.theme-light .incentive-surface .sim-card {
+    background-color: #ffffff !important;
+    border: 1px solid #e2e8f0 !important;
+    box-shadow: 0 4px 6px -1px rgba(15, 23, 42, 0.02), 0 2px 4px -1px rgba(15, 23, 42, 0.02) !important;
+    border-radius: 20px !important;
+    transition: all 0.3s ease !important;
+}
+.theme-dark .incentive-surface .sim-card {
+    background-color: rgba(30, 41, 59, 0.3) !important;
+    border: 1px solid rgba(255, 255, 255, 0.06) !important;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15) !important;
+    border-radius: 20px !important;
+    transition: all 0.3s ease !important;
+}
+
+/* Guidelines and Info Cards */
+.theme-light .incentive-surface .sim-info-card {
+    background-color: #f8fafc !important;
+    border: 1px solid #e2e8f0 !important;
+    border-radius: 16px !important;
+}
+.theme-dark .incentive-surface .sim-info-card {
+    background-color: rgba(0, 0, 0, 0.2) !important;
+    border: 1px solid rgba(255, 255, 255, 0.05) !important;
+    border-radius: 16px !important;
+}
+
+/* Rocket Icon Header Socket */
+.theme-light .incentive-surface .sim-header-socket {
+    background-color: #fef3c7 !important;
+    border: 1px solid #fde68a !important;
+    border-radius: 12px !important;
+}
+.theme-dark .incentive-surface .sim-header-socket {
+    background-color: rgba(240, 185, 11, 0.1) !important;
+    border: 1px solid rgba(240, 185, 11, 0.2) !important;
+    border-radius: 12px !important;
+}
+
+/* Simulation Input fields */
+.incentive-surface .sim-input {
+    border-radius: 12px !important;
+    transition: all 0.25s ease !important;
+}
+.theme-light .incentive-surface .sim-input {
+    background-color: #f1f5f9 !important; /* slate-100 */
+    border: 1px solid #cbd5e1 !important; /* slate-300 */
+    color: #0f172a !important;
+}
+.theme-light .incentive-surface .sim-input:focus {
+    background-color: #ffffff !important;
+    border-color: #b45309 !important;
+    box-shadow: 0 0 0 3px rgba(217, 119, 6, 0.1) !important;
+}
+.theme-dark .incentive-surface .sim-input {
+    background-color: rgba(0, 0, 0, 0.3) !important;
+    border: 1px solid rgba(255, 255, 255, 0.1) !important;
+    color: #EAECEF !important;
+}
+.theme-dark .incentive-surface .sim-input:focus {
+    background-color: rgba(0, 0, 0, 0.5) !important;
+    border-color: #F0B90B !important;
+    box-shadow: 0 0 0 3px rgba(240, 185, 11, 0.15) !important;
+}
+
+/* ===================================================
+   QUANTITY STEPPER / INLINE ADJUSTER — DESIGN SYSTEM
+   =================================================== */
+
+.incentive-surface .stepper-control {
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    border-radius: 12px !important;
+    padding: 2px !important;
+    overflow: hidden !important;
+    transition: all 0.2s ease !important;
+    height: 34px !important;
+}
+
+.theme-light .incentive-surface .stepper-control {
+    background-color: #f1f5f9 !important; /* slate-100 */
+    border: 1px solid #cbd5e1 !important; /* slate-300 */
+}
+.theme-light .incentive-surface .stepper-control:focus-within {
+    border-color: #b45309 !important;
+    box-shadow: 0 0 0 2.5px rgba(217, 119, 6, 0.1) !important;
+    background-color: #ffffff !important;
+}
+
+.theme-dark .incentive-surface .stepper-control {
+    background-color: rgba(0, 0, 0, 0.25) !important;
+    border: 1px solid rgba(255, 255, 255, 0.08) !important;
+}
+.theme-dark .incentive-surface .stepper-control:focus-within {
+    border-color: #F0B90B !important;
+    box-shadow: 0 0 0 2.5px rgba(240, 185, 11, 0.15) !important;
+    background-color: rgba(0, 0, 0, 0.45) !important;
+}
+
+/* Stepper Buttons */
+.incentive-surface .stepper-btn {
+    width: 28px !important;
+    height: 28px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    border-radius: 8px !important;
+    border: none !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    font-size: 16px !important;
+    font-weight: 900 !important;
+    cursor: pointer !important;
+    transition: all 0.2s ease !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    line-height: 1 !important;
+}
+.incentive-surface .stepper-btn:disabled {
+    opacity: 0.15 !important;
+    cursor: not-allowed !important;
+}
+
+/* Stepper Decrement (-) */
+.theme-light .incentive-surface .stepper-btn.btn-decrement {
+    color: #ef4444 !important;
+}
+.theme-light .incentive-surface .stepper-btn.btn-decrement:hover:not(:disabled) {
+    background-color: rgba(239, 68, 68, 0.08) !important;
+}
+.theme-dark .incentive-surface .stepper-btn.btn-decrement {
+    color: #ef4444 !important;
+}
+.theme-dark .incentive-surface .stepper-btn.btn-decrement:hover:not(:disabled) {
+    background-color: rgba(239, 68, 68, 0.12) !important;
+}
+
+/* Stepper Increment (+) */
+.theme-light .incentive-surface .stepper-btn.btn-increment {
+    color: #059669 !important; /* emerald-600 */
+}
+.theme-light .incentive-surface .stepper-btn.btn-increment:hover:not(:disabled) {
+    background-color: rgba(5, 150, 105, 0.08) !important;
+}
+.theme-dark .incentive-surface .stepper-btn.btn-increment {
+    color: #0ecb81 !important; /* Binance emerald green */
+}
+.theme-dark .incentive-surface .stepper-btn.btn-increment:hover:not(:disabled) {
+    background-color: rgba(14, 203, 129, 0.12) !important;
+}
+
+/* Stepper Numeric Input */
+.incentive-surface .stepper-input {
+    width: 62px !important;
+    min-width: 52px !important;
+    height: 28px !important;
+    line-height: 28px !important;
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    text-align: center !important;
+    font-family: monospace !important;
+    font-size: 13.5px !important;
+    font-weight: 900 !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    outline: none !important;
+    transition: all 0.2s ease !important;
+}
+.theme-light .incentive-surface .stepper-input {
+    color: #0f172a !important;
+}
+.theme-dark .incentive-surface .stepper-input {
+    color: #EAECEF !important;
+}
+/* Hide standard number spinners in stepper input */
+.incentive-surface .stepper-input::-webkit-outer-spin-button,
+.incentive-surface .stepper-input::-webkit-inner-spin-button {
+    -webkit-appearance: none !important;
+    margin: 0 !important;
+}
+.incentive-surface .stepper-input[type=number] {
+    -moz-appearance: textfield !important;
+}

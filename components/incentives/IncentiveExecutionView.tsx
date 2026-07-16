@@ -391,14 +391,14 @@ const IncentiveExecutionView: React.FC<IncentiveExecutionViewProps> = ({ project
                                 <div className="flex items-center gap-3 flex-wrap">
                                     <div className="flex items-center gap-2">
                                         <Calendar className="w-3 h-3 text-white/20" />
-                                        <span className="text-[10px] font-bold text-white/40 tracking-wide">
+                                        <span className="text-xs font-bold text-white/50 tracking-wide">
                                             {language === 'km' 
                                                 ? `វដ្តទូទាត់៖ ${formatMonthKhmer(selectedMonth, 'km')}` 
                                                 : `Payout Cycle: ${formatMonthKhmer(selectedMonth, 'en')}`}
                                         </span>
                                     </div>
                                     {saveStatus !== 'idle' && (
-                                        <div className={`flex items-center gap-1.5 px-2.5 py-0.5 rounded-full border text-[9px] font-bold tracking-wide ${
+                                        <div className={`flex items-center gap-1.5 px-2.5 py-0.5 rounded-full border text-[11px] font-bold tracking-wide ${
                                             saveStatus === 'saving' ? 'bg-primary/10 border-primary/20 text-primary' : 
                                             saveStatus === 'saved' ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400' : 
                                             'bg-red-500/10 border-red-500/20 text-red-500'
@@ -430,7 +430,7 @@ const IncentiveExecutionView: React.FC<IncentiveExecutionViewProps> = ({ project
                                 type="month"
                                 value={selectedMonth}
                                 onChange={e => setSelectedMonth(e.target.value)}
-                                className="bg-transparent border-none p-0 font-bold text-[11px] tracking-wide focus:ring-0 cursor-pointer outline-none min-w-[96px] month-picker-input"
+                                className="bg-transparent border-none p-0 font-bold text-xs tracking-wide focus:ring-0 cursor-pointer outline-none min-w-[96px] month-picker-input"
                                 style={{ color: 'inherit' }}
                             />
                         </div>
@@ -439,19 +439,17 @@ const IncentiveExecutionView: React.FC<IncentiveExecutionViewProps> = ({ project
                         <div className="h-5 w-px bg-white/8 shrink-0" />
 
                         {/* Auto Save Toggle — inline pill */}
-                        <div className="exec-header-btn exec-header-pill flex items-center gap-2.5 h-10 px-3.5 rounded-2xl shrink-0 select-none">
-                            <span className="text-[10px] font-bold tracking-wider uppercase opacity-50 whitespace-nowrap">
-                                {language === 'km' ? 'រក្សាទុក' : 'Auto'}
+                        <div className={`exec-header-btn exec-header-pill flex items-center gap-2.5 h-10 px-3.5 rounded-2xl shrink-0 select-none ${isAutoSave ? 'auto-save-active' : ''}`}>
+                            <span className="text-xs font-bold tracking-wider uppercase opacity-50 whitespace-nowrap">
+                                {language === 'km' ? 'ស្វ័យប្រវត្ត' : 'Auto'}
                             </span>
                             <button
                                 type="button"
                                 onClick={toggleAutoSave}
-                                className={`exec-header-toggle w-8 h-4.5 rounded-full p-0.5 transition-all duration-300 ease-in-out relative shrink-0 ${
-                                    isAutoSave ? 'bg-amber-400' : 'bg-white/15'
-                                }`}
+                                className={`exec-header-toggle ${isAutoSave ? 'active' : ''}`}
                                 title={language === 'km' ? 'បិទ/បើក ការរក្សាទុកស្វ័យប្រវត្ត' : 'Toggle Auto Save'}
                             >
-                                <div className={`w-3.5 h-3.5 rounded-full shadow transition-all duration-300 ${isAutoSave ? 'translate-x-3.5 bg-black/80' : 'translate-x-0 bg-white/60'}`} />
+                                <div className="exec-header-toggle-handle" />
                             </button>
                         </div>
 
@@ -461,10 +459,10 @@ const IncentiveExecutionView: React.FC<IncentiveExecutionViewProps> = ({ project
                                 type="button"
                                 onClick={handleManualSave}
                                 disabled={!hasUnsavedChanges || isCalculating}
-                                className={`exec-header-btn h-10 px-4 rounded-2xl text-[10px] font-bold tracking-widest uppercase flex items-center gap-2 shrink-0 transition-all duration-200 active:scale-95 ${
+                                className={`exec-header-btn h-10 px-4 rounded-2xl text-xs font-bold tracking-widest uppercase flex items-center gap-2 shrink-0 transition-all duration-200 active:scale-95 ${
                                     hasUnsavedChanges
                                         ? 'exec-header-cta text-black'
-                                        : 'exec-header-pill text-white/25 cursor-not-allowed'
+                                        : 'exec-header-pill'
                                 }`}
                             >
                                 <Save className="w-3.5 h-3.5 shrink-0" />
@@ -479,7 +477,7 @@ const IncentiveExecutionView: React.FC<IncentiveExecutionViewProps> = ({ project
                         {/* Export PDF */}
                         <button
                             onClick={() => setIsPdfModalOpen(true)}
-                            className="exec-header-btn exec-header-pill h-10 px-4 rounded-2xl text-[10px] font-bold tracking-widest uppercase flex items-center gap-2 shrink-0 transition-all duration-200 active:scale-95 hover:exec-header-pill-hover"
+                            className="exec-header-btn exec-header-pill h-10 px-4 rounded-2xl text-xs font-bold tracking-widest uppercase flex items-center gap-2 shrink-0 transition-all duration-200 active:scale-95 hover:exec-header-pill-hover"
                         >
                             <FileText className="w-3.5 h-3.5 text-amber-400 shrink-0" />
                             <span>{language === 'km' ? 'នាំចេញ PDF' : 'Export PDF'}</span>
@@ -488,7 +486,7 @@ const IncentiveExecutionView: React.FC<IncentiveExecutionViewProps> = ({ project
                         {/* Commit / Unlock */}
                         <button
                             onClick={toggleLock}
-                            className={`exec-header-btn h-10 px-4 rounded-2xl text-[10px] font-bold tracking-widest uppercase flex items-center gap-2 shrink-0 transition-all duration-200 active:scale-95 ${
+                            className={`exec-header-btn h-10 px-4 rounded-2xl text-xs font-bold tracking-widest uppercase flex items-center gap-2 shrink-0 transition-all duration-200 active:scale-95 ${
                                 isLocked ? 'exec-header-danger' : 'exec-header-pill'
                             }`}
                         >
@@ -501,7 +499,7 @@ const IncentiveExecutionView: React.FC<IncentiveExecutionViewProps> = ({ project
                         {project.dataSource === 'manual' && (
                             <button
                                 onClick={() => setShowInputPanel(!showInputPanel)}
-                                className={`exec-header-btn h-10 px-4 rounded-2xl text-[10px] font-bold tracking-widest uppercase flex items-center gap-2 shrink-0 transition-all duration-200 active:scale-95 ${
+                                className={`exec-header-btn h-10 px-4 rounded-2xl text-xs font-bold tracking-widest uppercase flex items-center gap-2 shrink-0 transition-all duration-200 active:scale-95 ${
                                     showInputPanel ? 'exec-header-cta text-black' : 'exec-header-pill'
                                 }`}
                             >
@@ -570,7 +568,7 @@ const IncentiveExecutionView: React.FC<IncentiveExecutionViewProps> = ({ project
                         <div key={i} className={`bg-[#121212] border border-white/5 rounded-[32px] p-6 flex flex-col justify-between gap-6 group ${s.borderGlow} transition-all shadow-xl`}>
                             <div className="flex justify-between items-start">
                                 <div className="space-y-1.5">
-                                    <p className="text-[10px] font-bold text-white/30 uppercase tracking-wider">{s.label}</p>
+                                    <p className="text-xs font-bold text-white/30 uppercase tracking-wider">{s.label}</p>
                                     <h3 className={`text-2xl font-mono font-black ${s.color} truncate`}>{s.value}</h3>
                                 </div>
                                 <div className={`w-12 h-12 rounded-2xl ${s.iconBg} border flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform`}>
@@ -579,7 +577,7 @@ const IncentiveExecutionView: React.FC<IncentiveExecutionViewProps> = ({ project
                             </div>
                             <div className="flex items-center gap-2">
                                 <div className={`w-1.5 h-1.5 rounded-full ${s.accent} opacity-40`} />
-                                <p className="text-[10px] font-medium text-white/25 tracking-wide">{s.detail}</p>
+                                <p className="text-xs font-medium text-white/25 tracking-wide">{s.detail}</p>
                             </div>
                         </div>
                     ))}
@@ -595,43 +593,41 @@ const IncentiveExecutionView: React.FC<IncentiveExecutionViewProps> = ({ project
                         <div className="px-8 py-6 bg-white/[0.02] border-b border-white/5 flex flex-col xl:flex-row xl:items-center gap-6 relative z-10">
                             <div className="flex flex-col sm:flex-row sm:items-center gap-4 min-w-0">
                                 <div className="flex items-center gap-2">
-                                    <Layers className="w-3.5 h-3.5 text-white/20" />
-                                    <span className="text-[10px] font-bold text-white/40 tracking-wide">{language === 'km' ? 'ម៉ូឌុលសកម្ម' : 'Active Module'}</span>
+                                    <Layers className="w-3.5 h-3.5 text-slate-400 dark:text-white/25" />
+                                    <span className="text-xs font-bold text-slate-400 dark:text-white/50 tracking-wide">{language === 'km' ? 'ម៉ូឌុលសកម្ម' : 'Active Module'}</span>
                                 </div>
-                                <div className="flex items-center gap-2 bg-black p-1 rounded-2xl border border-white/5 overflow-x-auto no-scrollbar">
+                                <div className="segment-container">
                                     {project.calculators?.filter(c => c.status === 'Active' && c.metricType !== 'Face-showing Videos').map(calc => (
                                         <button
                                             key={calc.id}
                                             onClick={() => setActiveMetricTab(String(calc.id))}
-                                            className={`h-9 px-5 rounded-xl text-[10px] font-black uppercase tracking-[0.2em] transition-all whitespace-nowrap border ${
-                                                activeMetricTab === String(calc.id)
-                                                    ? 'bg-primary border-primary text-black shadow-lg shadow-primary/20'
-                                                    : 'bg-transparent border-transparent text-white/30 hover:text-white hover:bg-white/5'
+                                            className={`segment-btn ${
+                                                activeMetricTab === String(calc.id) ? 'active-segment' : ''
                                             }`}
-                                        >{calc.name}</button>
+                                        >
+                                            {calc.name}
+                                        </button>
                                     ))}
                                 </div>
                             </div>
 
                             <div className="flex items-center gap-4">
                                 <div className="flex items-center gap-2">
-                                    <Target className="w-3.5 h-3.5 text-white/20" />
-                                    <span className="text-[10px] font-bold text-white/40 tracking-wide">{language === 'km' ? 'កម្រិត' : 'Scale'}</span>
+                                    <Target className="w-3.5 h-3.5 text-slate-400 dark:text-white/25" />
+                                    <span className="text-xs font-bold text-slate-400 dark:text-white/50 tracking-wide">{language === 'km' ? 'កម្រិត' : 'Scale'}</span>
                                 </div>
-                                <div className="flex items-center gap-1 bg-black p-1 rounded-2xl border border-white/5">
+                                <div className="segment-container">
                                     {(['team', 'user'] as const).map(mode => (
                                         <button 
                                             key={mode} 
                                             onClick={() => setEntryMode(mode)} 
-                                            className={`h-9 px-5 rounded-xl text-[10px] font-black uppercase tracking-[0.2em] transition-all ${
-                                                entryMode === mode 
-                                                    ? 'bg-white/10 text-white border border-white/10 shadow-lg' 
-                                                    : 'text-white/20 hover:text-white/40'
+                                            className={`segment-btn ${
+                                                entryMode === mode ? 'active-segment' : ''
                                             }`}
                                         >
                                             {mode === 'team' 
                                                 ? (language === 'km' ? 'ក្រុម' : 'Teams') 
-                                                : (language === 'km' ? 'បុគ្គល' : 'Individual')}
+                                                : (language === 'km' ? 'បុគ្គល' : 'Staff')}
                                         </button>
                                     ))}
                                 </div>
@@ -687,7 +683,7 @@ const IncentiveExecutionView: React.FC<IncentiveExecutionViewProps> = ({ project
                                         {calc.isMarathon && (
                                             <div className="px-8 py-3 bg-primary/5 border-y border-primary/10 flex items-center gap-4">
                                                 <Trophy className="w-4 h-4 text-primary" />
-                                                <span className="text-[10px] font-bold text-primary tracking-wide">
+                                                <span className="text-xs font-bold text-primary tracking-wide">
                                                     {language === 'km' 
                                                         ? '🏆 Marathon សកម្ម: រង្វាន់បញ្ចូលគ្នាតាមអំឡុងពេល' 
                                                         : '🏆 Marathon Active: Cumulative rewards per interval'}
@@ -696,7 +692,7 @@ const IncentiveExecutionView: React.FC<IncentiveExecutionViewProps> = ({ project
                                         )}
                                         <table className="w-full text-left border-collapse min-w-[800px]">
                                             <thead className="sticky top-0 z-20">
-                                                <tr className="bg-black/80 backdrop-blur-xl border-b border-white/10 text-[10px] text-white/30 font-bold tracking-wider">
+                                                <tr className="bg-black/80 backdrop-blur-xl border-b border-white/10 text-xs font-extrabold text-slate-500 dark:text-white/60 tracking-wider">
                                                     <th className="px-8 py-4 min-w-[220px] border-r border-white/5">{language === 'km' ? 'ឈ្មោះ' : 'Name'}</th>
                                                     {subPeriods.map(p => {
                                                         if (calc.metricType === 'Number of Videos') {
@@ -741,17 +737,25 @@ const IncentiveExecutionView: React.FC<IncentiveExecutionViewProps> = ({ project
                                                         <tr key={id} className="hover:bg-white/[0.02] transition-colors group">
                                                             <td className="px-8 py-5 border-r border-white/5 font-black text-white text-xs italic tracking-tight group-hover:text-primary transition-colors">
                                                                 {label}
-                                                                {entryMode === 'user' && typeof t !== 'string' && (
-                                                                    <div className="text-[9px] text-white/20 font-medium tracking-wide mt-1">{t.Team || (language === 'km' ? 'គ្មានក្រុម' : 'No Team')}</div>
-                                                                )}
                                                             </td>
                                                             {subPeriods.map(p => {
-                                                                const keyWithPrefix = `${p}_${entryMode === 'team' ? 'team:' : 'user:'}${id}`;
-                                                                const cellVal = rowData[keyWithPrefix] ?? rowData[`${p}_${id}`] ?? 0;
-                                                                const faceCellVal = faceRowData[keyWithPrefix] ?? faceRowData[`${p}_${id}`] ?? 0;
-                                                                
+                                                                const cellKey = `${p}_${entryMode === 'team' ? 'team:' : 'user:'}${id}`;
+                                                                const cellVal = rowData[cellKey] ?? rowData[`${p}_${id}`] ?? 0;
+                                                                const faceCellKey = `${p}_${entryMode === 'team' ? 'team:' : 'user:'}${id}`;
+                                                                const faceCellVal = faceRowData[faceCellKey] ?? faceRowData[`${p}_${id}`] ?? 0;
+
                                                                 let displayReward = 0;
                                                                 let displayTierName = "";
+
+                                                                const isCumulative = calc.isMarathon && calc.metricType !== 'Number of Videos';
+                                                                let checkVal = cellVal;
+                                                                if (isCumulative) {
+                                                                    const pIndex = subPeriods.indexOf(p);
+                                                                    checkVal = subPeriods.slice(0, pIndex + 1).reduce((sum, sp) => {
+                                                                        const spKey = `${sp}_${entryMode === 'team' ? 'team:' : 'user:'}${id}`;
+                                                                        return sum + (rowData[spKey] ?? rowData[`${sp}_${id}`] ?? 0);
+                                                                    }, 0);
+                                                                }
 
                                                                 if (calc.metricType === 'Number of Videos') {
                                                                     if (cellVal >= 15) {
@@ -767,13 +771,19 @@ const IncentiveExecutionView: React.FC<IncentiveExecutionViewProps> = ({ project
                                                                         displayTierName = language === 'km' ? 'សម្រេច ១០ វីដេអូ' : 'Reached 10 Videos';
                                                                     }
                                                                 } else if (calc.achievementTiers) {
-                                                                    const tiers = [...calc.achievementTiers]
+                                                                    const sortedTiers = [...calc.achievementTiers]
                                                                         .filter(tier => !tier.subPeriod || tier.subPeriod === p)
-                                                                        .sort((a, b) => b.target - a.target);
-                                                                    const tier = tiers.find(t => cellVal >= t.target);
+                                                                        .sort((a, b) => a.target - b.target);
+                                                                    const tier = [...sortedTiers].reverse().find(t => checkVal >= t.target);
                                                                     if (tier) {
+                                                                        const tierIndex = sortedTiers.findIndex(t => t.target === tier.target) + 1;
+                                                                        const weekNum = p.match(/\d+/);
+                                                                        const weekLabel = weekNum
+                                                                            ? (language === 'km' ? `សប្តាហ៍ទី ${weekNum[0]}` : `Week ${weekNum[0]}`)
+                                                                            : p;
+                                                                        const goalLabel = language === 'km' ? `គោលដៅ ${tierIndex}` : `Goal ${tierIndex}`;
                                                                         displayReward = tier.rewardAmount;
-                                                                        displayTierName = tier.name || (language === 'km' ? 'គោលដៅសម្រេច' : 'Target Reached');
+                                                                        displayTierName = `${weekLabel} - ${goalLabel}`;
                                                                     }
                                                                 }
 
@@ -783,34 +793,36 @@ const IncentiveExecutionView: React.FC<IncentiveExecutionViewProps> = ({ project
                                                                             {/* Total Videos Input */}
                                                                             <td className="px-4 py-4 border-r border-white/5">
                                                                                 <div className="flex flex-col gap-2">
-                                                                                    <div className="flex items-center gap-1.5 justify-center">
-                                                                                        <button
-                                                                                            type="button"
-                                                                                            disabled={isLocked || cellVal <= 0}
-                                                                                            onClick={() => handleManualDataIncrement(calc.metricType || '', id, p, -1)}
-                                                                                            className="w-8 h-10 flex items-center justify-center rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-500 border border-red-500/20 transition-all disabled:opacity-20 active:scale-90 shrink-0 text-base font-black"
-                                                                                        >−</button>
-                                                                                        <input
-                                                                                            type="number"
-                                                                                            value={cellVal || ''}
-                                                                                            disabled={isLocked}
-                                                                                            onChange={e => handleManualDataChange(calc.metricType || '', id, e.target.value, p)}
-                                                                                            className="w-16 h-10 bg-black border border-white/10 text-center font-mono text-[13px] font-black text-white focus:border-primary/50 focus:bg-primary/[0.02] rounded-lg outline-none transition-all disabled:opacity-30"
-                                                                                            placeholder="0"
-                                                                                        />
-                                                                                        <button
-                                                                                            type="button"
-                                                                                            disabled={isLocked}
-                                                                                            onClick={() => handleManualDataIncrement(calc.metricType || '', id, p, 1)}
-                                                                                            className="w-8 h-10 flex items-center justify-center rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/20 transition-all disabled:opacity-20 active:scale-90 shrink-0 text-base font-black"
-                                                                                        >+</button>
+                                                                                    <div className="flex items-center justify-center">
+                                                                                        <div className="stepper-control">
+                                                                                            <button
+                                                                                                type="button"
+                                                                                                disabled={isLocked || cellVal <= 0}
+                                                                                                onClick={() => handleManualDataIncrement(calc.metricType || '', id, p, -1)}
+                                                                                                className="stepper-btn btn-decrement"
+                                                                                            >−</button>
+                                                                                            <input
+                                                                                                type="number"
+                                                                                                value={cellVal || ''}
+                                                                                                disabled={isLocked}
+                                                                                                onChange={e => handleManualDataChange(calc.metricType || '', id, e.target.value, p)}
+                                                                                                className="stepper-input"
+                                                                                                placeholder="0"
+                                                                                            />
+                                                                                            <button
+                                                                                                type="button"
+                                                                                                disabled={isLocked}
+                                                                                                onClick={() => handleManualDataIncrement(calc.metricType || '', id, p, 1)}
+                                                                                                className="stepper-btn btn-increment"
+                                                                                            >+</button>
+                                                                                        </div>
                                                                                     </div>
                                                                                     {displayReward > 0 && (
                                                                                         <div className="flex flex-col gap-0.5 px-2 py-1 bg-emerald-500/5 rounded border border-emerald-500/10 max-w-[120px] mx-auto text-center">
-                                                                                            <span className="text-[7px] font-black text-emerald-400 uppercase tracking-tighter truncate">
+                                                                                            <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-tight truncate">
                                                                                                 {displayTierName}
                                                                                             </span>
-                                                                                            <span className="text-[9px] font-mono font-black text-emerald-400">
+                                                                                            <span className="text-[12px] font-mono font-black text-emerald-600 dark:text-emerald-400">
                                                                                                 +${displayReward.toFixed(0)}
                                                                                             </span>
                                                                                         </div>
@@ -820,27 +832,29 @@ const IncentiveExecutionView: React.FC<IncentiveExecutionViewProps> = ({ project
 
                                                                             {/* Face-showing Videos Input */}
                                                                             <td className="px-4 py-4 border-r border-white/5">
-                                                                                <div className="flex items-center gap-1.5 justify-center">
-                                                                                    <button
-                                                                                        type="button"
-                                                                                        disabled={isLocked || faceCellVal <= 0}
-                                                                                        onClick={() => handleManualDataIncrement('Face-showing Videos', id, p, -1)}
-                                                                                        className="w-8 h-10 flex items-center justify-center rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-500 border border-red-500/20 transition-all disabled:opacity-20 active:scale-90 shrink-0 text-base font-black"
-                                                                                    >−</button>
-                                                                                    <input
-                                                                                        type="number"
-                                                                                        value={faceCellVal || ''}
-                                                                                        disabled={isLocked}
-                                                                                        onChange={e => handleManualDataChange('Face-showing Videos', id, e.target.value, p)}
-                                                                                        className="w-16 h-10 bg-black border border-white/10 text-center font-mono text-[13px] font-black text-white focus:border-primary/50 focus:bg-primary/[0.02] rounded-lg outline-none transition-all disabled:opacity-30"
-                                                                                        placeholder="0"
-                                                                                    />
-                                                                                    <button
-                                                                                        type="button"
-                                                                                        disabled={isLocked}
-                                                                                        onClick={() => handleManualDataIncrement('Face-showing Videos', id, p, 1)}
-                                                                                        className="w-8 h-10 flex items-center justify-center rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/20 transition-all disabled:opacity-20 active:scale-90 shrink-0 text-base font-black"
-                                                                                    >+</button>
+                                                                                <div className="flex items-center justify-center">
+                                                                                    <div className="stepper-control">
+                                                                                        <button
+                                                                                            type="button"
+                                                                                            disabled={isLocked || faceCellVal <= 0}
+                                                                                            onClick={() => handleManualDataIncrement('Face-showing Videos', id, p, -1)}
+                                                                                            className="stepper-btn btn-decrement"
+                                                                                        >−</button>
+                                                                                        <input
+                                                                                            type="number"
+                                                                                            value={faceCellVal || ''}
+                                                                                            disabled={isLocked}
+                                                                                            onChange={e => handleManualDataChange('Face-showing Videos', id, e.target.value, p)}
+                                                                                            className="stepper-input"
+                                                                                            placeholder="0"
+                                                                                        />
+                                                                                        <button
+                                                                                            type="button"
+                                                                                            disabled={isLocked}
+                                                                                            onClick={() => handleManualDataIncrement('Face-showing Videos', id, p, 1)}
+                                                                                            className="stepper-btn btn-increment"
+                                                                                        >+</button>
+                                                                                    </div>
                                                                                 </div>
                                                                             </td>
                                                                         </React.Fragment>
@@ -850,34 +864,36 @@ const IncentiveExecutionView: React.FC<IncentiveExecutionViewProps> = ({ project
                                                                 return (
                                                                     <td key={p} className="px-4 py-4 border-r border-white/5">
                                                                         <div className="flex flex-col gap-3">
-                                                                            <div className="flex items-center gap-2">
-                                                                                <button
-                                                                                    type="button"
-                                                                                    disabled={isLocked || cellVal <= 0}
-                                                                                    onClick={() => handleManualDataIncrement(calc.metricType || '', id, p, -1)}
-                                                                                    className="w-9 h-11 flex items-center justify-center rounded-xl bg-red-500/10 hover:bg-red-500/20 text-red-500 border border-red-500/20 transition-all disabled:opacity-20 active:scale-90 shrink-0 text-lg font-black"
-                                                                                >−</button>
-                                                                                <input
-                                                                                    type="number"
-                                                                                    value={cellVal || ''}
-                                                                                    disabled={isLocked}
-                                                                                    onChange={e => handleManualDataChange(calc.metricType || '', id, e.target.value, p)}
-                                                                                    className="flex-1 h-11 bg-black border border-white/10 text-center font-mono text-[14px] font-black text-white focus:border-primary/50 focus:bg-primary/[0.02] rounded-xl outline-none transition-all disabled:opacity-30"
-                                                                                    placeholder="0"
-                                                                                />
-                                                                                <button
-                                                                                    type="button"
-                                                                                    disabled={isLocked}
-                                                                                    onClick={() => handleManualDataIncrement(calc.metricType || '', id, p, 1)}
-                                                                                    className="w-9 h-11 flex items-center justify-center rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/20 transition-all disabled:opacity-20 active:scale-90 shrink-0 text-lg font-black"
-                                                                                >+</button>
+                                                                            <div className="flex items-center justify-center">
+                                                                                <div className="stepper-control !flex">
+                                                                                    <button
+                                                                                        type="button"
+                                                                                        disabled={isLocked || cellVal <= 0}
+                                                                                        onClick={() => handleManualDataIncrement(calc.metricType || '', id, p, -1)}
+                                                                                        className="stepper-btn btn-decrement"
+                                                                                    >−</button>
+                                                                                    <input
+                                                                                        type="number"
+                                                                                        value={cellVal || ''}
+                                                                                        disabled={isLocked}
+                                                                                        onChange={e => handleManualDataChange(calc.metricType || '', id, e.target.value, p)}
+                                                                                        className="stepper-input !flex-1"
+                                                                                        placeholder="0"
+                                                                                    />
+                                                                                    <button
+                                                                                        type="button"
+                                                                                        disabled={isLocked}
+                                                                                        onClick={() => handleManualDataIncrement(calc.metricType || '', id, p, 1)}
+                                                                                        className="stepper-btn btn-increment"
+                                                                                    >+</button>
+                                                                                </div>
                                                                             </div>
                                                                             {displayReward > 0 ? (
                                                                                 <div className="flex items-center justify-between px-2 py-1 bg-emerald-500/5 rounded-lg border border-emerald-500/10">
-                                                                                    <span className="text-[8px] font-black text-emerald-400 uppercase tracking-tighter">
+                                                                                    <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-tight">
                                                                                         {displayTierName}
                                                                                     </span>
-                                                                                    <span className="text-[10px] font-mono font-black text-emerald-400">
+                                                                                    <span className="text-[12px] font-mono font-black text-emerald-600 dark:text-emerald-400">
                                                                                         +${displayReward.toFixed(0)}
                                                                                     </span>
                                                                                 </div>
@@ -894,11 +910,11 @@ const IncentiveExecutionView: React.FC<IncentiveExecutionViewProps> = ({ project
                                                             })}
                                                             <td className="px-8 py-5 text-right bg-primary/[0.02]">
                                                                 <span className="font-mono text-[16px] text-primary font-black tracking-tight">{rowTotal.toLocaleString()}</span>
-                                                                <div className="text-[9px] text-white/20 font-black uppercase tracking-[0.2em] mt-1">{calc.metricType || 'KPI'}</div>
+                                                                <div className="text-[10px] font-bold text-slate-400 dark:text-white/40 uppercase tracking-wider mt-1">{calc.metricType || 'KPI'}</div>
                                                                 {isVideoMetric && (
                                                                     <div className="mt-2 pt-2 border-t border-white/5">
                                                                         <span className="font-mono text-[13px] text-emerald-400 font-black tracking-tight">{faceRowTotal.toLocaleString()}</span>
-                                                                        <div className="text-[8px] text-white/20 font-black uppercase tracking-wider mt-0.5">{language === 'km' ? 'បង្ហាញមុខសរុប' : 'Face Total'}</div>
+                                                                        <div className="text-[10px] font-bold text-slate-400 dark:text-white/40 uppercase tracking-wider mt-0.5">{language === 'km' ? 'បង្ហាញមុខសរុប' : 'Face Total'}</div>
                                                                     </div>
                                                                 )}
                                                             </td>
