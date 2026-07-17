@@ -323,8 +323,9 @@ const DesktopAdminDashboard: React.FC<{ isTablet?: boolean }> = ({ isTablet }) =
 
     // --- FULL SCREEN WRAPPERS FOR SPECIFIC TABS ---
     if (activeDashboard === 'incentives') {
+        const isLightMode = advancedSettings?.themeMode === 'light';
         return (
-            <div className="fixed inset-0 z-[100] bg-[#0B0E11] overflow-y-auto">
+            <div className={`fixed inset-0 z-[100] ${isLightMode ? 'bg-[#f1f5f9]' : 'bg-[#0B0E11]'} overflow-y-auto`}>
                 {renderContent()}
                 {editProfileModalOpen && <EditProfileModal onClose={() => setEditProfileModalOpen(false)} />}
                 {advancedSettingsOpen && <AdvancedSettingsModal onClose={() => setAdvancedSettingsOpen(false)} />}

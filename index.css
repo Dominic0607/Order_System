@@ -1105,6 +1105,12 @@ body {
     border-bottom: 1px solid rgba(0, 0, 0, 0.05) !important;
 }
 
+.theme-light .incentive-surface main,
+.theme-light .incentive-surface main[class*="bg-"] {
+    background-color: #ffffff !important; /* Pure white main content area */
+    border-left: 1px solid rgba(0, 0, 0, 0.05) !important;
+}
+
 .theme-light .incentive-surface aside div[class*="bg-black/20"],
 .theme-light .incentive-surface aside .bg-black\/20 {
     background-color: rgba(0, 0, 0, 0.02) !important;
