@@ -166,42 +166,47 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ isOpen, onClose }) => {
         });
     }, [CACHE_KEY]);
 
-    const transformBackendMessage = useCallback((msg: BackendChatMessage): ChatMessage => {
-        const user = appData.users?.find(u => (u.UserName || '').toLowerCase() === (msg.UserName || '').toLowerCase());
-        const normalizedType = (msg.MessageType || 'text').toLowerCase();
-        let contentUrl = msg.Content || '';
+    const transformBackendMessage = useCallback((msg: any): ChatMessage => {
+        const rawUser = msg.UserName || msg.Sender || '';
+        const rawType = msg.MessageType || msg.Type || 'text';
+        const rawContent = msg.Content || msg.Message || '';
+        const rawFileID = msg.FileID || msg.FileURL || '';
+
+        const user = appData.users?.find(u => (u.UserName || '').toLowerCase() === (rawUser || '').toLowerCase());
+        const normalizedType = rawType.toLowerCase();
+        let contentUrl = rawContent || '';
         let duration = undefined;
 
-        if (normalizedType === 'audio' && msg.FileID) {
-             contentUrl = `${WEB_APP_URL}/api/chat/audio/${msg.FileID}`;
-             duration = msg.Content; 
+        if (normalizedType === 'audio' && rawFileID) {
+             contentUrl = `${WEB_APP_URL}/api/chat/audio/${rawFileID}`;
+             duration = rawContent; 
         } else if (normalizedType === 'image') {
-             if (!contentUrl && msg.FileID) {
+             if (!contentUrl && rawFileID) {
                  // Use thumbnail API which is more reliable for public/shared files
-                 contentUrl = `https://drive.google.com/thumbnail?id=${msg.FileID}&sz=w1000`;
+                 contentUrl = `https://drive.google.com/thumbnail?id=${rawFileID}&sz=w1000`;
              }
              contentUrl = contentUrl.startsWith('http') ? (contentUrl.includes('drive.google.com/uc?') ? convertGoogleDriveUrl(contentUrl) : contentUrl) : convertGoogleDriveUrl(contentUrl);
         }
 
         return {
             id: msg.Timestamp || String(Date.now()),
-            backendId: msg.id,
-            user: msg.UserName,
-            fullName: user?.FullName || msg.UserName,
+            backendId: msg.id || msg.ID,
+            user: rawUser,
+            fullName: user?.FullName || rawUser,
             avatar: user?.ProfilePictureURL || '',
             content: contentUrl,
             timestamp: msg.Timestamp || new Date().toISOString(),
             type: normalizedType as any,
-            fileID: msg.FileID,
+            fileID: rawFileID,
             duration: duration,
             isOptimistic: false,
-            isDeleted: (msg as any).IsDeleted || false,
-            isPinned: (msg as any).IsPinned || false,
+            isDeleted: msg.IsDeleted || msg.isDeleted || false,
+            isPinned: msg.IsPinned || msg.isPinned || false,
             replyTo: msg.ReplyTo ? {
-                id: msg.ReplyTo.ID,
-                user: msg.ReplyTo.User,
-                content: msg.ReplyTo.Content,
-                type: msg.ReplyTo.Type
+                id: msg.ReplyTo.ID || msg.ReplyTo.id,
+                user: msg.ReplyTo.User || msg.ReplyTo.user,
+                content: msg.ReplyTo.Content || msg.ReplyTo.content,
+                type: msg.ReplyTo.Type || msg.ReplyTo.type
             } : undefined
         };
     }, [appData.users]); 

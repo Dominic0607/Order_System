@@ -338,7 +338,7 @@ const RoleSelectionPage: React.FC<RoleSelectionPageProps> = ({ onSelect }) => {
 
         if (uiTheme === 'default') {
             return (
-                <div className={`min-h-screen w-full flex flex-col items-center justify-start relative font-['Kantumruy_Pro'] overflow-y-auto pt-24 sm:pt-28 pb-12 px-4 sm:px-6 lg:px-8 transition-all duration-500 ${styles.bg}`} style={styles.bgStyle}>
+                <div className={`min-h-screen w-full flex flex-col items-center justify-start relative font-['Kantumruy_Pro'] overflow-y-auto pt-28 sm:pt-36 pb-12 px-4 sm:px-6 lg:px-8 transition-all duration-500 ${styles.bg}`} style={styles.bgStyle}>
                     {/* Background decorative glows */}
                     <div className="fixed inset-0 pointer-events-none opacity-20 z-0">
                         <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] rounded-full blur-[120px]" style={{ backgroundColor: styles.decorDot }}></div>
@@ -363,7 +363,7 @@ const RoleSelectionPage: React.FC<RoleSelectionPageProps> = ({ onSelect }) => {
                         }
                     `}</style>
 
-                    <div className="w-full max-w-5xl z-10 flex flex-col gap-6 sm:my-auto animate-reveal px-2 sm:px-0">
+                    <div className="w-full max-w-5xl z-10 flex flex-col gap-6 mt-6 sm:mt-12 animate-reveal px-2 sm:px-0">
                         {/* Mobile View: Clean Native-App Style Layout */}
                         <div className="w-full max-w-md mx-auto flex flex-col gap-5 sm:hidden">
                             {/* Mobile Title Section */}
@@ -458,7 +458,7 @@ const RoleSelectionPage: React.FC<RoleSelectionPageProps> = ({ onSelect }) => {
                         </div>
 
                         {/* Desktop/Tablet Card Container View */}
-                        <div className="w-full max-w-5xl z-10 flex-col items-center gap-6 my-auto animate-reveal hidden sm:flex">
+                        <div className="w-full max-w-5xl z-10 flex-col items-center gap-6 mt-6 sm:mt-12 animate-reveal hidden sm:flex">
                             <div className={`w-full rounded-[32px] border ${
                                 isLightMode 
                                 ? 'bg-white/80 border-slate-200/80 shadow-[0_25px_50px_rgba(0,0,0,0.03)]' 
@@ -580,7 +580,7 @@ const RoleSelectionPage: React.FC<RoleSelectionPageProps> = ({ onSelect }) => {
 
 
         return (
-            <div className={`min-h-screen w-full flex flex-col items-center justify-start relative font-['Kantumruy_Pro'] overflow-y-auto pt-24 sm:pt-28 pb-8 px-4 sm:px-6 lg:px-8 transition-all duration-300 ${styles.bg}`} style={styles.bgStyle}>
+            <div className={`min-h-screen w-full flex flex-col items-center justify-start relative font-['Kantumruy_Pro'] overflow-y-auto pt-28 sm:pt-36 pb-8 px-4 sm:px-6 lg:px-8 transition-all duration-300 ${styles.bg}`} style={styles.bgStyle}>
                 {/* Background decorative glows */}
                 <div className="fixed inset-0 pointer-events-none opacity-20 z-0">
                     <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] rounded-full blur-[120px]" style={{ backgroundColor: styles.decorDot }}></div>
@@ -616,7 +616,7 @@ const RoleSelectionPage: React.FC<RoleSelectionPageProps> = ({ onSelect }) => {
                     </button>
                 </div>
 
-                <div className="w-full max-w-5xl z-10 flex flex-col items-center justify-start gap-6 sm:gap-8 lg:gap-12 my-auto">
+                <div className="w-full max-w-5xl z-10 flex flex-col items-center justify-start gap-6 sm:gap-8 lg:gap-12 mt-6 sm:mt-12">
                     {/* Redesigned Profile Section */}
                     <div className="animate-reveal shrink-0 w-full" style={{ animationDelay: '0.15s' }}>
                         <div className={styles.profileCard}>
@@ -1079,8 +1079,8 @@ const RoleSelectionPage: React.FC<RoleSelectionPageProps> = ({ onSelect }) => {
 
 
             {/* ══════════════ MAIN CONTENT ══════════════ */}
-            <main className="flex-1 flex flex-col items-center justify-start px-4 sm:px-6 lg:px-10 pt-20 pb-8 sm:py-8 overflow-y-auto">
-                <div className="w-full max-w-4xl 2xl:max-w-5xl flex flex-col items-center gap-4 sm:gap-8 lg:gap-10 my-auto">
+            <main className="flex-1 flex flex-col items-center justify-start px-4 sm:px-6 lg:px-10 pt-28 sm:pt-36 pb-8 sm:py-8 overflow-y-auto">
+                <div className="w-full max-w-4xl 2xl:max-w-5xl flex flex-col items-center gap-4 sm:gap-8 lg:gap-10 mt-6 sm:mt-12">
 
                     {/* ── Profile Section ── */}
                     <div
