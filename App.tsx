@@ -76,6 +76,29 @@ const AppContent: React.FC = () => {
     const [serverVersion, setServerVersion] = useState<string | null>(null);
     const [newVersionAvailable, setNewVersionAvailable] = useState<string | null>(null);
 
+    const compareVersions = useCallback((left: string | null | undefined, right: string | null | undefined) => {
+        const normalizeVersion = (value: string | null | undefined) => {
+            if (!value) return [0];
+            return String(value)
+                .trim()
+                .replace(/^v/i, '')
+                .split(/[.-]/)
+                .map((part) => Number.parseInt(part.replace(/\D/g, ''), 10) || 0);
+        };
+
+        const leftParts = normalizeVersion(left);
+        const rightParts = normalizeVersion(right);
+        const length = Math.max(leftParts.length, rightParts.length);
+
+        for (let i = 0; i < length; i += 1) {
+            const leftPart = leftParts[i] ?? 0;
+            const rightPart = rightParts[i] ?? 0;
+            if (leftPart > rightPart) return 1;
+            if (leftPart < rightPart) return -1;
+        }
+        return 0;
+    }, []);
+
     const handleRoleSelection = useCallback((selectedRole: string) => {
         const cleanup = getRoleTransitionCleanup(selectedRole);
 
@@ -113,24 +136,27 @@ const AppContent: React.FC = () => {
         fetchSystemVersion();
     }, []);
 
-    // Check user version against server version to trigger update dialog.
-    // We also check localStorage 'system_update_acknowledged_version' to prevent a
-    // flash of the update modal on refresh due to the stale cached session having an
-    // older SystemVersion while the user has already completed the update.
+    // Check the effective installed version against the server version
+    // before showing the update modal. This prevents the modal from reappearing
+    // after a refresh when the update was already acknowledged.
     useEffect(() => {
-        if (currentUser && serverVersion) {
-            const userVersion = currentUser.SystemVersion || "";
-            const acknowledgedVersion = localStorage.getItem('system_update_acknowledged_version') || "";
-            // Only show the update modal if BOTH the user's DB version AND the locally
-            // acknowledged version differ from the server version.
-            if (userVersion !== serverVersion && acknowledgedVersion !== serverVersion) {
-                console.log(`[App] 🆕 System update available: User=${userVersion}, Server=${serverVersion}`);
-                setNewVersionAvailable(serverVersion);
-            } else {
-                setNewVersionAvailable(null);
-            }
+        if (!serverVersion) {
+            setNewVersionAvailable(null);
+            return;
         }
-    }, [currentUser, serverVersion]);
+
+        const userVersion = currentUser?.SystemVersion || "";
+        const acknowledgedVersion = localStorage.getItem('system_update_acknowledged_version') || "";
+        const fallbackVersion = localStorage.getItem('system_update_last_seen_version') || "";
+        const effectiveCurrentVersion = userVersion || acknowledgedVersion || fallbackVersion || CLIENT_VERSION;
+
+        if (compareVersions(serverVersion, effectiveCurrentVersion) > 0) {
+            console.log(`[App] 🆕 System update available: Current=${effectiveCurrentVersion}, Server=${serverVersion}`);
+            setNewVersionAvailable(serverVersion);
+        } else {
+            setNewVersionAvailable(null);
+        }
+    }, [compareVersions, currentUser, serverVersion]);
 
     const [advancedSettings, setAdvancedSettings] = useState<AdvancedSettings>(() => {
         const saved = localStorage.getItem('advancedSettings');
@@ -782,7 +808,18 @@ const AppContent: React.FC = () => {
                     currentVersion={currentUser?.SystemVersion || '1.0.0'} 
                     language={language}
                     onUpdateStart={async () => {
+                        if (!newVersionAvailable) return;
+
                         const token = localStorage.getItem('token');
+                        const persistVersion = (version: string) => {
+                            localStorage.setItem('system_update_acknowledged_version', version);
+                            localStorage.setItem('system_update_last_seen_version', version);
+                            sessionStorage.setItem('system_update_acknowledged_version', version);
+                        };
+
+                        setNewVersionAvailable(null);
+                        persistVersion(newVersionAvailable);
+
                         if (token) {
                             try {
                                 const response = await fetch(`${WEB_APP_URL}/api/users/update-version`, {
@@ -795,7 +832,6 @@ const AppContent: React.FC = () => {
                                 });
                                 if (response.ok) {
                                     console.log("[App] System version updated successfully in DB");
-                                    // Update locally to prevent flash on reload
                                     if (currentUser) {
                                         const updatedUser = { ...currentUser, SystemVersion: newVersionAvailable };
                                         setCurrentUser(updatedUser);

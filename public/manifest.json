@@ -4,29 +4,29 @@
   "description": "Premium Order Management System with Real-time Sync",
   "icons": [
     {
-      "src": "logo-192.png",
+      "src": "logo-192.png?v=1.1.1",
       "type": "image/png",
       "sizes": "192x192",
       "purpose": "any maskable"
     },
     {
-      "src": "logo-512.png",
+      "src": "logo-512.png?v=1.1.1",
       "type": "image/png",
       "sizes": "512x512",
       "purpose": "any maskable"
     },
     {
-      "src": "logo.png",
+      "src": "logo.png?v=1.1.1",
       "type": "image/png",
       "sizes": "180x180"
     },
     {
-      "src": "logo.png",
+      "src": "logo.png?v=1.1.1",
       "type": "image/png",
       "sizes": "128x128"
     }
   ],
-  "start_url": "/Order_System/",
+  "start_url": "/Order_System/?v=1.1.1",
   "display": "standalone",
   "theme_color": "#020617",
   "background_color": "#020617",
