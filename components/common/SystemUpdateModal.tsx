@@ -145,6 +145,40 @@ const SystemUpdateModal: React.FC<SystemUpdateModalProps> = ({
                     {text.desc}
                 </p>
 
+                {/* New Features Highlight for v1.1.1 */}
+                {newVersion === "1.1.1" && (
+                    <div className="w-full text-left bg-blue-500/5 border border-blue-500/10 rounded-2xl p-4 space-y-3 animate-fade-in">
+                        <div className="text-xs font-bold text-yellow-400 flex items-center gap-1.5">
+                            <Sparkles className="w-3.5 h-3.5" />
+                            <span>{language === 'km' ? 'មុខងារពិសេសៗក្នុងកំណែអាប់ដេតនេះ៖' : 'Key additions in this update:'}</span>
+                        </div>
+                        <ul className="text-xs text-[#b7bdc6] space-y-2 list-none pl-0">
+                            <li className="flex items-start gap-2.5">
+                                <span className="text-emerald-400 font-bold mt-0.5">✓</span>
+                                <div>
+                                    <strong className="text-white block sm:inline">{language === 'km' ? 'មុខងារ Call ថ្មី៖' : 'Calling Features:'}</strong>{' '}
+                                    <span>
+                                        {language === 'km' 
+                                            ? 'អាចធ្វើការតេជាសំឡេង (Audio Call) វីដេអូ (Video Call) និងការតេជាក្រុម (Group Call) នៅក្នុង Chat' 
+                                            : 'Support for Audio Calls, Video Calls, and Group Calls directly in Chat'}
+                                    </span>
+                                </div>
+                            </li>
+                            <li className="flex items-start gap-2.5">
+                                <span className="text-emerald-400 font-bold mt-0.5">✓</span>
+                                <div>
+                                    <strong className="text-white block sm:inline">{language === 'km' ? 'មុខងារ Mini App៖' : 'Mini App (OTO Chat):'}</strong>{' '}
+                                    <span>
+                                        {language === 'km' 
+                                            ? 'កិច្ចការងាររហ័ស និងមុខងារទំនាក់ទំនងសម្បូរបែប ជាមួយ OTO Chat' 
+                                            : 'Quick operations and integration via OTO Chat'}
+                                    </span>
+                                </div>
+                            </li>
+                        </ul>
+                    </div>
+                )}
+
                 {isUpdating ? (
                     /* Progress Bar Layout */
                     <div className="w-full space-y-3.5 py-2 animate-fade-in">

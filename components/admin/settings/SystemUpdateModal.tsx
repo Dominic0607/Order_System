@@ -12,7 +12,7 @@ interface SystemUpdateModalProps {
 }
 
 const SystemUpdateModal: React.FC<SystemUpdateModalProps> = ({ isOpen, onClose, onConfirm, isProcessing }) => {
-    const [message, setMessage] = React.useState('We are updating the system to improve performance and add new features.');
+    const [message, setMessage] = React.useState('ប្រព័ន្ធត្រូវបានអាប់ដេតទៅកាន់ v1.1.1 ដោយបន្ថែមមុខងារ Audio Call, Video Call, Group Call និង Mini App (OTO Chat)។');
 
     if (!isOpen) return null;
     return (
