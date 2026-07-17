@@ -72,31 +72,39 @@ const AppContent: React.FC = () => {
     const [previewImageUrl, setPreviewImageUrl] = useState<string | null>(null);
     const [isGlobalLoading, setIsGlobalLoading] = useState(true);
     const [language, setLanguage] = useState<'en' | 'km'>(() => (localStorage.getItem('language') as any) || 'km');
+    const [serverVersion, setServerVersion] = useState<string | null>(null);
     const [newVersionAvailable, setNewVersionAvailable] = useState<string | null>(null);
 
-    // Check system version on page load
+    // Fetch system version on page load
     useEffect(() => {
-        const checkSystemVersion = async () => {
+        const fetchSystemVersion = async () => {
             try {
                 const res = await fetch(`${WEB_APP_URL}/api/system-version`);
                 if (res.ok) {
                     const data = await res.json();
-                    if (data.status === 'success' && data.version && data.version !== CLIENT_VERSION) {
-                        const acknowledgedVersion = localStorage.getItem('system_update_acknowledged_version');
-                        if (acknowledgedVersion !== data.version) {
-                            console.log(`[App] 🆕 System update available on load: Client=${CLIENT_VERSION}, Server=${data.version}`);
-                            setNewVersionAvailable(data.version);
-                        } else {
-                            console.log(`[App] ⚠️ Version mismatch detected but user already acknowledged/attempted update to ${data.version}. Bypassing popup.`);
-                        }
+                    if (data.status === 'success' && data.version) {
+                        setServerVersion(data.version);
                     }
                 }
             } catch (e) {
                 console.warn("[App] Failed to check system version on load:", e);
             }
         };
-        checkSystemVersion();
+        fetchSystemVersion();
     }, []);
+
+    // Check user version against server version to trigger update dialog
+    useEffect(() => {
+        if (currentUser && serverVersion) {
+            const userVersion = currentUser.SystemVersion || "";
+            if (userVersion !== serverVersion) {
+                console.log(`[App] 🆕 System update available: User=${userVersion}, Server=${serverVersion}`);
+                setNewVersionAvailable(serverVersion);
+            } else {
+                setNewVersionAvailable(null);
+            }
+        }
+    }, [currentUser, serverVersion]);
 
     const [advancedSettings, setAdvancedSettings] = useState<AdvancedSettings>(() => {
         const saved = localStorage.getItem('advancedSettings');
@@ -364,13 +372,9 @@ const AppContent: React.FC = () => {
                  fetchData(true);
              }
         } else if (lastMessage.type === 'system_info') {
-            const serverVersion = lastMessage.version;
-            if (serverVersion && serverVersion !== CLIENT_VERSION) {
-                const acknowledgedVersion = localStorage.getItem('system_update_acknowledged_version');
-                if (acknowledgedVersion !== serverVersion) {
-                    console.log(`[App] 🆕 System update available via WS: Client=${CLIENT_VERSION}, Server=${serverVersion}`);
-                    setNewVersionAvailable(serverVersion);
-                }
+            const wsVersion = lastMessage.version;
+            if (wsVersion) {
+                setServerVersion(wsVersion);
             }
         } else if (lastMessage.type === 'update_permission' || lastMessage.type === 'permissions_reset') {
             // Admin changed or reset permissions — refresh so all connected users get updated state.
@@ -747,7 +751,41 @@ const AppContent: React.FC = () => {
         <AppContext.Provider value={legacyContextValue as any}>
             <OrderNotificationTrigger />
             {newVersionAvailable && (
-                <SystemUpdateModal newVersion={newVersionAvailable} currentVersion={CLIENT_VERSION} language={language} />
+                <SystemUpdateModal 
+                    newVersion={newVersionAvailable} 
+                    currentVersion={currentUser?.SystemVersion || '1.0.0'} 
+                    language={language}
+                    onUpdateStart={async () => {
+                        const token = localStorage.getItem('token');
+                        if (token) {
+                            try {
+                                const response = await fetch(`${WEB_APP_URL}/api/users/update-version`, {
+                                    method: 'POST',
+                                    headers: {
+                                        'Content-Type': 'application/json',
+                                        'Authorization': `Bearer ${token}`
+                                    },
+                                    body: JSON.stringify({ version: newVersionAvailable })
+                                });
+                                if (response.ok) {
+                                    console.log("[App] System version updated successfully in DB");
+                                    // Update locally to prevent flash on reload
+                                    if (currentUser) {
+                                        const updatedUser = { ...currentUser, SystemVersion: newVersionAvailable };
+                                        setCurrentUser(updatedUser);
+                                        const session = await CacheService.get<{ user: User, token: string, timestamp: number }>(CACHE_KEYS.SESSION);
+                                        if (session) {
+                                            session.user = updatedUser;
+                                            await CacheService.set(CACHE_KEYS.SESSION, session);
+                                        }
+                                    }
+                                }
+                            } catch (e) {
+                                console.error("[App] Failed to update user system version", e);
+                            }
+                        }
+                    }}
+                />
             )}
             <div className={`theme-wrapper h-screen w-full overflow-hidden flex flex-col ${advancedSettings.uiTheme ? `ui-${advancedSettings.uiTheme}` : ''} ${advancedSettings.themeMode ? `theme-${advancedSettings.themeMode}` : 'theme-dark'} ${advancedSettings.themeMode === 'dark' || !advancedSettings.themeMode ? 'dark' : ''}`}>
                 {/* GLOBAL PREMIUM BACKGROUND */}

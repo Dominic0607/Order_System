@@ -8,6 +8,7 @@ export interface User {
   ProfilePictureURL: string;
   TelegramUsername: string; // Added to match Go
   Permissions?: RolePermission[]; // Added for frontend logic
+  SystemVersion?: string;
 }
 
 export interface MasterProduct {

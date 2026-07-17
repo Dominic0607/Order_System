@@ -6,18 +6,29 @@ interface SystemUpdateModalProps {
     newVersion: string;
     currentVersion: string;
     language?: 'km' | 'en';
+    onUpdateStart?: () => Promise<void>;
 }
 
 const SystemUpdateModal: React.FC<SystemUpdateModalProps> = ({ 
     newVersion, 
     currentVersion, 
-    language = 'km' 
+    language = 'km',
+    onUpdateStart
 }) => {
     const [isUpdating, setIsUpdating] = useState(false);
     const [progress, setProgress] = useState(0);
 
-    const handleUpdate = () => {
+    const handleUpdate = async () => {
         setIsUpdating(true);
+
+        if (onUpdateStart) {
+            try {
+                await onUpdateStart();
+            } catch (e) {
+                console.warn("onUpdateStart failed:", e);
+            }
+        }
+
         // Prevent infinite reload loops by storing the acknowledged version in localStorage
         try {
             localStorage.setItem('system_update_acknowledged_version', newVersion);

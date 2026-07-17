@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback, useEffect } from 'react';
+import React, { useState, useRef, useCallback, useEffect } from 'react';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -22,7 +22,7 @@ export interface CallParty {
 const ICE_SERVERS: RTCIceServer[] = [
   { urls: 'stun:stun.l.google.com:19302' },
   { urls: 'stun:stun1.l.google.com:19302' },
-  { urls: 'stun:global.relay.metered.ca:80' },
+  { urls: 'global.relay.metered.ca:80' },
   {
     urls: 'turn:global.relay.metered.ca:80',
     username: '4ee3a9c0e4ba870fc7576d35',
@@ -53,22 +53,36 @@ export function useVoiceCall(
   const [isCameraOff, setIsCameraOff]   = useState(false);
   const [callDurationSeconds, setCallDurationSeconds] = useState(0);
   const [localStream, setLocalStream]   = useState<MediaStream | null>(null);
-  const [remoteStream, setRemoteStream] = useState<MediaStream | null>(null);
+  const [remoteStream, setRemoteStream] = useState<MediaStream | null>(null); // Legacy single stream compatibility
+
+  // Group call extensions
+  const [isGroupCall, setIsGroupCall]   = useState(false);
+  const [participants, setParticipants] = useState<CallParty[]>([]);
+  const [remoteStreams, setRemoteStreams] = useState<{ [username: string]: MediaStream }>({});
 
   // Refs for media / WebRTC
-  const pcRef                 = useRef<RTCPeerConnection | null>(null);
+  const pcsRef                = useRef<Map<string, RTCPeerConnection>>(new Map());
   const localStreamRef        = useRef<MediaStream | null>(null);
-  const remoteAudioRef        = useRef<HTMLAudioElement | null>(null);
+  const remoteAudioRef        = useRef<HTMLAudioElement | null>(null);  // Legacy
+  const remoteAudioRefs       = useRef<Map<string, HTMLAudioElement>>(new Map());
   const localVideoRef         = useRef<HTMLVideoElement | null>(null);  // local preview
-  const remoteVideoRef        = useRef<HTMLVideoElement | null>(null);  // remote video
-  const pendingCandidatesRef  = useRef<RTCIceCandidateInit[]>([]);
+  const remoteVideoRef        = useRef<HTMLVideoElement | null>(null);  // Legacy remote video
+  const pendingCandidatesRef  = useRef<Map<string, RTCIceCandidateInit[]>>(new Map());
   const callTimerRef          = useRef<any>(null);
+  const callingTimeoutRef      = useRef<any>(null);
+  
   const callStateRef          = useRef<CallState>('idle');
   const callTypeRef           = useRef<CallType>('audio');
+  const isGroupCallRef        = useRef<boolean>(false);
+  const participantsRef       = useRef<CallParty[]>([]);
+  const remotePartyRef        = useRef<CallParty | null>(null);
 
   // Keep refs in sync
   useEffect(() => { callStateRef.current = callState; }, [callState]);
   useEffect(() => { callTypeRef.current = callType; }, [callType]);
+  useEffect(() => { isGroupCallRef.current = isGroupCall; }, [isGroupCall]);
+  useEffect(() => { participantsRef.current = participants; }, [participants]);
+  useEffect(() => { remotePartyRef.current = remoteParty; }, [remoteParty]);
 
   // ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -89,17 +103,28 @@ export function useVoiceCall(
     if (remoteVideoRef.current) remoteVideoRef.current.srcObject = null;
   }, []);
 
-  const closePeerConnection = useCallback(() => {
-    if (pcRef.current) {
-      pcRef.current.onicecandidate = null;
-      pcRef.current.ontrack = null;
-      pcRef.current.onconnectionstatechange = null;
-      pcRef.current.close();
-      pcRef.current = null;
+  const closeAllPeerConnections = useCallback(() => {
+    pcsRef.current.forEach((pc, username) => {
+      pc.onicecandidate = null;
+      pc.ontrack = null;
+      pc.onconnectionstatechange = null;
+      pc.close();
+    });
+    pcsRef.current.clear();
+
+    remoteAudioRefs.current.forEach(audio => {
+      audio.srcObject = null;
+    });
+    remoteAudioRefs.current.clear();
+
+    if (remoteAudioRef.current) {
+      remoteAudioRef.current.srcObject = null;
+      remoteAudioRef.current = null;
     }
   }, []);
 
   const startCallTimer = useCallback(() => {
+    if (callTimerRef.current) return;
     setCallDurationSeconds(0);
     callTimerRef.current = setInterval(() => {
       setCallDurationSeconds(s => s + 1);
@@ -116,27 +141,39 @@ export function useVoiceCall(
   const teardown = useCallback(
     (nextState: CallState = 'idle') => {
       stopCallTimer();
+      if (callingTimeoutRef.current) {
+        clearTimeout(callingTimeoutRef.current);
+        callingTimeoutRef.current = null;
+      }
       stopLocalStream();
-      closePeerConnection();
-      pendingCandidatesRef.current = [];
+      closeAllPeerConnections();
+      pendingCandidatesRef.current.clear();
       setIsMuted(false);
       setIsCameraOff(false);
       setCallDurationSeconds(0);
       setLocalStream(null);
       setRemoteStream(null);
+      setRemoteStreams({});
+      setIsGroupCall(false);
+      setParticipants([]);
+      setRemoteParty(null);
       setCallState(nextState);
       if (nextState !== 'ringing' && nextState !== 'calling') {
         setTimeout(() => setCallState('idle'), nextState === 'ended' ? 1500 : 0);
       }
     },
-    [stopCallTimer, stopLocalStream, closePeerConnection],
+    [stopCallTimer, stopLocalStream, closeAllPeerConnections],
   );
 
   // ─── Create RTCPeerConnection ─────────────────────────────────────────────
 
-  const createPeerConnection = useCallback(
+  const getOrCreatePeerConnection = useCallback(
     (targetUsername: string): RTCPeerConnection => {
-      const pc = new RTCPeerConnection({ iceServers: ICE_SERVERS });
+      let pc = pcsRef.current.get(targetUsername);
+      if (pc) return pc;
+
+      console.log(`[VoiceCall] Creating RTCPeerConnection for ${targetUsername}`);
+      pc = new RTCPeerConnection({ iceServers: ICE_SERVERS });
 
       pc.onicecandidate = ({ candidate }) => {
         if (candidate) {
@@ -146,27 +183,48 @@ export function useVoiceCall(
 
       pc.ontrack = ({ streams, track }) => {
         const stream = streams[0];
-        if (track.kind === 'video') {
+        console.log(`[VoiceCall] Received remote track (${track.kind}) from ${targetUsername}`);
+        
+        setRemoteStreams(prev => ({
+          ...prev,
+          [targetUsername]: stream
+        }));
+
+        // Backwards compatibility for 1-on-1 view
+        if (!isGroupCallRef.current) {
           setRemoteStream(stream);
-          if (remoteVideoRef.current) {
-            if (remoteVideoRef.current.srcObject !== stream) {
+          if (track.kind === 'video') {
+            if (remoteVideoRef.current && remoteVideoRef.current.srcObject !== stream) {
               remoteVideoRef.current.srcObject = stream;
+            }
+          } else {
+            if (!remoteAudioRef.current) {
+              remoteAudioRef.current = new Audio();
+              remoteAudioRef.current.autoplay = true;
+            }
+            if (remoteAudioRef.current.srcObject !== stream) {
+              remoteAudioRef.current.srcObject = stream;
             }
           }
         } else {
-          // Audio-only track
-          if (!remoteAudioRef.current) {
-            remoteAudioRef.current = new Audio();
-            remoteAudioRef.current.autoplay = true;
-          }
-          if (remoteAudioRef.current.srcObject !== stream) {
-            remoteAudioRef.current.srcObject = stream;
+          // Play audio tracks for group call participants in background
+          if (track.kind === 'audio') {
+            let audio = remoteAudioRefs.current.get(targetUsername);
+            if (!audio) {
+              audio = new Audio();
+              audio.autoplay = true;
+              remoteAudioRefs.current.set(targetUsername, audio);
+            }
+            if (audio.srcObject !== stream) {
+              audio.srcObject = stream;
+            }
           }
         }
       };
 
       pc.onconnectionstatechange = () => {
         const state = pc.connectionState;
+        console.log(`[VoiceCall] Connection state with ${targetUsername} is: ${state}`);
         if (state === 'connected') {
           setCallState('connected');
           startCallTimer();
@@ -175,16 +233,55 @@ export function useVoiceCall(
           state === 'failed' ||
           state === 'closed'
         ) {
-          if (callStateRef.current !== 'idle' && callStateRef.current !== 'ended') {
-            teardown('ended');
-          }
+          cleanupPeer(targetUsername);
         }
       };
 
+      // Add local stream tracks to this PC
+      if (localStreamRef.current) {
+        localStreamRef.current.getTracks().forEach(track => {
+          pc.addTrack(track, localStreamRef.current!);
+        });
+      }
+
+      pcsRef.current.set(targetUsername, pc);
       return pc;
     },
-    [sendSignal, startCallTimer, teardown],
+    [sendSignal, startCallTimer],
   );
+
+  const cleanupPeer = useCallback((username: string) => {
+    console.log(`[VoiceCall] Cleaning up connection for participant ${username}`);
+    const pc = pcsRef.current.get(username);
+    if (pc) {
+      pc.onicecandidate = null;
+      pc.ontrack = null;
+      pc.onconnectionstatechange = null;
+      pc.close();
+      pcsRef.current.delete(username);
+    }
+
+    const audio = remoteAudioRefs.current.get(username);
+    if (audio) {
+      audio.srcObject = null;
+      remoteAudioRefs.current.delete(username);
+    }
+
+    setRemoteStreams(prev => {
+      const updated = { ...prev };
+      delete updated[username];
+      return updated;
+    });
+
+    setParticipants(prev => prev.filter(p => p.username !== username));
+
+    // If no more connections exist and we are in active call state, end call
+    setTimeout(() => {
+      if (pcsRef.current.size === 0 && callStateRef.current === 'connected') {
+        teardown('ended');
+      }
+    }, 500);
+  }, [teardown]);
 
   // ─── Attach local stream to local video element ────────────────────────────
 
@@ -213,36 +310,47 @@ export function useVoiceCall(
 
         if (type === 'video') attachLocalVideo(stream);
 
-        const pc = createPeerConnection(target.username);
-        pcRef.current = pc;
+        setRemoteParty(target);
+        setCallType(type);
+        setIsGroupCall(false);
+        setParticipants([target]);
+        setCallState('calling');
 
-        stream.getTracks().forEach(track => pc.addTrack(track, stream));
-
+        const pc = getOrCreatePeerConnection(target.username);
         const offer = await pc.createOffer();
         await pc.setLocalDescription(offer);
 
-        setRemoteParty(target);
-        setCallType(type);
-        setCallState('calling');
         sendSignal('call_offer', target.username, { sdp: offer, callType: type });
+
+        // Auto-abort if no answer in 30 seconds
+        if (callingTimeoutRef.current) clearTimeout(callingTimeoutRef.current);
+        callingTimeoutRef.current = setTimeout(() => {
+          if (callStateRef.current === 'calling') {
+            console.log('[VoiceCall] Outgoing call timeout (no answer)');
+            sendSignal('call_cancelled', target.username, {});
+            teardown('ended');
+          }
+        }, 30000);
       } catch (err) {
         console.error('[VoiceCall] startCall failed:', err);
         teardown('ended');
         throw err;
       }
     },
-    [createPeerConnection, sendSignal, teardown, attachLocalVideo],
+    [getOrCreatePeerConnection, sendSignal, teardown, attachLocalVideo],
   );
 
   // ─── Answer Incoming Call ─────────────────────────────────────────────────
 
   const answerCall = useCallback(
-    async (sdpOffer: RTCSessionDescriptionInit, incomingCallType: CallType = 'audio') => {
-      if (!remoteParty) return;
+    async (sdpOffer?: RTCSessionDescriptionInit, incomingCallType: CallType = 'audio') => {
+      if (!remotePartyRef.current) return;
+      
       try {
+        const type = incomingCallType || callTypeRef.current;
         const constraints: MediaStreamConstraints = {
           audio: true,
-          video: incomingCallType === 'video'
+          video: type === 'video'
             ? { width: { ideal: 1280 }, height: { ideal: 720 }, facingMode: 'user' }
             : false,
         };
@@ -250,48 +358,111 @@ export function useVoiceCall(
         localStreamRef.current = stream;
         setLocalStream(stream);
 
-        if (incomingCallType === 'video') attachLocalVideo(stream);
-        setCallType(incomingCallType);
+        if (type === 'video') attachLocalVideo(stream);
+        setCallType(type);
 
-        const pc = createPeerConnection(remoteParty.username);
-        pcRef.current = pc;
+        if (isGroupCallRef.current) {
+          // Mesh: Broadcast group_call_joined to all other participants so they call us
+          setCallState('connecting');
+          participantsRef.current.forEach(p => {
+            sendSignal('group_call_joined', p.username, {});
+          });
+          if (remotePartyRef.current) {
+            sendSignal('group_call_joined', remotePartyRef.current.username, {});
+          }
+        } else {
+          // Standard 1-on-1
+          const target = remotePartyRef.current.username;
+          const pc = getOrCreatePeerConnection(target);
 
-        stream.getTracks().forEach(track => pc.addTrack(track, stream));
+          if (sdpOffer) {
+            await pc.setRemoteDescription(new RTCSessionDescription(sdpOffer));
+          }
 
-        await pc.setRemoteDescription(new RTCSessionDescription(sdpOffer));
+          const candidates = pendingCandidatesRef.current.get(target) || [];
+          for (const candidate of candidates) {
+            await pc.addIceCandidate(new RTCIceCandidate(candidate));
+          }
+          pendingCandidatesRef.current.delete(target);
 
-        for (const candidate of pendingCandidatesRef.current) {
-          await pc.addIceCandidate(new RTCIceCandidate(candidate));
+          const answer = await pc.createAnswer();
+          await pc.setLocalDescription(answer);
+
+          setCallState('connecting');
+          sendSignal('call_answer', target, { sdp: answer });
         }
-        pendingCandidatesRef.current = [];
-
-        const answer = await pc.createAnswer();
-        await pc.setLocalDescription(answer);
-
-        setCallState('connecting');
-        sendSignal('call_answer', remoteParty.username, { sdp: answer });
       } catch (err) {
         console.error('[VoiceCall] answerCall failed:', err);
         teardown('ended');
         throw err;
       }
     },
-    [remoteParty, createPeerConnection, sendSignal, teardown, attachLocalVideo],
+    [getOrCreatePeerConnection, sendSignal, teardown, attachLocalVideo],
+  );
+
+  // ─── Invite User to Group Call ─────────────────────────────────────────────
+
+  const inviteToGroupCall = useCallback(
+    async (target: CallParty) => {
+      const type = callTypeRef.current;
+      console.log(`[VoiceCall] Inviting ${target.username} to group call`);
+      
+      setIsGroupCall(true);
+
+      // Add target to participants
+      setParticipants(prev => {
+        if (prev.some(p => p.username === target.username)) return prev;
+        return [...prev, target];
+      });
+
+      // Prepare list of existing participants to inform C
+      const currentParticipants = [
+        { username: currentUsername, fullName: 'Me' },
+        ...(remotePartyRef.current ? [remotePartyRef.current] : []),
+        ...participantsRef.current.filter(p => p.username !== target.username)
+      ];
+
+      // Send group call invite to C
+      sendSignal('group_call_invite', target.username, {
+        participants: currentParticipants,
+        callType: type,
+      });
+
+      // Notify B and other users currently in call that C was invited
+      if (remotePartyRef.current && remotePartyRef.current.username !== target.username) {
+        sendSignal('group_call_joined', remotePartyRef.current.username, {
+          addedParticipant: target
+        });
+      }
+      participantsRef.current.forEach(p => {
+        if (p.username !== target.username) {
+          sendSignal('group_call_joined', p.username, {
+            addedParticipant: target
+          });
+        }
+      });
+    },
+    [currentUsername, sendSignal]
   );
 
   // ─── Reject Incoming Call ─────────────────────────────────────────────────
 
   const rejectCall = useCallback(() => {
-    if (remoteParty) sendSignal('call_reject', remoteParty.username, {});
+    if (remotePartyRef.current) sendSignal('call_reject', remotePartyRef.current.username, {});
     teardown('ended');
-  }, [remoteParty, sendSignal, teardown]);
+  }, [sendSignal, teardown]);
 
   // ─── Hang Up ──────────────────────────────────────────────────────────────
 
   const hangUp = useCallback(() => {
-    if (remoteParty) sendSignal('call_end', remoteParty.username, {});
+    pcsRef.current.forEach((pc, username) => {
+      sendSignal('call_end', username, {});
+    });
+    if (remotePartyRef.current) {
+      sendSignal('call_end', remotePartyRef.current.username, {});
+    }
     teardown('ended');
-  }, [remoteParty, sendSignal, teardown]);
+  }, [sendSignal, teardown]);
 
   // ─── Toggle Mute ─────────────────────────────────────────────────────────
 
@@ -328,38 +499,109 @@ export function useVoiceCall(
       const { type, from, payload } = data;
 
       switch (type) {
-        case 'call_offer': {
+        case 'group_call_invite': {
           if (callStateRef.current !== 'idle') {
-            const ws = wsRef.current;
-            if (ws && ws.readyState === WebSocket.OPEN) {
-              ws.send(JSON.stringify({ type: 'call_busy', to: from, from: currentUsername }));
-            }
+            sendSignal('call_busy', from, {});
             return;
           }
-          // Persist both SDP and callType so answerCall() can read them
-          (window as any).__pendingCallSdp     = payload?.sdp;
-          (window as any).__pendingCallType    = payload?.callType ?? 'audio';
+          const incomingParticipants = payload?.participants || [];
+          const incomingCallType = payload?.callType ?? 'audio';
+
+          setIsGroupCall(true);
+          setCallType(incomingCallType);
           setRemoteParty({
             username: from,
             fullName: data.callerFullName || from,
             avatarUrl: data.callerAvatar,
           });
-          setCallType(payload?.callType ?? 'audio');
+          setParticipants(incomingParticipants.filter((p: any) => p.username !== currentUsername));
+          (window as any).__pendingCallType = incomingCallType;
           setCallState('ringing');
           break;
         }
 
-        case 'call_answer': {
-          if (!pcRef.current || callStateRef.current !== 'calling') return;
+        case 'group_call_joined': {
+          if (payload?.addedParticipant) {
+            // Notification that another user was invited. Add to local participants.
+            const newParty = payload.addedParticipant as CallParty;
+            setIsGroupCall(true);
+            setParticipants(prev => {
+              if (prev.some(p => p.username === newParty.username)) return prev;
+              return [...prev, newParty];
+            });
+            break;
+          }
+
+          // A new peer (from) answered. We are the offerer, so initiate PeerConnection & send offer.
+          console.log(`[VoiceCall] Peer ${from} joined. Sending WebRTC offer...`);
+          setIsGroupCall(true);
+          const newParty: CallParty = {
+            username: from,
+            fullName: data.callerFullName || from,
+            avatarUrl: data.callerAvatar,
+          };
+          setParticipants(prev => {
+            if (prev.some(p => p.username === from)) return prev;
+            return [...prev, newParty];
+          });
+
           try {
-            await pcRef.current.setRemoteDescription(new RTCSessionDescription(payload?.sdp));
-            for (const candidate of pendingCandidatesRef.current) {
-              await pcRef.current.addIceCandidate(new RTCIceCandidate(candidate));
-            }
-            pendingCandidatesRef.current = [];
-            setCallState('connecting');
+            const pc = getOrCreatePeerConnection(from);
+            const offer = await pc.createOffer();
+            await pc.setLocalDescription(offer);
+            sendSignal('call_offer', from, { sdp: offer, callType: callTypeRef.current, isGroupCall: true });
           } catch (err) {
-            console.error('[VoiceCall] Failed to set remote description:', err);
+            console.error(`[VoiceCall] Failed to initiate WebRTC offer to ${from}:`, err);
+          }
+          break;
+        }
+
+        case 'call_offer': {
+          // If we are in a call and get a group call offer, or we get a 1-on-1 offer while idle
+          const isGroupOffer = payload?.isGroupCall || isGroupCallRef.current;
+          if (callStateRef.current !== 'idle' && !isGroupOffer) {
+            sendSignal('call_busy', from, {});
+            return;
+          }
+
+          console.log(`[VoiceCall] Received call offer from ${from}`);
+          if (callStateRef.current === 'idle') {
+            (window as any).__pendingCallSdp     = payload?.sdp;
+            (window as any).__pendingCallType    = payload?.callType ?? 'audio';
+            setRemoteParty({
+              username: from,
+              fullName: data.callerFullName || from,
+              avatarUrl: data.callerAvatar,
+            });
+            setCallType(payload?.callType ?? 'audio');
+            setCallState('ringing');
+          } else {
+            // Already connected/connecting in group call. Set remote description and send answer.
+            try {
+              const pc = getOrCreatePeerConnection(from);
+              await pc.setRemoteDescription(new RTCSessionDescription(payload?.sdp));
+              const answer = await pc.createAnswer();
+              await pc.setLocalDescription(answer);
+              sendSignal('call_answer', from, { sdp: answer });
+            } catch (err) {
+              console.error(`[VoiceCall] Failed to answer incoming offer from ${from}:`, err);
+            }
+          }
+          break;
+        }
+
+        case 'call_answer': {
+          const pc = pcsRef.current.get(from);
+          if (!pc) return;
+          try {
+            await pc.setRemoteDescription(new RTCSessionDescription(payload?.sdp));
+            const candidates = pendingCandidatesRef.current.get(from) || [];
+            for (const candidate of candidates) {
+              await pc.addIceCandidate(new RTCIceCandidate(candidate));
+            }
+            pendingCandidatesRef.current.delete(from);
+          } catch (err) {
+            console.error(`[VoiceCall] Failed to set call answer remote description for ${from}:`, err);
           }
           break;
         }
@@ -367,19 +609,37 @@ export function useVoiceCall(
         case 'call_ice': {
           const candidate = payload?.candidate;
           if (!candidate) return;
-          if (pcRef.current && pcRef.current.remoteDescription) {
-            try { await pcRef.current.addIceCandidate(new RTCIceCandidate(candidate)); } catch {}
+          const pc = pcsRef.current.get(from);
+          if (pc && pc.remoteDescription) {
+            try { await pc.addIceCandidate(new RTCIceCandidate(candidate)); } catch {}
           } else {
-            pendingCandidatesRef.current.push(candidate);
+            let candidates = pendingCandidatesRef.current.get(from);
+            if (!candidates) {
+              candidates = [];
+              pendingCandidatesRef.current.set(from, candidates);
+            }
+            candidates.push(candidate);
           }
           break;
         }
 
         case 'call_reject':
-        case 'call_end':
         case 'call_busy':
         case 'call_not_available':
-          teardown('ended');
+          if (isGroupCallRef.current) {
+            // A participant rejected or is busy. Just clean up that peer.
+            cleanupPeer(from);
+          } else {
+            teardown('ended');
+          }
+          break;
+
+        case 'call_end':
+          if (isGroupCallRef.current) {
+            cleanupPeer(from);
+          } else {
+            teardown('ended');
+          }
           break;
 
         case 'call_cancelled':
@@ -390,7 +650,7 @@ export function useVoiceCall(
           break;
       }
     },
-    [wsRef, currentUsername, teardown],
+    [wsRef, currentUsername, getOrCreatePeerConnection, cleanupPeer, sendSignal, teardown],
   );
 
   // ─── Cleanup on unmount ───────────────────────────────────────────────────
@@ -398,10 +658,11 @@ export function useVoiceCall(
   useEffect(() => {
     return () => {
       stopCallTimer();
+      if (callingTimeoutRef.current) clearTimeout(callingTimeoutRef.current);
       stopLocalStream();
-      closePeerConnection();
+      closeAllPeerConnections();
     };
-  }, [stopCallTimer, stopLocalStream, closePeerConnection]);
+  }, [stopCallTimer, stopLocalStream, closeAllPeerConnections]);
 
   return {
     callState,
@@ -417,7 +678,14 @@ export function useVoiceCall(
     toggleMute,
     toggleCamera,
     handleIncomingSignal,
-    // Video element refs — assign these to <video> elements in the UI
+    
+    // Group call extensions
+    isGroupCall,
+    participants,
+    remoteStreams,
+    inviteToGroupCall,
+
+    // Video element refs — assign these to <video> elements in 1-on-1 call UI
     localVideoRef,
     remoteVideoRef,
     remoteAudioRef,

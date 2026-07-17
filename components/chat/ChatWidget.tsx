@@ -869,13 +869,19 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ isOpen, onClose }) => {
             onAnswer={() => {
                 const sdp = (window as any).__pendingCallSdp;
                 const callType = (window as any).__pendingCallType ?? 'audio';
-                if (sdp) voiceCall.answerCall(sdp, callType);
+                voiceCall.answerCall(sdp, callType);
             }}
             onReject={voiceCall.rejectCall}
             onHangUp={voiceCall.hangUp}
             onToggleMute={voiceCall.toggleMute}
             onToggleCamera={voiceCall.toggleCamera}
             language={language}
+            isGroupCall={voiceCall.isGroupCall}
+            participants={voiceCall.participants}
+            remoteStreams={voiceCall.remoteStreams}
+            onInviteUser={voiceCall.inviteToGroupCall}
+            allUsers={allUsers}
+            currentUsername={currentUser?.UserName || ''}
         />
         </>
     );

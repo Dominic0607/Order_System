@@ -83,8 +83,26 @@ const UserManagement: React.FC = () => {
     const [localUsers, setLocalUsers] = useState<any[]>([]);
     const [fetchError, setFetchError] = useState(false);
     const [isFetching, setIsFetching] = useState(false);
+    const [latestVersion, setLatestVersion] = useState<string>('');
 
     const userSection = configSections.find(s => s.id === 'users')!;
+
+    useEffect(() => {
+        const fetchSystemVersion = async () => {
+            try {
+                const res = await fetch(`${WEB_APP_URL}/api/system-version`);
+                if (res.ok) {
+                    const data = await res.json();
+                    if (data.status === 'success' && data.version) {
+                        setLatestVersion(data.version);
+                    }
+                }
+            } catch (e) {
+                console.warn("[UserManagement] Failed to fetch system version", e);
+            }
+        };
+        fetchSystemVersion();
+    }, []);
 
     // Fetch users: try appData first, fallback to direct API
     const loadUsers = useCallback(async (force = false) => {
@@ -291,15 +309,16 @@ const UserManagement: React.FC = () => {
                                 <th className={`py-3.5 px-4 text-left text-[9px] font-black uppercase tracking-widest ${isLightMode ? 'text-slate-500' : 'text-[#848e9c]'}`}>តួនាទី</th>
                                 <th className={`py-3.5 px-4 text-left text-[9px] font-black uppercase tracking-widest ${isLightMode ? 'text-slate-500' : 'text-[#848e9c]'}`}>ក្រុម</th>
                                 <th className={`py-3.5 px-4 text-left text-[9px] font-black uppercase tracking-widest ${isLightMode ? 'text-slate-500' : 'text-[#848e9c]'}`}>Telegram</th>
+                                <th className={`py-3.5 px-4 text-center text-[9px] font-black uppercase tracking-widest ${isLightMode ? 'text-slate-500' : 'text-[#848e9c]'}`}>Version</th>
                                 <th className={`py-3.5 px-4 text-center text-[9px] font-black uppercase tracking-widest ${isLightMode ? 'text-slate-500' : 'text-[#848e9c]'}`}>Admin</th>
                                 <th className={`w-28 py-3.5 text-center text-[9px] font-black uppercase tracking-widest ${isLightMode ? 'text-slate-500' : 'text-[#848e9c]'}`}>Action</th>
                             </tr>
                         </thead>
                         <tbody>
                             {isFetching ? (
-                                <tr><td colSpan={8} className="py-20 text-center"><Spinner size="lg" /></td></tr>
+                                <tr><td colSpan={9} className="py-20 text-center"><Spinner size="lg" /></td></tr>
                             ) : fetchError ? (
-                                <tr><td colSpan={8} className="py-20 text-center">
+                                <tr><td colSpan={9} className="py-20 text-center">
                                     <p className={`font-bold mb-3 ${isLightMode ? 'text-slate-500' : 'text-[#848e9c]'}`}>មានបញ្ហាក្នុងការទាញទិន្នន័យ</p>
                                     <button onClick={() => loadUsers(true)} className={`px-4 py-2 rounded-xl text-xs font-black transition-all ${
                                         isLightMode 
@@ -317,6 +336,7 @@ const UserManagement: React.FC = () => {
                                 const avatar    = String(getValueCaseInsensitive(user, 'ProfilePictureURL') || '');
                                 const isAdmin   = Boolean(getValueCaseInsensitive(user, 'IsSystemAdmin'));
                                 const telegram  = String(getValueCaseInsensitive(user, 'TelegramUsername') || '');
+                                const systemVersion = String(getValueCaseInsensitive(user, 'SystemVersion') || '');
                                 const gradient  = AVATAR_GRADIENTS[idx % AVATAR_GRADIENTS.length];
 
                                 return (
@@ -365,6 +385,25 @@ const UserManagement: React.FC = () => {
                                             }
                                         </td>
 
+                                        {/* System Version */}
+                                        <td className="py-3.5 px-4 text-center">
+                                            {systemVersion ? (
+                                                <span className={`px-2 py-0.5 text-[10px] font-black rounded-lg border whitespace-nowrap ${
+                                                    latestVersion && systemVersion === latestVersion
+                                                        ? (isLightMode ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20')
+                                                        : (isLightMode ? 'bg-amber-50 text-amber-700 border-amber-200' : 'bg-amber-500/10 text-amber-400 border-amber-500/20')
+                                                }`}>
+                                                    v{systemVersion} {latestVersion && systemVersion === latestVersion ? '✓' : '⚠️'}
+                                                </span>
+                                            ) : (
+                                                <span className={`text-[10px] px-2 py-0.5 font-bold rounded-lg border ${
+                                                    isLightMode ? 'bg-slate-50 text-slate-400 border-slate-200' : 'bg-white/5 text-slate-500 border-white/5'
+                                                }`}>
+                                                    Pending ⚠️
+                                                </span>
+                                            )}
+                                        </td>
+
                                         {/* Admin badge */}
                                         <td className="py-3.5 px-4 text-center">
                                             {isAdmin
@@ -404,7 +443,7 @@ const UserManagement: React.FC = () => {
                                 );
                             }) : (
                                 <tr>
-                                    <td colSpan={8} className={`py-20 text-center font-bold ${isLightMode ? 'text-slate-500' : 'text-[#848e9c]'}`}>
+                                    <td colSpan={9} className={`py-20 text-center font-bold ${isLightMode ? 'text-slate-500' : 'text-[#848e9c]'}`}>
                                         {searchQuery ? `រកមិនឃើញអ្នកប្រើប្រាស់ "${searchQuery}"` : 'មិនទាន់មានអ្នកប្រើប្រាស់ត្រូវបានបន្ថែម'}
                                     </td>
                                 </tr>
@@ -453,6 +492,7 @@ const UserManagement: React.FC = () => {
                     const avatar    = String(getValueCaseInsensitive(user, 'ProfilePictureURL') || '');
                     const isAdmin   = Boolean(getValueCaseInsensitive(user, 'IsSystemAdmin'));
                     const telegram  = String(getValueCaseInsensitive(user, 'TelegramUsername') || '');
+                    const systemVersion = String(getValueCaseInsensitive(user, 'SystemVersion') || '');
                     const gradient  = AVATAR_GRADIENTS[idx % AVATAR_GRADIENTS.length];
 
                     return (
@@ -474,6 +514,26 @@ const UserManagement: React.FC = () => {
                                     {telegram && (
                                         <p className={`mt-1.5 text-[11px] font-mono ${isLightMode ? 'text-blue-600' : 'text-blue-300'}`}>@{telegram}</p>
                                     )}
+
+                                    {/* System Version tag */}
+                                    <div className="mt-1.5 flex items-center gap-1.5">
+                                        <span className={`text-[10px] font-bold ${isLightMode ? 'text-slate-400' : 'text-[#848e9c]'}`}>Version:</span>
+                                        {systemVersion ? (
+                                            <span className={`px-2 py-0.5 text-[9px] font-black rounded-lg border whitespace-nowrap ${
+                                                latestVersion && systemVersion === latestVersion
+                                                    ? (isLightMode ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20')
+                                                    : (isLightMode ? 'bg-amber-50 text-amber-700 border-amber-200' : 'bg-amber-500/10 text-amber-400 border-amber-500/20')
+                                            }`}>
+                                                v{systemVersion} {latestVersion && systemVersion === latestVersion ? '✓' : '⚠️'}
+                                            </span>
+                                        ) : (
+                                            <span className={`text-[9px] px-2 py-0.5 font-bold rounded-lg border ${
+                                                isLightMode ? 'bg-slate-50 text-slate-400 border-slate-200' : 'bg-white/5 text-slate-500 border-white/5'
+                                            }`}>
+                                                Pending ⚠️
+                                            </span>
+                                        )}
+                                    </div>
                                 </div>
                             </div>
                             <div className={`flex gap-2 mt-3 border-t pt-3 ${isLightMode ? 'border-slate-100' : 'border-[#2b3139]'}`}>
