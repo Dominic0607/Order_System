@@ -104,3 +104,91 @@ export const sendSystemNotification = async (title: string, body: string) => {
         }
     }
 };
+
+/**
+ * Subscribes the current user to Web Push Notifications on the backend.
+ */
+export const subscribeUserToPush = async (webAppUrl: string) => {
+    if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+        console.warn("Push Notifications are not supported in this browser.");
+        return;
+    }
+
+    try {
+        const token = localStorage.getItem('token');
+        if (!token) return;
+
+        // 1. Get Service Worker registration
+        const registration = await navigator.serviceWorker.ready;
+        if (!registration) {
+            console.warn("Service Worker not ready.");
+            return;
+        }
+
+        // 2. Request notification permission
+        const permissionGranted = await requestNotificationPermission();
+        if (!permissionGranted) {
+            console.warn("Notification permission was not granted.");
+            return;
+        }
+
+        // 3. Fetch VAPID Public Key from backend
+        const keyRes = await fetch(`${webAppUrl}/api/push/vapid-public-key`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (!keyRes.ok) {
+            console.error("Failed to fetch VAPID public key:", await keyRes.text());
+            return;
+        }
+        const keyData = await keyRes.json();
+        const vapidPublicKey = keyData.publicKey;
+        if (!vapidPublicKey) {
+            console.error("VAPID public key is empty");
+            return;
+        }
+
+        // 4. Subscribe the user
+        const applicationServerKey = urlBase64ToUint8Array(vapidPublicKey);
+        let subscription = await registration.pushManager.getSubscription();
+
+        if (!subscription) {
+            subscription = await registration.pushManager.subscribe({
+                userVisibleOnly: true,
+                applicationServerKey: applicationServerKey
+            });
+        }
+
+        // 5. Send subscription to backend
+        const subscribeRes = await fetch(`${webAppUrl}/api/push/subscribe`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify(subscription)
+        });
+
+        if (subscribeRes.ok) {
+            console.log("Successfully subscribed to Push Notifications!");
+        } else {
+            console.error("Failed to store push subscription on backend:", await subscribeRes.text());
+        }
+    } catch (e) {
+        console.error("Error during Push Notification subscription:", e);
+    }
+};
+
+function urlBase64ToUint8Array(base64String: string) {
+    const padding = '='.repeat((4 - base64String.length % 4) % 4);
+    const base64 = (base64String + padding)
+        .replace(/\-/g, '+')
+        .replace(/_/g, '/');
+
+    const rawData = window.atob(base64);
+    const outputArray = new Uint8Array(rawData.length);
+
+    for (let i = 0; i < rawData.length; ++i) {
+        outputArray[i] = rawData.charCodeAt(i);
+    }
+    return outputArray;
+}

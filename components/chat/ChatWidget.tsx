@@ -47,6 +47,47 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ isOpen, onClose }) => {
         }
     }, [voiceCall.callState]);
 
+    // ── Auto-Answer logic for Web Push Answer action ──
+    const autoAnswerRef = useRef<{ caller: string; callType: 'audio' | 'video' } | null>(null);
+
+    useEffect(() => {
+        if (!currentUser) return;
+        const params = new URLSearchParams(window.location.search);
+        const action = params.get('action');
+        const caller = params.get('caller');
+        const callType = (params.get('callType') as 'audio' | 'video') || 'audio';
+        
+        if (action === 'answer' && caller) {
+            console.log(`[AutoAnswer] Registering auto-answer for caller: ${caller}, type: ${callType}`);
+            autoAnswerRef.current = { caller, callType };
+            
+            // Clean up parameters from the URL
+            const url = new URL(window.location.href);
+            url.searchParams.delete('action');
+            url.searchParams.delete('caller');
+            url.searchParams.delete('callType');
+            window.history.replaceState(null, '', url.pathname + url.search);
+        }
+    }, [currentUser]);
+
+    useEffect(() => {
+        if (voiceCall.callState === 'ringing' && voiceCall.remoteParty && autoAnswerRef.current) {
+            const { caller, callType } = autoAnswerRef.current;
+            if (voiceCall.remoteParty.username === caller) {
+                console.log(`[AutoAnswer] Triggering auto-answer for caller: ${caller}`);
+                const sdp = (window as any).__pendingCallSdp;
+                if (sdp) {
+                    voiceCall.answerCall(sdp, callType).catch(err => {
+                        console.error('[AutoAnswer] answerCall failed:', err);
+                    });
+                    autoAnswerRef.current = null; // Clear auto-answer trigger
+                } else {
+                    console.warn('[AutoAnswer] Pending SDP offer not found in window object');
+                }
+            }
+        }
+    }, [voiceCall.callState, voiceCall.remoteParty]);
+
     // Handle an outgoing call initiation from the Members list
     const handleCallUser = useCallback(async (user: User) => {
         try {
@@ -605,9 +646,27 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ isOpen, onClose }) => {
                 </div>
             </div>
             
-            <div className="chat-tabs bg-gray-900/40 p-1 flex border-b border-white/5">
-                <button onClick={() => setActiveTab('chat')} className={`flex-1 text-[10px] font-black uppercase tracking-widest py-2 rounded-xl transition-all ${activeTab === 'chat' ? 'bg-white/5 text-white' : 'text-gray-600 hover:text-gray-400'}`}>Chat</button>
-                <button onClick={() => setActiveTab('users')} className={`flex-1 text-[10px] font-black uppercase tracking-widest py-2 rounded-xl transition-all ${activeTab === 'users' ? 'bg-white/5 text-white' : 'text-gray-600 hover:text-gray-400'}`}>Members</button>
+            <div className="chat-tabs bg-slate-950/45 p-1 flex gap-1 border-b border-white/5">
+                <button 
+                    onClick={() => setActiveTab('chat')} 
+                    className={`flex-1 text-[10px] font-black uppercase tracking-widest py-2.5 rounded-xl transition-all outline-none focus:outline-none focus:ring-0 ${
+                        activeTab === 'chat' 
+                            ? 'bg-blue-600 text-white shadow-md shadow-blue-600/10' 
+                            : 'text-slate-500 hover:text-slate-300 hover:bg-white/[0.02]'
+                    }`}
+                >
+                    Chat
+                </button>
+                <button 
+                    onClick={() => setActiveTab('users')} 
+                    className={`flex-1 text-[10px] font-black uppercase tracking-widest py-2.5 rounded-xl transition-all outline-none focus:outline-none focus:ring-0 ${
+                        activeTab === 'users' 
+                            ? 'bg-blue-600 text-white shadow-md shadow-blue-600/10' 
+                            : 'text-slate-500 hover:text-slate-300 hover:bg-white/[0.02]'
+                    }`}
+                >
+                    Members
+                </button>
             </div>
 
             <div className="chat-body custom-scrollbar bg-[#020617] flex-grow min-h-0 overflow-y-auto relative" ref={chatBodyRef} onScroll={handleScroll}>

@@ -5,6 +5,7 @@ import { WEB_APP_URL, SOUND_URLS } from './constants';
 import { useUrlState } from './hooks/useUrlState';
 import { CacheService, CACHE_KEYS } from './services/cacheService';
 import { useOrderNotifications } from './hooks/useOrderNotifications';
+import { subscribeUserToPush } from './utils/notificationUtils';
 
 // --- Lazy Load Pages for Better Performance ---
 const LoginPage = React.lazy(() => import('./pages/LoginPage'));
@@ -571,6 +572,7 @@ const AppContent: React.FC = () => {
                     await fetchData(false);
                     
                     setCurrentUser(userWithPerms);
+                    subscribeUserToPush(WEB_APP_URL);
                     
                     const currentView = new URLSearchParams(window.location.search).get('view');
                     const validViews = [
@@ -606,6 +608,7 @@ const AppContent: React.FC = () => {
         
         setCurrentUser(userWithPerms);
         await CacheService.set(CACHE_KEYS.SESSION, { user: userWithPerms, token, timestamp: Date.now() });
+        subscribeUserToPush(WEB_APP_URL);
         await fetchData(true);
         setAppState('role_selection');
     };
