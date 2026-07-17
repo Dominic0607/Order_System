@@ -1,41 +1,53 @@
-import * as handPoseDetection from '@tensorflow-models/hand-pose-detection';
-import * as tf from '@tensorflow/tfjs-core';
-import '@tensorflow/tfjs-backend-webgl';
+import type * as handPoseDetectionTypes from '@tensorflow-models/hand-pose-detection';
 import jsQR from 'jsqr';
 
+type HandPoseDetectionModule = typeof import('@tensorflow-models/hand-pose-detection');
+type TensorflowCoreModule = typeof import('@tensorflow/tfjs-core');
+
 const tfInitState = globalThis as typeof globalThis & {
-    __osystemTfInitPromise?: Promise<void>;
+    __osystemTfInitPromise?: Promise<TensorflowCoreModule | null>;
     __osystemTfReady?: boolean;
+    __osystemTfModule?: TensorflowCoreModule | null;
 };
 
-async function ensureTensorflowReady() {
-    if (tfInitState.__osystemTfReady) return;
+async function ensureTensorflowReady(): Promise<TensorflowCoreModule | null> {
+    if (tfInitState.__osystemTfReady && tfInitState.__osystemTfModule) {
+        return tfInitState.__osystemTfModule;
+    }
     if (tfInitState.__osystemTfInitPromise) {
-        await tfInitState.__osystemTfInitPromise;
-        return;
+        return tfInitState.__osystemTfInitPromise;
     }
 
     tfInitState.__osystemTfInitPromise = (async () => {
         try {
-            await tf.ready();
-            const currentBackend = tf.getBackend();
+            const [{ default: tfCore }, _backend] = await Promise.all([
+                import('@tensorflow/tfjs-core'),
+                import('@tensorflow/tfjs-backend-webgl')
+            ]);
+
+            await tfCore.ready();
+            const currentBackend = tfCore.getBackend();
             if (currentBackend !== 'webgl') {
-                await tf.setBackend('webgl');
+                await tfCore.setBackend('webgl');
             }
+
+            tfInitState.__osystemTfModule = tfCore;
             tfInitState.__osystemTfReady = true;
+            return tfCore;
         } catch (error) {
             console.warn('AI: TensorFlow backend initialization skipped:', error);
             tfInitState.__osystemTfReady = false;
+            return null;
         }
     })();
 
-    await tfInitState.__osystemTfInitPromise;
+    return tfInitState.__osystemTfInitPromise;
 }
 
 export interface DetectionResult {
     found: boolean;
     box?: { x: number, y: number, w: number, h: number };
-    keypoints?: handPoseDetection.Keypoint[]; 
+    keypoints?: handPoseDetectionTypes.Keypoint[]; 
     stability: number;
     type: 'box' | 'bag' | 'general';
     gesture?: 'none' | 'five_fingers' | 'thumbs_up' | 'fist';
@@ -49,7 +61,7 @@ export interface DetectionResult {
 }
 
 export class PackageDetector {
-    private detector: handPoseDetection.HandDetector | null = null;
+    private detector: handPoseDetectionTypes.HandDetector | null = null;
     private faceDetector: any = null;
     private barcodeDetector: any = null;
     private isInitializing: boolean = false;

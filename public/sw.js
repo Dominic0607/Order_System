@@ -1,4 +1,4 @@
-const CACHE_NAME = 'osystem-cache-v4';
+const CACHE_NAME = 'osystem-cache-v5';
 const urlsToCache = [
   './',
   './index.html',
