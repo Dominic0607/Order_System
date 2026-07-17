@@ -580,7 +580,7 @@ const RoleSelectionPage: React.FC<RoleSelectionPageProps> = ({ onSelect }) => {
 
 
         return (
-            <div className={`min-h-screen w-full flex flex-col items-center justify-start relative font-['Kantumruy_Pro'] overflow-y-auto pt-16 sm:pt-20 pb-8 px-4 sm:px-6 lg:px-8 transition-all duration-300 ${styles.bg}`} style={styles.bgStyle}>
+            <div className={`min-h-screen w-full flex flex-col items-center justify-start relative font-['Kantumruy_Pro'] overflow-y-auto pt-24 sm:pt-28 pb-8 px-4 sm:px-6 lg:px-8 transition-all duration-300 ${styles.bg}`} style={styles.bgStyle}>
                 {/* Background decorative glows */}
                 <div className="fixed inset-0 pointer-events-none opacity-20 z-0">
                     <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] rounded-full blur-[120px]" style={{ backgroundColor: styles.decorDot }}></div>

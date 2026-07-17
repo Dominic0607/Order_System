@@ -739,9 +739,13 @@ body {
 
 /* Muted / secondary text colors */
 .theme-light .incentive-surface .text-\[\#707A8A\],
+.theme-light .incentive-surface .text-white\/10,
+.theme-light .incentive-surface .text-white\/20,
+.theme-light .incentive-surface .text-white\/25,
 .theme-light .incentive-surface .text-white\/30,
 .theme-light .incentive-surface .text-white\/40,
-.theme-light .incentive-surface .text-white\/20,
+.theme-light .incentive-surface .text-white\/50,
+.theme-light .incentive-surface .text-white\/60,
 .theme-light .incentive-surface [class*="text-[#707A8A]"],
 .theme-light .incentive-surface [class*="text-[#848E9C]"] {
     color: #475569 !important;
