@@ -11,6 +11,8 @@ interface VoiceCallModalProps {
   callDurationSeconds: number;
   localVideoRef: React.MutableRefObject<HTMLVideoElement | null>;
   remoteVideoRef: React.MutableRefObject<HTMLVideoElement | null>;
+  localStream: MediaStream | null;
+  remoteStream: MediaStream | null;
   onAnswer: () => void;
   onReject: () => void;
   onHangUp: () => void;
@@ -107,6 +109,8 @@ const VoiceCallModal: React.FC<VoiceCallModalProps> = ({
   callDurationSeconds,
   localVideoRef,
   remoteVideoRef,
+  localStream,
+  remoteStream,
   onAnswer,
   onReject,
   onHangUp,
@@ -186,21 +190,43 @@ const VoiceCallModal: React.FC<VoiceCallModalProps> = ({
     return () => stopRingtone();
   }, [callState]);
 
+  // Local state for HTML elements to trigger reactive bindings
+  const [localVideoElement, setLocalVideoElement] = React.useState<HTMLVideoElement | null>(null);
+  const [remoteVideoElement, setRemoteVideoElement] = React.useState<HTMLVideoElement | null>(null);
+
   // ── Attach remote video element ref to DOM node ─────────────────────────────
   const remoteVideoElRef = useCallback((el: HTMLVideoElement | null) => {
-    if (!el) return;
     remoteVideoRef.current = el;
-    el.autoplay = true;
-    el.playsInline = true;
+    setRemoteVideoElement(el);
   }, [remoteVideoRef]);
 
   const localVideoElRef = useCallback((el: HTMLVideoElement | null) => {
-    if (!el) return;
     localVideoRef.current = el;
-    el.autoplay = true;
-    el.muted = true;
-    el.playsInline = true;
+    setLocalVideoElement(el);
   }, [localVideoRef]);
+
+  // Bind remote stream reactively when element mounts or stream updates
+  useEffect(() => {
+    if (remoteVideoElement) {
+      if (remoteVideoElement.srcObject !== (remoteStream || null)) {
+        remoteVideoElement.srcObject = remoteStream || null;
+      }
+      remoteVideoElement.autoplay = true;
+      remoteVideoElement.playsInline = true;
+    }
+  }, [remoteVideoElement, remoteStream]);
+
+  // Bind local stream reactively when element mounts or stream updates
+  useEffect(() => {
+    if (localVideoElement) {
+      if (localVideoElement.srcObject !== (localStream || null)) {
+        localVideoElement.srcObject = localStream || null;
+      }
+      localVideoElement.autoplay = true;
+      localVideoElement.muted = true;
+      localVideoElement.playsInline = true;
+    }
+  }, [localVideoElement, localStream]);
 
   if (!isVisible || !remoteParty) return null;
 

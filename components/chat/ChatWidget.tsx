@@ -864,6 +864,8 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ isOpen, onClose }) => {
             callDurationSeconds={voiceCall.callDurationSeconds}
             localVideoRef={voiceCall.localVideoRef}
             remoteVideoRef={voiceCall.remoteVideoRef}
+            localStream={voiceCall.localStream}
+            remoteStream={voiceCall.remoteStream}
             onAnswer={() => {
                 const sdp = (window as any).__pendingCallSdp;
                 const callType = (window as any).__pendingCallType ?? 'audio';
