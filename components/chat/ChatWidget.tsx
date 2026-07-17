@@ -66,6 +66,7 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ isOpen, onClose }) => {
     const chatBodyRef = useRef<HTMLDivElement>(null);
     const wsRef = useRef<WebSocket | null>(null);
     const isOpenRef = useRef(isOpen);
+    const textareaRef = useRef<HTMLTextAreaElement>(null);
     
     const isMutedRef = useRef(isMuted);
     const lastNotifiedMessageIdRef = useRef<string | null>(null);
@@ -89,6 +90,13 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ isOpen, onClose }) => {
 
     useEffect(() => { isMutedRef.current = isMuted; }, [isMuted]);
     useEffect(() => { isOpenRef.current = isOpen; }, [isOpen]);
+
+    useEffect(() => {
+        if (textareaRef.current) {
+            textareaRef.current.style.height = 'auto';
+            textareaRef.current.style.height = `${Math.min(120, textareaRef.current.scrollHeight)}px`;
+        }
+    }, [newMessage, replyingTo, isOpen]);
 
     const syncUsers = useCallback(async () => {
         if (appData.users?.length) { setAllUsers(appData.users); return; }
@@ -496,6 +504,13 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ isOpen, onClose }) => {
                 .date-label { background: rgba(15, 23, 42, 0.8); backdrop-filter: blur(10px); padding: 4px 12px; border-radius: 20px; font-size: 9px; font-weight: 900; text-transform: uppercase; letter-spacing: 0.1em; color: rgba(255,255,255,0.4); border: 1px solid rgba(255,255,255,0.05); }
                 .recording-pulse { animation: pulse-red 1.5s infinite; }
                 @keyframes pulse-red { 0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4); } 70% { box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); } 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); } }
+                @keyframes messageSlideIn {
+                    from { opacity: 0; transform: translateY(16px) scale(0.96); }
+                    to { opacity: 1; transform: translateY(0) scale(1); }
+                }
+                .message-bounce {
+                    animation: messageSlideIn 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+                }
             `}</style>
 
             <div className="chat-header !bg-gray-900/80 !backdrop-blur-2xl border-b border-white/5 !py-4">
@@ -520,7 +535,7 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ isOpen, onClose }) => {
                 <button onClick={() => setActiveTab('users')} className={`flex-1 text-[10px] font-black uppercase tracking-widest py-2 rounded-xl transition-all ${activeTab === 'users' ? 'bg-white/5 text-white' : 'text-gray-600 hover:text-gray-400'}`}>Members</button>
             </div>
 
-            <div className="chat-body custom-scrollbar bg-[#020617] h-[480px] overflow-y-auto relative" ref={chatBodyRef} onScroll={handleScroll}>
+            <div className="chat-body custom-scrollbar bg-[#020617] flex-grow min-h-0 overflow-y-auto relative" ref={chatBodyRef} onScroll={handleScroll}>
                 {activeTab === 'chat' ? (
                     <div className="p-4 space-y-1">
                         {isLoadingOlder && <div className="flex justify-center py-4"><Spinner size="sm" /></div>}
@@ -549,7 +564,7 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ isOpen, onClose }) => {
                                             <span className="date-label">{getDateLabel(msg.timestamp)}</span>
                                         </div>
                                     )}
-                                    <div className={`flex flex-col ${isMe ? 'items-end' : 'items-start'} ${isSameUserPrev ? 'mt-0.5' : 'mt-4'} group/msg relative`}>
+                                    <div className={`flex flex-col ${isMe ? 'items-end' : 'items-start'} ${isSameUserPrev ? 'mt-0.5' : 'mt-4'} group/msg relative message-bounce`}>
                                         <div className={`flex max-w-[85%] gap-2 ${isMe ? 'flex-row-reverse' : ''}`}>
                                             {!isMe && (
                                                 <div className="w-8 shrink-0 flex flex-col justify-end">
@@ -558,23 +573,28 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ isOpen, onClose }) => {
                                             )}
                                             <div className="flex flex-col">
                                                 {!isMe && !isSameUserPrev && <p className="text-[9px] font-black text-blue-500/60 ml-3 mb-1 uppercase tracking-widest">{msg.fullName}</p>}
-                                                <div className={`chat-bubble relative px-4 py-2.5 rounded-[1.5rem] shadow-2xl transition-all ${
-                                                    isMe 
-                                                        ? 'bg-gradient-to-br from-blue-600 to-blue-700 text-white rounded-tr-none' 
-                                                        : 'bg-white/[0.03] text-gray-200 border border-white/5 rounded-tl-none backdrop-blur-xl'
-                                                } ${(msg as any).isError ? 'border-red-500/50 bg-red-500/5' : ''}`}>
+                                                <div 
+                                                    onDoubleClick={() => setReplyingTo(msg)}
+                                                    className={`chat-bubble relative px-4 py-2.5 rounded-[1.5rem] shadow-2xl transition-all select-none hover:ring-1 hover:ring-white/10 cursor-pointer ${
+                                                        isMe 
+                                                            ? 'bg-gradient-to-br from-blue-600 to-blue-700 text-white rounded-tr-none' 
+                                                            : 'bg-white/[0.03] text-gray-200 border border-white/5 rounded-tl-none backdrop-blur-xl'
+                                                    } ${(msg as any).isError ? 'border-red-500/50 bg-red-500/5' : ''}`}
+                                                    title={language === 'km' ? 'ចុច ២ ដងដើម្បីឆ្លើយតប' : 'Double click to reply'}
+                                                >
                                                     {msg.replyTo && (
-                                                        <div className="mb-2 p-2 bg-black/30 rounded-xl border-l-4 border-blue-500 text-[10px] opacity-60 truncate italic max-w-[200px]">
-                                                            <b>{msg.replyTo.user}</b>: {msg.replyTo.content}
+                                                        <div className="mb-2 p-2 bg-black/40 rounded-xl border-l-[3px] border-blue-500 text-[10px] text-gray-300 max-w-[220px] truncate select-none opacity-80 flex flex-col gap-0.5">
+                                                            <span className="font-extrabold text-[9px] text-blue-400 uppercase tracking-wider">{msg.replyTo.user}</span>
+                                                            <span className="truncate italic">{msg.replyTo.content}</span>
                                                         </div>
                                                     )}
-                                                    {msg.type === 'text' && <p className="text-sm font-medium leading-relaxed whitespace-pre-wrap">{msg.content}</p>}
+                                                    {msg.type === 'text' && <p className="text-sm font-medium leading-relaxed whitespace-pre-wrap select-text">{msg.content}</p>}
                                                     {msg.type === 'image' && (
                                                         <div className="relative group/img overflow-hidden rounded-xl bg-black/20 min-h-[100px] min-w-[150px]">
                                                             <img
                                                                 src={convertGoogleDriveUrl(msg.content)}
                                                                 className="rounded-xl w-full cursor-pointer hover:scale-105 transition-transform duration-500"
-                                                                onClick={() => previewImage(msg.content)}
+                                                                onClick={(e) => { e.stopPropagation(); previewImage(msg.content); }}
                                                                 onError={() => handleImageError(msg)}
                                                                 alt="Chat"
                                                             />
@@ -593,14 +613,15 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ isOpen, onClose }) => {
                                                         <p className="text-[8px] font-bold">{new Date(msg.timestamp).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}</p>
                                                     </div>
                                                     
-                                                    {!isMe && (
-                                                        <button 
-                                                            onClick={() => setReplyingTo(msg)} 
-                                                            className="absolute top-0 -right-10 opacity-0 group-hover/msg:opacity-100 p-2 bg-white/5 hover:bg-white/10 rounded-full text-gray-500 transition-all active:scale-90"
-                                                        >
-                                                            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" strokeWidth={3}/></svg>
-                                                        </button>
-                                                    )}
+                                                    <button 
+                                                        onClick={(e) => { e.stopPropagation(); setReplyingTo(msg); }} 
+                                                        className={`absolute top-1/2 -translate-y-1/2 opacity-0 group-hover/msg:opacity-100 p-2 bg-white/5 hover:bg-white/10 rounded-full text-gray-400 hover:text-white transition-all active:scale-90 shadow-md ${
+                                                            isMe ? '-left-10' : '-right-10'
+                                                        }`}
+                                                        title={language === 'km' ? 'ឆ្លើយតប' : 'Reply'}
+                                                    >
+                                                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" strokeWidth={3}/></svg>
+                                                    </button>
                                                 </div>
                                             </div>
                                         </div>
@@ -655,6 +676,7 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ isOpen, onClose }) => {
                             
                             <div className="flex-grow relative">
                                 <textarea 
+                                    ref={textareaRef}
                                     value={newMessage} 
                                     onChange={e => setNewMessage(e.target.value)} 
                                     onKeyDown={e => e.key === 'Enter' && !e.shiftKey && (e.preventDefault(), handleSendMessage(newMessage, 'text'))} 

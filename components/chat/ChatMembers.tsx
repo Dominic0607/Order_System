@@ -40,7 +40,9 @@ const ChatMembers: React.FC<ChatMembersProps> = ({ users, loading, onRefresh }) 
                     <UserAvatar avatarUrl={u.ProfilePictureURL} name={u.FullName} size="md" className="ring-2 ring-blue-500/20 group-hover:ring-blue-500/50 transition-all" />
                     <div>
                         <p className="text-sm font-black text-white">{u.FullName}</p>
-                        <p className="text-[10px] text-gray-500 font-mono uppercase tracking-wider">@{u.UserName}</p>
+                        <p className="text-[10px] text-gray-500 font-mono uppercase tracking-wider">
+                            @{u.UserName} {u.Role && `· ${u.Role}`}
+                        </p>
                     </div>
                     <div className={`ml-auto flex flex-col items-end gap-1`}>
                         <div className={`w-2 h-2 rounded-full ${u.IsSystemAdmin ? 'bg-yellow-500 shadow-[0_0_5px_#eab308]' : 'bg-blue-500 shadow-[0_0_5px_#3b82f6]'}`}></div>
