@@ -721,7 +721,9 @@ const AppContent: React.FC = () => {
         const isActionView = appState === 'create_order' || appState === 'user_journey';
         const isCenteredView = appState === 'role_selection' || (appState === 'user_journey' && !selectedTeam);
         const finalTopPadding = isCenteredView ? 'pt-0' : topPadding;
-        const bottomPadding = (isCenteredView || isActionView) ? 'pb-10' : 'pb-20 md:pb-8';
+        const bottomPadding = appState === 'role_selection'
+            ? 'pb-0'
+            : (isCenteredView || isActionView) ? 'pb-10' : 'pb-20 md:pb-8';
 
         return `${finalTopPadding} ${bottomPadding}`;
     }, [appState, shouldShowHeader, isMobile, originalAdminUser, selectedTeam]);
@@ -906,7 +908,7 @@ const AppContent: React.FC = () => {
                                 {originalAdminUser && <ImpersonationBanner />}
                                 {shouldShowHeader && <Header appState={appState} onBackToRoleSelect={() => setAppState('role_selection')} />}
                                 <main className={`flex-grow overflow-hidden relative flex flex-col ${appState === 'role_selection' || (appState === 'user_journey' && !selectedTeam) ? 'bg-transparent' : ''}`}>
-                                    <div id="app-main-scroll-container" className={`flex-grow ${appState === 'fulfillment' || appState === 'oto_chat' || appState === 'problem_items' ? 'overflow-hidden' : 'overflow-y-auto custom-scrollbar'} ${containerClass} ${paddingClass} transition-all duration-300`}>
+                                    <div id="app-main-scroll-container" className={`${appState === 'role_selection' ? 'h-auto flex-shrink-0' : 'flex-grow'} ${appState === 'fulfillment' || appState === 'oto_chat' || appState === 'problem_items' ? 'overflow-hidden' : 'overflow-y-auto custom-scrollbar'} ${containerClass} ${paddingClass} transition-all duration-300`}>
                                         {appState === 'user_journey' && <UserJourney onBackToRoleSelect={() => setAppState('role_selection')} />}
                                         {appState === 'create_order' && <CreateOrderPage team={selectedTeam} onSaveSuccess={() => setAppState('user_journey')} onCancel={() => setAppState('user_journey')} />}
                                         {appState === 'fulfillment' && <FulfillmentPage />}
