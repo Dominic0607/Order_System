@@ -426,7 +426,7 @@ const BulkActionManager: React.FC<BulkActionManagerProps> = ({ orders, selectedI
                 </>
             )}
 
-            <Modal isOpen={activeModal === 'date'} onClose={() => setActiveModal(null)} maxWidth="max-w-sm">
+            <Modal isOpen={activeModal === 'date'} onClose={() => setActiveModal(null)} maxWidth="max-w-sm" plain={true}>
                 <div className="p-8 bg-[#0f172a] rounded-[3rem] border border-white/10">
                     <div className="w-16 h-16 bg-cyan-500/20 text-cyan-400 rounded-full flex items-center justify-center mx-auto mb-6 border border-cyan-500/30">
                         <span className="text-3xl">📅</span>
@@ -445,7 +445,7 @@ const BulkActionManager: React.FC<BulkActionManagerProps> = ({ orders, selectedI
                 </div>
             </Modal>
 
-            <Modal isOpen={activeModal === 'cost'} onClose={() => setActiveModal(null)} maxWidth="max-w-sm">
+            <Modal isOpen={activeModal === 'cost'} onClose={() => setActiveModal(null)} maxWidth="max-w-sm" plain={true}>
                 <div className="p-8 bg-[#0f172a] rounded-[3rem] border border-white/10">
                     <h3 className="text-xl font-black text-white text-center mb-8 uppercase tracking-tight">កែប្រែថ្លៃដឹកដើម (Cost)</h3>
                     <div className="relative mb-8">
@@ -461,7 +461,7 @@ const BulkActionManager: React.FC<BulkActionManagerProps> = ({ orders, selectedI
                 </div>
             </Modal>
 
-            <Modal isOpen={activeModal === 'payment'} onClose={() => setActiveModal(null)} maxWidth="max-w-lg">
+            <Modal isOpen={activeModal === 'payment'} onClose={() => setActiveModal(null)} maxWidth="max-w-lg" plain={true}>
                 <div className="p-6 sm:p-8 bg-[#0f172a] rounded-[2.5rem] border border-white/10 overflow-hidden flex flex-col max-h-[85vh]">
                     <div className="flex-shrink-0">
                         <h3 className="text-xl font-black text-white text-center mb-6 uppercase tracking-tighter">កែប្រែស្ថានភាពទូទាត់</h3>
@@ -491,7 +491,7 @@ const BulkActionManager: React.FC<BulkActionManagerProps> = ({ orders, selectedI
                 </div>
             </Modal>
 
-            <Modal isOpen={activeModal === 'shipping'} onClose={() => setActiveModal(null)} maxWidth="max-w-xl">
+            <Modal isOpen={activeModal === 'shipping'} onClose={() => setActiveModal(null)} maxWidth="max-w-xl" plain={true}>
                 <div className="p-6 sm:p-8 bg-[#0f172a] rounded-[2.5rem] border border-white/10 max-h-[85vh] flex flex-col">
                     <h3 className="text-lg font-black text-white text-center mb-6 uppercase tracking-tight">កែប្រែក្រុមហ៊ុនដឹកជញ្ជូន</h3>
                     <div className="space-y-6 overflow-y-auto custom-scrollbar flex-grow pr-2">
@@ -527,7 +527,7 @@ const BulkActionManager: React.FC<BulkActionManagerProps> = ({ orders, selectedI
                 </div>
             </Modal>
 
-            <Modal isOpen={activeModal === 'delete'} onClose={() => setActiveModal(null)} maxWidth="max-w-md">
+            <Modal isOpen={activeModal === 'delete'} onClose={() => setActiveModal(null)} maxWidth="max-w-md" plain={true}>
                 <div className="p-8 bg-[#0f172a] rounded-[3rem] border border-white/10 text-center">
                     <div className="w-16 h-16 bg-red-500/20 text-red-500 rounded-full flex items-center justify-center mx-auto mb-6 text-3xl">⚠️</div>
                     <h3 className="text-xl font-black text-white mb-4 uppercase tracking-tight">លុបប្រតិបត្តិការណ៍សរុប</h3>
@@ -542,7 +542,7 @@ const BulkActionManager: React.FC<BulkActionManagerProps> = ({ orders, selectedI
                 </div>
             </Modal>
 
-            <Modal isOpen={activeModal === 'cancel' || activeModal === 'return'} onClose={() => { setActiveModal(null); setActionReason(''); }} maxWidth="max-w-md">
+            <Modal isOpen={activeModal === 'cancel' || activeModal === 'return'} onClose={() => { setActiveModal(null); setActionReason(''); }} maxWidth="max-w-md" plain={true}>
                 <div className="p-8 bg-[#0f172a] rounded-[3rem] border border-white/10">
                     <h3 className="text-xl font-black text-white text-center mb-6 uppercase tracking-tight">
                         {activeModal === 'cancel' ? 'បោះបង់ការកម្មង់សរុប' : 'បញ្ជូនឥវ៉ាន់ត្រឡប់មកវិញសរុប'}

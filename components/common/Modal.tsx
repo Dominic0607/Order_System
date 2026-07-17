@@ -10,9 +10,10 @@ interface ModalProps {
     maxWidth?: string;
     fullScreen?: boolean;
     zIndex?: string;
+    plain?: boolean;
 }
 
-const Modal: React.FC<ModalProps> = ({ isOpen, onClose, children, maxWidth = 'max-w-md', fullScreen = false, zIndex = 'z-[100]' }) => {
+const Modal: React.FC<ModalProps> = ({ isOpen, onClose, children, maxWidth = 'max-w-md', fullScreen = false, zIndex = 'z-[100]', plain = false }) => {
     const { advancedSettings } = useContext(AppContext);
     const uiTheme = advancedSettings?.uiTheme || 'default';
     const themeMode = advancedSettings?.themeMode || 'dark';
@@ -42,11 +43,11 @@ const Modal: React.FC<ModalProps> = ({ isOpen, onClose, children, maxWidth = 'ma
 
     const modalContent = (
         <div 
-            className={`fixed inset-0 bg-[#0B0E11]/80 backdrop-blur-sm flex items-center justify-center ${zIndex} transition-opacity duration-300 modal-overlay ${fullScreen ? 'p-0' : 'p-4 sm:p-6'} ui-${uiTheme} theme-${themeMode} ${!isLightMode ? 'dark' : ''}`}
+            className={`fixed inset-0 bg-[#0B0E11]/80 backdrop-blur-sm flex items-center justify-center ${zIndex} transition-opacity duration-300 modal-overlay ui-${uiTheme} theme-${themeMode} ${!isLightMode ? 'dark' : ''}`}
             onClick={handleOverlayClick}
         >
             <div
-                className={`${fullScreen ? 'w-full h-[100dvh] max-w-none max-h-none flex flex-col' : `page-card w-full ${maxWidth} rounded-3xl shadow-2xl max-h-[95vh] flex flex-col my-auto`} transform transition-all duration-300 scale-100 opacity-100 animate-modal-in overflow-hidden font-sans text-slate-800 dark:text-[#EAECEF]`}
+                className={`${fullScreen ? 'w-full h-[100dvh] max-w-none max-h-none flex flex-col' : plain ? `w-full ${maxWidth} rounded-[3rem] shadow-2xl max-h-[95vh] flex flex-col my-auto` : `page-card w-full ${maxWidth} rounded-3xl shadow-2xl max-h-[95vh] flex flex-col my-auto`} transform transition-all duration-300 scale-100 opacity-100 animate-modal-in overflow-hidden font-sans text-slate-800 dark:text-[#EAECEF]`}
                 onClick={(e) => e.stopPropagation()}
             >
                 <div className={`flex-grow ${fullScreen ? 'overflow-hidden flex flex-col' : 'overflow-y-auto overscroll-contain no-scrollbar scroll-smooth'}`}>
