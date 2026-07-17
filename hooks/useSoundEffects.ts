@@ -59,6 +59,28 @@ export const useSoundEffects = () => {
         }
     }, [baseVolume]);
 
+    // playCallEnd: synthetic descending two-tone via Web Audio (no external file)
+    const playCallEnd = useCallback(() => {
+        if (baseVolume <= 0) return;
+        try {
+            const ctx = new AudioContext();
+            const tones = [{ freq: 480, start: 0 }, { freq: 360, start: 0.18 }];
+            tones.forEach(({ freq, start }) => {
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
+                osc.type = 'sine';
+                osc.frequency.value = freq;
+                gain.gain.setValueAtTime(baseVolume * 0.3, ctx.currentTime + start);
+                gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + start + 0.3);
+                osc.connect(gain);
+                gain.connect(ctx.destination);
+                osc.start(ctx.currentTime + start);
+                osc.stop(ctx.currentTime + start + 0.32);
+            });
+            setTimeout(() => ctx.close(), 800);
+        } catch {}
+    }, [baseVolume]);
+
     return {
         // Status Notifications
         playSuccess: () => playSound('success', 0.9),
@@ -67,6 +89,9 @@ export const useSoundEffects = () => {
 
         // Custom sound from settings
         playCustom: () => playSound(advancedSettings?.notificationSound || 'default', 1.0),
+
+        // Call sounds
+        playCallEnd,
 
         playSound
     };

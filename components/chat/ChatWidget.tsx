@@ -13,6 +13,8 @@ import ChatMembers from './ChatMembers';
 import { requestNotificationPermission, sendSystemNotification } from '../../utils/notificationUtils';
 import { getTimestamp } from '../../utils/dateUtils';
 import { useSoundEffects } from '../../hooks/useSoundEffects';
+import { useVoiceCall } from '../../hooks/useVoiceCall';
+import VoiceCallModal from './VoiceCallModal';
 
 interface ChatWidgetProps {
     isOpen: boolean;
@@ -32,7 +34,36 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ isOpen, onClose }) => {
     const [recordingTime, setRecordingTime] = useState(0);
     const recordingIntervalRef = useRef<any>(null);
 
-    const { playNotify } = useSoundEffects();
+    const { playNotify, playCallEnd } = useSoundEffects();
+
+    // ── Voice Call ────────────────────────────────────────────────────────────
+    const wsRef = useRef<WebSocket | null>(null);
+    const voiceCall = useVoiceCall(wsRef, currentUser?.UserName || '');
+
+    // Play a sound when a call ends
+    useEffect(() => {
+        if (voiceCall.callState === 'ended') {
+            playCallEnd();
+        }
+    }, [voiceCall.callState]);
+
+    // Handle an outgoing call initiation from the Members list
+    const handleCallUser = useCallback(async (user: User) => {
+        try {
+            await voiceCall.startCall({
+                username: user.UserName,
+                fullName: user.FullName || user.UserName,
+                avatarUrl: user.ProfilePictureURL,
+            });
+        } catch {
+            showNotification(
+                language === 'km'
+                    ? 'មិនអាចចូលដំណើរការ Microphone បានទេ'
+                    : 'Cannot access microphone. Please allow microphone permission.',
+                'error',
+            );
+        }
+    }, [voiceCall, showNotification, language]);
 
     const [messages, setMessages] = useState<ChatMessage[]>(() => {
         if (!CACHE_KEY) return [];
@@ -64,7 +95,6 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ isOpen, onClose }) => {
     const fileInputRef = useRef<HTMLInputElement>(null);
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const chatBodyRef = useRef<HTMLDivElement>(null);
-    const wsRef = useRef<WebSocket | null>(null);
     const isOpenRef = useRef(isOpen);
     const textareaRef = useRef<HTMLTextAreaElement>(null);
     
@@ -284,11 +314,12 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ isOpen, onClose }) => {
         if (messagesEndRef.current) messagesEndRef.current.scrollIntoView({ behavior });
     };
 
-    const handlersRef = useRef({ fetchHistory, transformBackendMessage, setAndCacheMessages, processNotifications });
+    const handlersRef = useRef<any>({ fetchHistory, transformBackendMessage, setAndCacheMessages, processNotifications, handleIncomingSignal: voiceCall.handleIncomingSignal });
     useEffect(() => {
-        handlersRef.current = { fetchHistory, transformBackendMessage, setAndCacheMessages, processNotifications };
-    }, [fetchHistory, transformBackendMessage, setAndCacheMessages, processNotifications]);
+        handlersRef.current = { fetchHistory, transformBackendMessage, setAndCacheMessages, processNotifications, handleIncomingSignal: voiceCall.handleIncomingSignal };
+    }, [fetchHistory, transformBackendMessage, setAndCacheMessages, processNotifications, voiceCall.handleIncomingSignal]);
 
+    // Keep wsRef in sync so useVoiceCall can use it for signaling
     useEffect(() => {
         if (!currentUser) return;
         let ws: WebSocket | null = null;
@@ -307,10 +338,10 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ isOpen, onClose }) => {
                 ws = new WebSocket(`${protocol}://${host}/api/chat/ws?token=${encodeURIComponent(token)}`);
                 wsRef.current = ws;
 
-                ws.onopen = () => { 
+                ws.onopen = () => {
                     if (isDisposed) { ws?.close(); return; }
-                    setConnectionStatus('connected'); 
-                    handlersRef.current.fetchHistory(); 
+                    setConnectionStatus('connected');
+                    handlersRef.current.fetchHistory();
                 };
 
                 ws.onmessage = (e) => {
@@ -319,6 +350,27 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ isOpen, onClose }) => {
                         const data = JSON.parse(e.data);
                         const type = data.type || data.Type || data.action || data.Action;
                         const payload = data.data || data.payload || data.Payload || data;
+
+                        // ── WebRTC signaling types → forward to voice call hook ──
+                        const signalingTypes = new Set([
+                            'call_offer', 'call_answer', 'call_ice',
+                            'call_reject', 'call_end', 'call_busy',
+                            'call_cancelled', 'call_not_available',
+                        ]);
+                        if (signalingTypes.has(type)) {
+                            // Enrich incoming call_offer with user profile data
+                            if (type === 'call_offer' && data.from) {
+                                const callerUser = appData?.users?.find(
+                                    (u: User) => u.UserName === data.from
+                                );
+                                if (callerUser) {
+                                    data.callerFullName = callerUser.FullName;
+                                    data.callerAvatar = callerUser.ProfilePictureURL;
+                                }
+                            }
+                            handlersRef.current.handleIncomingSignal?.(data);
+                            return;
+                        }
 
                         if (type === 'new_message' || type === 'NEW_MESSAGE') {
                             const msg = handlersRef.current.transformBackendMessage(payload);
@@ -501,6 +553,7 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ isOpen, onClose }) => {
     };
 
     return (
+        <>
         <div className={`chat-widget-container ${!isOpen ? 'closed' : ''}`}>
             <style>{`
                 .chat-bubble { position: relative; transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
@@ -636,7 +689,15 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ isOpen, onClose }) => {
                         })}
                         <div ref={messagesEndRef} />
                     </div>
-                ) : <ChatMembers users={allUsers} loading={isUsersLoading} onRefresh={syncUsers} />}
+                ) : (
+                    <ChatMembers
+                        users={allUsers}
+                        loading={isUsersLoading}
+                        onRefresh={syncUsers}
+                        currentUsername={currentUser?.UserName}
+                        onCallUser={handleCallUser}
+                    />
+                )}
             </div>
 
             {activeTab === 'chat' && (
@@ -715,6 +776,23 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ isOpen, onClose }) => {
                 </button>
             )}
         </div>
+
+        {/* ── Voice Call Modal — rendered outside the chat widget container so it covers the full screen ── */}
+        <VoiceCallModal
+            callState={voiceCall.callState}
+            remoteParty={voiceCall.remoteParty}
+            isMuted={voiceCall.isMuted}
+            callDurationSeconds={voiceCall.callDurationSeconds}
+            onAnswer={() => {
+                const sdp = (window as any).__pendingCallSdp;
+                if (sdp) voiceCall.answerCall(sdp);
+            }}
+            onReject={voiceCall.rejectCall}
+            onHangUp={voiceCall.hangUp}
+            onToggleMute={voiceCall.toggleMute}
+            language={language}
+        />
+        </>
     );
 };
 
