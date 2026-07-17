@@ -327,6 +327,20 @@ const RoleSelectionPage: React.FC<RoleSelectionPageProps> = ({ onSelect }) => {
                     </svg>
                 ),
             },
+            {
+                id: 'otochat',
+                label: 'OTO Chat',
+                sublabel: language === 'km' ? 'កម្មវិធី Mini App ទំនាក់ទំនង' : 'Mini App Chat',
+                onClick: () => {
+                    window.open('https://otochat.otokhmer.com/', '_blank');
+                },
+                accent: '#2563eb',
+                icon: (
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+                    </svg>
+                ),
+            },
         ].filter(Boolean) as any[];
         const sortedRoles = [...allRoles].sort((a, b) => {
             const idxA = portalOrder.indexOf(a.id);
@@ -886,6 +900,22 @@ const RoleSelectionPage: React.FC<RoleSelectionPageProps> = ({ onSelect }) => {
             icon: (
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
                     <path d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+                </svg>
+            ),
+        },
+        {
+            id: 'otochat',
+            label: 'OTO Chat',
+            sublabel: language === 'km' ? 'កម្មវិធី Mini App ទំនាក់ទំនង' : 'Mini App Chat',
+            onClick: () => {
+                window.open('https://otochat.otokhmer.com/', '_blank');
+            },
+            accent: '#2563eb',
+            accentLight: '#dbeafe',
+            accentGlow: 'rgba(37,99,235,0.14)',
+            icon: (
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
                 </svg>
             ),
         },
