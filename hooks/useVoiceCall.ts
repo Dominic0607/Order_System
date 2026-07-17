@@ -22,7 +22,7 @@ export interface CallParty {
 const ICE_SERVERS: RTCIceServer[] = [
   { urls: 'stun:stun.l.google.com:19302' },
   { urls: 'stun:stun1.l.google.com:19302' },
-  { urls: 'global.relay.metered.ca:80' },
+  { urls: 'stun:global.relay.metered.ca:80' },
   {
     urls: 'turn:global.relay.metered.ca:80',
     username: '4ee3a9c0e4ba870fc7576d35',
