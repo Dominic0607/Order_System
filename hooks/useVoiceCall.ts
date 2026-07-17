@@ -52,6 +52,8 @@ export function useVoiceCall(
   const [isMuted, setIsMuted]           = useState(false);
   const [isCameraOff, setIsCameraOff]   = useState(false);
   const [callDurationSeconds, setCallDurationSeconds] = useState(0);
+  const [localStream, setLocalStream]   = useState<MediaStream | null>(null);
+  const [remoteStream, setRemoteStream] = useState<MediaStream | null>(null);
 
   // Refs for media / WebRTC
   const pcRef                 = useRef<RTCPeerConnection | null>(null);
@@ -120,6 +122,8 @@ export function useVoiceCall(
       setIsMuted(false);
       setIsCameraOff(false);
       setCallDurationSeconds(0);
+      setLocalStream(null);
+      setRemoteStream(null);
       setCallState(nextState);
       if (nextState !== 'ringing' && nextState !== 'calling') {
         setTimeout(() => setCallState('idle'), nextState === 'ended' ? 1500 : 0);
@@ -143,18 +147,11 @@ export function useVoiceCall(
       pc.ontrack = ({ streams, track }) => {
         const stream = streams[0];
         if (track.kind === 'video') {
-          // Video track — attach to video element
+          setRemoteStream(stream);
           if (remoteVideoRef.current) {
             if (remoteVideoRef.current.srcObject !== stream) {
               remoteVideoRef.current.srcObject = stream;
             }
-          } else {
-            // Create a detached video element as fallback
-            const vid = document.createElement('video');
-            vid.autoplay = true;
-            vid.playsInline = true;
-            vid.srcObject = stream;
-            remoteVideoRef.current = vid;
           }
         } else {
           // Audio-only track
@@ -212,6 +209,7 @@ export function useVoiceCall(
         };
         const stream = await navigator.mediaDevices.getUserMedia(constraints);
         localStreamRef.current = stream;
+        setLocalStream(stream);
 
         if (type === 'video') attachLocalVideo(stream);
 
@@ -250,6 +248,7 @@ export function useVoiceCall(
         };
         const stream = await navigator.mediaDevices.getUserMedia(constraints);
         localStreamRef.current = stream;
+        setLocalStream(stream);
 
         if (incomingCallType === 'video') attachLocalVideo(stream);
         setCallType(incomingCallType);
@@ -422,5 +421,7 @@ export function useVoiceCall(
     localVideoRef,
     remoteVideoRef,
     remoteAudioRef,
+    localStream,
+    remoteStream,
   };
 }
