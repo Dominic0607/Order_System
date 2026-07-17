@@ -1,9 +1,12 @@
-const CACHE_NAME = 'osystem-cache-v3';
+const CACHE_NAME = 'osystem-cache-v4';
 const urlsToCache = [
   './',
   './index.html',
   './manifest.json',
-  './logo.webp'
+  './logo.webp',
+  './logo.png',
+  './logo-192.png',
+  './logo-512.png'
 ];
 
 self.addEventListener('install', (event) => {
