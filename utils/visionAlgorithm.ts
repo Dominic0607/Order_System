@@ -3,6 +3,35 @@ import * as tf from '@tensorflow/tfjs-core';
 import '@tensorflow/tfjs-backend-webgl';
 import jsQR from 'jsqr';
 
+const tfInitState = globalThis as typeof globalThis & {
+    __osystemTfInitPromise?: Promise<void>;
+    __osystemTfReady?: boolean;
+};
+
+async function ensureTensorflowReady() {
+    if (tfInitState.__osystemTfReady) return;
+    if (tfInitState.__osystemTfInitPromise) {
+        await tfInitState.__osystemTfInitPromise;
+        return;
+    }
+
+    tfInitState.__osystemTfInitPromise = (async () => {
+        try {
+            await tf.ready();
+            const currentBackend = tf.getBackend();
+            if (currentBackend !== 'webgl') {
+                await tf.setBackend('webgl');
+            }
+            tfInitState.__osystemTfReady = true;
+        } catch (error) {
+            console.warn('AI: TensorFlow backend initialization skipped:', error);
+            tfInitState.__osystemTfReady = false;
+        }
+    })();
+
+    await tfInitState.__osystemTfInitPromise;
+}
+
 export interface DetectionResult {
     found: boolean;
     box?: { x: number, y: number, w: number, h: number };
@@ -61,8 +90,7 @@ export class PackageDetector {
                 } catch (e) { console.warn("BarcodeDetector formats unsupported"); }
             }
             console.log("AI: Initializing WebGL backend...");
-            await tf.ready();
-            await tf.setBackend('webgl');
+            await ensureTensorflowReady();
             
             console.log("AI: Loading HandPose model...");
             const model = handPoseDetection.SupportedModels.MediaPipeHands;

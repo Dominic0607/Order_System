@@ -9,6 +9,12 @@ const urlsToCache = [
   './logo-512.png'
 ];
 
+function isCacheableRequest(request) {
+  if (!request || typeof request.url !== 'string') return false;
+  const url = new URL(request.url);
+  return url.protocol === 'http:' || url.protocol === 'https:';
+}
+
 self.addEventListener('install', (event) => {
   self.skipWaiting();
   event.waitUntil(
@@ -162,7 +168,7 @@ self.addEventListener('fetch', (event) => {
     event.respondWith(
       fetch(event.request)
         .then((response) => {
-          if (response.ok) {
+          if (response.ok && isCacheableRequest(event.request)) {
             const copy = response.clone();
             caches.open(CACHE_NAME).then((cache) => cache.put('./index.html', copy));
           }
@@ -191,7 +197,7 @@ self.addEventListener('fetch', (event) => {
           return cachedResponse;
         }
         return fetch(event.request).then((response) => {
-          if (response.ok && event.request.url.startsWith('http')) {
+          if (response.ok && isCacheableRequest(event.request)) {
             const copy = response.clone();
             caches.open(CACHE_NAME).then((cache) => cache.put(event.request, copy)).catch(err => console.warn('Cache put error:', err));
           }
