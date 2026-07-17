@@ -7,7 +7,7 @@ import { translations } from '../translations';
 import { CLIENT_VERSION } from '../constants/version';
 
 interface RoleSelectionPageProps {
-    onSelect: (role: 'admin_dashboard' | 'user_journey' | 'fulfillment' | 'cambodia_map' | 'entertainment' | 'promotions') => void;
+    onSelect: (role: 'admin_dashboard' | 'user_journey' | 'fulfillment' | 'cambodia_map' | 'entertainment' | 'promotions' | 'oto_chat') => void;
 }
 
 const getRoleSelectThemeStyles = (theme: string, isLight: boolean) => {
@@ -331,9 +331,7 @@ const RoleSelectionPage: React.FC<RoleSelectionPageProps> = ({ onSelect }) => {
                 id: 'otochat',
                 label: 'OTO Chat',
                 sublabel: language === 'km' ? 'កម្មវិធី Mini App ទំនាក់ទំនង' : 'Mini App Chat',
-                onClick: () => {
-                    window.open('https://otochat.otokhmer.com/', '_blank');
-                },
+                onClick: () => onSelect('oto_chat'),
                 accent: '#2563eb',
                 icon: (
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
@@ -907,9 +905,7 @@ const RoleSelectionPage: React.FC<RoleSelectionPageProps> = ({ onSelect }) => {
             id: 'otochat',
             label: 'OTO Chat',
             sublabel: language === 'km' ? 'កម្មវិធី Mini App ទំនាក់ទំនង' : 'Mini App Chat',
-            onClick: () => {
-                window.open('https://otochat.otokhmer.com/', '_blank');
-            },
+            onClick: () => onSelect('oto_chat'),
             accent: '#2563eb',
             accentLight: '#dbeafe',
             accentGlow: 'rgba(37,99,235,0.14)',

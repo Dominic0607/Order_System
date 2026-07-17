@@ -63,7 +63,7 @@ const AppContent: React.FC = () => {
         orders, setOrders, appData, isOrdersLoading, isSyncing, refreshTimestamp, fetchData, fetchOrders, refreshData, ordersFetchError
     } = useOrder();
 
-    const [appState, setAppState] = useUrlState<'login' | 'user_journey' | 'admin_dashboard' | 'create_order' | 'fulfillment' | 'role_selection' | 'confirm_delivery' | 'entertainment' | 'watch' | 'series_player' | 'long_player' | 'short_player' | 'cambodia_map' | 'print_label' | 'order_metadata'>('view', 'login');
+    const [appState, setAppState] = useUrlState<'login' | 'user_journey' | 'admin_dashboard' | 'create_order' | 'fulfillment' | 'role_selection' | 'confirm_delivery' | 'entertainment' | 'watch' | 'series_player' | 'long_player' | 'short_player' | 'cambodia_map' | 'print_label' | 'order_metadata' | 'oto_chat'>('view', 'login');
     const [selectedTeam, setSelectedTeam] = useUrlState<string>('team', '');
     const [selectedMovieId, setSelectedMovieId] = useUrlState<string>('movie', '');
     const [isShiftOpener, setIsShiftOpener] = useState(false);
@@ -622,17 +622,17 @@ const AppContent: React.FC = () => {
     }, []);
 
     const shouldShowHeader = useMemo(() => {
-        if (appState === 'login' || appState === 'user_journey' || appState === 'admin_dashboard' || appState === 'confirm_delivery' || appState === 'entertainment' || appState === 'watch' || appState === 'series_player' || appState === 'long_player' || appState === 'short_player' || appState === 'cambodia_map' || appState === 'print_label' || appState === 'fulfillment' || appState === 'order_metadata' || appState === 'promotions') return false;
+        if (appState === 'login' || appState === 'user_journey' || appState === 'admin_dashboard' || appState === 'confirm_delivery' || appState === 'entertainment' || appState === 'watch' || appState === 'series_player' || appState === 'long_player' || appState === 'short_player' || appState === 'cambodia_map' || appState === 'print_label' || appState === 'fulfillment' || appState === 'order_metadata' || appState === 'promotions' || appState === 'oto_chat') return false;
         return true;
     }, [appState]);
 
     const containerClass = useMemo(() => {
-        if (appState === 'entertainment' || appState === 'watch' || appState === 'series_player' || appState === 'long_player' || appState === 'short_player' || appState === 'cambodia_map' || appState === 'print_label' || appState === 'fulfillment' || appState === 'order_metadata' || appState === 'promotions') return 'w-full';
+        if (appState === 'entertainment' || appState === 'watch' || appState === 'series_player' || appState === 'long_player' || appState === 'short_player' || appState === 'cambodia_map' || appState === 'print_label' || appState === 'fulfillment' || appState === 'order_metadata' || appState === 'promotions' || appState === 'oto_chat') return 'w-full';
         return (appState === 'admin_dashboard' || appState === 'role_selection' || appState === 'user_journey') ? 'w-full' : 'w-full px-2 sm:px-6';
     }, [appState, selectedTeam]);
 
     const paddingClass = useMemo(() => {
-        if (appState === 'login' || appState === 'confirm_delivery' || appState === 'entertainment' || appState === 'watch' || appState === 'series_player' || appState === 'long_player' || appState === 'short_player' || appState === 'cambodia_map' || appState === 'print_label' || appState === 'fulfillment' || appState === 'order_metadata' || appState === 'promotions') return 'pt-0 pb-0';
+        if (appState === 'login' || appState === 'confirm_delivery' || appState === 'entertainment' || appState === 'watch' || appState === 'series_player' || appState === 'long_player' || appState === 'short_player' || appState === 'cambodia_map' || appState === 'print_label' || appState === 'fulfillment' || appState === 'order_metadata' || appState === 'promotions' || appState === 'oto_chat') return 'pt-0 pb-0';
         
         // Base header padding
         let topPadding = isMobile ? 'pt-16' : 'pt-20';
@@ -826,7 +826,7 @@ const AppContent: React.FC = () => {
                                 {originalAdminUser && <ImpersonationBanner />}
                                 {shouldShowHeader && <Header appState={appState} onBackToRoleSelect={() => setAppState('role_selection')} />}
                                 <main className={`flex-grow overflow-hidden relative flex flex-col ${appState === 'role_selection' || (appState === 'user_journey' && !selectedTeam) ? 'bg-transparent' : ''}`}>
-                                    <div id="app-main-scroll-container" className={`flex-grow ${appState === 'fulfillment' ? 'overflow-hidden' : 'overflow-y-auto custom-scrollbar'} ${containerClass} ${paddingClass} transition-all duration-300`}>
+                                    <div id="app-main-scroll-container" className={`flex-grow ${appState === 'fulfillment' || appState === 'oto_chat' ? 'overflow-hidden' : 'overflow-y-auto custom-scrollbar'} ${containerClass} ${paddingClass} transition-all duration-300`}>
                                         {appState === 'user_journey' && <UserJourney onBackToRoleSelect={() => setAppState('role_selection')} />}
                                         {appState === 'create_order' && <CreateOrderPage team={selectedTeam} onSaveSuccess={() => setAppState('user_journey')} onCancel={() => setAppState('user_journey')} />}
                                         {appState === 'fulfillment' && <FulfillmentPage />}
@@ -835,6 +835,36 @@ const AppContent: React.FC = () => {
                                         {appState === 'series_player' && <SeriesPlayerPage />}
                                         {appState === 'long_player' && <LongFilmPlayerPage />}
                                         {appState === 'short_player' && <ShortFilmPlayerPage />}
+                                        {appState === 'oto_chat' && (
+                                            <div className="absolute inset-0 bg-[#0e1114] flex flex-col z-[100] animate-reveal">
+                                                {/* Slim Header */}
+                                                <div className="flex items-center justify-between px-4 py-3 bg-[#161a1f] border-b border-white/5 shrink-0">
+                                                    <button 
+                                                        onClick={() => setAppState('role_selection')}
+                                                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-white font-bold text-xs transition-all active:scale-95"
+                                                    >
+                                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
+                                                            <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+                                                        </svg>
+                                                        {language === 'km' ? 'ត្រឡប់ក្រោយ' : 'Back'}
+                                                    </button>
+                                                    <div className="text-center flex flex-col items-center">
+                                                        <span className="text-xs font-bold text-white tracking-wider">OTO Chat</span>
+                                                        <span className="text-[10px] text-white/40">Mini App</span>
+                                                    </div>
+                                                    <div className="w-[84px]"></div>
+                                                </div>
+                                                {/* Embedded Iframe */}
+                                                <div className="flex-grow w-full relative bg-[#0e1114]">
+                                                    <iframe 
+                                                        src="https://otochat.otokhmer.com/" 
+                                                        className="absolute inset-0 w-full h-full border-0"
+                                                        allow="camera; microphone; geolocation"
+                                                        title="OTO Chat"
+                                                    />
+                                                </div>
+                                            </div>
+                                        )}
                                         {appState === 'role_selection' && (
                                             <RoleSelectionPage onSelect={(s) => {
                                                 if (s === 'user_journey') setSelectedTeam('');
