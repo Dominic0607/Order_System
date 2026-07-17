@@ -739,6 +739,7 @@ body {
 
 /* Muted / secondary text colors */
 .theme-light .incentive-surface .text-\[\#707A8A\],
+.theme-light .incentive-surface [class*="text-white/"],
 .theme-light .incentive-surface .text-white\/10,
 .theme-light .incentive-surface .text-white\/20,
 .theme-light .incentive-surface .text-white\/25,
