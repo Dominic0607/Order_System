@@ -1239,7 +1239,7 @@ const RoleSelectionPage: React.FC<RoleSelectionPageProps> = ({ onSelect }) => {
                                 }}
                                 onDragEnd={() => setDraggedIdx(null)}
                                 className={`nm-card group w-full transition-all duration-300 hover:-translate-y-1 hover:scale-[1.01] active:scale-[0.97] will-change-transform relative ${isReorderMode ? 'nm-wiggle' : ''} ${pressedIdx === i ? ' pressed' : ''}`}
-                                style={{ opacity: draggedIdx === i ? 0.4 : 1 }}
+                                style={{ opacity: draggedIdx === i ? 0.4 : 1, animationDelay: `${0.3 + i * 0.07}s` }}
                             >
                                 <div className="nm-card-shine" />
 
