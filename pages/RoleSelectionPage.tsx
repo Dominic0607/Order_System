@@ -408,7 +408,7 @@ const RoleSelectionPage: React.FC<RoleSelectionPageProps> = ({ onSelect }) => {
                                             if (isReorderMode) return;
                                             role.onClick();
                                         }} 
-                                        className={`selection-btn group relative overflow-hidden flex flex-row py-3.5 px-5 w-full items-center justify-start rounded-2xl transition-all duration-300 ${isReorderMode ? 'wiggle' : ''} ${styles.card}`}
+                                        className={`selection-btn group relative overflow-hidden flex flex-row py-3.5 px-5 w-full items-center justify-start rounded-2xl transition-all duration-300 hover:-translate-y-1 hover:scale-[1.01] active:scale-[0.97] will-change-transform ${isReorderMode ? 'wiggle' : ''} ${styles.card}`}
                                     >
                                         <div className="shimmer"></div>
                                         <div className={`${styles.cardIconBg} flex items-center justify-center shrink-0`}>
@@ -517,7 +517,7 @@ const RoleSelectionPage: React.FC<RoleSelectionPageProps> = ({ onSelect }) => {
                                                 if (isReorderMode) return;
                                                 role.onClick();
                                             }} 
-                                            className={`selection-btn group relative overflow-hidden flex flex-col p-6 w-full h-[155px] items-start justify-start rounded-3xl transition-all duration-300 ${isReorderMode ? 'wiggle' : ''} ${styles.card}`}
+                                            className={`selection-btn group relative overflow-hidden flex flex-col p-6 w-full h-[155px] items-start justify-start rounded-3xl transition-all duration-300 hover:-translate-y-1 hover:scale-[1.01] active:scale-[0.97] will-change-transform ${isReorderMode ? 'wiggle' : ''} ${styles.card}`}
                                         >
                                             <div className="shimmer"></div>
                                             
@@ -716,7 +716,7 @@ const RoleSelectionPage: React.FC<RoleSelectionPageProps> = ({ onSelect }) => {
                                     }
                                 }}
                                 onDragEnd={() => setDraggedIdx(null)}
-                                className={`selection-btn group relative overflow-hidden flex flex-row sm:flex-col p-3.5 sm:p-5 gap-3.5 sm:gap-3 w-full h-[76px] sm:h-[150px] transition-opacity duration-200 ${isReorderMode ? 'wiggle' : ''} ${styles.card}`}
+                                className={`selection-btn group relative overflow-hidden flex flex-row sm:flex-col p-3.5 sm:p-5 gap-3.5 sm:gap-3 w-full h-[76px] sm:h-[150px] transition-all duration-300 hover:-translate-y-1 hover:scale-[1.01] active:scale-[0.97] will-change-transform ${isReorderMode ? 'wiggle' : ''} ${styles.card}`}
                                 style={{ opacity: draggedIdx === idx ? 0.4 : 1 }}
                             >
                                 <div className="shimmer"></div>
@@ -1238,7 +1238,7 @@ const RoleSelectionPage: React.FC<RoleSelectionPageProps> = ({ onSelect }) => {
                                     }
                                 }}
                                 onDragEnd={() => setDraggedIdx(null)}
-                                className={`nm-card group w-full transition-all relative ${isReorderMode ? 'nm-wiggle' : ''} ${pressedIdx === i ? ' pressed' : ''}`}
+                                className={`nm-card group w-full transition-all duration-300 hover:-translate-y-1 hover:scale-[1.01] active:scale-[0.97] will-change-transform relative ${isReorderMode ? 'nm-wiggle' : ''} ${pressedIdx === i ? ' pressed' : ''}`}
                                 style={{ opacity: draggedIdx === i ? 0.4 : 1 }}
                             >
                                 <div className="nm-card-shine" />
