@@ -366,7 +366,7 @@ export default function App() {
         playerIframe.width = '100%';
         playerIframe.height = '100%';
         playerIframe.frameBorder = '0';
-        playerIframe.allowFullscreen = true;
+        playerIframe.setAttribute('allow', 'fullscreen');
         playerIframe.sandbox.add("allow-scripts", "allow-same-origin", "allow-presentation");
         
         container.appendChild(playerIframe);
@@ -424,7 +424,7 @@ export default function App() {
           playerIframe.width = '100%';
           playerIframe.height = '100%';
           playerIframe.frameBorder = '0';
-          playerIframe.allowFullscreen = true;
+          playerIframe.setAttribute('allow', 'fullscreen');
           playerIframe.sandbox.add("allow-scripts", "allow-same-origin", "allow-presentation");
           
           container.appendChild(playerIframe);
@@ -444,7 +444,7 @@ export default function App() {
           protectiveIframe.width = '100%';
           protectiveIframe.height = '100%';
           protectiveIframe.frameBorder = '0';
-          protectiveIframe.allowFullscreen = true;
+          protectiveIframe.setAttribute('allow', 'fullscreen');
           protectiveIframe.sandbox.add("allow-scripts", "allow-same-origin", "allow-presentation");
           
           container.appendChild(protectiveIframe);
@@ -463,7 +463,7 @@ export default function App() {
                   </style>
               </head>
               <body>
-                  <iframe src="${proxyVideoUrl}" allowfullscreen="true" webkitallowfullscreen="true" mozallowfullscreen="true" frameborder="0" scrolling="no" referrerpolicy="no-referrer"></iframe>
+                  <iframe src="${proxyVideoUrl}" allow="fullscreen" frameborder="0" scrolling="no" referrerpolicy="no-referrer"></iframe>
               </body>
               </html>
             `);

@@ -79,7 +79,7 @@ const IframeFallbackPlayer: React.FC<{
           )}
 
           {warmupDone && (
-            <iframe src={src} allowFullScreen allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" />
+            <iframe src={src} allow="fullscreen; accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" />
           )}
         </div>
       </div>

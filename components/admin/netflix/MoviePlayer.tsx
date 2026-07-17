@@ -50,7 +50,7 @@ const MoviePlayer: React.FC<MoviePlayerProps> = ({
             <iframe 
               src={movie.VideoURL} 
               className="w-full h-full border-none rounded-xl shadow-2xl" 
-              allowFullScreen 
+              allow="fullscreen"
               sandbox="allow-scripts allow-same-origin allow-presentation"
             />
         );

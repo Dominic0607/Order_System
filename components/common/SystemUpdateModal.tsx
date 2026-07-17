@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { RefreshCw, Sparkles, AlertCircle } from 'lucide-react';
+import React, { useMemo, useState } from 'react';
+import { AlertCircle, CheckCircle2, RefreshCw, ShieldCheck, Sparkles, Zap } from 'lucide-react';
 import { APP_LOGO_URL } from '../../constants';
 
 interface SystemUpdateModalProps {
@@ -9,14 +9,49 @@ interface SystemUpdateModalProps {
     onUpdateStart?: () => Promise<void>;
 }
 
-const SystemUpdateModal: React.FC<SystemUpdateModalProps> = ({ 
-    newVersion, 
-    currentVersion, 
+const SystemUpdateModal: React.FC<SystemUpdateModalProps> = ({
+    newVersion,
+    currentVersion,
     language = 'km',
     onUpdateStart
 }) => {
     const [isUpdating, setIsUpdating] = useState(false);
     const [progress, setProgress] = useState(0);
+
+    const isKh = language === 'km';
+
+    const text = useMemo(() => ({
+        km: {
+            title: 'អាប់ដេតប្រព័ន្ធថ្មី',
+            subtitle: 'រួចរាល់សម្រាប់ការដំឡើង',
+            desc: `ប្រព័ន្ធ O-System ត្រូវបានផ upgrades ទៅកំណែ v${newVersion} ធ្វើឱ្យអ្នកទទួលបានមុខងារថ្មី និងការកែលម្អប្រព័ន្ធកាន់តែរលូន។`,
+            btn: 'ធ្វើបច្ចុប្បន្នភាពឥឡូវនេះ',
+            updating: 'កំពុងដំឡើងកំណែថ្មី...',
+            warning: 'ទិន្នន័យដែលកំពុងវាយបញ្ចូល (បើមាន) នឹងមិនត្រូវបានរក្សាទុកឡើយ។',
+            badge: 'អាប់ដេតថ្មី',
+            bullets: [
+                'ផ្លាស់ប្តូរជាន់គុណភាព និងស្ថិរភាព',
+                'ជួបប្រទះមុខងារថ្មីៗដោយរលូន',
+                'បង្កើនប្រតិបត្តិការ និងការប្រើប្រាស់'
+            ],
+            steps: ['រៀបចំ', 'អនុវត្ត', 'ផ្ទុកឡើងវិញ']
+        },
+        en: {
+            title: 'System Update Ready',
+            subtitle: 'A smoother experience is waiting',
+            desc: `O-System is ready to move to v${newVersion}, bringing fresh features and a more polished experience for you.`,
+            btn: 'Update System Now',
+            updating: 'Installing updates...',
+            warning: 'Any unsaved changes will be lost during reload.',
+            badge: 'New release',
+            bullets: [
+                'Improved stability and reliability',
+                'Access to the latest feature set',
+                'Smoother performance across the app'
+            ],
+            steps: ['Preparing', 'Applying', 'Refreshing']
+        }
+    }[isKh ? 'km' : 'en']), [isKh, newVersion]);
 
     const handleUpdate = async () => {
         setIsUpdating(true);
@@ -25,21 +60,17 @@ const SystemUpdateModal: React.FC<SystemUpdateModalProps> = ({
             try {
                 await onUpdateStart();
             } catch (e) {
-                console.warn("onUpdateStart failed:", e);
+                console.warn('onUpdateStart failed:', e);
             }
         }
 
-        // Prevent infinite reload loops by storing the acknowledged version in localStorage
         try {
             localStorage.setItem('system_update_acknowledged_version', newVersion);
         } catch (e) {
-            console.warn("Failed to set localStorage:", e);
+            console.warn('Failed to set localStorage:', e);
         }
 
-        // === v1.1.0 SPECIAL: Auto-switch to Light Mode ===
-        // When updating to v1.1.0, force themeMode → 'light' and uiTheme → 'neumorphism'
-        // so users get the new Neumorphism UI experience immediately after reload.
-        if (newVersion === "1.1.0") {
+        if (newVersion === '1.1.0') {
             try {
                 const savedSettings = localStorage.getItem('advancedSettings');
                 const currentSettings = savedSettings ? JSON.parse(savedSettings) : {};
@@ -49,184 +80,156 @@ const SystemUpdateModal: React.FC<SystemUpdateModalProps> = ({
                     uiTheme: 'neumorphism',
                 };
                 localStorage.setItem('advancedSettings', JSON.stringify(updatedSettings));
-                console.log("[Update v1.1.0] ✅ Auto-switched to Light Mode + Neumorphism UI");
+                console.log('[Update v1.1.0] ✅ Auto-switched to Light Mode + Neumorphism UI');
             } catch (e) {
-                console.warn("[Update v1.1.0] Failed to auto-switch theme:", e);
+                console.warn('[Update v1.1.0] Failed to auto-switch theme:', e);
             }
         }
 
-        // Run progress from 0% to 100%
         let currentProgress = 0;
         const interval = setInterval(() => {
-            // Random step increment between 3 and 12 for a realistic network progress feel
             currentProgress += Math.floor(Math.random() * 10) + 3;
             if (currentProgress >= 100) {
                 currentProgress = 100;
                 clearInterval(interval);
                 setTimeout(() => {
                     window.location.reload();
-                }, 400); // Brief pause at 100% for user feedback satisfaction
+                }, 400);
             }
             setProgress(currentProgress);
-        }, 90); // Takes ~1.5 - 2 seconds to complete
+        }, 90);
     };
 
-    const text = {
-        km: {
-            title: "អាប់ដេតប្រព័ន្ធថ្មី!",
-            desc: `ប្រព័ន្ធ O-System ត្រូវបានដំឡើងទៅជំនាន់ថ្មី v${newVersion} រួចរាល់ហើយ (ជំនាន់បច្ចុប្បន្នរបស់អ្នកគឺ v${currentVersion})។ សូមធ្វើការធ្វើបច្ចុប្បន្នភាពឥឡូវនេះ ដើម្បីទទួលបានមុខងារថ្មីៗ និងការកែសម្រួលប្រព័ន្ធដ៏ល្អប្រសើរ។`,
-            btn: "ធ្វើបច្ចុប្បន្នភាពឥឡូវនេះ",
-            updating: "កំពុងដំឡើងកំណែថ្មី...",
-            warning: "ទិន្នន័យដែលកំពុងវាយបញ្ចូល (បើមាន) នឹងមិនត្រូវបានរក្សាទុកឡើយ។"
-        },
-        en: {
-            title: "System Update Available!",
-            desc: `O-System has been successfully upgraded to v${newVersion} (your current version is v${currentVersion}). Please update now to experience the latest features, enhancements, and bug fixes.`,
-            btn: "Update System Now",
-            updating: "Installing updates...",
-            warning: "Any unsaved changes will be lost during reload."
-        }
-    }[language === 'km' ? 'km' : 'en'];
+    const currentPhase = progress < 35
+        ? text.steps[0]
+        : progress < 75
+            ? text.steps[1]
+            : text.steps[2];
 
     return (
         <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 overflow-hidden">
-            {/* Frosted glass background overlay */}
-            <div className="absolute inset-0 bg-[#000000]/60 backdrop-blur-[16px] transition-opacity duration-500"></div>
+            <div className="absolute inset-0 bg-[#000000]/65 backdrop-blur-[16px] transition-opacity duration-500"></div>
+            <div className="absolute w-[320px] h-[320px] bg-blue-500/10 rounded-full blur-[110px] animate-pulse pointer-events-none"></div>
+            <div className="absolute w-[220px] h-[220px] bg-yellow-500/5 rounded-full blur-[90px] animate-pulse pointer-events-none" style={{ animationDelay: '2s' }}></div>
 
-            {/* Glowing animated background elements */}
-            <div className="absolute w-[300px] h-[300px] bg-blue-500/10 rounded-full blur-[100px] animate-pulse pointer-events-none"></div>
-            <div className="absolute w-[200px] h-[200px] bg-yellow-500/5 rounded-full blur-[80px] animate-pulse pointer-events-none" style={{ animationDelay: '2s' }}></div>
-
-            {/* Modal Card */}
-            <div 
-                className="relative w-full max-w-lg bg-[#0e1114]/80 border border-white/10 rounded-[2rem] p-8 shadow-2xl backdrop-blur-2xl text-center flex flex-col items-center gap-6 animate-reveal transform hover:scale-[1.01] transition-transform duration-500"
+            <div
+                className="relative w-full max-w-xl rounded-[2rem] border border-white/10 bg-[#0d1117]/85 p-6 sm:p-8 text-center shadow-2xl shadow-black/40 backdrop-blur-2xl animate-reveal"
                 style={{
-                    boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.75), 0 0 40px 0px rgba(59, 130, 246, 0.1)',
-                    fontFamily: language === 'km' ? "'Kantumruy Pro', sans-serif" : "'Inter', sans-serif"
+                    boxShadow: '0 30px 70px -18px rgba(0, 0, 0, 0.8), 0 0 40px 0 rgba(59, 130, 246, 0.12)',
+                    fontFamily: isKh ? "'Kantumruy Pro', sans-serif" : "'Inter', sans-serif"
                 }}
             >
-                {/* Brand Logo */}
-                <div className="flex flex-col items-center gap-2">
-                    <img
-                        src={APP_LOGO_URL}
-                        alt="O-System Logo"
-                        className="w-16 h-16 object-cover"
-                    />
-                    <span className="text-[11px] font-semibold tracking-[0.15em] text-white/30 uppercase">O-System</span>
-                </div>
-
-                {/* Visual Icon Container with multi-layered glow */}
-                <div className="relative flex items-center justify-center w-20 h-20 rounded-full bg-blue-600/10 border border-blue-500/20 group">
-                    <div className="absolute inset-0 rounded-full bg-blue-500/5 blur-md animate-ping"></div>
-                    <div className="absolute inset-2 rounded-full bg-gradient-to-tr from-blue-600 to-indigo-600 opacity-20 blur-sm"></div>
-                    <RefreshCw 
-                        className={`w-9 h-9 text-blue-400 ${isUpdating ? 'animate-spin' : 'animate-[spin_10s_linear_infinite]'}`} 
-                        strokeWidth={2.5}
-                    />
-                    <div className="absolute -top-1 -right-1 w-6 h-6 rounded-full bg-yellow-500/20 border border-yellow-500/30 flex items-center justify-center">
-                        <Sparkles className="w-3.5 h-3.5 text-yellow-400 animate-pulse" />
+                <div className="flex flex-col items-center gap-4">
+                    <div className="flex flex-col items-center gap-2">
+                        <img src={APP_LOGO_URL} alt="O-System Logo" className="h-16 w-16 rounded-2xl object-cover" />
+                        <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-white/30">O-System</span>
                     </div>
-                </div>
 
-                {/* Typography Header */}
-                <div className="space-y-2">
-                    <h2 className="text-2xl sm:text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-white via-[#f1f3f5] to-blue-400 tracking-tight" style={{ fontFamily: "'Inter', 'SF Pro Display', system-ui, sans-serif" }}>
-                        {text.title}
-                    </h2>
-                    <div className="inline-flex gap-2 text-[10px] sm:text-xs font-bold uppercase tracking-wider text-blue-400 bg-blue-500/10 px-3.5 py-1 rounded-full border border-blue-500/20">
+                    <div className="relative flex h-20 w-20 items-center justify-center rounded-full border border-blue-500/20 bg-blue-600/10">
+                        <div className="absolute inset-0 rounded-full bg-blue-500/5 blur-md animate-ping"></div>
+                        <div className="absolute inset-2 rounded-full bg-gradient-to-tr from-blue-600 to-indigo-600 opacity-20 blur-sm"></div>
+                        <RefreshCw
+                            className={`h-9 w-9 text-blue-400 ${isUpdating ? 'animate-spin' : 'animate-[spin_10s_linear_infinite]'}`}
+                            strokeWidth={2.5}
+                        />
+                        <div className="absolute -right-1 -top-1 flex h-6 w-6 items-center justify-center rounded-full border border-yellow-500/30 bg-yellow-500/20">
+                            <Sparkles className="h-3.5 w-3.5 text-yellow-400 animate-pulse" />
+                        </div>
+                    </div>
+
+                    <div className="space-y-2">
+                        <div className="inline-flex items-center gap-2 rounded-full border border-blue-500/20 bg-blue-500/10 px-3.5 py-1 text-[10px] font-bold uppercase tracking-[0.2em] text-blue-400">
+                            <Zap className="h-3.5 w-3.5" />
+                            <span>{text.badge}</span>
+                        </div>
+                        <h2 className="text-2xl font-bold tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-white via-[#f1f3f5] to-blue-400 sm:text-3xl">
+                            {text.title}
+                        </h2>
+                        <p className="text-sm text-[#9aa4b2]">{text.subtitle}</p>
+                    </div>
+
+                    <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wider text-[#dce3ea]">
                         <span>v{currentVersion}</span>
-                        <span className="opacity-50">→</span>
+                        <span className="text-white/35">→</span>
                         <span className="text-yellow-400">v{newVersion}</span>
                     </div>
-                </div>
 
-                {/* Body Text */}
-                <p className="text-sm leading-relaxed text-[#b7bdc6] opacity-90">
-                    {text.desc}
-                </p>
+                    <p className="max-w-lg text-sm leading-relaxed text-[#b7bdc6]">
+                        {text.desc}
+                    </p>
 
-                {/* New Features Highlight for v1.1.1 */}
-                {newVersion === "1.1.1" && (
-                    <div className="w-full text-left bg-blue-500/5 border border-blue-500/10 rounded-2xl p-4 space-y-3 animate-fade-in">
-                        <div className="text-xs font-bold text-yellow-400 flex items-center gap-1.5">
-                            <Sparkles className="w-3.5 h-3.5" />
-                            <span>{language === 'km' ? 'មុខងារពិសេសៗក្នុងកំណែអាប់ដេតនេះ៖' : 'Key additions in this update:'}</span>
-                        </div>
-                        <ul className="text-xs text-[#b7bdc6] space-y-2 list-none pl-0">
-                            <li className="flex items-start gap-2.5">
-                                <span className="text-emerald-400 font-bold mt-0.5">✓</span>
-                                <div>
-                                    <strong className="text-white block sm:inline">{language === 'km' ? 'មុខងារ Call ថ្មី៖' : 'Calling Features:'}</strong>{' '}
-                                    <span>
-                                        {language === 'km' 
-                                            ? 'អាចធ្វើការតេជាសំឡេង (Audio Call) វីដេអូ (Video Call) និងការតេជាក្រុម (Group Call) នៅក្នុង Chat' 
-                                            : 'Support for Audio Calls, Video Calls, and Group Calls directly in Chat'}
-                                    </span>
-                                </div>
-                            </li>
-                            <li className="flex items-start gap-2.5">
-                                <span className="text-emerald-400 font-bold mt-0.5">✓</span>
-                                <div>
-                                    <strong className="text-white block sm:inline">{language === 'km' ? 'មុខងារ Mini App៖' : 'Mini App (OTO Chat):'}</strong>{' '}
-                                    <span>
-                                        {language === 'km' 
-                                            ? 'កិច្ចការងាររហ័ស និងមុខងារទំនាក់ទំនងសម្បូរបែប ជាមួយ OTO Chat' 
-                                            : 'Quick operations and integration via OTO Chat'}
-                                    </span>
-                                </div>
-                            </li>
-                        </ul>
-                    </div>
-                )}
-
-                {isUpdating ? (
-                    /* Progress Bar Layout */
-                    <div className="w-full space-y-3.5 py-2 animate-fade-in">
-                        <div className="flex items-center justify-between text-xs font-bold text-[#b7bdc6] px-1">
-                            <span className="flex items-center gap-2 text-blue-400">
-                                <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                                {text.updating}
-                            </span>
-                            <span className="text-yellow-400 font-mono text-sm tracking-wide">{progress}%</span>
-                        </div>
-                        {/* Progress Bar Track */}
-                        <div className="w-full h-3 rounded-full bg-white/5 border border-white/10 overflow-hidden p-0.5">
-                            {/* Animated glowing bar */}
-                            <div 
-                                className="h-full rounded-full bg-gradient-to-r from-blue-500 via-indigo-500 to-blue-400 transition-all duration-100 ease-out relative"
-                                style={{ 
-                                    width: `${progress}%`,
-                                    boxShadow: '0 0 12px rgba(59, 130, 246, 0.45)'
-                                }}
-                            >
-                                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/15 to-transparent skew-x-12 animate-[shimmer_1.5s_infinite]"></div>
+                    <div className="grid w-full gap-3 rounded-2xl border border-white/10 bg-white/5 p-4 text-left sm:grid-cols-3">
+                        {text.bullets.map((item) => (
+                            <div key={item} className="flex items-start gap-2 rounded-xl bg-[#0c1016]/70 p-3">
+                                <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-400" />
+                                <span className="text-sm text-[#dce3ea]">{item}</span>
                             </div>
-                        </div>
+                        ))}
                     </div>
-                ) : (
-                    <>
-                        {/* Warning message */}
-                        <div className="flex items-center gap-2 text-rose-400/80 bg-rose-500/5 border border-rose-500/10 rounded-xl px-4 py-2.5 text-xs max-w-sm">
-                            <AlertCircle className="w-4 h-4 shrink-0" />
-                            <span className="text-left font-medium">{text.warning}</span>
-                        </div>
 
-                        {/* Premium Button */}
-                        <button
-                            onClick={handleUpdate}
-                            className="relative w-full overflow-hidden group/btn py-4 rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold text-sm transition-all duration-300 shadow-lg shadow-blue-500/20 hover:shadow-blue-500/40 active:scale-[0.98]"
-                        >
-                            <div className="absolute inset-0 w-[50%] h-full bg-gradient-to-r from-transparent via-white/10 to-transparent skew-x-12 -translate-x-full group-hover/btn:animate-[shimmer_1.5s_infinite]"></div>
-                            <span className="relative flex items-center justify-center gap-2">
-                                <RefreshCw className="w-4 h-4 group-hover/btn:rotate-180 transition-transform duration-700" />
-                                {text.btn}
-                            </span>
-                        </button>
-                    </>
-                )}
+                    {newVersion === '1.1.1' && (
+                        <div className="w-full rounded-2xl border border-blue-500/10 bg-blue-500/5 p-4 text-left">
+                            <div className="mb-3 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.2em] text-yellow-400">
+                                <Sparkles className="h-3.5 w-3.5" />
+                                <span>{isKh ? 'មុខងារពិសេសក្នុងកំណែនេះ' : 'Highlights in this release'}</span>
+                            </div>
+                            <ul className="space-y-2 text-sm text-[#b7bdc6]">
+                                <li className="flex items-start gap-2">
+                                    <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-emerald-400" />
+                                    <span>{isKh ? 'ការហៅបន្ទាប់ និងការជួបជុំតាមវីដេអូបានស្ថិតនៅក្នុង Chat' : 'Audio, video, and group calling built directly into Chat'}</span>
+                                </li>
+                                <li className="flex items-start gap-2">
+                                    <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-emerald-400" />
+                                    <span>{isKh ? 'Mini App OTO Chat ធ្វើឱ្យការងាររហ័ស និងទំនាក់ទំនងកាន់តែរលូន' : 'OTO Chat mini-app support for faster workflows and richer interaction'}</span>
+                                </li>
+                            </ul>
+                        </div>
+                    )}
+
+                    {isUpdating ? (
+                        <div className="w-full space-y-3.5 py-2 animate-fade-in">
+                            <div className="flex items-center justify-between px-1 text-xs font-semibold text-[#b7bdc6]">
+                                <span className="flex items-center gap-2 text-blue-400">
+                                    <RefreshCw className="h-3.5 w-3.5 animate-spin" />
+                                    {text.updating}
+                                </span>
+                                <span className="font-mono text-sm tracking-wide text-yellow-400">{progress}%</span>
+                            </div>
+                            <div className="h-3 w-full overflow-hidden rounded-full border border-white/10 bg-white/5 p-0.5">
+                                <div
+                                    className="relative h-full rounded-full bg-gradient-to-r from-blue-500 via-indigo-500 to-blue-400 transition-all duration-100 ease-out"
+                                    style={{
+                                        width: `${progress}%`,
+                                        boxShadow: '0 0 12px rgba(59, 130, 246, 0.45)'
+                                    }}
+                                >
+                                    <div className="absolute inset-0 animate-[shimmer_1.5s_infinite] bg-gradient-to-r from-transparent via-white/15 to-transparent skew-x-12"></div>
+                                </div>
+                            </div>
+                            <div className="text-center text-sm text-[#9aa4b2]">{currentPhase}</div>
+                        </div>
+                    ) : (
+                        <>
+                            <div className="flex max-w-sm items-center gap-2 rounded-xl border border-rose-500/10 bg-rose-500/5 px-4 py-2.5 text-xs text-rose-400/80">
+                                <AlertCircle className="h-4 w-4 shrink-0" />
+                                <span className="text-left font-medium">{text.warning}</span>
+                            </div>
+
+                            <button
+                                onClick={handleUpdate}
+                                className="group/btn relative w-full overflow-hidden rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 py-4 text-sm font-bold text-white shadow-lg shadow-blue-500/20 transition-all duration-300 hover:from-blue-500 hover:to-indigo-500 hover:shadow-blue-500/40 active:scale-[0.98]"
+                            >
+                                <div className="absolute inset-0 h-full w-[50%] -translate-x-full skew-x-12 bg-gradient-to-r from-transparent via-white/10 to-transparent group-hover/btn:animate-[shimmer_1.5s_infinite]"></div>
+                                <span className="relative flex items-center justify-center gap-2">
+                                    <RefreshCw className="h-4 w-4 transition-transform duration-700 group-hover/btn:rotate-180" />
+                                    {text.btn}
+                                </span>
+                            </button>
+                        </>
+                    )}
+                </div>
             </div>
 
-            {/* Custom Keyframe Styles */}
             <style>{`
                 @keyframes shimmer {
                     100% { transform: translateX(250%); }

@@ -956,7 +956,6 @@ const AppContent: React.FC = () => {
                                                                 src="https://otochat.otokhmer.com/"
                                                                 className="absolute inset-0 w-full h-full border-0"
                                                                 allow="camera; microphone; geolocation; clipboard-write; clipboard-read; fullscreen; payment; autoplay"
-                                                                allowFullScreen
                                                                 title="OTO Chat Mini App"
                                                                 onLoad={() => setIframeLoaded(true)}
                                                                 style={{ opacity: iframeLoaded ? 1 : 0, transition: 'opacity 0.4s ease' }}
@@ -1058,7 +1057,6 @@ const AppContent: React.FC = () => {
                                                                 src={url}
                                                                 className="absolute inset-0 w-full h-full border-0"
                                                                 allow="camera; microphone; geolocation; clipboard-write; clipboard-read; fullscreen; payment; autoplay"
-                                                                allowFullScreen
                                                                 title="Problem Items Mini App"
                                                                 onLoad={() => setIframeLoaded(true)}
                                                                 style={{ opacity: iframeLoaded ? 1 : 0, transition: 'opacity 0.4s ease' }}
