@@ -213,21 +213,52 @@ self.addEventListener('fetch', (event) => {
 // Handle Notification Clicks
 self.addEventListener('notificationclick', function(event) {
   event.notification.close();
-  const urlToOpen = event.notification.data?.url || '/';
+  const notificationData = event.notification.data || {};
+  const urlToOpen = notificationData.url || '/Order_System/';
 
-  event.waitUntil(
-    clients.matchAll({ type: 'window', includeUncontrolled: true }).then(function(clientList) {
-      for (const client of clientList) {
-        if (client.url === urlToOpen && 'focus' in client) {
-          return client.focus();
-        }
-      }
-      if (clients.openWindow) {
-        return clients.openWindow(urlToOpen);
-      }
-    })
-  );
+  if (event.action === 'answer') {
+    const caller = notificationData.callerUsername || '';
+    const callType = notificationData.callType || 'audio';
+    const answerUrl = new URL(urlToOpen, self.location.origin);
+    answerUrl.searchParams.set('action', 'answer');
+    answerUrl.searchParams.set('caller', caller);
+    answerUrl.searchParams.set('callType', callType);
+    
+    event.waitUntil(
+      focusOrOpenWindow(answerUrl.pathname + answerUrl.search)
+    );
+  } else if (event.action === 'decline') {
+    if (notificationData.declineUrl) {
+      event.waitUntil(
+        fetch(notificationData.declineUrl, { method: 'POST' })
+          .then(resp => {
+            console.log('Call decline response status:', resp.status);
+          })
+          .catch(err => console.error('Failed to decline call via push:', err))
+      );
+    }
+  } else {
+    event.waitUntil(
+      focusOrOpenWindow(urlToOpen)
+    );
+  }
 });
+
+function focusOrOpenWindow(url) {
+  return clients.matchAll({ type: 'window', includeUncontrolled: true }).then(function(clientList) {
+    for (const client of clientList) {
+      if (client.url.includes('/Order_System') && 'focus' in client) {
+        if (client.navigate) {
+          client.navigate(url);
+        }
+        return client.focus();
+      }
+    }
+    if (clients.openWindow) {
+      return clients.openWindow(url);
+    }
+  });
+}
 
 self.addEventListener('push', function(event) {
   if (event.data) {
@@ -236,7 +267,11 @@ self.addEventListener('push', function(event) {
       body: data.body,
       icon: data.icon || '/Order_System/logo-192.png',
       badge: data.badge || '/Order_System/logo-192.png',
-      data: { url: data.url || '/' }
+      tag: data.tag || undefined,
+      requireInteraction: data.requireInteraction || false,
+      vibrate: data.vibrate || undefined,
+      actions: data.actions || [],
+      data: data.data || { url: data.url || '/' }
     };
     event.waitUntil(
       self.registration.showNotification(data.title, options)
