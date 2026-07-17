@@ -234,8 +234,8 @@ self.addEventListener('push', function(event) {
     const data = event.data.json();
     const options = {
       body: data.body,
-      icon: data.icon || '/icon.png',
-      badge: data.badge || '/badge.png',
+      icon: data.icon || '/Order_System/logo-192.png',
+      badge: data.badge || '/Order_System/logo-192.png',
       data: { url: data.url || '/' }
     };
     event.waitUntil(
