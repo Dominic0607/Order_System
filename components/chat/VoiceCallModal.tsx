@@ -126,36 +126,64 @@ const VoiceCallModal: React.FC<VoiceCallModalProps> = ({
 
   // ── Ringtone via Web Audio ──────────────────────────────────────────────────
   const audioCtxRef = useRef<AudioContext | null>(null);
+  const ringIntervalRef = useRef<any>(null);
+
   useEffect(() => {
     const playRingtone = () => {
       try {
         const ctx = new AudioContext();
         audioCtxRef.current = ctx;
-        const pattern = [{ freq: 480, dur: 0.4 }, { freq: 620, dur: 0.4 }];
-        let t = ctx.currentTime;
-        const scheduleRing = () => {
-          pattern.forEach(({ freq, dur }) => {
+
+        const triggerRing = () => {
+          if (ctx.state === 'suspended') {
+            ctx.resume().catch(() => {});
+          }
+          const t = ctx.currentTime;
+          const pattern = [
+            { freq: 480, dur: 0.4, delay: 0 },
+            { freq: 620, dur: 0.4, delay: 0.45 }
+          ];
+
+          pattern.forEach(({ freq, dur, delay }) => {
             const osc = ctx.createOscillator();
             const gain = ctx.createGain();
             osc.type = 'sine';
             osc.frequency.value = freq;
-            gain.gain.setValueAtTime(0.18, t);
-            gain.gain.exponentialRampToValueAtTime(0.001, t + dur - 0.02);
+            gain.gain.setValueAtTime(0.18, t + delay);
+            gain.gain.exponentialRampToValueAtTime(0.001, t + delay + dur - 0.02);
             osc.connect(gain);
             gain.connect(ctx.destination);
-            osc.start(t);
-            osc.stop(t + dur);
-            t += dur + 0.05;
+            osc.start(t + delay);
+            osc.stop(t + delay + dur);
           });
         };
-        for (let i = 0; i < 6; i++) scheduleRing();
+
+        // Play immediately
+        triggerRing();
+
+        // Loop every 2.5 seconds
+        ringIntervalRef.current = setInterval(triggerRing, 2500);
+      } catch (e) {
+        console.error("Failed to play ringtone:", e);
+      }
+    };
+
+    const stopRingtone = () => {
+      if (ringIntervalRef.current) {
+        clearInterval(ringIntervalRef.current);
+        ringIntervalRef.current = null;
+      }
+      try {
+        if (audioCtxRef.current) {
+          audioCtxRef.current.close();
+          audioCtxRef.current = null;
+        }
       } catch {}
     };
-    const stopRingtone = () => {
-      try { audioCtxRef.current?.close(); audioCtxRef.current = null; } catch {}
-    };
+
     if (callState === 'ringing') playRingtone();
     else stopRingtone();
+
     return () => stopRingtone();
   }, [callState]);
 
