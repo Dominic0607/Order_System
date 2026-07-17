@@ -107,33 +107,33 @@ const SystemUpdateModal: React.FC<SystemUpdateModalProps> = ({
             : text.steps[2];
 
     return (
-        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 overflow-hidden">
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center overflow-hidden p-2 sm:p-4">
             <div className="absolute inset-0 bg-[#000000]/65 backdrop-blur-[16px] transition-opacity duration-500"></div>
-            <div className="absolute w-[320px] h-[320px] bg-blue-500/10 rounded-full blur-[110px] animate-pulse pointer-events-none"></div>
-            <div className="absolute w-[220px] h-[220px] bg-yellow-500/5 rounded-full blur-[90px] animate-pulse pointer-events-none" style={{ animationDelay: '2s' }}></div>
+            <div className="absolute h-[280px] w-[280px] rounded-full bg-blue-500/10 blur-[110px] animate-pulse pointer-events-none"></div>
+            <div className="absolute h-[200px] w-[200px] rounded-full bg-yellow-500/5 blur-[90px] animate-pulse pointer-events-none" style={{ animationDelay: '2s' }}></div>
 
             <div
-                className="relative w-full max-w-xl rounded-[2rem] border border-white/10 bg-[#0d1117]/85 p-6 sm:p-8 text-center shadow-2xl shadow-black/40 backdrop-blur-2xl animate-reveal"
+                className="relative mx-auto w-full max-h-[90dvh] max-w-xl overflow-y-auto rounded-[1.5rem] border border-white/10 bg-[#0d1117]/85 p-4 text-center shadow-2xl shadow-black/40 backdrop-blur-2xl animate-reveal sm:rounded-[2rem] sm:p-8"
                 style={{
                     boxShadow: '0 30px 70px -18px rgba(0, 0, 0, 0.8), 0 0 40px 0 rgba(59, 130, 246, 0.12)',
                     fontFamily: isKh ? "'Kantumruy Pro', sans-serif" : "'Inter', sans-serif"
                 }}
             >
-                <div className="flex flex-col items-center gap-4">
+                <div className="flex flex-col items-center gap-3 sm:gap-4">
                     <div className="flex flex-col items-center gap-2">
-                        <img src={APP_LOGO_URL} alt="O-System Logo" className="h-16 w-16 rounded-2xl object-cover" />
+                        <img src={APP_LOGO_URL} alt="O-System Logo" className="h-14 w-14 rounded-2xl object-cover sm:h-16 sm:w-16" />
                         <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-white/30">O-System</span>
                     </div>
 
-                    <div className="relative flex h-20 w-20 items-center justify-center rounded-full border border-blue-500/20 bg-blue-600/10">
+                    <div className="relative flex h-16 w-16 items-center justify-center rounded-full border border-blue-500/20 bg-blue-600/10 sm:h-20 sm:w-20">
                         <div className="absolute inset-0 rounded-full bg-blue-500/5 blur-md animate-ping"></div>
                         <div className="absolute inset-2 rounded-full bg-gradient-to-tr from-blue-600 to-indigo-600 opacity-20 blur-sm"></div>
                         <RefreshCw
-                            className={`h-9 w-9 text-blue-400 ${isUpdating ? 'animate-spin' : 'animate-[spin_10s_linear_infinite]'}`}
+                            className={`h-7 w-7 text-blue-400 sm:h-9 sm:w-9 ${isUpdating ? 'animate-spin' : 'animate-[spin_10s_linear_infinite]'}`}
                             strokeWidth={2.5}
                         />
-                        <div className="absolute -right-1 -top-1 flex h-6 w-6 items-center justify-center rounded-full border border-yellow-500/30 bg-yellow-500/20">
-                            <Sparkles className="h-3.5 w-3.5 text-yellow-400 animate-pulse" />
+                        <div className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full border border-yellow-500/30 bg-yellow-500/20 sm:h-6 sm:w-6">
+                            <Sparkles className="h-3 w-3 text-yellow-400 animate-pulse sm:h-3.5 sm:w-3.5" />
                         </div>
                     </div>
 
@@ -142,7 +142,7 @@ const SystemUpdateModal: React.FC<SystemUpdateModalProps> = ({
                             <Zap className="h-3.5 w-3.5" />
                             <span>{text.badge}</span>
                         </div>
-                        <h2 className="text-2xl font-bold tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-white via-[#f1f3f5] to-blue-400 sm:text-3xl">
+                        <h2 className="text-xl font-bold tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-white via-[#f1f3f5] to-blue-400 sm:text-3xl">
                             {text.title}
                         </h2>
                         <p className="text-sm text-[#9aa4b2]">{text.subtitle}</p>
@@ -158,7 +158,7 @@ const SystemUpdateModal: React.FC<SystemUpdateModalProps> = ({
                         {text.desc}
                     </p>
 
-                    <div className="grid w-full gap-3 rounded-2xl border border-white/10 bg-white/5 p-4 text-left sm:grid-cols-3">
+                    <div className="grid w-full gap-3 rounded-2xl border border-white/10 bg-white/5 p-3 text-left sm:grid-cols-3 sm:p-4">
                         {text.bullets.map((item) => (
                             <div key={item} className="flex items-start gap-2 rounded-xl bg-[#0c1016]/70 p-3">
                                 <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-400" />
@@ -210,14 +210,14 @@ const SystemUpdateModal: React.FC<SystemUpdateModalProps> = ({
                         </div>
                     ) : (
                         <>
-                            <div className="flex max-w-sm items-center gap-2 rounded-xl border border-rose-500/10 bg-rose-500/5 px-4 py-2.5 text-xs text-rose-400/80">
+                            <div className="flex w-full max-w-sm items-center gap-2 rounded-xl border border-rose-500/10 bg-rose-500/5 px-3 py-2.5 text-xs text-rose-400/80 sm:px-4">
                                 <AlertCircle className="h-4 w-4 shrink-0" />
                                 <span className="text-left font-medium">{text.warning}</span>
                             </div>
 
                             <button
                                 onClick={handleUpdate}
-                                className="group/btn relative w-full overflow-hidden rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 py-4 text-sm font-bold text-white shadow-lg shadow-blue-500/20 transition-all duration-300 hover:from-blue-500 hover:to-indigo-500 hover:shadow-blue-500/40 active:scale-[0.98]"
+                                className="group/btn relative w-full overflow-hidden rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 py-3.5 text-sm font-bold text-white shadow-lg shadow-blue-500/20 transition-all duration-300 hover:from-blue-500 hover:to-indigo-500 hover:shadow-blue-500/40 active:scale-[0.98] sm:py-4"
                             >
                                 <div className="absolute inset-0 h-full w-[50%] -translate-x-full skew-x-12 bg-gradient-to-r from-transparent via-white/10 to-transparent group-hover/btn:animate-[shimmer_1.5s_infinite]"></div>
                                 <span className="relative flex items-center justify-center gap-2">

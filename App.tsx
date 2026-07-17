@@ -99,6 +99,16 @@ const AppContent: React.FC = () => {
         return 0;
     }, []);
 
+    const persistUpdateAcknowledgment = useCallback((version: string) => {
+        try {
+            localStorage.setItem('system_update_acknowledged_version', version);
+            localStorage.setItem('system_update_last_seen_version', version);
+            sessionStorage.setItem('system_update_acknowledged_version', version);
+        } catch (error) {
+            console.warn('[App] Failed to persist acknowledged version:', error);
+        }
+    }, []);
+
     const handleRoleSelection = useCallback((selectedRole: string) => {
         const cleanup = getRoleTransitionCleanup(selectedRole);
 
@@ -145,10 +155,17 @@ const AppContent: React.FC = () => {
             return;
         }
 
-        const userVersion = currentUser?.SystemVersion || "";
-        const acknowledgedVersion = localStorage.getItem('system_update_acknowledged_version') || "";
-        const fallbackVersion = localStorage.getItem('system_update_last_seen_version') || "";
-        const effectiveCurrentVersion = userVersion || acknowledgedVersion || fallbackVersion || CLIENT_VERSION;
+        const versionCandidates = [
+            currentUser?.SystemVersion,
+            localStorage.getItem('system_update_acknowledged_version') || '',
+            sessionStorage.getItem('system_update_acknowledged_version') || '',
+            localStorage.getItem('system_update_last_seen_version') || '',
+            CLIENT_VERSION
+        ].filter(Boolean) as string[];
+
+        const effectiveCurrentVersion = versionCandidates.reduce((latest, version) => {
+            return compareVersions(version, latest) > 0 ? version : latest;
+        }, '0');
 
         if (compareVersions(serverVersion, effectiveCurrentVersion) > 0) {
             console.log(`[App] 🆕 System update available: Current=${effectiveCurrentVersion}, Server=${serverVersion}`);
@@ -811,14 +828,9 @@ const AppContent: React.FC = () => {
                         if (!newVersionAvailable) return;
 
                         const token = localStorage.getItem('token');
-                        const persistVersion = (version: string) => {
-                            localStorage.setItem('system_update_acknowledged_version', version);
-                            localStorage.setItem('system_update_last_seen_version', version);
-                            sessionStorage.setItem('system_update_acknowledged_version', version);
-                        };
 
                         setNewVersionAvailable(null);
-                        persistVersion(newVersionAvailable);
+                        persistUpdateAcknowledgment(newVersionAvailable);
 
                         if (token) {
                             try {
