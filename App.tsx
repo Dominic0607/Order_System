@@ -93,11 +93,17 @@ const AppContent: React.FC = () => {
         fetchSystemVersion();
     }, []);
 
-    // Check user version against server version to trigger update dialog
+    // Check user version against server version to trigger update dialog.
+    // We also check localStorage 'system_update_acknowledged_version' to prevent a
+    // flash of the update modal on refresh due to the stale cached session having an
+    // older SystemVersion while the user has already completed the update.
     useEffect(() => {
         if (currentUser && serverVersion) {
             const userVersion = currentUser.SystemVersion || "";
-            if (userVersion !== serverVersion) {
+            const acknowledgedVersion = localStorage.getItem('system_update_acknowledged_version') || "";
+            // Only show the update modal if BOTH the user's DB version AND the locally
+            // acknowledged version differ from the server version.
+            if (userVersion !== serverVersion && acknowledgedVersion !== serverVersion) {
                 console.log(`[App] 🆕 System update available: User=${userVersion}, Server=${serverVersion}`);
                 setNewVersionAvailable(serverVersion);
             } else {
@@ -835,36 +841,113 @@ const AppContent: React.FC = () => {
                                         {appState === 'series_player' && <SeriesPlayerPage />}
                                         {appState === 'long_player' && <LongFilmPlayerPage />}
                                         {appState === 'short_player' && <ShortFilmPlayerPage />}
-                                        {appState === 'oto_chat' && (
-                                            <div className="absolute inset-0 bg-[#0e1114] flex flex-col z-[100] animate-reveal">
-                                                {/* Slim Header */}
-                                                <div className="flex items-center justify-between px-4 py-3 bg-[#161a1f] border-b border-white/5 shrink-0">
-                                                    <button 
-                                                        onClick={() => setAppState('role_selection')}
-                                                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-white font-bold text-xs transition-all active:scale-95"
-                                                    >
-                                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
-                                                            <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
-                                                        </svg>
-                                                        {language === 'km' ? 'ត្រឡប់ក្រោយ' : 'Back'}
-                                                    </button>
-                                                    <div className="text-center flex flex-col items-center">
-                                                        <span className="text-xs font-bold text-white tracking-wider">OTO Chat</span>
-                                                        <span className="text-[10px] text-white/40">Mini App</span>
+                                        {appState === 'oto_chat' && (() => {
+                                            const OtoChatView = () => {
+                                                const [iframeLoaded, setIframeLoaded] = React.useState(false);
+                                                return (
+                                                    <div className="absolute inset-0 flex flex-col z-[100]" style={{ animation: 'otoSlideIn 0.35s cubic-bezier(0.16,1,0.3,1) forwards' }}>
+                                                        <style>{`
+                                                            @keyframes otoSlideIn {
+                                                                from { opacity: 0; transform: translateY(20px); }
+                                                                to   { opacity: 1; transform: translateY(0); }
+                                                            }
+                                                            @keyframes otoPulse {
+                                                                0%, 100% { opacity: 1; }
+                                                                50% { opacity: 0.4; }
+                                                            }
+                                                            @keyframes otoShimmer {
+                                                                0% { background-position: -200% 0; }
+                                                                100% { background-position: 200% 0; }
+                                                            }
+                                                        `}</style>
+
+                                                        {/* Premium Header */}
+                                                        <div className="flex items-center justify-between px-3 sm:px-4 py-2.5 shrink-0 border-b border-white/[0.06]" style={{ background: 'linear-gradient(135deg, #0d1117 0%, #161b22 100%)' }}>
+                                                            {/* Back Button */}
+                                                            <button
+                                                                onClick={() => setAppState('role_selection')}
+                                                                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[#8b949e] hover:text-white hover:bg-white/8 text-xs font-semibold transition-all duration-200 active:scale-95"
+                                                            >
+                                                                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
+                                                                    <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+                                                                </svg>
+                                                                <span className="hidden sm:inline">{language === 'km' ? 'ត្រឡប់ក្រោយ' : 'Back'}</span>
+                                                            </button>
+
+                                                            {/* Center Brand */}
+                                                            <div className="flex items-center gap-2">
+                                                                {/* OTO Logo Icon */}
+                                                                <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0 overflow-hidden" style={{ background: 'linear-gradient(135deg, #2563eb, #7c3aed)' }}>
+                                                                    <svg viewBox="0 0 24 24" fill="white" className="w-4 h-4">
+                                                                        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+                                                                    </svg>
+                                                                </div>
+                                                                <div className="flex flex-col">
+                                                                    <span className="text-[13px] font-bold text-white leading-none tracking-tight">OTO Chat</span>
+                                                                    <div className="flex items-center gap-1 mt-0.5">
+                                                                        <div className="w-1.5 h-1.5 rounded-full bg-emerald-400" style={{ animation: 'otoPulse 2s ease-in-out infinite' }}></div>
+                                                                        <span className="text-[9px] text-emerald-400/80 font-semibold uppercase tracking-wider">Mini App</span>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+
+                                                            {/* Open External */}
+                                                            <button
+                                                                onClick={() => window.open('https://otochat.otokhmer.com/', '_blank', 'noopener,noreferrer')}
+                                                                title="Open in new tab"
+                                                                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[#8b949e] hover:text-white hover:bg-white/8 text-xs font-semibold transition-all duration-200 active:scale-95"
+                                                            >
+                                                                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                                                                    <path strokeLinecap="round" strokeLinejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                                                                </svg>
+                                                                <span className="hidden sm:inline text-[11px]">{language === 'km' ? 'បើកក្រៅ' : 'Open'}</span>
+                                                            </button>
+                                                        </div>
+
+                                                        {/* Iframe Area */}
+                                                        <div className="flex-grow w-full relative bg-[#0d1117] overflow-hidden">
+                                                            {/* Loading Skeleton - shown until iframe loads */}
+                                                            {!iframeLoaded && (
+                                                                <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-4 bg-[#0d1117]">
+                                                                    {/* Animated Logo */}
+                                                                    <div className="w-16 h-16 rounded-2xl flex items-center justify-center mb-2 relative" style={{ background: 'linear-gradient(135deg, #2563eb22, #7c3aed22)', border: '1px solid #2563eb33' }}>
+                                                                        <div className="absolute inset-0 rounded-2xl" style={{ background: 'linear-gradient(135deg, #2563eb11, #7c3aed11)', animation: 'otoPulse 1.5s ease-in-out infinite' }}></div>
+                                                                        <svg viewBox="0 0 24 24" className="w-8 h-8 relative z-10" style={{ fill: '#6366f1' }}>
+                                                                            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+                                                                        </svg>
+                                                                    </div>
+                                                                    <div className="text-center">
+                                                                        <p className="text-white/80 text-sm font-bold tracking-tight">OTO Chat</p>
+                                                                        <p className="text-white/30 text-xs mt-0.5">{language === 'km' ? 'កំពុងបើក Mini App...' : 'Loading Mini App...'}</p>
+                                                                    </div>
+                                                                    {/* Loading bar */}
+                                                                    <div className="w-40 h-1 rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.05)' }}>
+                                                                        <div className="h-full rounded-full" style={{
+                                                                            background: 'linear-gradient(90deg, #2563eb, #7c3aed, #2563eb)',
+                                                                            backgroundSize: '200% 100%',
+                                                                            animation: 'otoShimmer 1.5s linear infinite'
+                                                                        }}></div>
+                                                                    </div>
+                                                                </div>
+                                                            )}
+                                                            {/* Iframe */}
+                                                            <iframe
+                                                                key="oto-chat-iframe"
+                                                                src="https://otochat.otokhmer.com/"
+                                                                className="absolute inset-0 w-full h-full border-0"
+                                                                allow="camera; microphone; geolocation; clipboard-write; clipboard-read; fullscreen; payment; autoplay"
+                                                                allowFullScreen
+                                                                title="OTO Chat Mini App"
+                                                                onLoad={() => setIframeLoaded(true)}
+                                                                style={{ opacity: iframeLoaded ? 1 : 0, transition: 'opacity 0.4s ease' }}
+                                                            />
+                                                        </div>
                                                     </div>
-                                                    <div className="w-[84px]"></div>
-                                                </div>
-                                                {/* Embedded Iframe */}
-                                                <div className="flex-grow w-full relative bg-[#0e1114]">
-                                                    <iframe 
-                                                        src="https://otochat.otokhmer.com/" 
-                                                        className="absolute inset-0 w-full h-full border-0"
-                                                        allow="camera; microphone; geolocation"
-                                                        title="OTO Chat"
-                                                    />
-                                                </div>
-                                            </div>
-                                        )}
+                                                );
+                                            };
+                                            return <OtoChatView />;
+                                        })()}
+
                                         {appState === 'role_selection' && (
                                             <RoleSelectionPage onSelect={(s) => {
                                                 if (s === 'user_journey') setSelectedTeam('');
