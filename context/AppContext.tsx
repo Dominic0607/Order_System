@@ -43,8 +43,8 @@ export interface AppContextType {
     unreadCount: number;
     updateProductInData: (productName: string, newData: Partial<MasterProduct>) => void;
     apiKey: string;
-    appState: 'login' | 'role_selection' | 'admin_dashboard' | 'user_journey' | 'confirm_delivery' | 'fulfillment' | 'create_order' | 'entertainment' | 'watch' | 'series_player';
-    setAppState: (newState: 'login' | 'role_selection' | 'admin_dashboard' | 'user_journey' | 'confirm_delivery' | 'fulfillment' | 'create_order' | 'entertainment' | 'watch' | 'series_player') => void;
+    appState: 'login' | 'role_selection' | 'admin_dashboard' | 'user_journey' | 'confirm_delivery' | 'fulfillment' | 'create_order' | 'entertainment' | 'watch' | 'series_player' | 'problem_items';
+    setAppState: (newState: 'login' | 'role_selection' | 'admin_dashboard' | 'user_journey' | 'confirm_delivery' | 'fulfillment' | 'create_order' | 'entertainment' | 'watch' | 'series_player' | 'problem_items') => void;
     setOriginalAdminUser: React.Dispatch<React.SetStateAction<User | null>>;
     fetchData: (force?: boolean) => Promise<Record<string, any> | null>;
     fetchOrders: (force?: boolean, params?: Record<string, string | number>) => Promise<any>;

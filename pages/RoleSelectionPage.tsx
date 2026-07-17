@@ -314,12 +314,7 @@ const RoleSelectionPage: React.FC<RoleSelectionPageProps> = ({ onSelect }) => {
                 id: 'problem',
                 label: t.enter_damaged,
                 sublabel: language === 'km' ? 'ទំនិញខូច / បញ្ហា' : 'Damaged Items',
-                onClick: () => {
-                    const key = showProblemItemsAdmin
-                        ? '063a669e39fef90d061aef98caaa0fc589fba961cae83040e9ee2038a3ebb7e8'
-                        : '60a5f0446fe326829643de09bcf2a70854fc134f070591b8f73bb27811774661';
-                    window.open(`https://brokenaccflexi.onrender.com/?key=${key}`, '_blank');
-                },
+                onClick: () => onSelect('problem_items'),
                 accent: '#9f1239',
                 icon: (
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
@@ -886,12 +881,7 @@ const RoleSelectionPage: React.FC<RoleSelectionPageProps> = ({ onSelect }) => {
             id: 'problem',
             label: t.enter_damaged,
             sublabel: language === 'km' ? 'ទំនិញខូច / បញ្ហា' : 'Damaged Items',
-            onClick: () => {
-                const key = showProblemItemsAdmin
-                    ? '063a669e39fef90d061aef98caaa0fc589fba961cae83040e9ee2038a3ebb7e8'
-                    : '60a5f0446fe326829643de09bcf2a70854fc134f070591b8f73bb27811774661';
-                window.open(`https://brokenaccflexi.onrender.com/?key=${key}`, '_blank');
-            },
+            onClick: () => onSelect('problem_items'),
             accent: '#9f1239',
             accentLight: '#ffe4e6',
             accentGlow: 'rgba(159,18,57,0.13)',
