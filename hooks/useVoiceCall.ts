@@ -7,20 +7,15 @@ export type CallState =
   | 'calling'     // We initiated, waiting for remote answer
   | 'ringing'     // Remote called us, waiting for our answer
   | 'connecting'  // ICE negotiation in progress
-  | 'connected'   // Audio flowing
+  | 'connected'   // Media flowing
   | 'ended';      // Call just finished (transitions back to idle)
+
+export type CallType = 'audio' | 'video';
 
 export interface CallParty {
   username: string;
   fullName: string;
   avatarUrl?: string;
-}
-
-export interface VoiceCallState {
-  callState: CallState;
-  remoteParty: CallParty | null;
-  isMuted: boolean;
-  callDurationSeconds: number;
 }
 
 // ─── STUN Servers ─────────────────────────────────────────────────────────────
@@ -35,22 +30,27 @@ export function useVoiceCall(
   wsRef: React.MutableRefObject<WebSocket | null>,
   currentUsername: string,
 ) {
-  const [callState, setCallState] = useState<CallState>('idle');
-  const [remoteParty, setRemoteParty] = useState<CallParty | null>(null);
-  const [isMuted, setIsMuted] = useState(false);
+  const [callState, setCallState]       = useState<CallState>('idle');
+  const [callType, setCallType]         = useState<CallType>('audio');
+  const [remoteParty, setRemoteParty]   = useState<CallParty | null>(null);
+  const [isMuted, setIsMuted]           = useState(false);
+  const [isCameraOff, setIsCameraOff]   = useState(false);
   const [callDurationSeconds, setCallDurationSeconds] = useState(0);
 
-  const pcRef = useRef<RTCPeerConnection | null>(null);
-  const localStreamRef = useRef<MediaStream | null>(null);
-  const remoteAudioRef = useRef<HTMLAudioElement | null>(null);
-  const pendingCandidatesRef = useRef<RTCIceCandidateInit[]>([]);
-  const callTimerRef = useRef<any>(null);
-  const callStateRef = useRef<CallState>('idle');
+  // Refs for media / WebRTC
+  const pcRef                 = useRef<RTCPeerConnection | null>(null);
+  const localStreamRef        = useRef<MediaStream | null>(null);
+  const remoteAudioRef        = useRef<HTMLAudioElement | null>(null);
+  const localVideoRef         = useRef<HTMLVideoElement | null>(null);  // local preview
+  const remoteVideoRef        = useRef<HTMLVideoElement | null>(null);  // remote video
+  const pendingCandidatesRef  = useRef<RTCIceCandidateInit[]>([]);
+  const callTimerRef          = useRef<any>(null);
+  const callStateRef          = useRef<CallState>('idle');
+  const callTypeRef           = useRef<CallType>('audio');
 
-  // Keep ref in sync for use inside closures
-  useEffect(() => {
-    callStateRef.current = callState;
-  }, [callState]);
+  // Keep refs in sync
+  useEffect(() => { callStateRef.current = callState; }, [callState]);
+  useEffect(() => { callTypeRef.current = callType; }, [callType]);
 
   // ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -66,6 +66,9 @@ export function useVoiceCall(
   const stopLocalStream = useCallback(() => {
     localStreamRef.current?.getTracks().forEach(t => t.stop());
     localStreamRef.current = null;
+    // Clear video elements
+    if (localVideoRef.current) localVideoRef.current.srcObject = null;
+    if (remoteVideoRef.current) remoteVideoRef.current.srcObject = null;
   }, []);
 
   const closePeerConnection = useCallback(() => {
@@ -99,6 +102,7 @@ export function useVoiceCall(
       closePeerConnection();
       pendingCandidatesRef.current = [];
       setIsMuted(false);
+      setIsCameraOff(false);
       setCallDurationSeconds(0);
       setCallState(nextState);
       if (nextState !== 'ringing' && nextState !== 'calling') {
@@ -120,13 +124,32 @@ export function useVoiceCall(
         }
       };
 
-      pc.ontrack = ({ streams }) => {
+      pc.ontrack = ({ streams, track }) => {
         const stream = streams[0];
-        if (!remoteAudioRef.current) {
-          remoteAudioRef.current = new Audio();
-          remoteAudioRef.current.autoplay = true;
+        if (track.kind === 'video') {
+          // Video track — attach to video element
+          if (remoteVideoRef.current) {
+            if (remoteVideoRef.current.srcObject !== stream) {
+              remoteVideoRef.current.srcObject = stream;
+            }
+          } else {
+            // Create a detached video element as fallback
+            const vid = document.createElement('video');
+            vid.autoplay = true;
+            vid.playsInline = true;
+            vid.srcObject = stream;
+            remoteVideoRef.current = vid;
+          }
+        } else {
+          // Audio-only track
+          if (!remoteAudioRef.current) {
+            remoteAudioRef.current = new Audio();
+            remoteAudioRef.current.autoplay = true;
+          }
+          if (remoteAudioRef.current.srcObject !== stream) {
+            remoteAudioRef.current.srcObject = stream;
+          }
         }
-        remoteAudioRef.current.srcObject = stream;
       };
 
       pc.onconnectionstatechange = () => {
@@ -150,15 +173,31 @@ export function useVoiceCall(
     [sendSignal, startCallTimer, teardown],
   );
 
+  // ─── Attach local stream to local video element ────────────────────────────
+
+  const attachLocalVideo = useCallback((stream: MediaStream) => {
+    if (localVideoRef.current) {
+      localVideoRef.current.srcObject = stream;
+      localVideoRef.current.muted = true; // Prevent feedback
+      localVideoRef.current.play().catch(() => {});
+    }
+  }, []);
+
   // ─── Outgoing Call ────────────────────────────────────────────────────────
 
   const startCall = useCallback(
-    async (target: CallParty) => {
+    async (target: CallParty, type: CallType = 'audio') => {
       if (callStateRef.current !== 'idle') return;
 
       try {
-        const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+        const constraints: MediaStreamConstraints = {
+          audio: true,
+          video: type === 'video' ? { width: { ideal: 1280 }, height: { ideal: 720 }, facingMode: 'user' } : false,
+        };
+        const stream = await navigator.mediaDevices.getUserMedia(constraints);
         localStreamRef.current = stream;
+
+        if (type === 'video') attachLocalVideo(stream);
 
         const pc = createPeerConnection(target.username);
         pcRef.current = pc;
@@ -169,25 +208,35 @@ export function useVoiceCall(
         await pc.setLocalDescription(offer);
 
         setRemoteParty(target);
+        setCallType(type);
         setCallState('calling');
-        sendSignal('call_offer', target.username, { sdp: offer });
+        sendSignal('call_offer', target.username, { sdp: offer, callType: type });
       } catch (err) {
         console.error('[VoiceCall] startCall failed:', err);
         teardown('ended');
-        throw err; // Re-throw so UI can show mic permission error
+        throw err;
       }
     },
-    [createPeerConnection, sendSignal, teardown],
+    [createPeerConnection, sendSignal, teardown, attachLocalVideo],
   );
 
   // ─── Answer Incoming Call ─────────────────────────────────────────────────
 
   const answerCall = useCallback(
-    async (sdpOffer: RTCSessionDescriptionInit) => {
+    async (sdpOffer: RTCSessionDescriptionInit, incomingCallType: CallType = 'audio') => {
       if (!remoteParty) return;
       try {
-        const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+        const constraints: MediaStreamConstraints = {
+          audio: true,
+          video: incomingCallType === 'video'
+            ? { width: { ideal: 1280 }, height: { ideal: 720 }, facingMode: 'user' }
+            : false,
+        };
+        const stream = await navigator.mediaDevices.getUserMedia(constraints);
         localStreamRef.current = stream;
+
+        if (incomingCallType === 'video') attachLocalVideo(stream);
+        setCallType(incomingCallType);
 
         const pc = createPeerConnection(remoteParty.username);
         pcRef.current = pc;
@@ -196,7 +245,6 @@ export function useVoiceCall(
 
         await pc.setRemoteDescription(new RTCSessionDescription(sdpOffer));
 
-        // Drain any ICE candidates that arrived before the peer connection was set up
         for (const candidate of pendingCandidatesRef.current) {
           await pc.addIceCandidate(new RTCIceCandidate(candidate));
         }
@@ -213,24 +261,20 @@ export function useVoiceCall(
         throw err;
       }
     },
-    [remoteParty, createPeerConnection, sendSignal, teardown],
+    [remoteParty, createPeerConnection, sendSignal, teardown, attachLocalVideo],
   );
 
   // ─── Reject Incoming Call ─────────────────────────────────────────────────
 
   const rejectCall = useCallback(() => {
-    if (remoteParty) {
-      sendSignal('call_reject', remoteParty.username, {});
-    }
+    if (remoteParty) sendSignal('call_reject', remoteParty.username, {});
     teardown('ended');
   }, [remoteParty, sendSignal, teardown]);
 
   // ─── Hang Up ──────────────────────────────────────────────────────────────
 
   const hangUp = useCallback(() => {
-    if (remoteParty) {
-      sendSignal('call_end', remoteParty.username, {});
-    }
+    if (remoteParty) sendSignal('call_end', remoteParty.username, {});
     teardown('ended');
   }, [remoteParty, sendSignal, teardown]);
 
@@ -245,30 +289,47 @@ export function useVoiceCall(
     }
   }, []);
 
+  // ─── Toggle Camera ────────────────────────────────────────────────────────
+
+  const toggleCamera = useCallback(() => {
+    if (!localStreamRef.current) return;
+    const track = localStreamRef.current.getVideoTracks()[0];
+    if (track) {
+      track.enabled = !track.enabled;
+      setIsCameraOff(!track.enabled);
+    }
+  }, []);
+
   // ─── Incoming Signal Dispatcher ───────────────────────────────────────────
-  // Call this from ChatWidget's ws.onmessage for signaling events.
 
   const handleIncomingSignal = useCallback(
     async (data: {
       type: string;
       from: string;
       payload?: any;
+      callerFullName?: string;
+      callerAvatar?: string;
     }) => {
       const { type, from, payload } = data;
 
       switch (type) {
         case 'call_offer': {
           if (callStateRef.current !== 'idle') {
-            // Already in a call — send busy
             const ws = wsRef.current;
             if (ws && ws.readyState === WebSocket.OPEN) {
               ws.send(JSON.stringify({ type: 'call_busy', to: from, from: currentUsername }));
             }
             return;
           }
-          // Store the SDP offer so answerCall() can use it
-          (window as any).__pendingCallSdp = payload?.sdp;
-          setRemoteParty({ username: from, fullName: from, avatarUrl: undefined });
+          // Persist both SDP and callType so answerCall() can read them
+          (window as any).__pendingCallSdp     = payload?.sdp;
+          (window as any).__pendingCallType    = payload?.callType ?? 'audio';
+          setRemoteParty({
+            username: from,
+            fullName: data.callerFullName || from,
+            avatarUrl: data.callerAvatar,
+          });
+          setCallType(payload?.callType ?? 'audio');
           setCallState('ringing');
           break;
         }
@@ -277,7 +338,6 @@ export function useVoiceCall(
           if (!pcRef.current || callStateRef.current !== 'calling') return;
           try {
             await pcRef.current.setRemoteDescription(new RTCSessionDescription(payload?.sdp));
-            // Drain pending ICE candidates
             for (const candidate of pendingCandidatesRef.current) {
               await pcRef.current.addIceCandidate(new RTCIceCandidate(candidate));
             }
@@ -293,42 +353,23 @@ export function useVoiceCall(
           const candidate = payload?.candidate;
           if (!candidate) return;
           if (pcRef.current && pcRef.current.remoteDescription) {
-            try {
-              await pcRef.current.addIceCandidate(new RTCIceCandidate(candidate));
-            } catch {}
+            try { await pcRef.current.addIceCandidate(new RTCIceCandidate(candidate)); } catch {}
           } else {
-            // Queue for later
             pendingCandidatesRef.current.push(candidate);
           }
           break;
         }
 
-        case 'call_reject': {
+        case 'call_reject':
+        case 'call_end':
+        case 'call_busy':
+        case 'call_not_available':
           teardown('ended');
           break;
-        }
 
-        case 'call_end': {
-          teardown('ended');
+        case 'call_cancelled':
+          if (callStateRef.current === 'ringing') teardown('ended');
           break;
-        }
-
-        case 'call_busy': {
-          teardown('ended');
-          break;
-        }
-
-        case 'call_cancelled': {
-          if (callStateRef.current === 'ringing') {
-            teardown('ended');
-          }
-          break;
-        }
-
-        case 'call_not_available': {
-          teardown('ended');
-          break;
-        }
 
         default:
           break;
@@ -349,15 +390,21 @@ export function useVoiceCall(
 
   return {
     callState,
+    callType,
     remoteParty,
     isMuted,
+    isCameraOff,
     callDurationSeconds,
     startCall,
     answerCall,
     rejectCall,
     hangUp,
     toggleMute,
+    toggleCamera,
     handleIncomingSignal,
+    // Video element refs — assign these to <video> elements in the UI
+    localVideoRef,
+    remoteVideoRef,
     remoteAudioRef,
   };
 }

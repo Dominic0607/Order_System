@@ -65,6 +65,23 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ isOpen, onClose }) => {
         }
     }, [voiceCall, showNotification, language]);
 
+    // Handle a video call initiation from the Members list
+    const handleVideoCallUser = useCallback(async (user: User) => {
+        try {
+            await voiceCall.startCall(
+                { username: user.UserName, fullName: user.FullName || user.UserName, avatarUrl: user.ProfilePictureURL },
+                'video',
+            );
+        } catch {
+            showNotification(
+                language === 'km'
+                    ? 'មិនអាចចូលដំណើរការ Camera/Microphone បានទេ'
+                    : 'Cannot access Camera or Microphone. Please allow permissions.',
+                'error',
+            );
+        }
+    }, [voiceCall, showNotification, language]);
+
     const [messages, setMessages] = useState<ChatMessage[]>(() => {
         if (!CACHE_KEY) return [];
         try {
@@ -696,6 +713,7 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ isOpen, onClose }) => {
                         onRefresh={syncUsers}
                         currentUsername={currentUser?.UserName}
                         onCallUser={handleCallUser}
+                        onVideoCallUser={handleVideoCallUser}
                     />
                 )}
             </div>
@@ -780,16 +798,22 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ isOpen, onClose }) => {
         {/* ── Voice Call Modal — rendered outside the chat widget container so it covers the full screen ── */}
         <VoiceCallModal
             callState={voiceCall.callState}
+            callType={voiceCall.callType}
             remoteParty={voiceCall.remoteParty}
             isMuted={voiceCall.isMuted}
+            isCameraOff={voiceCall.isCameraOff}
             callDurationSeconds={voiceCall.callDurationSeconds}
+            localVideoRef={voiceCall.localVideoRef}
+            remoteVideoRef={voiceCall.remoteVideoRef}
             onAnswer={() => {
                 const sdp = (window as any).__pendingCallSdp;
-                if (sdp) voiceCall.answerCall(sdp);
+                const callType = (window as any).__pendingCallType ?? 'audio';
+                if (sdp) voiceCall.answerCall(sdp, callType);
             }}
             onReject={voiceCall.rejectCall}
             onHangUp={voiceCall.hangUp}
             onToggleMute={voiceCall.toggleMute}
+            onToggleCamera={voiceCall.toggleCamera}
             language={language}
         />
         </>

@@ -9,9 +9,10 @@ interface ChatMembersProps {
     onRefresh: () => void;
     currentUsername?: string;
     onCallUser?: (user: User) => void;
+    onVideoCallUser?: (user: User) => void;
 }
 
-const ChatMembers: React.FC<ChatMembersProps> = ({ users, loading, onRefresh, currentUsername, onCallUser }) => {
+const ChatMembers: React.FC<ChatMembersProps> = ({ users, loading, onRefresh, currentUsername, onCallUser, onVideoCallUser }) => {
     if (loading) {
         return (
             <div className="flex flex-col items-center justify-center py-10 space-y-3">
@@ -52,7 +53,21 @@ const ChatMembers: React.FC<ChatMembersProps> = ({ users, loading, onRefresh, cu
                             {/* Status dot */}
                             <div className={`w-2 h-2 rounded-full ${u.IsSystemAdmin ? 'bg-yellow-500 shadow-[0_0_5px_#eab308]' : 'bg-blue-500 shadow-[0_0_5px_#3b82f6]'}`}></div>
                             
-                            {/* Call button — hidden for self */}
+                            {/* Video call button — hidden for self */}
+                            {!isMe && onVideoCallUser && (
+                                <button
+                                    onClick={() => onVideoCallUser(u)}
+                                    id={`video-call-user-${u.UserName}`}
+                                    title={`Video call ${u.FullName}`}
+                                    className="w-8 h-8 rounded-xl bg-purple-500/10 hover:bg-purple-500 text-purple-400 hover:text-white flex items-center justify-center transition-all active:scale-90 opacity-0 group-hover:opacity-100 shadow-lg hover:shadow-purple-500/30"
+                                >
+                                    <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
+                                        <path d="M18 10.48V6c0-1.1-.9-2-2-2H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2v-4.48l4 3.98v-11l-4 3.98z"/>
+                                    </svg>
+                                </button>
+                            )}
+
+                            {/* Voice call button — hidden for self */}
                             {!isMe && onCallUser && (
                                 <button
                                     onClick={() => onCallUser(u)}
