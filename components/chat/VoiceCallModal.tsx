@@ -265,7 +265,7 @@ const VoiceCallModal: React.FC<VoiceCallModalProps> = ({
         <div
           className={`relative w-full overflow-hidden shadow-2xl transition-all duration-300
             ${isVideoCall && callState === 'connected'
-              ? 'h-full sm:h-auto sm:max-w-2xl sm:rounded-[2rem] sm:mx-auto'
+              ? 'h-full w-full sm:h-[600px] sm:max-w-2xl sm:rounded-[2rem] sm:mx-auto sm:border sm:border-white/10 sm:bg-slate-950'
               : 'sm:max-w-sm sm:mx-auto bg-slate-950/80 border border-white/10 rounded-t-[2.5rem] sm:rounded-[2.5rem] p-8 backdrop-blur-2xl'
             }`}
           style={{
@@ -279,25 +279,25 @@ const VoiceCallModal: React.FC<VoiceCallModalProps> = ({
               VIDEO CALL — CONNECTED STATE: Full-bleed video layout
           ════════════════════════════════════════════════════════════ */}
           {isVideoCall && callState === 'connected' ? (
-            <div className="relative w-full bg-black" style={{ height: 'min(72vw, 520px)' }}>
+            <div className="relative w-full h-full bg-slate-950">
 
               {/* Remote video — full frame */}
               <video
                 ref={remoteVideoElRef}
-                className="absolute inset-0 w-full h-full object-cover"
+                className="absolute inset-0 w-full h-full object-cover z-0"
                 playsInline
                 autoPlay
               />
 
               {/* Fallback if no remote video yet */}
-              <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+              <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10">
                 <UserAvatar avatarUrl={remoteParty.avatarUrl} name={remoteParty.fullName} size="xl"
                   className="opacity-30" />
               </div>
 
               {/* Local video — Picture-in-Picture (top-right) */}
               <div
-                className="absolute top-4 right-4 w-28 sm:w-36 aspect-[3/4] rounded-2xl overflow-hidden border-2 border-white/20 shadow-2xl z-20 cursor-pointer hover:scale-105 transition-transform"
+                className="absolute top-6 right-6 w-28 sm:w-36 aspect-[3/4] rounded-2xl overflow-hidden border border-white/20 shadow-2xl z-20 cursor-pointer hover:scale-105 transition-transform"
                 style={{ animation: 'pipFloat 4s ease-in-out infinite' }}
               >
                 {!isCameraOff ? (
@@ -309,8 +309,8 @@ const VoiceCallModal: React.FC<VoiceCallModalProps> = ({
                     autoPlay
                   />
                 ) : (
-                  <div className="w-full h-full bg-gray-800 flex items-center justify-center">
-                    <svg className="w-8 h-8 text-gray-500" viewBox="0 0 24 24" fill="currentColor">
+                  <div className="w-full h-full bg-slate-900 flex items-center justify-center">
+                    <svg className="w-8 h-8 text-slate-500" viewBox="0 0 24 24" fill="currentColor">
                       <path d="M18 10.48V6c0-1.1-.9-2-2-2H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2v-4.48l4 3.98v-11l-4 3.98zm-2-.79V18H4V6h12v3.69z"/>
                     </svg>
                   </div>
@@ -318,51 +318,57 @@ const VoiceCallModal: React.FC<VoiceCallModalProps> = ({
               </div>
 
               {/* Overlaid controls bar at bottom */}
-              <div className="absolute bottom-0 left-0 right-0 z-30 px-6 pb-6 pt-16"
-                style={{ background: 'linear-gradient(to top, rgba(0,0,0,0.8) 0%, transparent 100%)' }}>
-                {/* Timer + name */}
-                <div className="flex items-center justify-between mb-5">
-                  <div>
-                    <p className="text-white font-black text-base">{remoteParty.fullName}</p>
-                    <p className="text-emerald-400 font-mono text-sm">{formatDuration(callDurationSeconds)}</p>
+              <div className="absolute bottom-0 left-0 right-0 z-30 px-6 pb-8 sm:pb-6 pt-24 flex flex-col items-center gap-6"
+                style={{ background: 'linear-gradient(to top, rgba(15, 23, 42, 0.95) 0%, rgba(15, 23, 42, 0.5) 60%, transparent 100%)' }}>
+                
+                {/* Info & Timer */}
+                <div className="flex flex-col items-center gap-2">
+                  <h3 className="text-white font-black text-lg tracking-wide drop-shadow-md">{remoteParty.fullName}</h3>
+                  <div className="flex items-center gap-2">
+                    <span className="text-emerald-400 font-mono text-xs bg-slate-950/80 px-3 py-0.5 rounded-full border border-emerald-500/20 backdrop-blur-md shadow-sm">
+                      {formatDuration(callDurationSeconds)}
+                    </span>
+                    {isMuted && (
+                      <span className="flex items-center gap-1.5 px-2.5 py-0.5 bg-red-500/20 border border-red-500/30 rounded-full text-red-400 text-[9px] font-black uppercase tracking-widest backdrop-blur-md">
+                        <svg className="w-2.5 h-2.5" viewBox="0 0 24 24" fill="currentColor">
+                          <path d="M19 11h-1.7c0 .74-.16 1.43-.43 2.05l1.23 1.23c.56-.98.9-2.09.9-3.28zm-4.02.17c0-.06.02-.11.02-.17V5c0-1.66-1.34-3-3-3S9 3.34 9 5v.18l5.98 5.99zM4.27 3L3 4.27l6.01 6.01V11c0 1.66 1.33 3 2.99 3 .22 0 .44-.03.65-.08l1.66 1.66c-.71.33-1.5.52-2.31.52-2.76 0-5.3-2.1-5.3-5.1H5c0 3.41 2.72 6.23 6 6.72V21h2v-3.28c.91-.13 1.77-.45 2.54-.9L19.73 21 21 19.73 4.27 3z"/>
+                        </svg>
+                        {lang === 'km' ? 'បិទសំឡេង' : 'Muted'}
+                      </span>
+                    )}
                   </div>
-                  {isMuted && (
-                    <div className="flex items-center gap-1.5 bg-red-600/80 rounded-full px-3 py-1">
-                      <svg className="w-3 h-3 text-white" viewBox="0 0 24 24" fill="currentColor">
-                        <path d="M19 11h-1.7c0 .74-.16 1.43-.43 2.05l1.23 1.23c.56-.98.9-2.09.9-3.28zm-4.02.17c0-.06.02-.11.02-.17V5c0-1.66-1.34-3-3-3S9 3.34 9 5v.18l5.98 5.99zM4.27 3L3 4.27l6.01 6.01V11c0 1.66 1.33 3 2.99 3 .22 0 .44-.03.65-.08l1.66 1.66c-.71.33-1.5.52-2.31.52-2.76 0-5.3-2.1-5.3-5.1H5c0 3.41 2.72 6.23 6 6.72V21h2v-3.28c.91-.13 1.77-.45 2.54-.9L19.73 21 21 19.73 4.27 3z"/>
-                      </svg>
-                      <span className="text-white text-[9px] font-black uppercase tracking-widest">Muted</span>
-                    </div>
-                  )}
                 </div>
 
-                <div className="flex justify-center gap-4">
+                {/* Video controls button row */}
+                <div className="flex justify-center gap-6">
                   {/* Mute */}
                   <CtrlBtn id="vid-mute-btn" onClick={onToggleMute}
-                    active={isMuted} activeClass="bg-yellow-500 shadow-yellow-500/20"
-                    inactiveClass="bg-white/20 hover:bg-white/30"
-                    label={isMuted ? (lang === 'km' ? 'បើក' : 'Unmute') : (lang === 'km' ? 'បិទ' : 'Mute')}>
+                    active={isMuted} 
+                    activeClass="bg-amber-500 text-white shadow-lg shadow-amber-500/25 hover:scale-105"
+                    inactiveClass="bg-white/10 hover:bg-white/15 border border-white/5 backdrop-blur-md hover:scale-105"
+                    label={isMuted ? (lang === 'km' ? 'បើកសំឡេង' : 'Unmute') : (lang === 'km' ? 'បិទសំឡេង' : 'Mute')}>
                     {isMuted
-                      ? <svg className="w-6 h-6 text-gray-900" viewBox="0 0 24 24" fill="currentColor"><path d="M19 11h-1.7c0 .74-.16 1.43-.43 2.05l1.23 1.23c.56-.98.9-2.09.9-3.28zm-4.02.17c0-.06.02-.11.02-.17V5c0-1.66-1.34-3-3-3S9 3.34 9 5v.18l5.98 5.99zM4.27 3L3 4.27l6.01 6.01V11c0 1.66 1.33 3 2.99 3 .22 0 .44-.03.65-.08l1.66 1.66c-.71.33-1.5.52-2.31.52-2.76 0-5.3-2.1-5.3-5.1H5c0 3.41 2.72 6.23 6 6.72V21h2v-3.28c.91-.13 1.77-.45 2.54-.9L19.73 21 21 19.73 4.27 3z"/></svg>
+                      ? <svg className="w-6 h-6 text-white" viewBox="0 0 24 24" fill="currentColor"><path d="M19 11h-1.7c0 .74-.16 1.43-.43 2.05l1.23 1.23c.56-.98.9-2.09.9-3.28zm-4.02.17c0-.06.02-.11.02-.17V5c0-1.66-1.34-3-3-3S9 3.34 9 5v.18l5.98 5.99zM4.27 3L3 4.27l6.01 6.01V11c0 1.66 1.33 3 2.99 3 .22 0 .44-.03.65-.08l1.66 1.66c-.71.33-1.5.52-2.31.52-2.76 0-5.3-2.1-5.3-5.1H5c0 3.41 2.72 6.23 6 6.72V21h2v-3.28c.91-.13 1.77-.45 2.54-.9L19.73 21 21 19.73 4.27 3z"/></svg>
                       : <svg className="w-6 h-6 text-white" viewBox="0 0 24 24" fill="currentColor"><path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm-1 1.93c-3.94-.49-7-3.85-7-7.93H2c0 4.72 3.45 8.65 8 9.58V21h2v-5.49c4.55-.93 8-4.86 8-9.58h-2c0 4.08-3.06 7.44-7 7.93V15.93z"/></svg>
                     }
                   </CtrlBtn>
 
                   {/* Camera */}
                   <CtrlBtn id="vid-cam-btn" onClick={onToggleCamera}
-                    active={isCameraOff} activeClass="bg-gray-700 hover:bg-gray-600"
-                    inactiveClass="bg-white/20 hover:bg-white/30"
-                    label={isCameraOff ? (lang === 'km' ? 'បើកកាម' : 'Cam On') : (lang === 'km' ? 'បិទកាម' : 'Cam Off')}>
+                    active={isCameraOff} 
+                    activeClass="bg-slate-800 text-white hover:scale-105"
+                    inactiveClass="bg-white/10 hover:bg-white/15 border border-white/5 backdrop-blur-md hover:scale-105"
+                    label={isCameraOff ? (lang === 'km' ? 'បើកកាមេរ៉ា' : 'Cam On') : (lang === 'km' ? 'បិទកាមេរ៉ា' : 'Cam Off')}>
                     {isCameraOff
-                      ? <svg className="w-6 h-6 text-gray-300" viewBox="0 0 24 24" fill="currentColor"><path d="M21 6.5l-4-4-9.91 9.91-2.1 4.69L9.69 15 21 6.5zm-9.56 9.56L5 22l6.44-6.44z"/></svg>
+                      ? <svg className="w-6 h-6 text-slate-300" viewBox="0 0 24 24" fill="currentColor"><path d="M21 6.5l-4-4-9.91 9.91-2.1 4.69L9.69 15 21 6.5zm-9.56 9.56L5 22l6.44-6.44z"/></svg>
                       : <svg className="w-6 h-6 text-white" viewBox="0 0 24 24" fill="currentColor"><path d="M18 10.48V6c0-1.1-.9-2-2-2H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2v-4.48l4 3.98v-11l-4 3.98z"/></svg>
                     }
                   </CtrlBtn>
 
                   {/* End call */}
-                  <CtrlBtn id="vid-hangup-btn" onClick={onHangUp}
-                    inactiveClass="bg-red-600 hover:bg-red-500 shadow-2xl shadow-red-600/30"
-                    label={lang === 'km' ? 'បញ្ចប់' : 'End'} size="lg">
+                  <CtrlBtn id="vid-hangup-btn" onClick={onHangUp} size="lg"
+                    inactiveClass="bg-gradient-to-br from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white shadow-lg shadow-red-500/30 hover:scale-105"
+                    label={lang === 'km' ? 'បញ្ចប់ការហៅ' : 'End Call'}>
                     <EndCallIcon />
                   </CtrlBtn>
                 </div>
