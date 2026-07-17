@@ -1,4 +1,4 @@
-const CACHE_NAME = 'osystem-cache-v5';
+const CACHE_NAME = 'osystem-cache-v6';
 const urlsToCache = [
   './',
   './index.html',
@@ -23,6 +23,32 @@ self.addEventListener('install', (event) => {
         return cache.addAll(urlsToCache);
       })
   );
+});
+
+async function clearIconCaches() {
+  const cacheNames = await caches.keys();
+  await Promise.all(
+    cacheNames.map(async (cacheName) => {
+      const cache = await caches.open(cacheName);
+      const requests = await cache.keys();
+      await Promise.all(
+        requests.map(async (request) => {
+          if (/logo(-\d+)?\.(png|webp)/i.test(request.url)) {
+            await cache.delete(request);
+          }
+        })
+      );
+    })
+  );
+}
+
+self.addEventListener('message', (event) => {
+  if (event.data?.type === 'SKIP_WAITING') {
+    self.skipWaiting();
+  }
+  if (event.data?.type === 'CLEAR_ICON_CACHE') {
+    event.waitUntil(clearIconCaches());
+  }
 });
 
 self.addEventListener('activate', (event) => {
@@ -177,6 +203,23 @@ self.addEventListener('fetch', (event) => {
         .catch(() => {
           return caches.match('./index.html');
         })
+    );
+    return;
+  }
+
+  const isLogoAsset = /logo(-\d+)?\.(png|webp)/i.test(url.pathname);
+
+  if (isLogoAsset) {
+    event.respondWith(
+      fetch(event.request)
+        .then((response) => {
+          if (response.ok && isCacheableRequest(event.request)) {
+            const copy = response.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put(event.request, copy)).catch(err => console.warn('Logo cache put error:', err));
+          }
+          return response;
+        })
+        .catch(() => caches.match(event.request))
     );
     return;
   }

@@ -1,6 +1,8 @@
 import React, { useMemo, useState } from 'react';
-import { AlertCircle, CheckCircle2, RefreshCw, ShieldCheck, Sparkles, Zap } from 'lucide-react';
+import { AlertCircle, CheckCircle2, ImageIcon, RefreshCw, ShieldCheck, Sparkles, Zap } from 'lucide-react';
 import { APP_LOGO_URL } from '../../constants';
+import { getAppIconUrl } from '../../constants/appIcon';
+import { applyAppIconUpdate, getAppIconStatus, needsAppIconUpdate } from '../../utils/appIconUtils';
 
 interface SystemUpdateModalProps {
     newVersion: string;
@@ -19,6 +21,9 @@ const SystemUpdateModal: React.FC<SystemUpdateModalProps> = ({
     const [progress, setProgress] = useState(0);
 
     const isKh = language === 'km';
+    const isIconUpdateRelease = newVersion === '1.1.1';
+    const iconUpdateNeeded = isIconUpdateRelease && needsAppIconUpdate();
+    const iconStatus = getAppIconStatus();
 
     const text = useMemo(() => ({
         km: {
@@ -83,6 +88,15 @@ const SystemUpdateModal: React.FC<SystemUpdateModalProps> = ({
                 console.log('[Update v1.1.0] ✅ Auto-switched to Light Mode + Neumorphism UI');
             } catch (e) {
                 console.warn('[Update v1.1.0] Failed to auto-switch theme:', e);
+            }
+        }
+
+        if (newVersion === '1.1.1' && iconUpdateNeeded) {
+            try {
+                await applyAppIconUpdate(newVersion);
+                console.log('[Update v1.1.1] ✅ App icon refreshed automatically');
+            } catch (e) {
+                console.warn('[Update v1.1.1] Failed to auto-update app icon:', e);
             }
         }
 
@@ -167,7 +181,7 @@ const SystemUpdateModal: React.FC<SystemUpdateModalProps> = ({
                         ))}
                     </div>
 
-                    {newVersion === '1.1.1' && (
+                    {isIconUpdateRelease && (
                         <div className="w-full rounded-2xl border border-blue-500/10 bg-blue-500/5 p-4 text-left">
                             <div className="mb-3 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.2em] text-yellow-400">
                                 <Sparkles className="h-3.5 w-3.5" />
@@ -183,6 +197,58 @@ const SystemUpdateModal: React.FC<SystemUpdateModalProps> = ({
                                     <span>{isKh ? 'Mini App OTO Chat ធ្វើឱ្យការងាររហ័ស និងទំនាក់ទំនងកាន់តែរលូន' : 'OTO Chat mini-app support for faster workflows and richer interaction'}</span>
                                 </li>
                             </ul>
+                        </div>
+                    )}
+
+                    {isIconUpdateRelease && (
+                        <div className={`w-full rounded-2xl border p-4 text-left ${iconUpdateNeeded ? 'border-amber-500/20 bg-amber-500/5' : 'border-emerald-500/20 bg-emerald-500/5'}`}>
+                            <div className="mb-3 flex items-center justify-between gap-3">
+                                <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.2em] text-yellow-400">
+                                    <ImageIcon className="h-3.5 w-3.5" />
+                                    <span>{isKh ? 'ស្ថានភាព App Icon' : 'App Icon Status'}</span>
+                                </div>
+                                <span className={`rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider ${iconUpdateNeeded ? 'bg-amber-500/15 text-amber-300' : 'bg-emerald-500/15 text-emerald-300'}`}>
+                                    {iconUpdateNeeded
+                                        ? (isKh ? 'Logo ចាស់' : 'Old Logo')
+                                        : (isKh ? 'Logo ថ្មី' : 'New Logo')}
+                                </span>
+                            </div>
+
+                            <div className="mb-3 flex items-center justify-center gap-4">
+                                <div className="flex flex-col items-center gap-1.5">
+                                    <img
+                                        src={getAppIconUrl('logo.png', '1.0.0')}
+                                        alt={isKh ? 'Logo ចាស់' : 'Old logo'}
+                                        className={`h-14 w-14 rounded-2xl object-cover border ${iconUpdateNeeded ? 'border-amber-500/30 opacity-100' : 'border-white/10 opacity-40'}`}
+                                    />
+                                    <span className="text-[10px] uppercase tracking-wider text-[#9aa4b2]">{isKh ? 'ចាស់' : 'Old'}</span>
+                                </div>
+                                <span className="text-lg text-white/30">→</span>
+                                <div className="flex flex-col items-center gap-1.5">
+                                    <img
+                                        src={getAppIconUrl('logo.png')}
+                                        alt={isKh ? 'Logo ថ្មី' : 'New logo'}
+                                        className={`h-14 w-14 rounded-2xl object-cover border ${iconUpdateNeeded ? 'border-emerald-500/30' : 'border-emerald-500/40'}`}
+                                    />
+                                    <span className="text-[10px] uppercase tracking-wider text-emerald-400">{isKh ? 'ថ្មី' : 'New'}</span>
+                                </div>
+                            </div>
+
+                            <p className="text-sm leading-relaxed text-[#b7bdc6]">
+                                {iconUpdateNeeded
+                                    ? (isKh
+                                        ? 'ឧបករណ៍របស់អ្នកនៅតែប្រើ Logo Icon ចាស់។ សូមចុច «ធ្វើបច្ចុប្បន្នភាពឥឡូវនេះ» ដើម្បីប្តូរទៅ Logo ថ្មីដោយស្វ័យប្រវត្តិ។'
+                                        : 'Your device is still using the old app icon. Tap "Update System Now" to switch to the new logo automatically.')
+                                    : (isKh
+                                        ? 'Logo Icon ថ្មីត្រូវបានដំឡើងរួចរាល់ហើយលើឧបករណ៍របស់អ្នក។'
+                                        : 'The new app icon is already active on your device.')}
+                            </p>
+
+                            {iconStatus === 'unknown' && !iconUpdateNeeded && (
+                                <p className="mt-2 text-xs text-[#9aa4b2]">
+                                    {isKh ? 'ស្ថានភាព icon ត្រូវបានផ្ទៀងផ្ទាត់ពីការដំឡើងកំណែចុងក្រោយ។' : 'Icon status was verified from your latest update.'}
+                                </p>
+                            )}
                         </div>
                     )}
 

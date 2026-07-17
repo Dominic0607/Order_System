@@ -14,7 +14,7 @@ export const LABEL_PRINTER_URL_BASE = "https://samnangh849-source.github.io/Labe
 // APP LOGO URL
 // សូមប្ដូរ Link រូបភាព Logo របស់អ្នកនៅទីនេះ (Google Drive Link ឬ Direct URL)
 // ប្រសិនបើទុកចោល (empty string) កម្មវិធីនឹងប្រើរូបតំណាងលំនាំដើម។
-export const APP_LOGO_URL = (import.meta.env?.BASE_URL ?? '/') + 'logo.webp';
+export const APP_LOGO_URL = (import.meta.env?.BASE_URL ?? '/') + 'logo.webp?v=1.1.1';
 
 // ============================================================
 // SOUND LIBRARY - Notification & Status sounds only

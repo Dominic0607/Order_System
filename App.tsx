@@ -39,6 +39,7 @@ import { OrderProvider, useOrder } from './context/OrderContext';
 import { localDbService } from './services/localDbService';
 import { translations } from './translations';
 import { CLIENT_VERSION } from './constants/version';
+import { needsAppIconUpdate } from './utils/appIconUtils';
 import SystemUpdateModal from './components/common/SystemUpdateModal';
 import { getRoleTransitionCleanup } from './utils/roleSelection';
 
@@ -167,8 +168,13 @@ const AppContent: React.FC = () => {
             return compareVersions(version, latest) > 0 ? version : latest;
         }, '0');
 
-        if (compareVersions(serverVersion, effectiveCurrentVersion) > 0) {
-            console.log(`[App] 🆕 System update available: Current=${effectiveCurrentVersion}, Server=${serverVersion}`);
+        const systemUpdateNeeded = compareVersions(serverVersion, effectiveCurrentVersion) > 0;
+        const iconUpdateNeeded = compareVersions(serverVersion, '1.1.1') >= 0 && needsAppIconUpdate();
+
+        if (systemUpdateNeeded || iconUpdateNeeded) {
+            console.log(
+                `[App] 🆕 Update required: Current=${effectiveCurrentVersion}, Server=${serverVersion}, IconUpdate=${iconUpdateNeeded}`
+            );
             setNewVersionAvailable(serverVersion);
         } else {
             setNewVersionAvailable(null);
