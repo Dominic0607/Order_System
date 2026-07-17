@@ -582,7 +582,12 @@ export const translations = {
     add_success: "បន្ថែមបានជោគជ័យ",
     save_success: "រក្សាទុកបានជោគជ័យ",
     delete_success: "លុបបានជោគជ័យ",
-    upload_success: "ប្តូររូបភាពបានជោគជ័យ"
+    upload_success: "ប្តូររូបភាពបានជោគជ័យ",
+    pwa_install_title: "ដំឡើងកម្មវិធី O-System",
+    pwa_install_desc: "ដំឡើងជាកម្មវិធីទូរស័ព្ទ ឬ កុំព្យូទ័រ ដើម្បីទទួលបានបទពិសោធន៍លឿនជាងមុន ងាយស្រួលប្រើប្រាស់ និងមិនចាំបាច់បើកតាម Browser។",
+    pwa_install_now: "ដំឡើងឥឡូវនេះ",
+    pwa_install_later: "ទុកពេលក្រោយ",
+    pwa_ios_instruction: "ចុចលើប៊ូតុង Share រួចជ្រើសរើស 'បន្ថែមទៅអេក្រង់ដើម (Add to Home Screen)' ដើម្បីដំឡើងនៅលើ iOS។"
   },
   en: {
     // Auth & General
@@ -1122,5 +1127,10 @@ export const translations = {
     btn_send_telegram: "Send to Telegram",
     view_global_orders: "View Global Orders",
     view_google_map: "View Google Map",
+    pwa_install_title: "Install O-System",
+    pwa_install_desc: "Install as an app for a faster, better experience and easy access.",
+    pwa_install_now: "Install Now",
+    pwa_install_later: "Not Now",
+    pwa_ios_instruction: "Tap the Share button then select 'Add to Home Screen' to install on iOS."
   }
 };

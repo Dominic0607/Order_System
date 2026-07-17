@@ -31,6 +31,7 @@ const NotificationStack: React.FC<NotificationStackProps> = ({ notifications, on
                         title={n.title || (n.type === 'success' ? 'SUCCESS' : n.type === 'error' ? 'ERROR' : 'NOTIFICATION')}
                         message={n.message}
                         duration={5000}
+                        type={n.type}
                     />
                 </div>
             ))}

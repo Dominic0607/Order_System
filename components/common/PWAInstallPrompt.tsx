@@ -1,8 +1,12 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
 import { APP_LOGO_URL } from '../../constants';
-import { convertGoogleDriveUrl } from '../../utils/fileUtils';
+import { AppContext } from '../../context/AppContext';
+import { translations } from '../../translations';
 
 const PWAInstallPrompt: React.FC = () => {
+    const { language } = useContext(AppContext);
+    const t = translations[language] || translations['km'];
+
     const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
     const [isIOS, setIsIOS] = useState(false);
     const [isStandalone, setIsStandalone] = useState(false);
@@ -91,10 +95,10 @@ const PWAInstallPrompt: React.FC = () => {
                         
                         <div className="flex-1 pt-1">
                             <h3 className="text-white font-bold text-lg leading-tight">
-                                Install O-System
+                                {t.pwa_install_title || 'Install O-System'}
                             </h3>
                             <p className="text-slate-400 text-sm mt-1">
-                                Install as an app for a faster, better experience and easy access.
+                                {t.pwa_install_desc || 'Install as an app for a faster, better experience and easy access.'}
                             </p>
                         </div>
 
@@ -110,9 +114,16 @@ const PWAInstallPrompt: React.FC = () => {
 
                     {isIOS ? (
                         <div className="bg-white/5 rounded-2xl p-3 border border-white/5">
-                            <p className="text-xs text-slate-300 flex flex-wrap items-center gap-2">
-                                Tap <span className="inline-flex items-center justify-center bg-white/10 p-1 rounded-lg"><svg className="w-4 h-4 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" /></svg></span> then 
-                                <span className="font-semibold text-blue-400 underline decoration-blue-400/30 underline-offset-4">Add to Home Screen</span> to install on iOS.
+                            <p className="text-xs text-slate-300 flex flex-wrap items-center gap-2 text-left leading-relaxed">
+                                {language === 'km' ? (
+                                    <>
+                                        ចុចលើប៊ូតុង Share <span className="inline-flex items-center justify-center bg-white/10 p-1 rounded-lg"><svg className="w-4 h-4 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" /></svg></span> រួចជ្រើសរើស <span className="font-semibold text-blue-400 underline decoration-blue-400/30 underline-offset-4">បន្ថែមទៅអេក្រង់ដើម (Add to Home Screen)</span> ដើម្បីដំឡើងនៅលើ iOS។
+                                    </>
+                                ) : (
+                                    <>
+                                        Tap <span className="inline-flex items-center justify-center bg-white/10 p-1 rounded-lg"><svg className="w-4 h-4 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" /></svg></span> then <span className="font-semibold text-blue-400 underline decoration-blue-400/30 underline-offset-4">Add to Home Screen</span> to install on iOS.
+                                    </>
+                                )}
                             </p>
                         </div>
                     ) : (
@@ -121,13 +132,13 @@ const PWAInstallPrompt: React.FC = () => {
                                 onClick={handleInstall}
                                 className="flex-1 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold py-3 px-6 rounded-2xl shadow-lg shadow-blue-500/20 active:scale-95 transition-all duration-200"
                             >
-                                Install Now
+                                {t.pwa_install_now || 'Install Now'}
                             </button>
                             <button 
                                 onClick={dismissPrompt}
                                 className="px-6 py-3 rounded-2xl bg-white/5 hover:bg-white/10 text-slate-300 font-medium transition-colors"
                             >
-                                Not Now
+                                {t.pwa_install_later || 'Not Now'}
                             </button>
                         </div>
                     )}
