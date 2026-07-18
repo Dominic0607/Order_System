@@ -345,7 +345,7 @@ const RoleSelectionPage: React.FC<RoleSelectionPageProps> = ({ onSelect }) => {
 
         if (uiTheme === 'default') {
             return (
-                <div className={`min-h-0 w-full flex flex-col items-center justify-start relative font-['Kantumruy_Pro'] overflow-x-hidden pt-28 sm:pt-36 pb-3 sm:pb-4 px-4 sm:px-6 lg:px-8 transition-all duration-500 ${styles.bg}`} style={styles.bgStyle}>
+                <div className={`min-h-[100dvh] w-full flex flex-col items-center justify-start relative font-['Kantumruy_Pro'] overflow-x-hidden pt-28 sm:pt-36 pb-3 sm:pb-4 px-4 sm:px-6 lg:px-8 transition-all duration-500 ${styles.bg}`} style={styles.bgStyle}>
                     {/* Background decorative glows */}
                     <div className="fixed inset-0 pointer-events-none opacity-20 z-0">
                         <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] rounded-full blur-[120px]" style={{ backgroundColor: styles.decorDot }}></div>
@@ -587,7 +587,7 @@ const RoleSelectionPage: React.FC<RoleSelectionPageProps> = ({ onSelect }) => {
 
 
         return (
-            <div className={`min-h-0 w-full flex flex-col items-center justify-start relative font-['Kantumruy_Pro'] overflow-x-hidden pt-28 sm:pt-36 pb-3 px-4 sm:px-6 lg:px-8 transition-all duration-300 ${styles.bg}`} style={styles.bgStyle}>
+            <div className={`min-h-[100dvh] w-full flex flex-col items-center justify-start relative font-['Kantumruy_Pro'] overflow-x-hidden pt-28 sm:pt-36 pb-3 px-4 sm:px-6 lg:px-8 transition-all duration-300 ${styles.bg}`} style={styles.bgStyle}>
                 {/* Background decorative glows */}
                 <div className="fixed inset-0 pointer-events-none opacity-20 z-0">
                     <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] rounded-full blur-[120px]" style={{ backgroundColor: styles.decorDot }}></div>
@@ -917,7 +917,7 @@ const RoleSelectionPage: React.FC<RoleSelectionPageProps> = ({ onSelect }) => {
 
     return (
         <div
-            className="min-h-0 w-full flex flex-col font-['Kantumruy_Pro'] overflow-x-hidden"
+            className="min-h-[100dvh] w-full flex flex-col font-['Kantumruy_Pro'] overflow-x-hidden"
             style={{ 
                 background: isLightMode 
                     ? `linear-gradient(145deg, #e8edf5 0%, ${BG} 50%, #dce3ee 100%)` 
