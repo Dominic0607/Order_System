@@ -837,7 +837,7 @@ const AppContent: React.FC = () => {
 
                         const token = localStorage.getItem('token');
 
-                        setNewVersionAvailable(null);
+                        // We don't hide the modal here so it can show the progress bar and reload
                         persistUpdateAcknowledgment(newVersionAvailable);
 
                         if (token) {
