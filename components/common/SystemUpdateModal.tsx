@@ -27,34 +27,34 @@ const SystemUpdateModal: React.FC<SystemUpdateModalProps> = ({
 
     const text = useMemo(() => ({
         km: {
-            title: 'អាប់ដេតប្រព័ន្ធថ្មី',
-            subtitle: 'រួចរាល់សម្រាប់ការដំឡើង',
-            desc: `ប្រព័ន្ធ O-System ត្រូវបានផ upgrades ទៅកំណែ v${newVersion} ធ្វើឱ្យអ្នកទទួលបានមុខងារថ្មី និងការកែលម្អប្រព័ន្ធកាន់តែរលូន។`,
+            title: 'អាប់ដេតប្រព័ន្ធ O-System',
+            subtitle: `កំណែថ្មី v${newVersion} រួចរាល់សម្រាប់ការដំឡើង`,
+            desc: `ប្រព័ន្ធត្រូវបានអាប់ដេតទៅកាន់កំណែ v${newVersion} ដើម្បីបន្ថែមមុខងារថ្មីៗ បង្កើនល្បឿនដំណើរការកម្មវិធី និងធានាស្ថិរភាពការងារឱ្យកាន់តែល្អប្រសើរ។`,
             btn: 'ធ្វើបច្ចុប្បន្នភាពឥឡូវនេះ',
-            updating: 'កំពុងដំឡើងកំណែថ្មី...',
-            warning: 'ទិន្នន័យដែលកំពុងវាយបញ្ចូលនឹងត្រូវបានរក្សាទុកជា Draft ស្វ័យប្រវត្តិតាមគណនីរបស់អ្នក។',
-            badge: 'អាប់ដេតថ្មី',
+            updating: 'កំពុងធ្វើបច្ចុប្បន្នភាព...',
+            warning: '⚠️ រាល់ព័ត៌មានដែលកំពុងវាយបញ្ចូល ត្រូវបានរក្សាទុកជា Draft ស្វ័យប្រវត្តិតាមគណនីរបស់អ្នករួចរាល់ហើយ។',
+            badge: 'កំណែទម្រង់ថ្មី',
             bullets: [
-                'ផ្លាស់ប្តូរជាន់គុណភាព និងស្ថិរភាព',
-                'ជួបប្រទះមុខងារថ្មីៗដោយរលូន',
-                'បង្កើនប្រតិបត្តិការ និងការប្រើប្រាស់'
+                '🚀 បង្កើនល្បឿន និងស្ថិរភាពការងារទូទៅ',
+                '🛠️ ជួសជុលកំហុស និងពង្រឹងសុវត្ថិភាពទិន្នន័យ',
+                '✨ ទទួលបានបទពិសោធន៍រលូនជាមួយមុខងារថ្មីៗ'
             ],
-            steps: ['រៀបចំ', 'អនុវត្ត', 'ផ្ទុកឡើងវិញ']
+            steps: ['កំពុងរៀបចំ...', 'កំពុងអនុវត្ត...', 'កំពុងផ្ទុកឡើងវិញ...']
         },
         en: {
-            title: 'System Update Ready',
-            subtitle: 'A smoother experience is waiting',
-            desc: `O-System is ready to move to v${newVersion}, bringing fresh features and a more polished experience for you.`,
+            title: 'O-System Update Ready',
+            subtitle: `Version v${newVersion} is ready to install`,
+            desc: `O-System has been updated to v${newVersion} to deliver new features, optimize app performance, and ensure database stability.`,
             btn: 'Update System Now',
             updating: 'Installing updates...',
-            warning: 'Any active form inputs will be saved as a draft automatically for your account.',
-            badge: 'New release',
+            warning: 'Any active form inputs have been automatically saved as a draft for your account.',
+            badge: 'New Release',
             bullets: [
-                'Improved stability and reliability',
-                'Access to the latest feature set',
-                'Smoother performance across the app'
+                '🚀 Enhanced app performance and overall stability',
+                '🛠️ Bug fixes and data security improvements',
+                '✨ Access to the latest updates and smoother experience'
             ],
-            steps: ['Preparing', 'Applying', 'Refreshing']
+            steps: ['Preparing...', 'Applying...', 'Refreshing...']
         }
     }[isKh ? 'km' : 'en']), [isKh, newVersion]);
 
@@ -193,11 +193,14 @@ const SystemUpdateModal: React.FC<SystemUpdateModalProps> = ({
                         {text.desc}
                     </p>
 
-                    <div className="grid w-full gap-3 rounded-2xl border border-white/10 bg-white/5 p-3 text-left sm:grid-cols-3 sm:p-4">
+                    <div className="w-full space-y-2.5 rounded-2xl border border-white/10 bg-white/5 p-4 text-left">
+                        <div className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#9aa4b2] mb-1">
+                            {isKh ? 'ការកែលម្អសំខាន់ៗ' : 'Key improvements'}
+                        </div>
                         {text.bullets.map((item) => (
-                            <div key={item} className="flex items-start gap-2 rounded-xl bg-[#0c1016]/70 p-3">
+                            <div key={item} className="flex items-start gap-3 rounded-xl bg-[#0c1016]/50 border border-white/[0.03] p-3 transition-all hover:bg-[#0c1016]/70">
                                 <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-400" />
-                                <span className="text-sm text-[#dce3ea]">{item}</span>
+                                <span className="text-xs sm:text-sm text-[#dce3ea] font-medium">{item}</span>
                             </div>
                         ))}
                     </div>
@@ -297,9 +300,9 @@ const SystemUpdateModal: React.FC<SystemUpdateModalProps> = ({
                         </div>
                     ) : (
                         <>
-                            <div className="flex w-full max-w-sm items-center gap-2 rounded-xl border border-rose-500/10 bg-rose-500/5 px-3 py-2.5 text-xs text-rose-400/80 sm:px-4">
-                                <AlertCircle className="h-4 w-4 shrink-0" />
-                                <span className="text-left font-medium">{text.warning}</span>
+                            <div className="flex w-full items-start gap-2.5 rounded-2xl border border-rose-500/20 bg-rose-500/10 p-3.5 text-xs text-rose-300">
+                                <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
+                                <span className="text-left font-semibold leading-relaxed">{text.warning}</span>
                             </div>
 
                             <button
