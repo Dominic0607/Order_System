@@ -676,7 +676,8 @@ const AppContent: React.FC = () => {
                     updatedUserRecord.FullName !== prev.FullName ||
                     updatedUserRecord.ProfilePictureURL !== prev.ProfilePictureURL ||
                     updatedUserRecord.Role !== prev.Role ||
-                    updatedUserRecord.IsSystemAdmin !== prev.IsSystemAdmin
+                    updatedUserRecord.IsSystemAdmin !== prev.IsSystemAdmin ||
+                    updatedUserRecord.SystemVersion !== prev.SystemVersion
                 ) {
                     console.log(`[App] 🔄 Syncing currentUser with appData.users for: ${prev.UserName}`);
                     const updated = {
@@ -685,7 +686,8 @@ const AppContent: React.FC = () => {
                         ProfilePictureURL: updatedUserRecord.ProfilePictureURL || prev.ProfilePictureURL,
                         Role: updatedUserRecord.Role || prev.Role,
                         IsSystemAdmin: updatedUserRecord.IsSystemAdmin ?? prev.IsSystemAdmin,
-                        TelegramUsername: updatedUserRecord.TelegramUsername || prev.TelegramUsername
+                        TelegramUsername: updatedUserRecord.TelegramUsername || prev.TelegramUsername,
+                        SystemVersion: updatedUserRecord.SystemVersion ?? prev.SystemVersion
                     };
                     
                     // Persist to cache
@@ -742,7 +744,29 @@ const AppContent: React.FC = () => {
                     }
                     
                     // Fetch static data first to ensure permissions can be refreshed correctly
-                    await fetchData(false);
+                    const freshData = await fetchData(false);
+                    
+                    if (freshData && freshData.users && Array.isArray(freshData.users)) {
+                        const freshUserRecord = freshData.users.find((u: any) => 
+                            u.UserName === userWithPerms.UserName || 
+                            (u.user_name === userWithPerms.UserName)
+                        );
+                        if (freshUserRecord) {
+                            console.log(`[App] Syncing cached user with fresh DB record during initSession. DB Version: ${freshUserRecord.SystemVersion}, Cached Version: ${userWithPerms.SystemVersion}`);
+                            userWithPerms = {
+                                ...userWithPerms,
+                                FullName: freshUserRecord.FullName || userWithPerms.FullName,
+                                ProfilePictureURL: freshUserRecord.ProfilePictureURL || userWithPerms.ProfilePictureURL,
+                                Role: freshUserRecord.Role || userWithPerms.Role,
+                                IsSystemAdmin: freshUserRecord.IsSystemAdmin ?? userWithPerms.IsSystemAdmin,
+                                TelegramUsername: freshUserRecord.TelegramUsername || userWithPerms.TelegramUsername,
+                                SystemVersion: freshUserRecord.SystemVersion ?? userWithPerms.SystemVersion
+                            };
+                            
+                            // Save synced user back to session cache immediately
+                            CacheService.set(CACHE_KEYS.SESSION, { ...session, user: userWithPerms, timestamp: Date.now() });
+                        }
+                    }
                     
                     setCurrentUser(userWithPerms);
                     subscribeUserToPush(WEB_APP_URL);
