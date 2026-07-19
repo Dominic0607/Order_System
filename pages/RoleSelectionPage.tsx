@@ -1243,10 +1243,10 @@ const RoleSelectionPage: React.FC<RoleSelectionPageProps> = ({ onSelect }) => {
                             >
                                 <div className="nm-card-shine" />
 
-                                <div className="flex flex-row sm:flex-col items-center sm:items-stretch p-3.5 sm:p-5 gap-3.5 sm:gap-4 w-full h-[76px] sm:h-[150px]">
-                                    {/* Left (on Mobile) / Top (on Desktop) - Icon wrapper */}
+                                <div className="flex flex-row items-center p-4 sm:p-5 gap-4 sm:gap-5 w-full h-[88px] sm:h-[105px]">
+                                    {/* Left - Icon wrapper */}
                                     <div
-                                        className="nm-icon-circle w-11 h-11 sm:w-14 sm:h-14 flex items-center justify-center shrink-0"
+                                        className="nm-icon-circle w-12 h-12 sm:w-14 sm:h-14 flex items-center justify-center shrink-0"
                                         style={{
                                             background: isLightMode ? role.accentLight : (role.accent + '15'),
                                             color: role.accent,
@@ -1258,16 +1258,16 @@ const RoleSelectionPage: React.FC<RoleSelectionPageProps> = ({ onSelect }) => {
                                         <div className="w-6 h-6 sm:w-7 sm:h-7">{role.icon}</div>
                                     </div>
 
-                                    {/* Center (on Mobile) / Middle (on Desktop) - Text block */}
-                                    <div className="flex flex-col flex-grow text-left gap-0.5 sm:gap-1">
+                                    {/* Center - Text block */}
+                                    <div className="flex flex-col flex-grow text-left gap-0.5 sm:gap-1.5">
                                         <h3
-                                            className="text-[13px] sm:text-[15px] lg:text-[16px] font-black leading-tight sm:leading-snug tracking-tight"
+                                            className="text-[14px] sm:text-[16px] lg:text-[17px] font-black leading-tight tracking-tight"
                                             style={{ color: TXT }}
                                         >
                                             {role.label}
                                         </h3>
                                         <p
-                                            className="text-[10px] sm:text-[11px] font-medium leading-tight sm:leading-snug"
+                                            className="text-[10px] sm:text-[12px] font-medium leading-tight"
                                             style={{ color: TXT3 }}
                                         >
                                             {role.sublabel}
@@ -1294,18 +1294,18 @@ const RoleSelectionPage: React.FC<RoleSelectionPageProps> = ({ onSelect }) => {
                                             )}
                                         </div>
                                     ) : (
-                                        /* Right (on Mobile) / Right of top row (on Desktop) - Arrow */
-                                        <div className="nm-arrow shrink-0 sm:absolute sm:top-5 sm:right-5">
+                                        /* Right - Arrow */
+                                        <div className="nm-arrow shrink-0 ml-auto">
                                             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={role.accent} strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round">
                                                 <path d="M5 12h14M12 5l7 7-7 7"/>
                                             </svg>
                                         </div>
                                     )}
 
-                                    {/* Bottom accent line - only on Desktop/Tablet */}
+                                    {/* Bottom accent line */}
                                     <div
-                                        className="hidden sm:block mt-auto h-[3.5px] rounded-full w-8 transition-all duration-300 group-hover:w-full"
-                                        style={{ background: `linear-gradient(90deg, ${role.accent}, ${role.accent}44)` }}
+                                        className="absolute bottom-0 left-0 right-0 h-[3px] transition-all duration-300 group-hover:h-[4px]"
+                                        style={{ background: `linear-gradient(90deg, ${role.accent}, ${role.accent}22)` }}
                                     />
                                 </div>
                             </button>
