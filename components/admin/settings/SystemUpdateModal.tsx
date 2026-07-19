@@ -29,7 +29,7 @@ const SystemUpdateModal: React.FC<SystemUpdateModalProps> = ({ isOpen, onClose, 
                 </div>
                 <h3 className="text-xl font-bold text-white mb-2 tracking-tight" style={{ fontFamily: "'Inter', 'SF Pro Display', system-ui, sans-serif" }}>System Update</h3>
                 <p className="text-gray-400 text-sm mb-4 leading-relaxed">
-                    សកម្មភាពនេះនឹងតម្រូវឱ្យអ្នកប្រើប្រាស់ទាំងអស់ (All Users) ចាកចេញពីប្រព័ន្ធ (Log Out) ដើម្បីធ្វើបច្ចុប្បន្នភាព។
+                    សកម្មភាពនេះនឹងបង្ហាញដំណឹងរាប់ថយក្រោយ ៦០ វិនាទីទៅកាន់អ្នកប្រើប្រាស់ទាំងអស់ (ដើម្បីទុកពេលឱ្យពួកគេរក្សាទុក Draft) មុនពេលចាកចេញពីប្រព័ន្ធដោយស្វ័យប្រវត្ត។
                 </p>
 
                 <div className="mb-6 text-left">

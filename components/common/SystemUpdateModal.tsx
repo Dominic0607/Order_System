@@ -32,7 +32,7 @@ const SystemUpdateModal: React.FC<SystemUpdateModalProps> = ({
             desc: `ប្រព័ន្ធ O-System ត្រូវបានផ upgrades ទៅកំណែ v${newVersion} ធ្វើឱ្យអ្នកទទួលបានមុខងារថ្មី និងការកែលម្អប្រព័ន្ធកាន់តែរលូន។`,
             btn: 'ធ្វើបច្ចុប្បន្នភាពឥឡូវនេះ',
             updating: 'កំពុងដំឡើងកំណែថ្មី...',
-            warning: 'ទិន្នន័យដែលកំពុងវាយបញ្ចូល (បើមាន) នឹងមិនត្រូវបានរក្សាទុកឡើយ។',
+            warning: 'ទិន្នន័យដែលកំពុងវាយបញ្ចូលនឹងត្រូវបានរក្សាទុកជា Draft ស្វ័យប្រវត្តិតាមគណនីរបស់អ្នក។',
             badge: 'អាប់ដេតថ្មី',
             bullets: [
                 'ផ្លាស់ប្តូរជាន់គុណភាព និងស្ថិរភាព',
@@ -47,7 +47,7 @@ const SystemUpdateModal: React.FC<SystemUpdateModalProps> = ({
             desc: `O-System is ready to move to v${newVersion}, bringing fresh features and a more polished experience for you.`,
             btn: 'Update System Now',
             updating: 'Installing updates...',
-            warning: 'Any unsaved changes will be lost during reload.',
+            warning: 'Any active form inputs will be saved as a draft automatically for your account.',
             badge: 'New release',
             bullets: [
                 'Improved stability and reliability',
@@ -73,6 +73,27 @@ const SystemUpdateModal: React.FC<SystemUpdateModalProps> = ({
             localStorage.setItem('system_update_acknowledged_version', newVersion);
         } catch (e) {
             console.warn('Failed to set localStorage:', e);
+        }
+
+        // PWA Service Worker skip waiting and cache clearing coordination
+        if ('serviceWorker' in navigator) {
+            try {
+                const reg = await navigator.serviceWorker.getRegistration();
+                if (reg && reg.waiting) {
+                    reg.waiting.postMessage({ type: 'SKIP_WAITING' });
+                    console.log('[SystemUpdate] Sent SKIP_WAITING to waiting service worker');
+                }
+                
+                if (newVersion === '1.1.1') {
+                    const activeWorker = navigator.serviceWorker.controller;
+                    if (activeWorker) {
+                        activeWorker.postMessage({ type: 'CLEAR_ICON_CACHE' });
+                        console.log('[SystemUpdate] Sent CLEAR_ICON_CACHE to active service worker');
+                    }
+                }
+            } catch (swErr) {
+                console.warn('[SystemUpdate] SW skipWaiting/clearCache failed:', swErr);
+            }
         }
 
         if (newVersion === '1.1.0') {

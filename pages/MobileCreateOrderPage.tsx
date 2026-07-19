@@ -53,6 +53,8 @@ const MobileCreateOrderPage: React.FC<MobileCreateOrderPageProps> = ({ team, onS
         return appData.pages.filter((p: TeamPage) => (p.Team || '').trim().toLowerCase() === requestedTeam);
     }, [appData.pages, team]);
 
+    const DRAFT_KEY = useMemo(() => `createOrderDraftMobile_${currentUser?.UserName}_${team}`, [currentUser, team]);
+
     // Order State
     const [order, setOrder] = useState<any>({
         page: '',
@@ -67,6 +69,27 @@ const MobileCreateOrderPage: React.FC<MobileCreateOrderPageProps> = ({ team, onS
         Subtotal: 0,
         grandTotal: 0
     });
+
+    // Load draft on mount
+    useEffect(() => {
+        try {
+            const savedDraft = localStorage.getItem(DRAFT_KEY);
+            if (savedDraft) {
+                const parsedDraft = JSON.parse(savedDraft);
+                setOrder((prev: any) => ({ ...prev, ...parsedDraft }));
+            }
+        } catch (e) {
+            console.warn("Failed to load mobile draft:", e);
+        }
+    }, [DRAFT_KEY]);
+
+    // Save draft on change
+    useEffect(() => {
+        const hasContent = order.Products.length > 0 || order.customer.name || order.customer.phone || order.note;
+        if (hasContent) {
+            localStorage.setItem(DRAFT_KEY, JSON.stringify(order));
+        }
+    }, [order, DRAFT_KEY]);
 
     useEffect(() => {
         if (teamPages.length === 1 && !order.page) {
@@ -236,6 +259,11 @@ const MobileCreateOrderPage: React.FC<MobileCreateOrderPageProps> = ({ team, onS
             const result = await res.json();
             if (res.ok && result.status === 'success') {
                 playSuccess();
+                try {
+                    localStorage.removeItem(DRAFT_KEY);
+                } catch (e) {
+                    console.warn("Failed to clear mobile draft:", e);
+                }
                 await refreshData();
                 onSaveSuccess();
             } else {
@@ -273,12 +301,21 @@ const MobileCreateOrderPage: React.FC<MobileCreateOrderPageProps> = ({ team, onS
         return [...new Set(appData.locations.map((loc: any) => loc.Province))];
     }, [appData.locations]);
 
+    const handleCancel = () => {
+        try {
+            localStorage.removeItem(DRAFT_KEY);
+        } catch (e) {
+            console.warn("Failed to clear mobile draft:", e);
+        }
+        onCancel();
+    };
+
     return (
         <div className="min-h-screen bg-[#020617] pb-32">
             {/* Header Stepper */}
             <div className="sticky top-0 z-40 bg-[#020617]/80 backdrop-blur-xl border-b border-white/5 px-6 py-4">
                 <div className="flex items-center justify-between mb-4">
-                    <button onClick={onCancel} className="text-gray-500 text-[10px] font-black uppercase tracking-widest">បោះបង់</button>
+                    <button onClick={handleCancel} className="text-gray-500 text-[10px] font-black uppercase tracking-widest">បោះបង់</button>
                     <span className="text-white text-[11px] font-black uppercase tracking-[0.3em]">បង្កើតការកម្មង់ថ្មី</span>
                     <div className="w-10"></div>
                 </div>

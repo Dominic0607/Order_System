@@ -76,6 +76,8 @@ const AppContent: React.FC = () => {
     const [language, setLanguage] = useState<'en' | 'km'>(() => (localStorage.getItem('language') as any) || 'km');
     const [serverVersion, setServerVersion] = useState<string | null>(null);
     const [newVersionAvailable, setNewVersionAvailable] = useState<string | null>(null);
+    const [countdownSeconds, setCountdownSeconds] = useState<number | null>(null);
+    const [countdownMessage, setCountdownMessage] = useState<string>('');
 
     const compareVersions = useCallback((left: string | null | undefined, right: string | null | undefined) => {
         const normalizeVersion = (value: string | null | undefined) => {
@@ -129,7 +131,7 @@ const AppContent: React.FC = () => {
         setAppState(selectedRole as any);
     }, [setAppState, setMobilePageTitle, setPreviewImageUrl, setSelectedMovieId, setSelectedTeam]);
 
-    // Fetch system version on page load
+    // Fetch system version on page load and poll every 5 minutes
     useEffect(() => {
         const fetchSystemVersion = async () => {
             try {
@@ -141,10 +143,12 @@ const AppContent: React.FC = () => {
                     }
                 }
             } catch (e) {
-                console.warn("[App] Failed to check system version on load:", e);
+                console.warn("[App] Failed to check system version:", e);
             }
         };
         fetchSystemVersion();
+        const interval = setInterval(fetchSystemVersion, 5 * 60 * 1000);
+        return () => clearInterval(interval);
     }, []);
 
     // Check the effective installed version against the server version
@@ -178,8 +182,90 @@ const AppContent: React.FC = () => {
             setNewVersionAvailable(serverVersion);
         } else {
             setNewVersionAvailable(null);
+            
+            // Silently update database system version for this user if they already run the latest bundle but DB is lagging
+            if (currentUser && currentUser.SystemVersion !== serverVersion) {
+                const token = localStorage.getItem('token');
+                if (token) {
+                    fetch(`${WEB_APP_URL}/api/users/update-version`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${token}`
+                        },
+                        body: JSON.stringify({ version: serverVersion })
+                    }).then(res => {
+                        if (res.ok) {
+                            console.log("[App] Silently synced user system version in DB to match latest bundle version:", serverVersion);
+                            setCurrentUser(prev => prev ? { ...prev, SystemVersion: serverVersion } : null);
+                        }
+                    }).catch(e => console.warn("Failed silent version sync:", e));
+                }
+            }
         }
-    }, [compareVersions, currentUser, serverVersion]);
+    }, [compareVersions, currentUser, serverVersion, setCurrentUser]);
+
+    const startForceLogoutCountdown = useCallback((msg: string) => {
+        setCountdownSeconds((prev) => {
+            if (prev !== null) return prev;
+            
+            try {
+                const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
+                const playTone = (freq: number, duration: number, delay: number) => {
+                    const osc = ctx.createOscillator();
+                    const gain = ctx.createGain();
+                    osc.type = 'triangle';
+                    osc.frequency.value = freq;
+                    gain.gain.setValueAtTime(0.3, ctx.currentTime + delay);
+                    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + delay + duration);
+                    osc.connect(gain);
+                    gain.connect(ctx.destination);
+                    osc.start(ctx.currentTime + delay);
+                    osc.stop(ctx.currentTime + delay + duration + 0.05);
+                };
+                playTone(523.25, 0.4, 0);
+                playTone(523.25, 0.4, 0.5);
+                setTimeout(() => ctx.close(), 2000);
+            } catch (e) {
+                console.warn("Failed to play warning audio:", e);
+            }
+
+            setCountdownMessage(msg);
+            return 60;
+        });
+    }, []);
+
+    useEffect(() => {
+        if (countdownSeconds === null) return;
+        if (countdownSeconds <= 0) {
+            console.log("⏰ [App] Countdown finished. Logging out...");
+            logout();
+            window.location.reload();
+            return;
+        }
+
+        const timer = setTimeout(() => {
+            setCountdownSeconds(countdownSeconds - 1);
+            if (countdownSeconds <= 10) {
+                try {
+                    const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
+                    const osc = ctx.createOscillator();
+                    const gain = ctx.createGain();
+                    osc.type = 'sine';
+                    osc.frequency.value = 880;
+                    gain.gain.setValueAtTime(0.15, ctx.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.1);
+                    osc.connect(gain);
+                    gain.connect(ctx.destination);
+                    osc.start(ctx.currentTime);
+                    osc.stop(ctx.currentTime + 0.15);
+                    setTimeout(() => ctx.close(), 500);
+                } catch {}
+            }
+        }, 1000);
+
+        return () => clearTimeout(timer);
+    }, [countdownSeconds, logout]);
 
     const [advancedSettings, setAdvancedSettings] = useState<AdvancedSettings>(() => {
         const saved = localStorage.getItem('advancedSettings');
@@ -464,8 +550,16 @@ const AppContent: React.FC = () => {
         ) {
             console.log(`[App] 📋 Static data changed (${lastMessage.type} / ${lastMessage.sheetName}). Refreshing...`);
             
-            // SPECIAL CASE: Real-time update for order status changes (Cancel/Return)
-            if (lastMessage.type === 'update_sheet' && lastMessage.sheetName === 'AllOrders') {
+            // SPECIAL CASE: Settings update (like force system update/logout)
+            if (lastMessage.type === 'update_sheet' && lastMessage.sheetName === 'Settings') {
+                const { newData } = lastMessage;
+                if (newData && newData.Action === 'ForceLogout') {
+                    const msg = newData.Message || (language === 'km' ? 'ប្រព័ន្ធកំពុងធ្វើបច្ចុប្បន្នភាព។ សូមចូលម្តងទៀត។' : 'System update in progress. Please log in again.');
+                    startForceLogoutCountdown(msg);
+                } else {
+                    fetchData(true);
+                }
+            } else if (lastMessage.type === 'update_sheet' && lastMessage.sheetName === 'AllOrders') {
                 const { primaryKey, newData } = lastMessage;
                 const orderId = primaryKey?.['Order ID'];
                 if (orderId && newData) {
@@ -484,7 +578,7 @@ const AppContent: React.FC = () => {
                 fetchData(true);
             }
         }
-    }, [lastMessage, fetchOrders, fetchData, setOrders, showNotification, isShiftOpener, language]);
+    }, [lastMessage, fetchOrders, fetchData, setOrders, showNotification, isShiftOpener, language, startForceLogoutCountdown]);
 
     const isMobile = window.innerWidth < 768;
     const isAdmin = useMemo(() => {
@@ -883,6 +977,19 @@ const AppContent: React.FC = () => {
                 </div>
 
                 <div className="relative z-10 flex flex-col h-full w-full overflow-hidden">
+                    {countdownSeconds !== null && (
+                        <div className="z-[9999] bg-gradient-to-r from-red-600 via-rose-600 to-red-700 text-white text-center py-2.5 px-4 font-bold text-xs sm:text-sm flex items-center justify-center gap-3 shadow-lg border-b border-red-500/30 animate-pulse relative">
+                            <span className="flex h-2 w-2 relative">
+                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75"></span>
+                                <span className="relative inline-flex rounded-full h-2 w-2 bg-white"></span>
+                            </span>
+                            <div className="flex-grow text-center leading-relaxed">
+                                {language === 'km' 
+                                  ? `⚠️ ដំណឹង៖ ប្រព័ន្ធនឹងធ្វើការអាប់ដេត និងចាកចេញដោយស្វ័យប្រវត្តិក្នុងរយៈពេល ${countdownSeconds} វិនាទីទៀត! (${countdownMessage})` 
+                                  : `⚠️ Notice: System will update and logout automatically in ${countdownSeconds} seconds! (${countdownMessage})`}
+                            </div>
+                        </div>
+                    )}
 
                     <Suspense fallback={<div className="flex h-full items-center justify-center bg-transparent"><Spinner size="lg" /></div>}>
                         {appState === 'cambodia_map' ? (
