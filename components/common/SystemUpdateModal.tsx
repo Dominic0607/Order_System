@@ -75,27 +75,6 @@ const SystemUpdateModal: React.FC<SystemUpdateModalProps> = ({
             console.warn('Failed to set localStorage:', e);
         }
 
-        // PWA Service Worker skip waiting and cache clearing coordination
-        if ('serviceWorker' in navigator) {
-            try {
-                const reg = await navigator.serviceWorker.getRegistration();
-                if (reg && reg.waiting) {
-                    reg.waiting.postMessage({ type: 'SKIP_WAITING' });
-                    console.log('[SystemUpdate] Sent SKIP_WAITING to waiting service worker');
-                }
-                
-                if (newVersion === '1.1.1') {
-                    const activeWorker = navigator.serviceWorker.controller;
-                    if (activeWorker) {
-                        activeWorker.postMessage({ type: 'CLEAR_ICON_CACHE' });
-                        console.log('[SystemUpdate] Sent CLEAR_ICON_CACHE to active service worker');
-                    }
-                }
-            } catch (swErr) {
-                console.warn('[SystemUpdate] SW skipWaiting/clearCache failed:', swErr);
-            }
-        }
-
         if (newVersion === '1.1.0') {
             try {
                 const savedSettings = localStorage.getItem('advancedSettings');
@@ -121,18 +100,77 @@ const SystemUpdateModal: React.FC<SystemUpdateModalProps> = ({
             }
         }
 
+        // Setup immediate reload on SW controller take-over
+        let controllerChanged = false;
+        if ('serviceWorker' in navigator) {
+            const handleControllerChange = () => {
+                controllerChanged = true;
+                console.log('[SystemUpdate] Service Worker controller changed, reloading page...');
+                window.location.reload();
+            };
+            navigator.serviceWorker.addEventListener('controllerchange', handleControllerChange);
+        }
+
+        // Animate progress up to 90%
         let currentProgress = 0;
-        const interval = setInterval(() => {
-            currentProgress += Math.floor(Math.random() * 10) + 3;
-            if (currentProgress >= 100) {
-                currentProgress = 100;
-                clearInterval(interval);
-                setTimeout(() => {
-                    window.location.reload();
-                }, 400);
+        const progressInterval = setInterval(() => {
+            currentProgress += Math.floor(Math.random() * 15) + 5;
+            if (currentProgress >= 90) {
+                currentProgress = 90;
+                clearInterval(progressInterval);
             }
             setProgress(currentProgress);
-        }, 90);
+        }, 80);
+
+        // Perform Service Worker skipWaiting trigger
+        if ('serviceWorker' in navigator) {
+            try {
+                const reg = await navigator.serviceWorker.getRegistration();
+                if (reg) {
+                    // Send cache clearing request if newVersion is 1.1.1
+                    if (newVersion === '1.1.1' && reg.active) {
+                        reg.active.postMessage({ type: 'CLEAR_ICON_CACHE' });
+                        console.log('[SystemUpdate] Sent CLEAR_ICON_CACHE to active worker');
+                    }
+
+                    if (reg.waiting) {
+                        reg.waiting.postMessage({ type: 'SKIP_WAITING' });
+                        console.log('[SystemUpdate] Sent SKIP_WAITING to waiting worker');
+                    } else {
+                        // Force update check
+                        console.log('[SystemUpdate] No waiting worker found, checking for SW update...');
+                        await reg.update();
+                        if (reg.waiting) {
+                            reg.waiting.postMessage({ type: 'SKIP_WAITING' });
+                        } else {
+                            // If no update is waiting, fallback reload after a short delay
+                            setTimeout(() => {
+                                setProgress(100);
+                                setTimeout(() => window.location.reload(), 200);
+                            }, 800);
+                        }
+                    }
+                } else {
+                    // No registration, reload directly
+                    setTimeout(() => {
+                        setProgress(100);
+                        setTimeout(() => window.location.reload(), 200);
+                    }, 600);
+                }
+            } catch (swErr) {
+                console.warn('[SystemUpdate] SW coordination failed, falling back to manual reload:', swErr);
+                setTimeout(() => {
+                    setProgress(100);
+                    setTimeout(() => window.location.reload(), 200);
+                }, 600);
+            }
+        } else {
+            // Non-PWA browser, reload directly
+            setTimeout(() => {
+                setProgress(100);
+                setTimeout(() => window.location.reload(), 200);
+            }, 600);
+        }
     };
 
     const currentPhase = progress < 35
