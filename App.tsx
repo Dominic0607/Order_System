@@ -205,6 +205,17 @@ const AppContent: React.FC = () => {
         }
     }, [compareVersions, currentUser, serverVersion, setCurrentUser, isGlobalLoading]);
 
+    useEffect(() => {
+        const handleShowSystemUpdate = (e: Event) => {
+            const customEvent = e as CustomEvent;
+            if (customEvent.detail && customEvent.detail.version) {
+                setNewVersionAvailable(customEvent.detail.version);
+            }
+        };
+        window.addEventListener('show-system-update', handleShowSystemUpdate);
+        return () => window.removeEventListener('show-system-update', handleShowSystemUpdate);
+    }, []);
+
     const startForceLogoutCountdown = useCallback((msg: string) => {
         setCountdownSeconds((prev) => {
             if (prev !== null) return prev;
@@ -1039,7 +1050,7 @@ const AppContent: React.FC = () => {
                                 {originalAdminUser && <ImpersonationBanner />}
                                 {shouldShowHeader && <Header appState={appState} onBackToRoleSelect={() => setAppState('role_selection')} />}
                                 <main className={`flex-grow overflow-hidden relative flex flex-col ${appState === 'role_selection' || (appState === 'user_journey' && !selectedTeam) ? 'bg-transparent' : ''}`}>
-                                    <div id="app-main-scroll-container" className={`flex-grow h-full ${appState === 'fulfillment' || appState === 'oto_chat' || appState === 'problem_items' ? 'overflow-hidden' : 'overflow-y-auto custom-scrollbar'} ${containerClass} ${paddingClass} transition-all duration-300`}>
+                                    <div id="app-main-scroll-container" className={`flex-grow h-full ${appState === 'fulfillment' || appState === 'oto_chat' || appState === 'problem_items' ? 'overflow-hidden' : 'overflow-y-auto ' + (appState === 'role_selection' ? 'no-scrollbar' : 'custom-scrollbar')} ${containerClass} ${paddingClass} transition-all duration-300`}>
                                         {appState === 'user_journey' && <UserJourney onBackToRoleSelect={() => setAppState('role_selection')} />}
                                         {appState === 'create_order' && <CreateOrderPage team={selectedTeam} onSaveSuccess={() => setAppState('user_journey')} onCancel={() => setAppState('user_journey')} />}
                                         {appState === 'fulfillment' && <FulfillmentPage />}
