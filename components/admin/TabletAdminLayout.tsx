@@ -7,6 +7,7 @@ import UserAvatar from '../common/UserAvatar';
 import { AppContext } from '../../context/AppContext';
 import { translations } from '../../translations';
 import Spinner from '../common/Spinner';
+import { useCheckUpdates } from '../../hooks/useCheckUpdates';
 import { requestNotificationPermission, sendSystemNotification } from '../../utils/notificationUtils';
 
 interface TabletAdminLayoutProps {
@@ -41,6 +42,7 @@ const TabletAdminLayout: React.FC<TabletAdminLayoutProps> = ({
     const { setIsMobileMenuOpen, currentUser, language, refreshData, setAppState, logout, originalAdminUser } = useContext(AppContext);
     const [dropdownOpen, setDropdownOpen] = useState(false);
     const [isRefreshing, setIsRefreshing] = useState(false);
+    const { checkUpdates, isCheckingUpdates } = useCheckUpdates();
     const dropdownRef = useRef<HTMLDivElement>(null);
     const t = translations[language];
 
@@ -138,6 +140,20 @@ const TabletAdminLayout: React.FC<TabletAdminLayoutProps> = ({
                                         {t.refresh_data}
                                     </div>
                                     {isRefreshing && <Spinner size="xs" />}
+                                </button>
+
+                                <button 
+                                    onClick={() => checkUpdates(() => setDropdownOpen(false))} 
+                                    disabled={isCheckingUpdates}
+                                    className={`w-full text-left px-5 py-3 text-sm font-bold text-gray-200 hover:bg-blue-600 transition-colors flex items-center justify-between group ${isCheckingUpdates ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                >
+                                    <div className="flex items-center gap-3">
+                                        <svg className={`w-4 h-4 opacity-60 ${isCheckingUpdates ? 'animate-spin' : ''}`} fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M9 19l3 3m0 0l3-3m-3 3V10" />
+                                        </svg>
+                                        {language === 'km' ? 'ពិនិត្យកំណែកម្មវិធី' : 'Check for Updates'}
+                                    </div>
+                                    {isCheckingUpdates && <Spinner size="xs" />}
                                 </button>
 
                                 {/* Switch Role */}

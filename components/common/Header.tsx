@@ -5,8 +5,8 @@ import EditProfileModal from './EditProfileModal';
 import AdvancedSettingsModal from './AdvancedSettingsModal';
 import { convertGoogleDriveUrl } from '../../utils/fileUtils';
 import UserAvatar from './UserAvatar';
-import { APP_LOGO_URL, WEB_APP_URL } from '../../constants';
-import { CLIENT_VERSION } from '../../constants/version';
+import { APP_LOGO_URL } from '../../constants';
+import { useCheckUpdates } from '../../hooks/useCheckUpdates';
 import Spinner from './Spinner';
 import { translations } from '../../translations';
 import { requestNotificationPermission, sendSystemNotification } from '../../utils/notificationUtils';
@@ -33,68 +33,8 @@ const Header: React.FC<HeaderProps> = ({ onBackToRoleSelect, appState }) => {
     const [isRefreshing, setIsRefreshing] = useState(false);
     const [editProfileModalOpen, setEditProfileModalOpen] = useState(false);
     const [advancedSettingsOpen, setAdvancedSettingsOpen] = useState(false);
-    const [isCheckingUpdates, setIsCheckingUpdates] = useState(false);
+    const { checkUpdates, isCheckingUpdates } = useCheckUpdates();
     const { playNotify } = useSoundEffects();
-
-    const handleCheckUpdates = async () => {
-        setIsCheckingUpdates(true);
-        try {
-            const res = await fetch(`${WEB_APP_URL}/api/system-version`);
-            if (res.ok) {
-                const result = await res.json();
-                if (result.status === 'success' && result.version) {
-                    const serverVersion = result.version;
-                    
-                    // Simple version comparison helper
-                    const compareVersions = (v1: string, v2: string) => {
-                        const parts1 = v1.split('.').map(Number);
-                        const parts2 = v2.split('.').map(Number);
-                        for (let i = 0; i < Math.max(parts1.length, parts2.length); i++) {
-                            const p1 = parts1[i] || 0;
-                            const p2 = parts2[i] || 0;
-                            if (p1 > p2) return 1;
-                            if (p1 < p2) return -1;
-                        }
-                        return 0;
-                    };
-
-                    const versionCandidates = [
-                        currentUser?.SystemVersion,
-                        localStorage.getItem('system_update_acknowledged_version') || '',
-                        sessionStorage.getItem('system_update_acknowledged_version') || '',
-                        localStorage.getItem('system_update_last_seen_version') || '',
-                        CLIENT_VERSION
-                    ].filter(Boolean) as string[];
-
-                    const effectiveCurrentVersion = versionCandidates.reduce((latest, version) => {
-                        return compareVersions(version, latest) > 0 ? version : latest;
-                    }, '0');
-
-                    const systemUpdateNeeded = compareVersions(serverVersion, effectiveCurrentVersion) > 0;
-                    // Check if icon update is needed (1.1.1)
-                    const currentAcknowledged = localStorage.getItem('system_update_acknowledged_version') || '';
-                    const iconUpdateNeeded = compareVersions(serverVersion, '1.1.1') >= 0 && compareVersions(currentAcknowledged, '1.1.1') < 0;
-
-                    if (systemUpdateNeeded || iconUpdateNeeded) {
-                        window.dispatchEvent(new CustomEvent('show-system-update', { detail: { version: serverVersion } }));
-                        showNotification(language === 'km' ? 'រកឃើញកំណែថ្មី! កំពុងបើកផ្ទាំងដំឡើង...' : 'New version found! Opening update screen...', 'info');
-                    } else {
-                        showNotification(language === 'km' ? `ប្រព័ន្ធដំណើរការលើកំណែថ្មីបំផុតរួចរាល់ហើយ (v${serverVersion})` : `System is already up to date (v${serverVersion})`, 'success');
-                    }
-                } else {
-                    showNotification(language === 'km' ? 'មិនអាចពិនិត្យកំណែកម្មវិធីបានទេ' : 'Could not check for system version', 'error');
-                }
-            } else {
-                showNotification(language === 'km' ? 'មិនអាចពិនិត្យកំណែកម្មវិធីបានទេ' : 'Could not check for system version', 'error');
-            }
-        } catch (err) {
-            console.error(err);
-            showNotification(language === 'km' ? 'មិនអាចពិនិត្យកំណែកម្មវិធីបានទេ' : 'Could not check for system version', 'error');
-        } finally {
-            setIsCheckingUpdates(false);
-            setDropdownOpen(false);
-        }
-    };
     
     const [notificationPermission, setNotificationPermission] = useState(() => {
         if (typeof window !== 'undefined' && 'Notification' in window) {
@@ -593,6 +533,21 @@ const Header: React.FC<HeaderProps> = ({ onBackToRoleSelect, appState }) => {
                                             {t.refresh_data}
                                         </div>
                                         {isRefreshing && <Spinner size="sm" />}
+                                    </button>
+
+                                    {/* Check for Updates */}
+                                    <button 
+                                        onClick={() => checkUpdates(() => setDropdownOpen(false))} 
+                                        disabled={isCheckingUpdates}
+                                        className={`w-full text-left px-5 py-3 text-sm font-bold transition-all duration-150 flex items-center justify-between group ${styles.dropdownItem} ${isCheckingUpdates ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                    >
+                                        <div className="flex items-center gap-3">
+                                            <svg className={`w-4 h-4 opacity-60 ${isCheckingUpdates ? 'animate-spin' : ''}`} fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M9 19l3 3m0 0l3-3m-3 3V10" />
+                                            </svg>
+                                            {language === 'km' ? 'ពិនិត្យកំណែកម្មវិធី' : 'Check for Updates'}
+                                        </div>
+                                        {isCheckingUpdates && <Spinner size="sm" />}
                                     </button>
 
                                     {/* Language Switcher Section */}
