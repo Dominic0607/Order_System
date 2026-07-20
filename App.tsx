@@ -1168,6 +1168,16 @@ const AppContent: React.FC = () => {
                                         {appState === 'problem_items' && (() => {
                                             const ProblemItemsView = () => {
                                                 const [iframeLoaded, setIframeLoaded] = React.useState(false);
+                                                const [loadingTime, setLoadingTime] = React.useState(0);
+                                                
+                                                React.useEffect(() => {
+                                                    if (iframeLoaded) return;
+                                                    const timer = setInterval(() => {
+                                                        setLoadingTime(prev => prev + 1);
+                                                    }, 1000);
+                                                    return () => clearInterval(timer);
+                                                }, [iframeLoaded]);
+
                                                 const key = currentUser?.IsSystemAdmin
                                                     ? '063a669e39fef90d061aef98caaa0fc589fba961cae83040e9ee2038a3ebb7e8'
                                                     : '60a5f0446fe326829643de09bcf2a70854fc134f070591b8f73bb27811774661';
@@ -1239,7 +1249,11 @@ const AppContent: React.FC = () => {
                                                                     </div>
                                                                     <div className="text-center">
                                                                         <p className="text-white/80 text-sm font-bold tracking-tight">Problem Items</p>
-                                                                        <p className="text-white/30 text-xs mt-0.5">{language === 'km' ? 'កំពុងបើក Mini App...' : 'Loading Mini App...'}</p>
+                                                                        <p className="text-white/30 text-xs mt-0.5">
+                                                                            {loadingTime > 5 
+                                                                                ? (language === 'km' ? 'ម៉ាស៊ីនមេកំពុងបើកដំណើរការ សូមរង់ចាំ (អាចដល់ 50 វិនាទី)...' : 'Server is waking up, please wait (up to 50s)...') 
+                                                                                : (language === 'km' ? 'កំពុងបើក Mini App...' : 'Loading Mini App...')}
+                                                                        </p>
                                                                     </div>
                                                                     <div className="w-40 h-1 rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.05)' }}>
                                                                         <div className="h-full rounded-full" style={{
