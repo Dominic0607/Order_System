@@ -48,6 +48,220 @@ const OrderNotificationTrigger: React.FC = () => {
     return null;
 };
 
+
+const OtoChatView = ({ language, setAppState }: { language: string, setAppState: any }) => {
+                                                const [iframeLoaded, setIframeLoaded] = React.useState(false);
+                                                return (
+                                                    <div className="absolute inset-0 flex flex-col z-[100]" style={{ animation: 'otoSlideIn 0.35s cubic-bezier(0.16,1,0.3,1) forwards' }}>
+                                                        <style>{`
+                                                            @keyframes otoSlideIn {
+                                                                from { opacity: 0; transform: translateY(20px); }
+                                                                to   { opacity: 1; transform: translateY(0); }
+                                                            }
+                                                            @keyframes otoPulse {
+                                                                0%, 100% { opacity: 1; }
+                                                                50% { opacity: 0.4; }
+                                                            }
+                                                            @keyframes otoShimmer {
+                                                                0% { background-position: -200% 0; }
+                                                                100% { background-position: 200% 0; }
+                                                            }
+                                                        `}</style>
+
+                                                        {/* Premium Header */}
+                                                        <div className="flex items-center justify-between px-3 sm:px-4 py-2.5 shrink-0 border-b border-white/[0.06]" style={{ background: 'linear-gradient(135deg, #0d1117 0%, #161b22 100%)' }}>
+                                                            {/* Back Button */}
+                                                            <button
+                                                                onClick={() => setAppState('role_selection')}
+                                                                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[#8b949e] hover:text-white hover:bg-white/8 text-xs font-semibold transition-all duration-200 active:scale-95"
+                                                            >
+                                                                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
+                                                                    <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+                                                                </svg>
+                                                                <span className="hidden sm:inline">{language === 'km' ? 'ត្រឡប់ក្រោយ' : 'Back'}</span>
+                                                            </button>
+
+                                                            {/* Center Brand */}
+                                                            <div className="flex items-center gap-2">
+                                                                {/* OTO Logo Icon */}
+                                                                <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0 overflow-hidden" style={{ background: 'linear-gradient(135deg, #2563eb, #7c3aed)' }}>
+                                                                    <svg viewBox="0 0 24 24" fill="white" className="w-4 h-4">
+                                                                        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+                                                                    </svg>
+                                                                </div>
+                                                                <div className="flex flex-col">
+                                                                    <span className="text-[13px] font-bold text-white leading-none tracking-tight">OTO Chat</span>
+                                                                    <div className="flex items-center gap-1 mt-0.5">
+                                                                        <div className="w-1.5 h-1.5 rounded-full bg-emerald-400" style={{ animation: 'otoPulse 2s ease-in-out infinite' }}></div>
+                                                                        <span className="text-[9px] text-emerald-400/80 font-semibold uppercase tracking-wider">Mini App</span>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+
+                                                            {/* Open External */}
+                                                            <button
+                                                                onClick={() => window.open('https://otochat.otokhmer.com/', '_blank', 'noopener,noreferrer')}
+                                                                title="Open in new tab"
+                                                                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[#8b949e] hover:text-white hover:bg-white/8 text-xs font-semibold transition-all duration-200 active:scale-95"
+                                                            >
+                                                                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                                                                    <path strokeLinecap="round" strokeLinejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                                                                </svg>
+                                                                <span className="hidden sm:inline text-[11px]">{language === 'km' ? 'បើកក្រៅ' : 'Open'}</span>
+                                                            </button>
+                                                        </div>
+
+                                                        {/* Iframe Area */}
+                                                        <div className="flex-grow w-full relative bg-[#0d1117] overflow-hidden">
+                                                            {/* Loading Skeleton - shown until iframe loads */}
+                                                            {!iframeLoaded && (
+                                                                <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-4 bg-[#0d1117]">
+                                                                    {/* Animated Logo */}
+                                                                    <div className="w-16 h-16 rounded-2xl flex items-center justify-center mb-2 relative" style={{ background: 'linear-gradient(135deg, #2563eb22, #7c3aed22)', border: '1px solid #2563eb33' }}>
+                                                                        <div className="absolute inset-0 rounded-2xl" style={{ background: 'linear-gradient(135deg, #2563eb11, #7c3aed11)', animation: 'otoPulse 1.5s ease-in-out infinite' }}></div>
+                                                                        <svg viewBox="0 0 24 24" className="w-8 h-8 relative z-10" style={{ fill: '#6366f1' }}>
+                                                                            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+                                                                        </svg>
+                                                                    </div>
+                                                                    <div className="text-center">
+                                                                        <p className="text-white/80 text-sm font-bold tracking-tight">OTO Chat</p>
+                                                                        <p className="text-white/30 text-xs mt-0.5">{loadingTime > 5 ? (language === 'km' ? 'ម៉ាស៊ីនមេកំពុងបើកដំណើរការ សូមរង់ចាំ (អាចដល់ 50 វិនាទី)...' : 'Server is waking up, please wait (up to 50s)...') : (language === 'km' ? 'កំពុងបើក Mini App...' : 'Loading Mini App...')}</p>
+                                                                    </div>
+                                                                    {/* Loading bar */}
+                                                                    <div className="w-40 h-1 rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.05)' }}>
+                                                                        <div className="h-full rounded-full" style={{
+                                                                            background: 'linear-gradient(90deg, #2563eb, #7c3aed, #2563eb)',
+                                                                            backgroundSize: '200% 100%',
+                                                                            animation: 'otoShimmer 1.5s linear infinite'
+                                                                        }}></div>
+                                                                    </div>
+                                                                </div>
+                                                            )}
+                                                            {/* Iframe */}
+                                                            <iframe
+                                                                key="oto-chat-iframe"
+                                                                src="https://otochat.otokhmer.com/"
+                                                                className="absolute inset-0 w-full h-full border-0"
+                                                                allow="camera; microphone; geolocation; clipboard-write; clipboard-read; fullscreen; payment; autoplay"
+                                                                title="OTO Chat Mini App"
+                                                                onLoad={() => setIframeLoaded(true)}
+                                                                style={{ opacity: iframeLoaded ? 1 : 0, transition: 'opacity 0.4s ease' }}
+                                                            />
+                                                        </div>
+                                                    </div>
+                                                );
+                                            };
+
+const ProblemItemsView = ({ language, currentUser }: { language: string, currentUser: any }) => {
+    const [loadingTime, setLoadingTime] = React.useState(0);
+    React.useEffect(() => {
+        const timer = setInterval(() => setLoadingTime(prev => prev + 1), 1000);
+        return () => clearInterval(timer);
+    }, []);
+    
+                                                const [iframeLoaded, setIframeLoaded] = React.useState(false);
+
+                                                const key = currentUser?.IsSystemAdmin
+                                                    ? '063a669e39fef90d061aef98caaa0fc589fba961cae83040e9ee2038a3ebb7e8'
+                                                    : '60a5f0446fe326829643de09bcf2a70854fc134f070591b8f73bb27811774661';
+                                                const url = `https://brokenaccflexi.onrender.com/?key=${key}`;
+
+                                                return (
+                                                    <div className="absolute inset-0 flex flex-col z-[100]" style={{ animation: 'otoSlideIn 0.35s cubic-bezier(0.16,1,0.3,1) forwards' }}>
+                                                        <style>{`
+                                                            @keyframes otoSlideIn {
+                                                                from { opacity: 0; transform: translateY(20px); }
+                                                                to   { opacity: 1; transform: translateY(0); }
+                                                            }
+                                                            @keyframes otoPulse {
+                                                                0%, 100% { opacity: 1; }
+                                                                50% { opacity: 0.4; }
+                                                            }
+                                                            @keyframes otoShimmer {
+                                                                0% { background-position: -200% 0; }
+                                                                100% { background-position: 200% 0; }
+                                                            }
+                                                        `}</style>
+
+                                                        <div className="flex items-center justify-between px-3 sm:px-4 py-2.5 shrink-0 border-b border-white/[0.06]" style={{ background: 'linear-gradient(135deg, #0d1117 0%, #161b22 100%)' }}>
+                                                            <button
+                                                                onClick={() => setAppState('role_selection')}
+                                                                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[#8b949e] hover:text-white hover:bg-white/8 text-xs font-semibold transition-all duration-200 active:scale-95"
+                                                            >
+                                                                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
+                                                                    <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+                                                                </svg>
+                                                                <span className="hidden sm:inline">{language === 'km' ? 'ត្រឡប់ក្រោយ' : 'Back'}</span>
+                                                            </button>
+
+                                                            <div className="flex items-center gap-2">
+                                                                <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0 overflow-hidden" style={{ background: 'linear-gradient(135deg, #9f1239, #be123c)' }}>
+                                                                    <svg viewBox="0 0 24 24" fill="white" className="w-4 h-4">
+                                                                        <path d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+                                                                    </svg>
+                                                                </div>
+                                                                <div className="flex flex-col">
+                                                                    <span className="text-[13px] font-bold text-white leading-none tracking-tight">Problem Items</span>
+                                                                    <div className="flex items-center gap-1 mt-0.5">
+                                                                        <div className="w-1.5 h-1.5 rounded-full bg-emerald-400" style={{ animation: 'otoPulse 2s ease-in-out infinite' }}></div>
+                                                                        <span className="text-[9px] text-emerald-400/80 font-semibold uppercase tracking-wider">Mini App</span>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+
+                                                            <button
+                                                                onClick={() => window.open(url, '_blank', 'noopener,noreferrer')}
+                                                                title="Open in new tab"
+                                                                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[#8b949e] hover:text-white hover:bg-white/8 text-xs font-semibold transition-all duration-200 active:scale-95"
+                                                            >
+                                                                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                                                                    <path strokeLinecap="round" strokeLinejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                                                                </svg>
+                                                                <span className="hidden sm:inline text-[11px]">{language === 'km' ? 'បើកក្រៅ' : 'Open'}</span>
+                                                            </button>
+                                                        </div>
+
+                                                        <div className="flex-grow w-full relative bg-[#0d1117] overflow-hidden">
+                                                            {!iframeLoaded && (
+                                                                <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-4 bg-[#0d1117]">
+                                                                    <div className="w-16 h-16 rounded-2xl flex items-center justify-center mb-2 relative" style={{ background: 'linear-gradient(135deg, #9f123922, #be123c22)', border: '1px solid #9f123c33' }}>
+                                                                        <div className="absolute inset-0 rounded-2xl" style={{ background: 'linear-gradient(135deg, #9f123911, #be123c11)', animation: 'otoShimmer 1.5s linear infinite' }}></div>
+                                                                        <svg viewBox="0 0 24 24" className="w-8 h-8 relative z-10" style={{ fill: '#be123c' }}>
+                                                                            <path d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+                                                                        </svg>
+                                                                    </div>
+                                                                    <div className="text-center">
+                                                                        <p className="text-white/80 text-sm font-bold tracking-tight">Problem Items</p>
+                                                                        <p className="text-white/30 text-xs mt-0.5">
+                                                                            {loadingTime > 5 
+                                                                                ? (language === 'km' ? 'ម៉ាស៊ីនមេកំពុងបើកដំណើរការ សូមរង់ចាំ (អាចដល់ 50 វិនាទី)...' : 'Server is waking up, please wait (up to 50s)...') 
+                                                                                : (language === 'km' ? 'កំពុងបើក Mini App...' : 'Loading Mini App...')}
+                                                                        </p>
+                                                                    </div>
+                                                                    <div className="w-40 h-1 rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.05)' }}>
+                                                                        <div className="h-full rounded-full" style={{
+                                                                            background: 'linear-gradient(90deg, #9f1239, #be123c, #9f1239)',
+                                                                            backgroundSize: '200% 100%',
+                                                                            animation: 'otoShimmer 1.5s linear infinite'
+                                                                        }}></div>
+                                                                    </div>
+                                                                </div>
+                                                            )}
+                                                            <iframe
+                                                                key="problem-items-iframe"
+                                                                src={url}
+                                                                className="absolute inset-0 w-full h-full border-0"
+                                                                allow="camera; microphone; geolocation; clipboard-write; clipboard-read; fullscreen; payment; autoplay"
+                                                                title="Problem Items Mini App"
+                                                                onLoad={() => setIframeLoaded(true)}
+                                                                style={{ opacity: iframeLoaded ? 1 : 0, transition: 'opacity 0.4s ease' }}
+                                                            />
+                                                        </div>
+                                                    </div>
+                                                );
+                                            
+};
+
 const AppContent: React.FC = () => {
     const { 
         notifications, removeNotification, showNotification,
@@ -1059,226 +1273,9 @@ const AppContent: React.FC = () => {
                                         {appState === 'series_player' && <SeriesPlayerPage />}
                                         {appState === 'long_player' && <LongFilmPlayerPage />}
                                         {appState === 'short_player' && <ShortFilmPlayerPage />}
-                                        {appState === 'oto_chat' && (() => {
-                                            const OtoChatView = () => {
-                                                const [iframeLoaded, setIframeLoaded] = React.useState(false);
-                                                return (
-                                                    <div className="absolute inset-0 flex flex-col z-[100]" style={{ animation: 'otoSlideIn 0.35s cubic-bezier(0.16,1,0.3,1) forwards' }}>
-                                                        <style>{`
-                                                            @keyframes otoSlideIn {
-                                                                from { opacity: 0; transform: translateY(20px); }
-                                                                to   { opacity: 1; transform: translateY(0); }
-                                                            }
-                                                            @keyframes otoPulse {
-                                                                0%, 100% { opacity: 1; }
-                                                                50% { opacity: 0.4; }
-                                                            }
-                                                            @keyframes otoShimmer {
-                                                                0% { background-position: -200% 0; }
-                                                                100% { background-position: 200% 0; }
-                                                            }
-                                                        `}</style>
+                                        {appState === 'oto_chat' && <OtoChatView language={language} setAppState={setAppState} />}
 
-                                                        {/* Premium Header */}
-                                                        <div className="flex items-center justify-between px-3 sm:px-4 py-2.5 shrink-0 border-b border-white/[0.06]" style={{ background: 'linear-gradient(135deg, #0d1117 0%, #161b22 100%)' }}>
-                                                            {/* Back Button */}
-                                                            <button
-                                                                onClick={() => setAppState('role_selection')}
-                                                                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[#8b949e] hover:text-white hover:bg-white/8 text-xs font-semibold transition-all duration-200 active:scale-95"
-                                                            >
-                                                                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
-                                                                    <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
-                                                                </svg>
-                                                                <span className="hidden sm:inline">{language === 'km' ? 'ត្រឡប់ក្រោយ' : 'Back'}</span>
-                                                            </button>
-
-                                                            {/* Center Brand */}
-                                                            <div className="flex items-center gap-2">
-                                                                {/* OTO Logo Icon */}
-                                                                <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0 overflow-hidden" style={{ background: 'linear-gradient(135deg, #2563eb, #7c3aed)' }}>
-                                                                    <svg viewBox="0 0 24 24" fill="white" className="w-4 h-4">
-                                                                        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
-                                                                    </svg>
-                                                                </div>
-                                                                <div className="flex flex-col">
-                                                                    <span className="text-[13px] font-bold text-white leading-none tracking-tight">OTO Chat</span>
-                                                                    <div className="flex items-center gap-1 mt-0.5">
-                                                                        <div className="w-1.5 h-1.5 rounded-full bg-emerald-400" style={{ animation: 'otoPulse 2s ease-in-out infinite' }}></div>
-                                                                        <span className="text-[9px] text-emerald-400/80 font-semibold uppercase tracking-wider">Mini App</span>
-                                                                    </div>
-                                                                </div>
-                                                            </div>
-
-                                                            {/* Open External */}
-                                                            <button
-                                                                onClick={() => window.open('https://otochat.otokhmer.com/', '_blank', 'noopener,noreferrer')}
-                                                                title="Open in new tab"
-                                                                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[#8b949e] hover:text-white hover:bg-white/8 text-xs font-semibold transition-all duration-200 active:scale-95"
-                                                            >
-                                                                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                                                                    <path strokeLinecap="round" strokeLinejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                                                                </svg>
-                                                                <span className="hidden sm:inline text-[11px]">{language === 'km' ? 'បើកក្រៅ' : 'Open'}</span>
-                                                            </button>
-                                                        </div>
-
-                                                        {/* Iframe Area */}
-                                                        <div className="flex-grow w-full relative bg-[#0d1117] overflow-hidden">
-                                                            {/* Loading Skeleton - shown until iframe loads */}
-                                                            {!iframeLoaded && (
-                                                                <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-4 bg-[#0d1117]">
-                                                                    {/* Animated Logo */}
-                                                                    <div className="w-16 h-16 rounded-2xl flex items-center justify-center mb-2 relative" style={{ background: 'linear-gradient(135deg, #2563eb22, #7c3aed22)', border: '1px solid #2563eb33' }}>
-                                                                        <div className="absolute inset-0 rounded-2xl" style={{ background: 'linear-gradient(135deg, #2563eb11, #7c3aed11)', animation: 'otoPulse 1.5s ease-in-out infinite' }}></div>
-                                                                        <svg viewBox="0 0 24 24" className="w-8 h-8 relative z-10" style={{ fill: '#6366f1' }}>
-                                                                            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
-                                                                        </svg>
-                                                                    </div>
-                                                                    <div className="text-center">
-                                                                        <p className="text-white/80 text-sm font-bold tracking-tight">OTO Chat</p>
-                                                                        <p className="text-white/30 text-xs mt-0.5">{language === 'km' ? 'កំពុងបើក Mini App...' : 'Loading Mini App...'}</p>
-                                                                    </div>
-                                                                    {/* Loading bar */}
-                                                                    <div className="w-40 h-1 rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.05)' }}>
-                                                                        <div className="h-full rounded-full" style={{
-                                                                            background: 'linear-gradient(90deg, #2563eb, #7c3aed, #2563eb)',
-                                                                            backgroundSize: '200% 100%',
-                                                                            animation: 'otoShimmer 1.5s linear infinite'
-                                                                        }}></div>
-                                                                    </div>
-                                                                </div>
-                                                            )}
-                                                            {/* Iframe */}
-                                                            <iframe
-                                                                key="oto-chat-iframe"
-                                                                src="https://otochat.otokhmer.com/"
-                                                                className="absolute inset-0 w-full h-full border-0"
-                                                                allow="camera; microphone; geolocation; clipboard-write; clipboard-read; fullscreen; payment; autoplay"
-                                                                title="OTO Chat Mini App"
-                                                                onLoad={() => setIframeLoaded(true)}
-                                                                style={{ opacity: iframeLoaded ? 1 : 0, transition: 'opacity 0.4s ease' }}
-                                                            />
-                                                        </div>
-                                                    </div>
-                                                );
-                                            };
-                                            return <OtoChatView />;
-                                        })()}
-
-                                        {appState === 'problem_items' && (() => {
-                                            const ProblemItemsView = () => {
-                                                const [iframeLoaded, setIframeLoaded] = React.useState(false);
-                                                const [loadingTime, setLoadingTime] = React.useState(0);
-                                                
-                                                React.useEffect(() => {
-                                                    if (iframeLoaded) return;
-                                                    const timer = setInterval(() => {
-                                                        setLoadingTime(prev => prev + 1);
-                                                    }, 1000);
-                                                    return () => clearInterval(timer);
-                                                }, [iframeLoaded]);
-
-                                                const key = currentUser?.IsSystemAdmin
-                                                    ? '063a669e39fef90d061aef98caaa0fc589fba961cae83040e9ee2038a3ebb7e8'
-                                                    : '60a5f0446fe326829643de09bcf2a70854fc134f070591b8f73bb27811774661';
-                                                const url = `https://brokenaccflexi.onrender.com/?key=${key}`;
-
-                                                return (
-                                                    <div className="absolute inset-0 flex flex-col z-[100]" style={{ animation: 'otoSlideIn 0.35s cubic-bezier(0.16,1,0.3,1) forwards' }}>
-                                                        <style>{`
-                                                            @keyframes otoSlideIn {
-                                                                from { opacity: 0; transform: translateY(20px); }
-                                                                to   { opacity: 1; transform: translateY(0); }
-                                                            }
-                                                            @keyframes otoPulse {
-                                                                0%, 100% { opacity: 1; }
-                                                                50% { opacity: 0.4; }
-                                                            }
-                                                            @keyframes otoShimmer {
-                                                                0% { background-position: -200% 0; }
-                                                                100% { background-position: 200% 0; }
-                                                            }
-                                                        `}</style>
-
-                                                        <div className="flex items-center justify-between px-3 sm:px-4 py-2.5 shrink-0 border-b border-white/[0.06]" style={{ background: 'linear-gradient(135deg, #0d1117 0%, #161b22 100%)' }}>
-                                                            <button
-                                                                onClick={() => setAppState('role_selection')}
-                                                                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[#8b949e] hover:text-white hover:bg-white/8 text-xs font-semibold transition-all duration-200 active:scale-95"
-                                                            >
-                                                                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
-                                                                    <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
-                                                                </svg>
-                                                                <span className="hidden sm:inline">{language === 'km' ? 'ត្រឡប់ក្រោយ' : 'Back'}</span>
-                                                            </button>
-
-                                                            <div className="flex items-center gap-2">
-                                                                <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0 overflow-hidden" style={{ background: 'linear-gradient(135deg, #9f1239, #be123c)' }}>
-                                                                    <svg viewBox="0 0 24 24" fill="white" className="w-4 h-4">
-                                                                        <path d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
-                                                                    </svg>
-                                                                </div>
-                                                                <div className="flex flex-col">
-                                                                    <span className="text-[13px] font-bold text-white leading-none tracking-tight">Problem Items</span>
-                                                                    <div className="flex items-center gap-1 mt-0.5">
-                                                                        <div className="w-1.5 h-1.5 rounded-full bg-emerald-400" style={{ animation: 'otoPulse 2s ease-in-out infinite' }}></div>
-                                                                        <span className="text-[9px] text-emerald-400/80 font-semibold uppercase tracking-wider">Mini App</span>
-                                                                    </div>
-                                                                </div>
-                                                            </div>
-
-                                                            <button
-                                                                onClick={() => window.open(url, '_blank', 'noopener,noreferrer')}
-                                                                title="Open in new tab"
-                                                                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[#8b949e] hover:text-white hover:bg-white/8 text-xs font-semibold transition-all duration-200 active:scale-95"
-                                                            >
-                                                                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                                                                    <path strokeLinecap="round" strokeLinejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                                                                </svg>
-                                                                <span className="hidden sm:inline text-[11px]">{language === 'km' ? 'បើកក្រៅ' : 'Open'}</span>
-                                                            </button>
-                                                        </div>
-
-                                                        <div className="flex-grow w-full relative bg-[#0d1117] overflow-hidden">
-                                                            {!iframeLoaded && (
-                                                                <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-4 bg-[#0d1117]">
-                                                                    <div className="w-16 h-16 rounded-2xl flex items-center justify-center mb-2 relative" style={{ background: 'linear-gradient(135deg, #9f123922, #be123c22)', border: '1px solid #9f123c33' }}>
-                                                                        <div className="absolute inset-0 rounded-2xl" style={{ background: 'linear-gradient(135deg, #9f123911, #be123c11)', animation: 'otoShimmer 1.5s linear infinite' }}></div>
-                                                                        <svg viewBox="0 0 24 24" className="w-8 h-8 relative z-10" style={{ fill: '#be123c' }}>
-                                                                            <path d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
-                                                                        </svg>
-                                                                    </div>
-                                                                    <div className="text-center">
-                                                                        <p className="text-white/80 text-sm font-bold tracking-tight">Problem Items</p>
-                                                                        <p className="text-white/30 text-xs mt-0.5">
-                                                                            {loadingTime > 5 
-                                                                                ? (language === 'km' ? 'ម៉ាស៊ីនមេកំពុងបើកដំណើរការ សូមរង់ចាំ (អាចដល់ 50 វិនាទី)...' : 'Server is waking up, please wait (up to 50s)...') 
-                                                                                : (language === 'km' ? 'កំពុងបើក Mini App...' : 'Loading Mini App...')}
-                                                                        </p>
-                                                                    </div>
-                                                                    <div className="w-40 h-1 rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.05)' }}>
-                                                                        <div className="h-full rounded-full" style={{
-                                                                            background: 'linear-gradient(90deg, #9f1239, #be123c, #9f1239)',
-                                                                            backgroundSize: '200% 100%',
-                                                                            animation: 'otoShimmer 1.5s linear infinite'
-                                                                        }}></div>
-                                                                    </div>
-                                                                </div>
-                                                            )}
-                                                            <iframe
-                                                                key="problem-items-iframe"
-                                                                src={url}
-                                                                className="absolute inset-0 w-full h-full border-0"
-                                                                allow="camera; microphone; geolocation; clipboard-write; clipboard-read; fullscreen; payment; autoplay"
-                                                                title="Problem Items Mini App"
-                                                                onLoad={() => setIframeLoaded(true)}
-                                                                style={{ opacity: iframeLoaded ? 1 : 0, transition: 'opacity 0.4s ease' }}
-                                                            />
-                                                        </div>
-                                                    </div>
-                                                );
-                                            };
-                                            return <ProblemItemsView />;
-                                        })()}
+                                        {appState === 'problem_items' && <ProblemItemsView language={language} currentUser={currentUser} />}
 
                                         {appState === 'role_selection' && (
                                             <RoleSelectionPage onSelect={handleRoleSelection} />
