@@ -152,7 +152,7 @@ const OtoChatView = ({ language, setAppState }: { language: string, setAppState:
                                                 );
                                             };
 
-const ProblemItemsView = ({ language, currentUser }: { language: string, currentUser: any }) => {
+const ProblemItemsView = ({ language, currentUser, setAppState }: { language: string, currentUser: any, setAppState: any }) => {
     const [loadingTime, setLoadingTime] = React.useState(0);
     React.useEffect(() => {
         const timer = setInterval(() => setLoadingTime(prev => prev + 1), 1000);
@@ -1275,7 +1275,7 @@ const AppContent: React.FC = () => {
                                         {appState === 'short_player' && <ShortFilmPlayerPage />}
                                         {appState === 'oto_chat' && <OtoChatView language={language} setAppState={setAppState} />}
 
-                                        {appState === 'problem_items' && <ProblemItemsView language={language} currentUser={currentUser} />}
+                                        {appState === 'problem_items' && <ProblemItemsView language={language} currentUser={currentUser} setAppState={setAppState} />}
 
                                         {appState === 'role_selection' && (
                                             <RoleSelectionPage onSelect={handleRoleSelection} />
