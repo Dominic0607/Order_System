@@ -257,7 +257,14 @@ self.addEventListener('fetch', (event) => {
         if (response) {
           return response;
         }
-        return fetch(event.request);
+        return fetch(event.request).catch(err => {
+          console.warn('Fallback fetch failed:', err);
+          // Return a 503 Service Unavailable or try to return index.html if it looks like a document
+          if (event.request.headers.get('accept').includes('text/html')) {
+             return caches.match('./index.html');
+          }
+          return new Response('Network error', { status: 503 });
+        });
       })
   );
 });

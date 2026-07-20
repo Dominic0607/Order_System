@@ -60,10 +60,28 @@
       if (window.Telegram && window.Telegram.WebApp) {
           window.Telegram.WebApp.ready();
           window.Telegram.WebApp.expand();
-          if (window.Telegram.WebApp.disableVerticalSwipes) {
-              window.Telegram.WebApp.disableVerticalSwipes();
+          // Only call if version supports it to avoid warnings
+          if (window.Telegram.WebApp.isVersionAtLeast && window.Telegram.WebApp.isVersionAtLeast('7.7')) {
+              if (window.Telegram.WebApp.disableVerticalSwipes) {
+                  window.Telegram.WebApp.disableVerticalSwipes();
+              }
           }
       }
+      
+      // Fallback for older Telegram clients or standalone PWA on iOS
+      let touchStartY = 0;
+      document.addEventListener('touchstart', function(e) {
+          touchStartY = e.touches[0].clientY;
+      }, { passive: true });
+
+      document.addEventListener('touchmove', function(e) {
+          const touchY = e.touches[0].clientY;
+          const isPullingDown = touchY > touchStartY;
+          // If we are at the very top of the page and pulling down, prevent refresh
+          if (window.scrollY <= 0 && isPullingDown) {
+              e.preventDefault();
+          }
+      }, { passive: false });
     </script>
     
     <script>
