@@ -967,6 +967,13 @@ func startScheduler() {
 	}()
 }
 
+func escapeHTML(s string) string {
+	s = strings.ReplaceAll(s, "&", "&amp;")
+	s = strings.ReplaceAll(s, "<", "&lt;")
+	s = strings.ReplaceAll(s, ">", "&gt;")
+	return s
+}
+
 func checkPackingDelaysLoop() {
 	ticker := time.NewTicker(1 * time.Minute)
 	defer ticker.Stop()
@@ -1036,12 +1043,12 @@ func checkPackingDelaysLoop() {
 					if order.FulfillmentStore != "" {
 						err := backend.DB.Where("store_name = ?", order.FulfillmentStore).First(&store).Error
 						if err == nil && store.TelegramBotToken != "" && store.TelegramGroupID != "" {
-							msg := fmt.Sprintf("%s⚠️ *កញ្ចប់ឥវ៉ាន់យឺតយ៉ាវ (Over 30m)*\nកញ្ចប់ឥវ៉ាន់ `#%s` របស់អតិថិជន *%s* មិនទាន់បានវេចខ្ចប់លើសពី %d នាទីហើយ!", mentionStr, order.OrderID, order.CustomerName, int(elapsed.Minutes()))
+							msg := fmt.Sprintf("%s⚠️ <b>កញ្ចប់ឥវ៉ាន់យឺតយ៉ាវ (Over 30m)</b>\nកញ្ចប់ឥវ៉ាន់ <code>#%s</code> របស់អតិថិជន <b>%s</b> មិនទាន់បានវេចខ្ចប់លើសពី %d នាទីហើយ!", mentionStr, escapeHTML(order.OrderID), escapeHTML(order.CustomerName), int(elapsed.Minutes()))
 
 							payload := map[string]interface{}{
 								"chat_id":    store.TelegramGroupID,
 								"text":       msg,
-								"parse_mode": "Markdown",
+								"parse_mode": "HTML",
 							}
 							if store.TelegramTopicID != "" {
 								payload["message_thread_id"] = store.TelegramTopicID
@@ -1066,7 +1073,6 @@ func checkPackingDelaysLoop() {
 		}
 	}
 }
-
 
 // =========================================================================
 // WEB SOCKET - Aliased to Backend package
@@ -1384,7 +1390,6 @@ func handleUpdateUserVersion(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{"status": "success", "message": "System version updated successfully"})
 }
-
 
 func handleGetAllOrders(c *gin.Context) {
 	var orders []Order
@@ -1784,7 +1789,6 @@ func handleSubmitOrder(c *gin.Context) {
 	}
 	orderRequest.CurrentUser.UserName = authUserName
 
-
 	productsJSON, _ := json.Marshal(orderRequest.Products)
 	var locationParts []string
 	if p, ok := orderRequest.Customer["province"].(string); ok && p != "" {
@@ -1981,7 +1985,6 @@ func handleAdminUpdateOrder(c *gin.Context) {
 			r.NewData["PackingStartTime"] = time.Now().In(ict).Format("2006-01-02 15:04:05")
 		}
 	}
-
 
 	if r.NewData == nil {
 		c.JSON(http.StatusBadRequest, gin.H{"status": "error", "message": "ត្រូវការទិន្នន័យថ្មី (NewData is required)"})
@@ -4048,12 +4051,12 @@ func main() {
 
 		// Force set status to Pending and updates columns
 		err := backend.DB.Model(&Order{}).Where("order_id = ?", order.OrderID).Updates(map[string]interface{}{
-			"fulfillment_status":           "Pending",
-			"fulfillment_store":            storeName,
-			"packing_start_time":           testStartTime,
-			"packed_by":                    "Test Packer",
-			"packed_time":                  "",
-			"last_telegram_reminder_time":  "",
+			"fulfillment_status":          "Pending",
+			"fulfillment_store":           storeName,
+			"packing_start_time":          testStartTime,
+			"packed_by":                   "Test Packer",
+			"packed_time":                 "",
+			"last_telegram_reminder_time": "",
 		}).Error
 
 		if err != nil {
@@ -4069,19 +4072,19 @@ func main() {
 		err = backend.DB.Where("store_name = ?", order.FulfillmentStore).First(&store).Error
 		if err != nil {
 			c.JSON(400, gin.H{
-				"status": "error",
+				"status":  "error",
 				"message": fmt.Sprintf("Failed to load store '%s': %v", order.FulfillmentStore, err),
-				"order": order,
+				"order":   order,
 			})
 			return
 		}
 
 		if store.TelegramBotToken == "" || store.TelegramGroupID == "" {
 			c.JSON(400, gin.H{
-				"status": "error",
+				"status":  "error",
 				"message": fmt.Sprintf("Store '%s' is missing Telegram bot configuration: BotToken or GroupID is empty.", store.StoreName),
-				"store": store,
-				"order": order,
+				"store":   store,
+				"order":   order,
 			})
 			return
 		}
@@ -4105,12 +4108,12 @@ func main() {
 			mentionStr = "@" + strings.ReplaceAll(order.PackedBy, " ", "_")
 		}
 
-		msg := fmt.Sprintf("%s⚠️ *កញ្ចប់ឥវ៉ាន់យឺតយ៉ាវ (Over 30m)*\nកញ្ចប់ឥវ៉ាន់ `#%s` របស់អតិថិជន *%s* មិនទាន់បានវេចខ្ចប់លើសពី 30 នាទីហើយ!", mentionStr, order.OrderID, order.CustomerName)
+		msg := fmt.Sprintf("%s⚠️ <b>កញ្ចប់ឥវ៉ាន់យឺតយ៉ាវ (Over 30m)</b>\nកញ្ចប់ឥវ៉ាន់ <code>#%s</code> របស់អតិថិជន <b>%s</b> មិនទាន់បានវេចខ្ចប់លើសពី 30 នាទីហើយ!", mentionStr, escapeHTML(order.OrderID), escapeHTML(order.CustomerName))
 
 		payload := map[string]interface{}{
 			"chat_id":    strings.TrimSpace(store.TelegramGroupID),
 			"text":       msg,
-			"parse_mode": "Markdown",
+			"parse_mode": "HTML",
 		}
 		if store.TelegramTopicID != "" {
 			topicID := strings.TrimSpace(store.TelegramTopicID)
@@ -4124,10 +4127,10 @@ func main() {
 		resp, err := http.Post(apiURL, "application/json", bytes.NewBuffer(jsonData))
 		if err != nil {
 			c.JSON(500, gin.H{
-				"status": "error",
+				"status":  "error",
 				"message": "Telegram API request failed: " + err.Error(),
-				"order": order,
-				"store": store,
+				"order":   order,
+				"store":   store,
 			})
 			return
 		}
@@ -4137,10 +4140,10 @@ func main() {
 		json.NewDecoder(resp.Body).Decode(&resData)
 
 		c.JSON(200, gin.H{
-			"status": "success",
-			"message": "Order updated and dry-run Telegram notification triggered immediately!",
-			"order": order,
-			"store": store,
+			"status":                "success",
+			"message":               "Order updated and dry-run Telegram notification triggered immediately!",
+			"order":                 order,
+			"store":                 store,
 			"telegram_api_response": resData,
 		})
 	})
