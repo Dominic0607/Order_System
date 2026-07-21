@@ -125,7 +125,7 @@ const OtoChatView = ({ language, setAppState }: { language: string, setAppState:
                                                                     </div>
                                                                     <div className="text-center">
                                                                         <p className="text-white/80 text-sm font-bold tracking-tight">OTO Chat</p>
-                                                                        <p className="text-white/30 text-xs mt-0.5">{loadingTime > 5 ? (language === 'km' ? 'ម៉ាស៊ីនមេកំពុងបើកដំណើរការ សូមរង់ចាំ (អាចដល់ 50 វិនាទី)...' : 'Server is waking up, please wait (up to 50s)...') : (language === 'km' ? 'កំពុងបើក Mini App...' : 'Loading Mini App...')}</p>
+                                                                        <p className="text-white/30 text-xs mt-0.5">{language === 'km' ? 'កំពុងបើក Mini App...' : 'Loading Mini App...'}</p>
                                                                     </div>
                                                                     {/* Loading bar */}
                                                                     <div className="w-40 h-1 rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.05)' }}>
