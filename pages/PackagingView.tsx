@@ -845,7 +845,32 @@ const PackagingView: React.FC<{ orders?: ParsedOrder[], onExit?: () => void }> =
         }, 
         searchTerm, 
         setSearchTerm,
-        onPack: (order: ParsedOrder) => !isViewOnly && setPackingOrder(order),
+        onPack: async (order: ParsedOrder) => {
+            if (isViewOnly) return;
+            setPackingOrder(order);
+            try {
+                const session = await CacheService.get<{ token: string }>(CACHE_KEYS.SESSION);
+                const token = session?.token || '';
+                await fetch(`${WEB_APP_URL}/api/admin/update-order`, {
+                    method: 'POST',
+                    headers: { 
+                        'Content-Type': 'application/json', 
+                        ...(token ? { 'Authorization': `Bearer ${token}` } : {}) 
+                    },
+                    body: JSON.stringify({ 
+                        orderId: order['Order ID'], 
+                        team: order.Team, 
+                        userName: currentUser?.FullName || 'System', 
+                        newData: { 
+                            'PackingStartTime': 'NOW',
+                            'Packed By': currentUser?.FullName || 'Packer'
+                        } 
+                    })
+                });
+            } catch (err) {
+                console.error("Failed to set packing start time:", err);
+            }
+        },
         onShip: (order: ParsedOrder) => !isViewOnly && executeAction(order, 'Shipped', { 'Dispatched Time': new Date().toISOString().slice(0, 19).replace('T', ' '), 'Dispatched By': currentUser?.FullName || 'Packer' }),
         onDeliver: (order: ParsedOrder) => {
             if (isViewOnly) return;
@@ -1017,7 +1042,33 @@ const PackagingView: React.FC<{ orders?: ParsedOrder[], onExit?: () => void }> =
 
             {packingOrder && (
                 <FastPackTerminal 
-                    order={packingOrder} onClose={() => setPackingOrder(null)} 
+                    order={packingOrder} 
+                    onClose={async () => {
+                        const targetOrder = packingOrder;
+                        setPackingOrder(null);
+                        try {
+                            const session = await CacheService.get<{ token: string }>(CACHE_KEYS.SESSION);
+                            const token = session?.token || '';
+                            await fetch(`${WEB_APP_URL}/api/admin/update-order`, {
+                                method: 'POST',
+                                headers: { 
+                                    'Content-Type': 'application/json', 
+                                    ...(token ? { 'Authorization': `Bearer ${token}` } : {}) 
+                                },
+                                body: JSON.stringify({ 
+                                    orderId: targetOrder['Order ID'], 
+                                    team: targetOrder.Team, 
+                                    userName: currentUser?.FullName || 'System', 
+                                    newData: { 
+                                        'PackingStartTime': '',
+                                        'Packed By': ''
+                                    } 
+                                })
+                            });
+                        } catch (err) {
+                            console.error("Failed to clear packing start time:", err);
+                        }
+                    }} 
                     onSuccess={() => { setPackingOrder(null); setActiveTab('Ready to Ship'); setLocalRefreshTick(t => t + 1); }} 
                 />
             )}

@@ -87,6 +87,8 @@ export interface FullOrder {
     "Delivery Telegram Message ID"?: string;
     "Delivery Daily Sequence"?: number;
     "Delivery Telegram Date"?: string;
+    PackingStartTime?: string;
+    LastTelegramReminderTime?: string;
     }
 export interface InventoryItem {
     id?: number; // Added for GORM
