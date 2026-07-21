@@ -508,10 +508,8 @@ const MobilePackagingHub: React.FC<MobilePackagingHubProps> = ({
                                                 </div>
                                             )}
                                             {activeTab === 'Returned' && (
-                                                 <div className={`flex items-center gap-1 px-2 py-0.5 rounded-full border ${fs === 'Cancelled' ? 'bg-red-500/5 border-red-500/15' : 'bg-purple-500/5 border-purple-500/15'}`}>
-                                                     <span className={`text-[8px] font-black uppercase tracking-tight ${fs === 'Cancelled' ? 'text-red-400' : 'text-purple-400'}`}>
-                                                         {fs === 'Cancelled' ? 'Unpacked' : 'Returned'}
-                                                     </span>
+                                                 <div className="flex items-center gap-1 bg-purple-500/5 px-2 py-0.5 rounded-full border border-purple-500/15">
+                                                     <span className="text-[8px] font-black text-purple-400 uppercase tracking-tight">Returned</span>
                                                  </div>
                                              )}
                                             <div className="flex items-center gap-1.5">
@@ -745,9 +743,7 @@ const MobilePackagingHub: React.FC<MobilePackagingHubProps> = ({
                                                                       </div>
                                                                   )}
                                                                   <div className="flex flex-col min-w-0 flex-1">
-                                                                      <span className={`text-[10px] font-black uppercase tracking-wider ${fs === 'Cancelled' ? 'text-red-400' : 'text-purple-400'}`}>
-                                                                          {fs === 'Cancelled' ? '✓ Unpacked' : '✓ Received'}
-                                                                      </span>
+                                                                      <span className="text-[10px] font-black text-purple-400 uppercase tracking-wider">✓ Received</span>
                                                                       <span className="text-[10px] text-[#848E9C] truncate">Confirmed By: {order['Return Received By']}</span>
                                                                       {order['Return Received Time'] && (
                                                                           <span className="text-[9px] text-[#848E9C]/70">{order['Return Received Time'].slice(0, 16)}</span>
@@ -755,28 +751,13 @@ const MobilePackagingHub: React.FC<MobilePackagingHubProps> = ({
                                                                   </div>
                                                               </div>
                                                           )}
-                                                          {!order['Return Received By'] ? (
+                                                          {!order['Return Received By'] && (
                                                               <button
                                                                   onClick={(e) => { e.stopPropagation(); onConfirmReturn?.(order); }}
                                                                   className="flex-1 py-2 bg-gradient-to-r from-purple-600 to-purple-700 text-white rounded-xl text-xs font-bold uppercase shadow-[0_4px_12px_rgba(147,51,234,0.15)] active:scale-[0.97] transition-all"
                                                               >
                                                                   Confirm Receipt
                                                               </button>
-                                                          ) : (
-                                                              fs !== 'Cancelled' ? (
-                                                                  <button
-                                                                      onClick={(e) => { e.stopPropagation(); onUnpack(order); }}
-                                                                      className="w-full py-2 bg-red-600 hover:bg-red-700 text-white border border-red-500/20 rounded-xl text-xs font-bold uppercase transition-all duration-300 active:scale-[0.97]"
-                                                                  >
-                                                                      ហែកកញ្ចប់
-                                                                  </button>
-                                                              ) : (
-                                                                  <div className="w-full py-2 bg-red-500/5 border border-red-500/20 rounded-xl text-center">
-                                                                      <span className="text-xs font-black text-red-400 uppercase">
-                                                                          ហែករួចរាល់
-                                                                      </span>
-                                                                  </div>
-                                                              )
                                                           )}
                                                       </div>
                                                   )}

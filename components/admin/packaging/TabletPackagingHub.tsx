@@ -491,10 +491,8 @@ const TabletPackagingHub: React.FC<TabletPackagingHubProps> = ({
                                                         </div>
                                                     )}
                                                     {activeTab === 'Returned' && (
-                                                         <div className={`flex items-center gap-1 px-2 py-0.5 rounded-sm border ${fs === 'Cancelled' ? 'bg-red-500/5 border-red-500/10' : 'bg-purple-500/5 border-purple-500/10'}`}>
-                                                             <span className={`text-[8px] font-black uppercase tracking-tight ${fs === 'Cancelled' ? 'text-red-400' : 'text-purple-400'}`}>
-                                                                 {fs === 'Cancelled' ? 'Unpacked' : 'Returned'}
-                                                             </span>
+                                                         <div className="flex items-center gap-1 bg-purple-500/5 px-2 py-0.5 rounded-sm border border-purple-500/10">
+                                                             <span className="text-[8px] font-black text-purple-400 uppercase tracking-tight">Returned</span>
                                                          </div>
                                                     )}
                                                     <div className="flex items-center gap-1.5">
@@ -684,25 +682,10 @@ const TabletPackagingHub: React.FC<TabletPackagingHubProps> = ({
                                                                 )}
                                                                 <div className="flex gap-1 justify-end w-full">
                                                                     <button onClick={(e) => { e.stopPropagation(); onView(order); }} className={`px-2 py-1 bg-[#2B3139] text-[#EAECEF] rounded-sm text-xs flex-1`}>View</button>
-                                                                {activeTab === 'Cancelled' && order['Return Received By'] && (
-                                                                    <div className="flex items-center justify-center border border-[#FCD535]/20 bg-[#FCD535]/5 rounded-sm px-2 overflow-hidden">
-                                                                        <span className="text-[9px] font-black text-[#FCD535] uppercase truncate" title={order['Return Received By']}>
-                                                                            Confirm by: {order['Return Received By']}
-                                                                        </span>
-                                                                    </div>
-                                                                )}
                                                                 {!isCancelled && (
                                                                     <>
                                                                         {activeTab === 'Pending' && <button onClick={(e) => { e.stopPropagation(); onPack(order); }} className={`px-3 py-1 bg-[#FCD535] text-[#0B0E11] rounded-sm text-xs font-bold uppercase`}>Pack</button>}
                                                                     </>
-                                                                )}
-                                                                {!isViewOnly && isCancelled && activeTab !== 'Cancelled' && (
-                                                                    <button 
-                                                                        onClick={(e) => { e.stopPropagation(); setUnpackTarget(order); }} 
-                                                                        className={`px-3 py-1 bg-red-600 text-white rounded-sm text-[10px] font-bold uppercase shadow-lg shadow-red-600/20 transition-all active:scale-95`}
-                                                                    >
-                                                                        {!!(order['Packed By'] || order['Packed Time']) ? 'ហែកកញ្ចប់' : 'បញ្ជាក់ការបោះបង់'}
-                                                                    </button>
                                                                 )}
                                                                 {activeTab === 'Shipped' && (
                                                                     <div className="flex gap-2 w-full">
@@ -718,41 +701,27 @@ const TabletPackagingHub: React.FC<TabletPackagingHubProps> = ({
                                                                     </div>
                                                                 )}
                                                                 {activeTab === 'Returned' && (
-                                                                    <div className="flex items-center gap-2">
-                                                                        <button 
-                                                                            onClick={(e) => { e.stopPropagation(); onConfirmReturn?.(order); }} 
-                                                                            disabled={!!order['Return Received By']}
-                                                                            className={`px-3 py-1 ${order['Return Received By'] ? (fs === 'Cancelled' ? 'bg-red-500/10 text-red-400 border border-red-500/20' : 'bg-purple-500/10 text-purple-400 border border-purple-500/20') : 'bg-purple-500 text-white font-bold'} rounded-sm text-xs uppercase transition-colors`}
-                                                                        >
-                                                                            {order['Return Received By'] ? (fs === 'Cancelled' ? '✓ Unpacked' : '✓ Received') : 'Confirm'}
-                                                                        </button>
-                                                                        {!!order['Return Received By'] && (
-                                                                            <>
-                                                                                <div className={`flex items-center justify-center border rounded-sm px-2 py-1 max-w-[150px] overflow-hidden ${fs === 'Cancelled' ? 'border-red-500/20 bg-red-500/5' : 'border-purple-500/20 bg-purple-500/5'}`}>
-                                                                                    <span className={`text-[9px] font-black uppercase truncate ${fs === 'Cancelled' ? 'text-red-400' : 'text-purple-400'}`} title={order['Return Received By']}>
-                                                                                        Confirm by: {order['Return Received By']}
-                                                                                    </span>
-                                                                                </div>
-                                                                                {fs !== 'Cancelled' ? (
-                                                                                    <button 
-                                                                                        onClick={(e) => { e.stopPropagation(); onUnpack(order); }}
-                                                                                        className="px-3 py-1 bg-red-600 hover:bg-red-700 text-white font-bold rounded-sm text-xs uppercase transition-colors"
-                                                                                    >
-                                                                                        ហែកកញ្ចប់
-                                                                                    </button>
-                                                                                ) : (
-                                                                                    <div className="px-3 py-1 bg-red-500/10 border border-red-500/30 text-red-400 rounded-sm text-xs font-bold uppercase">
-                                                                                        ហែករួចរាល់
-                                                                                    </div>
-                                                                                )}
-                                                                            </>
-                                                                        )}
-                                                                    </div>
-                                                                )}
-                                                            </div>
-                                                        </div>
-                                                        )}
-                                                    </div>
+                                                                     <div className="flex items-center gap-2">
+                                                                         <button 
+                                                                             onClick={(e) => { e.stopPropagation(); onConfirmReturn?.(order); }} 
+                                                                             disabled={!!order['Return Received By']}
+                                                                             className={`px-3 py-1 ${order['Return Received By'] ? 'bg-purple-500/10 text-purple-400 border border-purple-500/20' : 'bg-purple-500 text-white font-bold'} rounded-sm text-xs uppercase transition-colors`}
+                                                                         >
+                                                                             {order['Return Received By'] ? '✓ Received' : 'Confirm'}
+                                                                         </button>
+                                                                         {!!order['Return Received By'] && (
+                                                                             <div className="flex items-center justify-center border border-purple-500/20 bg-purple-500/5 rounded-sm px-2 py-1 max-w-[150px] overflow-hidden">
+                                                                                 <span className="text-[9px] font-black text-purple-400 uppercase truncate" title={order['Return Received By']}>
+                                                                                     By: {order['Return Received By']}
+                                                                                 </span>
+                                                                             </div>
+                                                                         )}
+                                                                     </div>
+                                                                 )}
+                                                             </div>
+                                                         </div>
+                                                         )}
+                                                     </div>
                                                 </div>
                                             </div>
                                         </div>
