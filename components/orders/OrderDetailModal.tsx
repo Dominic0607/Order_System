@@ -525,6 +525,85 @@ const OrderDetailModal: React.FC<OrderDetailModalProps> = ({ order, onClose, inl
                             </div>
                         </div>
 
+                        {/* Return Protocol Card */}
+                        {(order.FulfillmentStatus === 'Returned' || order['Return Reason'] || order['Return Photo']) && (
+                            <div className="bg-gradient-to-br from-[#1E2329] to-[#0B0E11] border border-purple-500/30 p-5 sm:p-8 space-y-6 sm:space-y-8 relative overflow-hidden group rounded-2xl shadow-2xl">
+                                <div className="absolute top-0 right-0 p-6 opacity-[0.03] group-hover:opacity-10 transition-opacity pointer-events-none -rotate-12 group-hover:rotate-0 duration-1000">
+                                    <ShieldCheck size={120} className="text-purple-500" />
+                                </div>
+                                <div className="flex items-center gap-3 relative z-10">
+                                    <Zap size={16} className="text-purple-400 animate-pulse sm:w-4.5 sm:h-4.5" />
+                                    <h3 className="text-[10px] sm:text-xs font-black uppercase tracking-[0.2em] sm:tracking-[0.3em] text-purple-400">Return Protocol (ព័ត៌មាន Return)</h3>
+                                </div>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 relative z-10">
+                                    {/* Return Package Photo */}
+                                    <div className="space-y-2">
+                                        <label className="text-[8px] sm:text-[9px] font-black text-purple-400 uppercase tracking-[0.2em] sm:tracking-[0.25em] ml-1 flex items-center gap-2">
+                                            <Package size={10} /> Return Package (កញ្ចប់ឥវ៉ាន់ Return)
+                                        </label>
+                                        {order['Return Photo'] ? (
+                                            <div className="relative group aspect-square rounded-xl border border-purple-500/30 bg-[#0B0E11] cursor-pointer overflow-hidden shadow-lg transition-all hover:border-purple-500/50" onClick={() => previewImage(convertGoogleDriveUrl(order['Return Photo']!))}>
+                                                <img src={convertGoogleDriveUrl(order['Return Photo']!)} className="w-full h-full object-cover transition-all duration-1000 sm:grayscale sm:group-hover:grayscale-0 group-hover:scale-110" alt="Return Package" />
+                                                <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-all duration-500 flex items-center justify-center backdrop-blur-[2px]">
+                                                    <div className="w-10 h-10 border border-purple-400 bg-[#0B0E11]/90 rounded-lg flex items-center justify-center text-purple-400 shadow-[0_0_20px_rgba(168,85,247,0.3)] scale-75 group-hover:scale-100 transition-all duration-500">
+                                                        <ExternalLink size={16} />
+                                                    </div>
+                                                </div>
+                                                <div className="absolute inset-x-0 h-[1.5px] bg-purple-500/70 shadow-[0_0_10px_#a855f7] top-0 animate-[scan_4s_linear_infinite] z-20"></div>
+                                            </div>
+                                        ) : (
+                                            <div className="aspect-square rounded-xl border border-dashed border-[#2B3139] flex flex-col items-center justify-center gap-3 text-[#848E9C] bg-[#1E2329]/30">
+                                                <Package size={20} className="opacity-40" />
+                                                <p className="text-[8px] font-black uppercase tracking-wider opacity-40">No Return Photo</p>
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    {/* Return Details */}
+                                    <div className="space-y-4 flex flex-col justify-between">
+                                        <div className="space-y-3">
+                                            <div className="space-y-1.5">
+                                                <span className="text-[8px] sm:text-[9px] font-black text-purple-400 uppercase tracking-[0.2em] sm:tracking-[0.25em] ml-1 flex items-center gap-1.5">
+                                                    <Zap size={10} /> Reason (មូលហេតុ)
+                                                </span>
+                                                <div className="bg-purple-500/10 border border-purple-500/20 p-3 sm:p-4 rounded-xl">
+                                                    <p className="text-[10px] sm:text-xs font-bold text-purple-300 uppercase tracking-wide leading-relaxed">
+                                                        {order['Return Reason'] || 'NO REASON PROVIDED'}
+                                                    </p>
+                                                </div>
+                                            </div>
+
+                                            {order['Return Received By'] && (
+                                                <div className="space-y-1.5">
+                                                    <span className="text-[8px] sm:text-[9px] font-black text-emerald-400 uppercase tracking-[0.2em] sm:tracking-[0.25em] ml-1 flex items-center gap-1.5">
+                                                        <ShieldCheck size={10} /> Confirmed By (ទទួលដោយ)
+                                                    </span>
+                                                    <div className="bg-emerald-500/10 border border-emerald-500/20 p-3 rounded-xl">
+                                                        <p className="text-[10px] sm:text-xs font-mono font-black text-emerald-400 uppercase tracking-wider">
+                                                            {order['Return Received By']}
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                            )}
+
+                                            {order['Return Received Time'] && (
+                                                <div className="space-y-1.5">
+                                                    <span className="text-[8px] sm:text-[9px] font-black text-[#848E9C] uppercase tracking-[0.2em] sm:tracking-[0.25em] ml-1 flex items-center gap-1.5">
+                                                        <Clock size={10} /> Received Time (ម៉ោងទទួល)
+                                                    </span>
+                                                    <div className="bg-[#0B0E11] border border-[#2B3139] p-3 rounded-xl">
+                                                        <p className="text-[10px] sm:text-xs font-mono font-bold text-[#848E9C] tracking-[0.05em]">
+                                                            {order['Return Received Time']}
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
                         {/* Logistics & Payment Row */}
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-8">
                             <div className="bg-[#1E2329]/80 backdrop-blur-md border border-[#2B3139] p-5 sm:p-8 space-y-4 sm:space-y-6 rounded-2xl">
@@ -717,26 +796,6 @@ const OrderDetailModal: React.FC<OrderDetailModalProps> = ({ order, onClose, inl
                                         </div>
                                     </div>
                                 )}
-                                {order['Return Reason'] && (
-                                    <div className="space-y-2">
-                                        <label className="text-[8px] sm:text-[9px] font-black text-purple-400 uppercase tracking-[0.2em] sm:tracking-[0.25em] ml-1 flex items-center gap-2">
-                                            <Zap size={10} /> Return Reason (មូលហេតុប្តូរ/សង)
-                                        </label>
-                                        <div className="bg-purple-500/10 border border-purple-500/30 p-3 sm:p-4 rounded-xl">
-                                            <p className="text-[10px] sm:text-xs font-black text-purple-400 uppercase tracking-wider">{order['Return Reason']}</p>
-                                        </div>
-                                    </div>
-                                )}
-                                {order['Return Received By'] && (
-                                    <div className="space-y-2">
-                                        <label className="text-[8px] sm:text-[9px] font-black text-emerald-400 uppercase tracking-[0.2em] sm:tracking-[0.25em] ml-1 flex items-center gap-2">
-                                            <ShieldCheck size={10} /> Return Confirmed By
-                                        </label>
-                                        <div className="bg-emerald-500/10 border border-emerald-500/30 p-3 sm:p-4 rounded-xl">
-                                            <p className="text-[10px] sm:text-xs font-black text-emerald-400 uppercase tracking-wider">{order['Return Received By']} at {order['Return Received Time']}</p>
-                                        </div>
-                                    </div>
-                                )}
                                 <div className="space-y-2">
                                     <label className="text-[8px] sm:text-[9px] font-black text-[#848E9C] uppercase tracking-[0.2em] sm:tracking-[0.25em] ml-1 flex items-center gap-2">
                                         <User size={10} /> Placed By (អ្នកទម្លាក់ការកម្មង់)
@@ -921,29 +980,6 @@ const OrderDetailModal: React.FC<OrderDetailModalProps> = ({ order, onClose, inl
                                         </div>
                                     </div>
                                     <div className="absolute inset-x-0 h-[2px] bg-[#0ECB81]/70 shadow-[0_0_15px_#0ECB81] top-0 animate-[scan_4s_linear_infinite] z-20"></div>
-                                </div>
-                            </div>
-                        )}
-
-                        {/* Digital Proof: Return Photo */}
-                        {order['Return Photo'] && (
-                            <div className="space-y-3 sm:space-y-4">
-                                <div className="flex items-center gap-3 ml-2">
-                                    <div className="w-1 h-3.5 sm:w-1.5 sm:h-4 bg-purple-500 rounded-full"></div>
-                                    <h3 className="text-[10px] sm:text-[11px] font-black uppercase tracking-[0.2em] sm:tracking-[0.25em] text-purple-400">Return Evidence (រូប Return)</h3>
-                                </div>
-                                <div className="relative group aspect-square rounded-2xl border-2 border-purple-500/30 bg-[#0B0E11] cursor-pointer overflow-hidden shadow-2xl transition-all hover:border-purple-500/50" onClick={() => previewImage(convertGoogleDriveUrl(order['Return Photo']!))}>
-                                    <img src={convertGoogleDriveUrl(order['Return Photo']!)} className="w-full h-full object-cover transition-all duration-1000 sm:grayscale sm:group-hover:grayscale-0 group-hover:scale-110" alt="Return Evidence" />
-                                    <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-all duration-500 flex items-center justify-center backdrop-blur-[2px]">
-                                        <div className="w-12 h-12 sm:w-16 sm:h-16 border-2 border-purple-500 bg-[#0B0E11]/90 rounded-xl sm:rounded-2xl flex items-center justify-center text-purple-400 shadow-[0_0_30px_rgba(168,85,247,0.3)] scale-75 group-hover:scale-100 transition-all duration-500">
-                                            <ExternalLink size={24} className="sm:w-7 sm:h-7" />
-                                        </div>
-                                    </div>
-                                    <div className="absolute inset-x-0 h-[2px] bg-purple-500/70 shadow-[0_0_15px_#a855f7] top-0 animate-[scan_4s_linear_infinite] z-20"></div>
-                                    <div className="absolute top-3 right-3 sm:top-4 sm:right-4 bg-black/60 backdrop-blur-md px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg border border-white/10 flex items-center gap-1.5 sm:gap-2">
-                                        <div className="w-1 h-1 sm:w-1.5 sm:h-1.5 bg-purple-500 rounded-full animate-pulse"></div>
-                                        <span className="text-[8px] sm:text-[10px] font-black uppercase tracking-widest text-white">Return Verified</span>
-                                    </div>
                                 </div>
                             </div>
                         )}

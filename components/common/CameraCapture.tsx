@@ -8,13 +8,15 @@ interface CameraCaptureProps {
     onCancel: () => void;
     orderId?: string;
     customerName?: string;
+    theme?: 'yellow' | 'purple';
 }
 
 export const CameraCapture: React.FC<CameraCaptureProps> = ({
     onCapture,
     onCancel,
     orderId,
-    customerName
+    customerName,
+    theme = 'yellow'
 }) => {
     const [devices, setDevices] = useState<MediaDeviceInfo[]>([]);
     const [selectedDeviceId, setSelectedDeviceId] = useState<string>('');
@@ -27,6 +29,17 @@ export const CameraCapture: React.FC<CameraCaptureProps> = ({
 
     const videoRef = useRef<HTMLVideoElement>(null);
     const canvasRef = useRef<HTMLCanvasElement>(null);
+    const streamRef = useRef<MediaStream | null>(null);
+
+    // Ensure camera stops when component unmounts
+    useEffect(() => {
+        return () => {
+            if (streamRef.current) {
+                streamRef.current.getTracks().forEach(track => track.stop());
+                streamRef.current = null;
+            }
+        };
+    }, []);
 
     // Enumerate video devices
     useEffect(() => {
@@ -88,6 +101,7 @@ export const CameraCapture: React.FC<CameraCaptureProps> = ({
             };
             const mediaStream = await navigator.mediaDevices.getUserMedia(constraints);
             setStream(mediaStream);
+            streamRef.current = mediaStream;
             if (videoRef.current) {
                 videoRef.current.srcObject = mediaStream;
             }
@@ -100,6 +114,7 @@ export const CameraCapture: React.FC<CameraCaptureProps> = ({
             try {
                 const fallbackStream = await navigator.mediaDevices.getUserMedia({ video: true });
                 setStream(fallbackStream);
+                streamRef.current = fallbackStream;
                 if (videoRef.current) {
                     videoRef.current.srcObject = fallbackStream;
                 }
@@ -112,6 +127,10 @@ export const CameraCapture: React.FC<CameraCaptureProps> = ({
     };
 
     const stopCamera = () => {
+        if (streamRef.current) {
+            streamRef.current.getTracks().forEach(track => track.stop());
+            streamRef.current = null;
+        }
         if (stream) {
             stream.getTracks().forEach(track => track.stop());
             setStream(null);
@@ -188,7 +207,7 @@ export const CameraCapture: React.FC<CameraCaptureProps> = ({
             </div>
 
             {/* Video Stream / Capture Area */}
-            <div className="relative aspect-[4/3] sm:aspect-video bg-black rounded-xl overflow-hidden border-2 border-[#2B3139] shadow-inner flex items-center justify-center">
+            <div className={`relative aspect-[4/3] sm:aspect-video bg-black rounded-xl overflow-hidden border-2 ${theme === 'purple' ? 'border-purple-500/30' : 'border-[#2B3139]'} shadow-inner flex items-center justify-center`}>
                 {capturedPhoto ? (
                     <div className="relative w-full h-full animate-in zoom-in-95 duration-200">
                         <img src={capturedPhoto} className="w-full h-full object-cover" alt="Captured return package" />
@@ -203,15 +222,15 @@ export const CameraCapture: React.FC<CameraCaptureProps> = ({
                             className="w-full h-full object-cover"
                         />
                         {/* Viewfinder Corners overlay */}
-                        <div className="absolute top-4 left-4 w-6 h-6 border-t-2 border-l-2 border-[#FCD535]/50 rounded-tl-sm pointer-events-none"></div>
-                        <div className="absolute top-4 right-4 w-6 h-6 border-t-2 border-r-2 border-[#FCD535]/50 rounded-tr-sm pointer-events-none"></div>
-                        <div className="absolute bottom-4 left-4 w-6 h-6 border-b-2 border-l-2 border-[#FCD535]/50 rounded-bl-sm pointer-events-none"></div>
-                        <div className="absolute bottom-4 right-4 w-6 h-6 border-b-2 border-r-2 border-[#FCD535]/50 rounded-br-sm pointer-events-none"></div>
+                        <div className={`absolute top-4 left-4 w-6 h-6 border-t-2 border-l-2 ${theme === 'purple' ? 'border-purple-500/70' : 'border-[#FCD535]/50'} rounded-tl-sm pointer-events-none`}></div>
+                        <div className={`absolute top-4 right-4 w-6 h-6 border-t-2 border-r-2 ${theme === 'purple' ? 'border-purple-500/70' : 'border-[#FCD535]/50'} rounded-tr-sm pointer-events-none`}></div>
+                        <div className={`absolute bottom-4 left-4 w-6 h-6 border-b-2 border-l-2 ${theme === 'purple' ? 'border-purple-500/70' : 'border-[#FCD535]/50'} rounded-bl-sm pointer-events-none`}></div>
+                        <div className={`absolute bottom-4 right-4 w-6 h-6 border-b-2 border-r-2 ${theme === 'purple' ? 'border-purple-500/70' : 'border-[#FCD535]/50'} rounded-br-sm pointer-events-none`}></div>
                     </>
                 ) : (
                     <div className="flex flex-col items-center justify-center space-y-4 text-center px-4 py-8">
                         <div className="w-20 h-20 rounded-full bg-white/5 border border-white/10 flex items-center justify-center relative group">
-                            <Upload className="w-8 h-8 text-gray-500 group-hover:text-[#FCD535] transition-colors" />
+                            <Upload className={`w-8 h-8 text-gray-500 ${theme === 'purple' ? 'group-hover:text-purple-400' : 'group-hover:text-[#FCD535]'} transition-colors`} />
                         </div>
                         <div>
                             <p className="text-sm font-black text-[#EAECEF] uppercase tracking-widest">ជ្រើសរើសឯកសាររូបភាព</p>
@@ -229,7 +248,7 @@ export const CameraCapture: React.FC<CameraCaptureProps> = ({
                 {/* Loading state overlay */}
                 {isLoading && (
                     <div className="absolute inset-0 bg-black/60 flex items-center justify-center backdrop-blur-xs z-20">
-                        <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-[#FCD535]"></div>
+                        <div className={`animate-spin rounded-full h-8 w-8 border-t-2 ${theme === 'purple' ? 'border-purple-500' : 'border-[#FCD535]'}`}></div>
                     </div>
                 )}
 
@@ -251,7 +270,7 @@ export const CameraCapture: React.FC<CameraCaptureProps> = ({
                     <select
                         value={selectedDeviceId}
                         onChange={(e) => setSelectedDeviceId(e.target.value)}
-                        className="flex-1 bg-[#0B0E11] border border-[#2B3139] text-[#EAECEF] rounded-lg p-2 text-xs font-bold outline-none focus:border-[#FCD535]/50"
+                        className={`flex-1 bg-[#0B0E11] border border-[#2B3139] text-[#EAECEF] rounded-lg p-2 text-xs font-bold outline-none ${theme === 'purple' ? 'focus:border-purple-500/50' : 'focus:border-[#FCD535]/50'}`}
                     >
                         {devices.map((device, index) => (
                             <option key={device.deviceId} value={device.deviceId}>
@@ -295,7 +314,7 @@ export const CameraCapture: React.FC<CameraCaptureProps> = ({
                         <button
                             type="button"
                             onClick={handleConfirm}
-                            className="flex-[2] py-3 bg-[#0ECB81] hover:bg-[#0ECB81]/90 text-[#0B0E11] font-black text-xs uppercase tracking-wider rounded-xl transition-all shadow-lg shadow-[#0ECB81]/10 flex items-center justify-center gap-2"
+                            className={`flex-[2] py-3 ${theme === 'purple' ? 'bg-purple-600 hover:bg-purple-500 text-white shadow-purple-600/10' : 'bg-[#0ECB81] hover:bg-[#0ECB81]/90 text-[#0B0E11]'} font-black text-xs uppercase tracking-wider rounded-xl transition-all shadow-lg flex items-center justify-center gap-2`}
                         >
                             <Check size={16} strokeWidth={3} />
                             យល់ព្រម (Confirm)
@@ -307,7 +326,7 @@ export const CameraCapture: React.FC<CameraCaptureProps> = ({
                             type="button"
                             onClick={capturePhoto}
                             disabled={!isCameraActive}
-                            className="flex-[2] py-3 bg-[#FCD535] hover:bg-[#FCD535]/90 text-black font-black text-xs uppercase tracking-wider rounded-xl transition-all disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-lg shadow-[#FCD535]/10"
+                            className={`flex-[2] py-3 ${theme === 'purple' ? 'bg-purple-600 hover:bg-purple-500 text-white shadow-purple-600/10' : 'bg-[#FCD535] hover:bg-[#FCD535]/90 text-black shadow-[#FCD535]/10'} font-black text-xs uppercase tracking-wider rounded-xl transition-all disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-lg`}
                         >
                             <Camera size={16} strokeWidth={2.5} />
                             ថតរូបភាព (Capture)

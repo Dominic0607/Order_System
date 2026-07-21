@@ -104,6 +104,7 @@ const PackagingView: React.FC<{ orders?: ParsedOrder[], onExit?: () => void }> =
     const [isReturnPhotoModalOpen, setIsReturnPhotoModalOpen] = useState(false);
     const [returnPhoto, setReturnPhoto] = useState<string | null>(null);
     const [isSubmittingReturn, setIsSubmittingReturn] = useState(false);
+    const [returnReason, setReturnReason] = useState('');
 
     const [loadingActionId, setLoadingActionId] = useState<string | null>(null);
     const [viewMode, setViewMode] = useState<'card' | 'list'>('card');
@@ -685,6 +686,10 @@ const PackagingView: React.FC<{ orders?: ParsedOrder[], onExit?: () => void }> =
 
     const handleConfirmReturnReceipt = async (photo: string) => {
         if (!returningOrder) return;
+        if (!returnReason.trim()) {
+            alert("សូមបញ្ចូលមូលហេតុ Return (Please enter return reason)");
+            return;
+        }
         setIsSubmittingReturn(true);
         try {
             const session = await CacheService.get<{ token: string }>(CACHE_KEYS.SESSION);
@@ -713,7 +718,10 @@ const PackagingView: React.FC<{ orders?: ParsedOrder[], onExit?: () => void }> =
                     team: returningOrder.Team,
                     userName: currentUser?.UserName || 'System',
                     targetColumn: "Return Photo",
-                    newData: metadata
+                    newData: {
+                        ...metadata,
+                        'Return Reason': returnReason
+                    }
                 })
             });
 
@@ -725,6 +733,7 @@ const PackagingView: React.FC<{ orders?: ParsedOrder[], onExit?: () => void }> =
             setIsReturnPhotoModalOpen(false);
             setReturningOrder(null);
             setReturnPhoto(null);
+            setReturnReason('');
             
             // Refresh data immediately
             await refreshData();
@@ -851,6 +860,7 @@ const PackagingView: React.FC<{ orders?: ParsedOrder[], onExit?: () => void }> =
         onConfirmReturn: (order: ParsedOrder) => {
             if (isViewOnly) return;
             setReturningOrder(order);
+            setReturnReason('');
             setIsReturnPhotoModalOpen(true);
         },
         onPrintManifest: async () => {
@@ -1003,42 +1013,81 @@ const PackagingView: React.FC<{ orders?: ParsedOrder[], onExit?: () => void }> =
             
             {viewingOrder && <OrderDetailModal order={viewingOrder} onClose={() => setViewingOrder(null)} />}
 
-            {isReturnPhotoModalOpen && returningOrder && (
-                <Modal isOpen={true} onClose={() => { if (!isSubmittingReturn) { setIsReturnPhotoModalOpen(false); setReturningOrder(null); } }} maxWidth="max-w-xl">
-                    <div className="bg-[#1E2329] border border-[#2B3139] overflow-hidden rounded-2xl shadow-2xl animate-fade-in p-6 space-y-6">
-                        {/* Header with Order Info */}
-                        <div className="flex items-center justify-between border-b border-[#2B3139] pb-4 bg-[#0B0E11] -mx-6 -mt-6 p-5">
-                            <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 rounded-full bg-purple-500/10 flex items-center justify-center border border-purple-500/20">
-                                    <svg className="w-5 h-5 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
-                                </div>
-                                <div className="min-w-0">
-                                    <h3 className="text-sm font-black text-[#EAECEF] uppercase tracking-wider truncate">បញ្ជាក់ការទទួល Return</h3>
-                                    <p className="text-[10px] font-mono text-[#FCD535] mt-0.5">#{returningOrder['Order ID']}</p>
-                                </div>
-                            </div>
-                            <div className="text-right">
-                                <p className="text-[9px] font-black text-[#848E9C] uppercase tracking-widest">អតិថិជន (Customer)</p>
-                                <p className="text-xs font-bold text-[#EAECEF] truncate max-w-[150px]">{returningOrder['Customer Name']}</p>
-                            </div>
-                        </div>
-
-                        {isSubmittingReturn ? (
-                            <div className="flex flex-col items-center justify-center space-y-4 py-12">
-                                <Spinner size="lg" />
-                                <p className="text-sm font-bold text-[#EAECEF]">កំពុងបញ្ជាក់ការទទួល Return... (Saving...)</p>
-                            </div>
-                        ) : (
-                            <CameraCapture 
-                                onCapture={handleConfirmReturnReceipt}
-                                onCancel={() => { setIsReturnPhotoModalOpen(false); setReturningOrder(null); }}
-                                orderId={returningOrder['Order ID']}
-                                customerName={returningOrder['Customer Name']}
-                            />
-                        )}
-                    </div>
-                </Modal>
-            )}
+             {isReturnPhotoModalOpen && returningOrder && (
+                 <Modal isOpen={true} onClose={() => { if (!isSubmittingReturn) { setIsReturnPhotoModalOpen(false); setReturningOrder(null); setReturnReason(''); } }} maxWidth="max-w-xl" plain={true}>
+                     <div className="bg-[#1E2329] border border-[#2B3139] overflow-hidden rounded-[3rem] border-white/10 p-6 space-y-6 animate-fade-in">
+                         {/* Header with Order Info */}
+                         <div className="flex items-center justify-between border-b border-[#2B3139] pb-4 bg-[#0B0E11] -mx-6 -mt-6 p-5">
+                             <div className="flex items-center gap-3">
+                                 <div className="w-10 h-10 rounded-full bg-purple-500/10 flex items-center justify-center border border-purple-500/20">
+                                     <svg className="w-5 h-5 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+                                 </div>
+                                 <div className="min-w-0">
+                                     <h3 className="text-sm font-black text-[#EAECEF] uppercase tracking-wider truncate">បញ្ជាក់ការទទួល Return</h3>
+                                     <p className="text-[10px] font-mono text-[#FCD535] mt-0.5">#{returningOrder['Order ID']}</p>
+                                 </div>
+                             </div>
+                             <div className="text-right">
+                                 <p className="text-[9px] font-black text-[#848E9C] uppercase tracking-widest">អតិថិជន (Customer)</p>
+                                 <p className="text-xs font-bold text-[#EAECEF] truncate max-w-[150px]">{returningOrder['Customer Name']}</p>
+                             </div>
+                         </div>
+ 
+                         {isSubmittingReturn ? (
+                             <div className="flex flex-col items-center justify-center space-y-4 py-12">
+                                 <Spinner size="lg" />
+                                 <p className="text-sm font-bold text-[#EAECEF]">កំពុងបញ្ជាក់ការទទួល Return... (Saving...)</p>
+                             </div>
+                         ) : (
+                             <div className="space-y-4">
+                                 {/* Return Reason Input & Recommendations */}
+                                 <div className="space-y-3 bg-[#0B0E11] p-4 rounded-xl border border-[#2B3139]">
+                                     <label className="text-xs font-black text-purple-400 uppercase tracking-wider flex items-center gap-1.5">
+                                         <span className="w-1.5 h-1.5 rounded-full bg-purple-500"></span>
+                                         មូលហេតុ Return (Return Reason) <span className="text-red-500">*</span>
+                                     </label>
+                                     
+                                     <textarea
+                                         value={returnReason}
+                                         onChange={(e) => setReturnReason(e.target.value)}
+                                         placeholder="សូមបញ្ចូលមូលហេតុនៃការត្រឡប់មកវិញ..."
+                                         className="w-full bg-[#12161A] border border-[#2B3139] text-[#EAECEF] rounded-xl p-3 text-xs outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500/20 min-h-[70px] resize-none transition-all placeholder:text-gray-600"
+                                     />
+                                     
+                                     {/* Predefined Recommendations */}
+                                     <div className="space-y-2">
+                                         <p className="text-[9px] font-black text-[#848E9C] uppercase tracking-wider">អនុសាសន៍ (Recommended Reasons):</p>
+                                         <div className="flex flex-wrap gap-1.5">
+                                             {['អតិថិជនមិនទទួលកញ្ចប់', 'ឥវ៉ាន់មានបញ្ហា/ខូចខាត', 'ឥវ៉ាន់មិនត្រឹមត្រូវ/ផ្ញើខុស', 'ទាក់ទងមិនបានពេលដឹក', 'ដឹកយូរពេក អតិថិជនមិនចាំ'].map((recReason) => (
+                                                 <button
+                                                     key={recReason}
+                                                     type="button"
+                                                     onClick={() => setReturnReason(recReason)}
+                                                     className={`px-2.5 py-1 text-[9px] font-bold rounded-lg transition-all duration-300 border flex items-center justify-center active:scale-95 ${
+                                                         returnReason === recReason
+                                                             ? 'bg-purple-500/20 border-purple-500 text-purple-300 shadow-[0_0_12px_rgba(168,85,247,0.2)]'
+                                                             : 'bg-[#12161A] border-[#2B3139] text-gray-400 hover:border-purple-500/40 hover:text-purple-300 hover:scale-[1.02]'
+                                                     }`}
+                                                 >
+                                                     {recReason}
+                                                 </button>
+                                             ))}
+                                         </div>
+                                     </div>
+                                 </div>
+ 
+                                 <CameraCapture 
+                                     onCapture={handleConfirmReturnReceipt}
+                                     onCancel={() => { setIsReturnPhotoModalOpen(false); setReturningOrder(null); setReturnReason(''); }}
+                                     orderId={returningOrder['Order ID']}
+                                     customerName={returningOrder['Customer Name']}
+                                     theme="purple"
+                                 />
+                             </div>
+                         )}
+                     </div>
+                 </Modal>
+             )}
 
             {isFilterModalOpen && (
                 <Modal isOpen={true} onClose={() => setIsFilterModalOpen(false)} maxWidth="max-w-lg">

@@ -907,8 +907,8 @@ const EditOrderPage: React.FC<EditOrderPageProps> = ({ order, onSaveSuccess, onC
                         />
 
                         {isReturnPhotoModalOpen && (
-                            <Modal isOpen={true} onClose={() => { if (!isSubmittingReturn) { setIsReturnPhotoModalOpen(false); } }} maxWidth="max-w-xl">
-                                <div className="bg-[#1E2329] border border-[#2B3139] overflow-hidden rounded-2xl shadow-2xl animate-fade-in p-6 space-y-6">
+                            <Modal isOpen={true} onClose={() => { if (!isSubmittingReturn) { setIsReturnPhotoModalOpen(false); } }} maxWidth="max-w-xl" plain={true}>
+                                <div className="bg-[#1E2329] border border-[#2B3139] overflow-hidden rounded-[3rem] border-white/10 p-6 space-y-6 animate-fade-in">
                                     {/* Header with Order Info */}
                                     <div className="flex items-center justify-between border-b border-[#2B3139] pb-4 bg-[#0B0E11] -mx-6 -mt-6 p-5">
                                         <div className="flex items-center gap-3">
@@ -939,6 +939,7 @@ const EditOrderPage: React.FC<EditOrderPageProps> = ({ order, onSaveSuccess, onC
                                             onCancel={() => { setIsReturnPhotoModalOpen(false); }}
                                             orderId={formData['Order ID']}
                                             customerName={formData['Customer Name']}
+                                            theme="purple"
                                         />
                                     )}
                                 </div>
