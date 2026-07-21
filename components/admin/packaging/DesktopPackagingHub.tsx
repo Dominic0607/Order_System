@@ -588,8 +588,10 @@ const DesktopPackagingHub: React.FC<DesktopPackagingHubProps> = ({
                                                                 </div>
                                                             )}
                                                             {activeTab === 'Returned' && (
-                                                                <div className="flex items-center gap-1 bg-purple-500/5 px-2 py-0.5 rounded-sm border border-purple-500/10">
-                                                                    <span className={`text-[9px] font-black text-purple-400 uppercase tracking-tight`}>Returned</span>
+                                                                <div className={`flex items-center gap-1 px-2 py-0.5 rounded-sm border ${fs === 'Cancelled' ? 'bg-red-500/5 border-red-500/10' : 'bg-purple-500/5 border-purple-500/10'}`}>
+                                                                    <span className={`text-[9px] font-black uppercase tracking-tight ${fs === 'Cancelled' ? 'text-red-400' : 'text-purple-400'}`}>
+                                                                        {fs === 'Cancelled' ? 'Unpacked' : 'Returned'}
+                                                                    </span>
                                                                 </div>
                                                             )}
                                                             <div className="flex items-center gap-1.5">
@@ -687,7 +689,9 @@ const DesktopPackagingHub: React.FC<DesktopPackagingHubProps> = ({
                                                                     </div>
                                                                 )}
                                                                 <div className="flex flex-col min-w-0">
-                                                                    <span className="text-[9px] font-black text-purple-400 uppercase tracking-wider">✓ Received</span>
+                                                                    <span className={`text-[9px] font-black uppercase tracking-wider ${fs === 'Cancelled' ? 'text-red-400' : 'text-purple-400'}`}>
+                                                                        {fs === 'Cancelled' ? '✓ Unpacked' : '✓ Received'}
+                                                                    </span>
                                                                     <span className="text-[9px] text-[#848E9C] truncate" title={order['Return Received By']}>Confirmed By: {order['Return Received By']}</span>
                                                                     {order['Return Received Time'] && (
                                                                         <span className="text-[8px] text-[#848E9C]/70">{order['Return Received Time'].slice(0, 16)}</span>
@@ -1031,7 +1035,7 @@ const DesktopPackagingHub: React.FC<DesktopPackagingHubProps> = ({
                                                             <button onClick={(e) => { e.stopPropagation(); onUndoShipped(order); }} className={`px-3 py-1 bg-[#F6465D]/10 hover:bg-[#F6465D]/20 ${B_RED} text-xs font-bold uppercase rounded-sm transition-colors`}>Undo</button>
                                                         )}
                                                         {activeTab === 'Returned' && (
-                                                            <div className="flex gap-2 items-center">
+                                                            <div className="flex gap-2 items-center w-full">
                                                                 {order['Return Received By'] ? (
                                                                     <>
                                                                         {order['Return Photo'] && (
@@ -1044,15 +1048,23 @@ const DesktopPackagingHub: React.FC<DesktopPackagingHubProps> = ({
                                                                             </button>
                                                                         )}
                                                                         <div className="flex flex-col min-w-0">
-                                                                            <span className="text-[9px] font-black text-[#0ECB81] uppercase">✓ Received</span>
+                                                                            <span className={`text-[9px] font-black uppercase ${isCancelled ? 'text-red-400' : 'text-[#0ECB81]'}`}>
+                                                                                {isCancelled ? '✓ Unpacked' : '✓ Received'}
+                                                                            </span>
                                                                             <span className="text-[9px] text-[#848E9C] truncate max-w-[80px]" title={order['Return Received By']}>{order['Return Received By']}</span>
                                                                         </div>
-                                                                        <button 
-                                                                            onClick={(e) => { e.stopPropagation(); setUnpackTarget(order); }} 
-                                                                            className="px-3 py-1 bg-red-600 hover:bg-red-700 text-white text-xs font-bold uppercase rounded-sm transition-colors shadow-lg shadow-red-600/20 ml-auto flex-shrink-0"
-                                                                        >
-                                                                            ហែកកញ្ចប់
-                                                                        </button>
+                                                                        {!isCancelled ? (
+                                                                            <button 
+                                                                                onClick={(e) => { e.stopPropagation(); setUnpackTarget(order); }} 
+                                                                                className="px-3 py-1 bg-red-600 hover:bg-red-700 text-white text-xs font-bold uppercase rounded-sm transition-colors shadow-lg shadow-red-600/20 ml-auto flex-shrink-0"
+                                                                            >
+                                                                                ហែកកញ្ចប់
+                                                                            </button>
+                                                                        ) : (
+                                                                            <div className="px-2.5 py-1 bg-red-500/10 border border-red-500/30 text-red-400 rounded-sm text-[10px] font-black uppercase ml-auto flex-shrink-0">
+                                                                                ហែករួចរាល់
+                                                                            </div>
+                                                                        )}
                                                                     </>
                                                                 ) : (
                                                                     <button 

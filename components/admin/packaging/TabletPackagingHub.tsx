@@ -491,9 +491,11 @@ const TabletPackagingHub: React.FC<TabletPackagingHubProps> = ({
                                                         </div>
                                                     )}
                                                     {activeTab === 'Returned' && (
-                                                        <div className="flex items-center gap-1 bg-purple-500/5 px-2 py-0.5 rounded-sm border border-purple-500/10">
-                                                            <span className={`text-[8px] font-black text-purple-400 uppercase tracking-tight`}>Returned</span>
-                                                        </div>
+                                                         <div className={`flex items-center gap-1 px-2 py-0.5 rounded-sm border ${fs === 'Cancelled' ? 'bg-red-500/5 border-red-500/10' : 'bg-purple-500/5 border-purple-500/10'}`}>
+                                                             <span className={`text-[8px] font-black uppercase tracking-tight ${fs === 'Cancelled' ? 'text-red-400' : 'text-purple-400'}`}>
+                                                                 {fs === 'Cancelled' ? 'Unpacked' : 'Returned'}
+                                                             </span>
+                                                         </div>
                                                     )}
                                                     <div className="flex items-center gap-1.5">
                                                         {getShippingLogo(order['Internal Shipping Method']) && (
@@ -720,23 +722,29 @@ const TabletPackagingHub: React.FC<TabletPackagingHubProps> = ({
                                                                         <button 
                                                                             onClick={(e) => { e.stopPropagation(); onConfirmReturn?.(order); }} 
                                                                             disabled={!!order['Return Received By']}
-                                                                            className={`px-3 py-1 ${order['Return Received By'] ? 'bg-purple-500/10 text-purple-400 border border-purple-500/20' : 'bg-purple-500 text-white font-bold'} rounded-sm text-xs uppercase transition-colors`}
+                                                                            className={`px-3 py-1 ${order['Return Received By'] ? (fs === 'Cancelled' ? 'bg-red-500/10 text-red-400 border border-red-500/20' : 'bg-purple-500/10 text-purple-400 border border-purple-500/20') : 'bg-purple-500 text-white font-bold'} rounded-sm text-xs uppercase transition-colors`}
                                                                         >
-                                                                            {order['Return Received By'] ? '✓ Received' : 'Confirm'}
+                                                                            {order['Return Received By'] ? (fs === 'Cancelled' ? '✓ Unpacked' : '✓ Received') : 'Confirm'}
                                                                         </button>
                                                                         {!!order['Return Received By'] && (
                                                                             <>
-                                                                                <div className="flex items-center justify-center border border-purple-500/20 bg-purple-500/5 rounded-sm px-2 py-1 max-w-[150px] overflow-hidden">
-                                                                                    <span className="text-[9px] font-black text-purple-400 uppercase truncate" title={order['Return Received By']}>
+                                                                                <div className={`flex items-center justify-center border rounded-sm px-2 py-1 max-w-[150px] overflow-hidden ${fs === 'Cancelled' ? 'border-red-500/20 bg-red-500/5' : 'border-purple-500/20 bg-purple-500/5'}`}>
+                                                                                    <span className={`text-[9px] font-black uppercase truncate ${fs === 'Cancelled' ? 'text-red-400' : 'text-purple-400'}`} title={order['Return Received By']}>
                                                                                         Confirm by: {order['Return Received By']}
                                                                                     </span>
                                                                                 </div>
-                                                                                <button 
-                                                                                    onClick={(e) => { e.stopPropagation(); onUnpack(order); }}
-                                                                                    className="px-3 py-1 bg-red-600 hover:bg-red-700 text-white font-bold rounded-sm text-xs uppercase transition-colors"
-                                                                                >
-                                                                                    ហែកកញ្ចប់
-                                                                                </button>
+                                                                                {fs !== 'Cancelled' ? (
+                                                                                    <button 
+                                                                                        onClick={(e) => { e.stopPropagation(); onUnpack(order); }}
+                                                                                        className="px-3 py-1 bg-red-600 hover:bg-red-700 text-white font-bold rounded-sm text-xs uppercase transition-colors"
+                                                                                    >
+                                                                                        ហែកកញ្ចប់
+                                                                                    </button>
+                                                                                ) : (
+                                                                                    <div className="px-3 py-1 bg-red-500/10 border border-red-500/30 text-red-400 rounded-sm text-xs font-bold uppercase">
+                                                                                        ហែករួចរាល់
+                                                                                    </div>
+                                                                                )}
                                                                             </>
                                                                         )}
                                                                     </div>
