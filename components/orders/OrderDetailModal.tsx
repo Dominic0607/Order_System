@@ -404,16 +404,15 @@ const OrderDetailModal: React.FC<OrderDetailModalProps> = ({ order, onClose, inl
         },
     ];
 
-    if (fs === 'Returned' || (fs === 'Cancelled' && returnReceivedBy) || returnReceivedTime || returnReason || returnPhoto) {
-        const isUnpacked = fs === 'Cancelled' && returnReceivedBy;
+    if (fs === 'Returned' || returnReceivedBy || returnReceivedTime || returnReason || returnPhoto) {
         lifecycleEvents.push({
-            key: isUnpacked ? 'unpacked' : 'returned',
-            label: isUnpacked ? 'Unpacked & Stocked' : 'Return Confirmed',
-            labelKm: isUnpacked ? 'ហែកកញ្ចប់រួចរាល់' : 'បានទទួលទំនិញត្រឡប់',
+            key: 'returned',
+            label: 'Return Confirmed',
+            labelKm: 'បានទទួលទំនិញត្រឡប់',
             value: returnReceivedTime,
-            icon: isUnpacked ? PackageX : RefreshCw,
-            color: isUnpacked ? 'text-red-400' : 'text-purple-400',
-            dot: isUnpacked ? 'bg-red-400' : 'bg-purple-400',
+            icon: RefreshCw,
+            color: 'text-purple-400',
+            dot: 'bg-purple-400',
         });
     }
 
@@ -547,33 +546,31 @@ const OrderDetailModal: React.FC<OrderDetailModalProps> = ({ order, onClose, inl
                             </div>
                         </div>
 
-                        {/* Return / Unpacked Protocol Card */}
+                        {/* Return Protocol Card */}
                         {(fs === 'Returned' || isUnpacked || returnReason || returnPhoto) && (
-                            <div className={`bg-gradient-to-br from-[#1E2329] to-[#0B0E11] border ${isUnpacked ? 'border-red-500/30' : 'border-purple-500/30'} p-5 sm:p-8 space-y-6 sm:space-y-8 relative overflow-hidden group rounded-2xl shadow-2xl`}>
+                            <div className="bg-gradient-to-br from-[#1E2329] to-[#0B0E11] border border-purple-500/30 p-5 sm:p-8 space-y-6 sm:space-y-8 relative overflow-hidden group rounded-2xl shadow-2xl">
                                 <div className="absolute top-0 right-0 p-6 opacity-[0.03] group-hover:opacity-10 transition-opacity pointer-events-none -rotate-12 group-hover:rotate-0 duration-1000">
-                                    <ShieldCheck size={120} className={isUnpacked ? 'text-red-500' : 'text-purple-500'} />
+                                    <ShieldCheck size={120} className="text-purple-500" />
                                 </div>
                                 <div className="flex items-center gap-3 relative z-10">
-                                    <Zap size={16} className={`animate-pulse sm:w-4.5 sm:h-4.5 ${isUnpacked ? 'text-red-400' : 'text-purple-400'}`} />
-                                    <h3 className={`text-[10px] sm:text-xs font-black uppercase tracking-[0.2em] sm:tracking-[0.3em] ${isUnpacked ? 'text-red-400' : 'text-purple-400'}`}>
-                                        {isUnpacked ? 'Unpacked Protocol (ហែកកញ្ចប់រួចរាល់)' : 'Return Protocol (ព័ត៌មាន Return)'}
-                                    </h3>
+                                    <Zap size={16} className="text-purple-400 animate-pulse sm:w-4.5 sm:h-4.5" />
+                                    <h3 className="text-[10px] sm:text-xs font-black uppercase tracking-[0.2em] sm:tracking-[0.3em] text-purple-400">Return Protocol (ព័ត៌មាន Return)</h3>
                                 </div>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 relative z-10">
                                     {/* Return Package Photo */}
                                     <div className="space-y-2">
-                                        <label className={`text-[8px] sm:text-[9px] font-black uppercase tracking-[0.2em] sm:tracking-[0.25em] ml-1 flex items-center gap-2 ${isUnpacked ? 'text-red-400' : 'text-purple-400'}`}>
-                                            <Package size={10} /> {isUnpacked ? 'Unpacked Package (កញ្ចប់ឥវ៉ាន់ហែករួច)' : 'Return Package (កញ្ចប់ឥវ៉ាន់ Return)'}
+                                        <label className="text-[8px] sm:text-[9px] font-black text-purple-400 uppercase tracking-[0.2em] sm:tracking-[0.25em] ml-1 flex items-center gap-2">
+                                            <Package size={10} /> Return Package (កញ្ចប់ឥវ៉ាន់ Return)
                                         </label>
                                         {returnPhoto ? (
-                                            <div className={`relative group aspect-square rounded-xl border ${isUnpacked ? 'border-red-500/30 hover:border-red-500/50' : 'border-purple-500/30 hover:border-purple-500/50'} bg-[#0B0E11] cursor-pointer overflow-hidden shadow-lg transition-all`} onClick={() => previewImage(convertGoogleDriveUrl(returnPhoto!))}>
+                                            <div className="relative group aspect-square rounded-xl border border-purple-500/30 bg-[#0B0E11] cursor-pointer overflow-hidden shadow-lg transition-all hover:border-purple-500/50" onClick={() => previewImage(convertGoogleDriveUrl(returnPhoto!))}>
                                                 <img src={convertGoogleDriveUrl(returnPhoto!)} className="w-full h-full object-cover transition-all duration-1000 sm:grayscale sm:group-hover:grayscale-0 group-hover:scale-110" alt="Return Package" />
                                                 <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-all duration-500 flex items-center justify-center backdrop-blur-[2px]">
-                                                    <div className={`w-10 h-10 border bg-[#0B0E11]/90 rounded-lg flex items-center justify-center shadow-[0_0_20px_rgba(239,68,68,0.3)] scale-75 group-hover:scale-100 transition-all duration-500 ${isUnpacked ? 'border-red-400 text-red-400' : 'border-purple-400 text-purple-400'}`}>
+                                                    <div className="w-10 h-10 border border-purple-400 bg-[#0B0E11]/90 rounded-lg flex items-center justify-center text-purple-400 shadow-[0_0_20px_rgba(168,85,247,0.3)] scale-75 group-hover:scale-100 transition-all duration-500">
                                                         <ExternalLink size={16} />
                                                     </div>
                                                 </div>
-                                                <div className={`absolute inset-x-0 h-[1.5px] top-0 animate-[scan_4s_linear_infinite] z-20 ${isUnpacked ? 'bg-red-500/70 shadow-[0_0_10px_#ef4444]' : 'bg-purple-500/70 shadow-[0_0_10px_#a855f7]'}`}></div>
+                                                <div className="absolute inset-x-0 h-[1.5px] bg-purple-500/70 shadow-[0_0_10px_#a855f7] top-0 animate-[scan_4s_linear_infinite] z-20"></div>
                                             </div>
                                         ) : (
                                             <div className="aspect-square rounded-xl border border-dashed border-[#2B3139] flex flex-col items-center justify-center gap-3 text-[#848E9C] bg-[#1E2329]/30">
@@ -587,11 +584,11 @@ const OrderDetailModal: React.FC<OrderDetailModalProps> = ({ order, onClose, inl
                                     <div className="space-y-4 flex flex-col justify-between">
                                         <div className="space-y-3">
                                             <div className="space-y-1.5">
-                                                <span className={`text-[8px] sm:text-[9px] font-black uppercase tracking-[0.2em] sm:tracking-[0.25em] ml-1 flex items-center gap-1.5 ${isUnpacked ? 'text-red-400' : 'text-purple-400'}`}>
+                                                <span className="text-[8px] sm:text-[9px] font-black text-purple-400 uppercase tracking-[0.2em] sm:tracking-[0.25em] ml-1 flex items-center gap-1.5">
                                                     <Zap size={10} /> Reason (មូលហេតុ)
                                                 </span>
-                                                <div className={`border p-3 sm:p-4 rounded-xl ${isUnpacked ? 'bg-red-500/10 border-red-500/20' : 'bg-purple-500/10 border-purple-500/20'}`}>
-                                                    <p className={`text-[10px] sm:text-xs font-bold uppercase tracking-wide leading-relaxed ${isUnpacked ? 'text-red-300' : 'text-purple-300'}`}>
+                                                <div className="bg-purple-500/10 border border-purple-500/20 p-3 sm:p-4 rounded-xl">
+                                                    <p className="text-[10px] sm:text-xs font-bold text-purple-300 uppercase tracking-wide leading-relaxed">
                                                         {returnReason || 'NO REASON PROVIDED'}
                                                     </p>
                                                 </div>
@@ -599,11 +596,11 @@ const OrderDetailModal: React.FC<OrderDetailModalProps> = ({ order, onClose, inl
 
                                             {returnReceivedBy && (
                                                 <div className="space-y-1.5">
-                                                    <span className={`text-[8px] sm:text-[9px] font-black uppercase tracking-[0.2em] sm:tracking-[0.25em] ml-1 flex items-center gap-1.5 ${isUnpacked ? 'text-red-400' : 'text-emerald-400'}`}>
-                                                        <ShieldCheck size={10} /> {isUnpacked ? 'Unpacked By (ហែកកញ្ចប់ដោយ)' : 'Confirmed By (ទទួលដោយ)'}
+                                                    <span className="text-[8px] sm:text-[9px] font-black text-emerald-400 uppercase tracking-[0.2em] sm:tracking-[0.25em] ml-1 flex items-center gap-1.5">
+                                                        <ShieldCheck size={10} /> Confirmed By (ទទួលដោយ)
                                                     </span>
-                                                    <div className={`border p-3 rounded-xl ${isUnpacked ? 'bg-red-500/10 border-red-500/20' : 'bg-emerald-500/10 border-emerald-500/20'}`}>
-                                                        <p className={`text-[10px] sm:text-xs font-mono font-black uppercase tracking-wider ${isUnpacked ? 'text-red-400' : 'text-emerald-400'}`}>
+                                                    <div className="bg-emerald-500/10 border border-emerald-500/20 p-3 rounded-xl">
+                                                        <p className="text-[10px] sm:text-xs font-mono font-black text-emerald-400 uppercase tracking-wider">
                                                             {returnReceivedBy}
                                                         </p>
                                                     </div>
@@ -613,7 +610,7 @@ const OrderDetailModal: React.FC<OrderDetailModalProps> = ({ order, onClose, inl
                                             {returnReceivedTime && (
                                                 <div className="space-y-1.5">
                                                     <span className="text-[8px] sm:text-[9px] font-black text-[#848E9C] uppercase tracking-[0.2em] sm:tracking-[0.25em] ml-1 flex items-center gap-1.5">
-                                                        <Clock size={10} /> {isUnpacked ? 'Unpack Time (ម៉ោងហែកកញ្ចប់)' : 'Received Time (ម៉ោងទទួល)'}
+                                                        <Clock size={10} /> Received Time (ម៉ោងទទួល)
                                                     </span>
                                                     <div className="bg-[#0B0E11] border border-[#2B3139] p-3 rounded-xl">
                                                         <p className="text-[10px] sm:text-xs font-mono font-bold text-[#848E9C] tracking-[0.05em]">
@@ -882,18 +879,18 @@ const OrderDetailModal: React.FC<OrderDetailModalProps> = ({ order, onClose, inl
                                                                         <p className={`text-[9px] sm:text-[10px] font-mono font-black truncate ${event.color}`}>{dateTime.time}</p>
                                                                     </div>
                                                                 </div>
-                                                                {(event.key === 'returned' || event.key === 'unpacked') && (
+                                                                {event.key === 'returned' && (
                                                                     <div className="mt-1 border-t border-[#2B3139] border-dashed pt-1.5 flex flex-col gap-1">
                                                                         <div className="flex items-center justify-between gap-2">
                                                                             <span className="text-[7px] sm:text-[8px] font-black text-[#5E6673] uppercase tracking-widest">Status</span>
-                                                                            <span className={`text-[9px] sm:text-[10px] font-black uppercase tracking-widest flex items-center gap-1 ${event.key === 'unpacked' ? 'text-red-400' : 'text-purple-400'}`}>
-                                                                                <Check size={10} className={event.key === 'unpacked' ? 'text-red-400' : 'text-purple-400'} /> {event.key === 'unpacked' ? 'Unpacked (ហែករួចរាល់)' : 'Confirmed (បានទទួល)'}
+                                                                            <span className="text-[9px] sm:text-[10px] font-black text-purple-400 uppercase tracking-widest flex items-center gap-1">
+                                                                                <Check size={10} className="text-purple-400" /> Confirmed (បានទទួល)
                                                                             </span>
                                                                         </div>
                                                                         {returnReceivedBy && (
                                                                             <div className="flex items-center justify-between gap-2">
-                                                                                <span className="text-[7px] sm:text-[8px] font-black text-[#5E6673] uppercase tracking-widest">{event.key === 'unpacked' ? 'Unpacked By' : 'Confirmed By'}</span>
-                                                                                <span className={`text-[9px] sm:text-[10px] font-black uppercase tracking-wide truncate ${event.key === 'unpacked' ? 'text-red-300' : 'text-purple-300'}`}>{returnReceivedBy}</span>
+                                                                                <span className="text-[7px] sm:text-[8px] font-black text-[#5E6673] uppercase tracking-widest">Confirmed By</span>
+                                                                                <span className="text-[9px] sm:text-[10px] font-black text-purple-300 uppercase tracking-wide truncate">{returnReceivedBy}</span>
                                                                             </div>
                                                                         )}
                                                                     </div>
