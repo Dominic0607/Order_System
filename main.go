@@ -1036,8 +1036,7 @@ func checkPackingDelaysLoop() {
 					if order.FulfillmentStore != "" {
 						err := backend.DB.Where("store_name = ?", order.FulfillmentStore).First(&store).Error
 						if err == nil && store.TelegramBotToken != "" && store.TelegramGroupID != "" {
-							elapsedMins := int(elapsed.Minutes())
-							msg := fmt.Sprintf("⚠️ *រំលឹកការវេចខ្ចប់យឺត (Packing Reminder)* ⚠️\n\nអ្នកវេចខ្ចប់៖ %s\nលេខ Order៖ `%s`\nស្ថានភាព៖ កំពុងវេចខ្ចប់យឺតរហូតដល់ *%d នាទី* ហើយ!\nសូមប្រញាប់វេចខ្ចប់ និងបញ្ចប់ការងារ។", mentionStr, order.OrderID, elapsedMins)
+							msg := fmt.Sprintf("%s⚠️ *កញ្ចប់ឥវ៉ាន់យឺតយ៉ាវ (Over 30m)*\nកញ្ចប់ឥវ៉ាន់ `#%s` របស់អតិថិជន *%s* មិនទាន់បានវេចខ្ចប់លើសពី %d នាទីហើយ!", mentionStr, order.OrderID, order.CustomerName, int(elapsed.Minutes()))
 
 							payload := map[string]interface{}{
 								"chat_id":    store.TelegramGroupID,
@@ -1056,7 +1055,7 @@ func checkPackingDelaysLoop() {
 								// Update LastTelegramReminderTime in database
 								order.LastTelegramReminderTime = now.Format("2006-01-02 15:04:05")
 								backend.DB.Model(&Order{}).Where("order_id = ?", order.OrderID).Update("last_telegram_reminder_time", order.LastTelegramReminderTime)
-								log.Printf("🔔 [Delay Monitor] Sent reminder to %s for Order %s (%d mins late)", mentionStr, order.OrderID, elapsedMins)
+								log.Printf("🔔 [Delay Monitor] Sent reminder to %s for Order %s (%d mins late)", mentionStr, order.OrderID, int(elapsed.Minutes()))
 							} else {
 								log.Printf("❌ [Delay Monitor] Error sending Telegram reminder: %v", err)
 							}
@@ -4106,7 +4105,7 @@ func main() {
 			mentionStr = "@" + strings.ReplaceAll(order.PackedBy, " ", "_")
 		}
 
-		msg := fmt.Sprintf("⚠️ *រំលឹកការវេចខ្ចប់យឺត (Packing Reminder - TEST)* ⚠️\n\nអ្នកវេចខ្ចប់៖ %s\nលេខ Order៖ `%s`\nស្ថានភាព៖ កំពុងវេចខ្ចប់យឺតរហូតដល់ *35 នាទី* ហើយ!\nសូមប្រញាប់វេចខ្ចប់ និងបញ្ចប់ការងារ។", mentionStr, order.OrderID)
+		msg := fmt.Sprintf("%s⚠️ *កញ្ចប់ឥវ៉ាន់យឺតយ៉ាវ (Over 30m)*\nកញ្ចប់ឥវ៉ាន់ `#%s` របស់អតិថិជន *%s* មិនទាន់បានវេចខ្ចប់លើសពី 30 នាទីហើយ!", mentionStr, order.OrderID, order.CustomerName)
 
 		payload := map[string]interface{}{
 			"chat_id":    strings.TrimSpace(store.TelegramGroupID),
