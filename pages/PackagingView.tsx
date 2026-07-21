@@ -863,8 +863,7 @@ const PackagingView: React.FC<{ orders?: ParsedOrder[], onExit?: () => void }> =
                 executeAction(order, 'Cancelled', { 
                     'Return Received By': currentUser?.FullName || 'Staff',
                     'Return Received Time': new Date().toISOString().slice(0, 19).replace('T', ' '),
-                    'Cancel Reason': order['Return Reason'] || 'Returned and Unpacked',
-                    'Packed By': '', 'Packed Time': '', 'Package Photo': ''
+                    'Cancel Reason': order['Return Reason'] || 'Returned and Unpacked'
                 });
             }
         },
