@@ -996,24 +996,21 @@ const PackagingView: React.FC<{ orders?: ParsedOrder[], onExit?: () => void }> =
                                 <p className="text-gray-400 text-sm">សូមជ្រើសរើសជម្រើសខាងក្រោម៖</p>
                                 <div className="grid grid-cols-1 gap-4 pt-4">
                                     <button onClick={() => { setIsViewOnly(true); setIsShiftModalOpen(false); }} className="w-full py-4 bg-white/5 hover:bg-white/10 text-white font-bold rounded-xl transition-all border border-white/10">👀 ចូលមើល (View Only)</button>
-                                    <button onClick={() => setShiftStep('login')} className="w-full py-4 bg-[#FCD535] hover:bg-[#FCD535]/90 text-black font-bold rounded-xl transition-all shadow-xl shadow-[#FCD535]/10">🔑 បើកវេន (Open Shift)</button>
+                                    <button 
+                                        onClick={handleOpenShift} 
+                                        disabled={isShiftLoading} 
+                                        className="w-full py-4 bg-[#FCD535] hover:bg-[#FCD535]/90 text-black font-bold rounded-xl transition-all shadow-xl shadow-[#FCD535]/10 flex items-center justify-center"
+                                    >
+                                        {isShiftLoading ? (
+                                            <div className="flex items-center gap-2">
+                                                <div className="w-4 h-4 border-2 border-black/20 border-t-black rounded-full animate-spin"></div>
+                                                <span>កំពុងបើកវេន...</span>
+                                            </div>
+                                        ) : (
+                                            '🔑 បើកវេន (Open Shift)'
+                                        )}
+                                    </button>
                                     <button onClick={() => { setIsShiftModalOpen(false); setSelectedStore(''); }} className="w-full py-3 bg-transparent text-gray-500 hover:text-gray-300 font-bold rounded-xl transition-all border border-white/5 hover:border-white/10 text-sm">← ត្រឡប់ (ជ្រើសឃ្លាំងផ្សេង)</button>
-                                </div>
-                            </div>
-                        )}
-                        {shiftStep === 'login' && (
-                            <div className="space-y-6">
-                                <div className="text-center">
-                                    <h3 className="text-xl font-black text-white uppercase tracking-wider">បញ្ជាក់អត្តសញ្ញាណ</h3>
-                                    <p className="text-gray-400 text-xs mt-2 uppercase tracking-widest">Verify credentials to open shift</p>
-                                </div>
-                                <div className="space-y-4">
-                                    <input type="text" placeholder="Username" value={shiftLogin.username} onChange={e => setShiftLogin({...shiftLogin, username: e.target.value})} className="w-full bg-[#0B0E11] border border-[#2B3139] rounded-xl px-5 py-4 text-white focus:border-[#FCD535] outline-none transition-all font-mono" />
-                                    <input type="password" placeholder="Password" value={shiftLogin.password} onChange={e => setShiftLogin({...shiftLogin, password: e.target.value})} className="w-full bg-[#0B0E11] border border-[#2B3139] rounded-xl px-5 py-4 text-white focus:border-[#FCD535] outline-none transition-all font-mono" />
-                                    <div className="flex gap-3 pt-4">
-                                        <button onClick={() => setShiftStep('options')} className="flex-1 py-4 bg-white/5 text-gray-400 font-bold rounded-xl hover:bg-white/10 transition-all">ថយក្រោយ</button>
-                                        <button onClick={() => { if (shiftLogin.username && shiftLogin.password) handleOpenShift(); else alert("សូមបញ្ចូល Username និង Password"); }} disabled={isShiftLoading} className="flex-grow py-4 bg-[#FCD535] text-black font-bold rounded-xl hover:bg-[#FCD535]/90 transition-all shadow-lg flex items-center justify-center">{isShiftLoading ? <div className="flex items-center gap-2"><div className="w-4 h-4 border-2 border-black/20 border-t-black rounded-full animate-spin"></div><span>កំពុងបើកវេន...</span></div> : 'បើកវេន'}</button>
-                                    </div>
                                 </div>
                             </div>
                         )}
