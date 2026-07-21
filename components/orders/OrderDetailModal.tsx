@@ -526,7 +526,7 @@ const OrderDetailModal: React.FC<OrderDetailModalProps> = ({ order, onClose, inl
                         </div>
 
                         {/* Return Protocol Card */}
-                        {(order.FulfillmentStatus === 'Returned' || order['Return Reason'] || order['Return Photo']) && (
+                        {(fs === 'Returned' || returnReason || returnPhoto) && (
                             <div className="bg-gradient-to-br from-[#1E2329] to-[#0B0E11] border border-purple-500/30 p-5 sm:p-8 space-y-6 sm:space-y-8 relative overflow-hidden group rounded-2xl shadow-2xl">
                                 <div className="absolute top-0 right-0 p-6 opacity-[0.03] group-hover:opacity-10 transition-opacity pointer-events-none -rotate-12 group-hover:rotate-0 duration-1000">
                                     <ShieldCheck size={120} className="text-purple-500" />
@@ -541,9 +541,9 @@ const OrderDetailModal: React.FC<OrderDetailModalProps> = ({ order, onClose, inl
                                         <label className="text-[8px] sm:text-[9px] font-black text-purple-400 uppercase tracking-[0.2em] sm:tracking-[0.25em] ml-1 flex items-center gap-2">
                                             <Package size={10} /> Return Package (កញ្ចប់ឥវ៉ាន់ Return)
                                         </label>
-                                        {order['Return Photo'] ? (
-                                            <div className="relative group aspect-square rounded-xl border border-purple-500/30 bg-[#0B0E11] cursor-pointer overflow-hidden shadow-lg transition-all hover:border-purple-500/50" onClick={() => previewImage(convertGoogleDriveUrl(order['Return Photo']!))}>
-                                                <img src={convertGoogleDriveUrl(order['Return Photo']!)} className="w-full h-full object-cover transition-all duration-1000 sm:grayscale sm:group-hover:grayscale-0 group-hover:scale-110" alt="Return Package" />
+                                        {returnPhoto ? (
+                                            <div className="relative group aspect-square rounded-xl border border-purple-500/30 bg-[#0B0E11] cursor-pointer overflow-hidden shadow-lg transition-all hover:border-purple-500/50" onClick={() => previewImage(convertGoogleDriveUrl(returnPhoto!))}>
+                                                <img src={convertGoogleDriveUrl(returnPhoto!)} className="w-full h-full object-cover transition-all duration-1000 sm:grayscale sm:group-hover:grayscale-0 group-hover:scale-110" alt="Return Package" />
                                                 <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-all duration-500 flex items-center justify-center backdrop-blur-[2px]">
                                                     <div className="w-10 h-10 border border-purple-400 bg-[#0B0E11]/90 rounded-lg flex items-center justify-center text-purple-400 shadow-[0_0_20px_rgba(168,85,247,0.3)] scale-75 group-hover:scale-100 transition-all duration-500">
                                                         <ExternalLink size={16} />
@@ -568,32 +568,32 @@ const OrderDetailModal: React.FC<OrderDetailModalProps> = ({ order, onClose, inl
                                                 </span>
                                                 <div className="bg-purple-500/10 border border-purple-500/20 p-3 sm:p-4 rounded-xl">
                                                     <p className="text-[10px] sm:text-xs font-bold text-purple-300 uppercase tracking-wide leading-relaxed">
-                                                        {order['Return Reason'] || 'NO REASON PROVIDED'}
+                                                        {returnReason || 'NO REASON PROVIDED'}
                                                     </p>
                                                 </div>
                                             </div>
 
-                                            {order['Return Received By'] && (
+                                            {returnReceivedBy && (
                                                 <div className="space-y-1.5">
                                                     <span className="text-[8px] sm:text-[9px] font-black text-emerald-400 uppercase tracking-[0.2em] sm:tracking-[0.25em] ml-1 flex items-center gap-1.5">
                                                         <ShieldCheck size={10} /> Confirmed By (ទទួលដោយ)
                                                     </span>
                                                     <div className="bg-emerald-500/10 border border-emerald-500/20 p-3 rounded-xl">
                                                         <p className="text-[10px] sm:text-xs font-mono font-black text-emerald-400 uppercase tracking-wider">
-                                                            {order['Return Received By']}
+                                                            {returnReceivedBy}
                                                         </p>
                                                     </div>
                                                 </div>
                                             )}
 
-                                            {order['Return Received Time'] && (
+                                            {returnReceivedTime && (
                                                 <div className="space-y-1.5">
                                                     <span className="text-[8px] sm:text-[9px] font-black text-[#848E9C] uppercase tracking-[0.2em] sm:tracking-[0.25em] ml-1 flex items-center gap-1.5">
                                                         <Clock size={10} /> Received Time (ម៉ោងទទួល)
                                                     </span>
                                                     <div className="bg-[#0B0E11] border border-[#2B3139] p-3 rounded-xl">
                                                         <p className="text-[10px] sm:text-xs font-mono font-bold text-[#848E9C] tracking-[0.05em]">
-                                                            {order['Return Received Time']}
+                                                            {returnReceivedTime}
                                                         </p>
                                                     </div>
                                                 </div>
