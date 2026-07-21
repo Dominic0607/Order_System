@@ -67,13 +67,13 @@ const SidebarDrawer: React.FC<SidebarDrawerProps> = ({
                 
                 {/* Mobile Header */}
                 <div className="flex-shrink-0 px-6 pt-10 pb-6 flex items-center justify-between relative z-10">
-                    <div class="flex items-center gap-3.5">
-                        <img src={APP_LOGO_URL} alt="Logo" className="w-11 h-11 object-cover flex-shrink-0" />
+                    <div className="flex items-center gap-3.5">
+                        <img src={APP_LOGO_URL} alt="Logo" className="w-[53px] h-[53px] object-cover flex-shrink-0" />
                         <div>
-                            <h2 className="text-[18px] font-bold text-white leading-none" style={{ fontFamily: "'Inter', 'SF Pro Display', system-ui, sans-serif", letterSpacing: '-0.02em' }}>O-System</h2>
-                            <div className="flex items-center gap-2 mt-1">
-                                <span className="h-1.5 w-1.5 rounded-full bg-blue-500 animate-pulse shadow-[0_0_8px_rgba(59,130,246,0.5)]"></span>
-                                <p className="text-[10px] text-blue-400/80 font-black uppercase tracking-[0.2em]">Core Access</p>
+                            <h2 className="text-[22px] font-bold text-white leading-none" style={{ fontFamily: "'Inter', 'SF Pro Display', system-ui, sans-serif", letterSpacing: '-0.02em' }}>O-System</h2>
+                            <div className="flex items-center gap-2 mt-1.5">
+                                <span className="h-[7px] w-[7px] rounded-full bg-blue-500 animate-pulse shadow-[0_0_8px_rgba(59,130,246,0.5)]"></span>
+                                <p className="text-[12px] text-blue-400/80 font-black uppercase tracking-[0.2em]">Core Access</p>
                             </div>
                         </div>
                     </div>

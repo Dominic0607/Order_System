@@ -404,9 +404,18 @@ const DesktopOrdersDashboard: React.FC<DesktopOrdersDashboardProps> = ({ onBack,
                 </div>
 
                 {/* Row 3: Warehouse Quick Filters */}
-                <div className="flex items-center gap-2 mb-1">
-                    <span className={`text-[9px] font-bold ${isLightMode ? 'text-slate-400' : isBinance ? 'text-[#848E9C]' : 'text-gray-500'} uppercase tracking-wider mr-1`}>{t.warehouse}</span>
-                    <div className="flex items-center gap-1 overflow-x-auto no-scrollbar">
+                <div className="flex items-center gap-3 mb-2">
+                    <div className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border text-[9px] font-black uppercase tracking-wider ${
+                        isLightMode 
+                            ? 'bg-slate-100 text-slate-600 border-slate-200' 
+                            : isBinance 
+                                ? 'bg-[#1E2329] text-[#848E9C] border-[#2B3139]' 
+                                : 'bg-white/5 text-gray-450 border-white/5'
+                    }`}>
+                        <i className="fa-solid fa-warehouse"></i>
+                        <span>{t.warehouse}</span>
+                    </div>
+                    <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar">
                         {Array.from(new Set(appData.stores?.map(s => s.StoreName) || [])).map(s => {
                             const sel = filters.fulfillmentStore.split(',').map(v => v.trim().toLowerCase()).includes(s.toLowerCase());
                             return (
@@ -418,16 +427,20 @@ const DesktopOrdersDashboard: React.FC<DesktopOrdersDashboardProps> = ({ onBack,
                                         setFilters(prev => ({...prev, fulfillmentStore: nxt.join(',')}));
                                         setCurrentPage(1);
                                     }}
-                                    className={`px-3 py-1.5 text-[9px] font-bold uppercase transition-all whitespace-nowrap ${
+                                    className={`px-3.5 py-1.5 text-[10px] font-black uppercase transition-all whitespace-nowrap border ${
                                         isLightMode
-                                        ? (sel ? 'bg-blue-600 text-white shadow-md' : 'text-slate-650 hover:text-slate-800 hover:bg-slate-100')
+                                        ? (sel 
+                                            ? 'bg-blue-600 text-white border-blue-600 shadow-md shadow-blue-500/10' 
+                                            : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50 hover:text-slate-800')
                                         : isBinance
-                                            ? (sel ? 'bg-[#FCD535] text-[#181A20]' : 'text-[#848E9C] hover:text-[#EAECEF] hover:bg-[#2B3139]')
+                                            ? (sel 
+                                                ? 'bg-[#FCD535] text-[#181A20] border-[#FCD535] font-black' 
+                                                : 'bg-transparent border-[#2B3139] text-[#848E9C] hover:text-[#EAECEF] hover:bg-[#2B3139]')
                                             : (sel
-                                                ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-[0_0_20px_rgba(79,70,229,0.4)]'
-                                                : 'text-gray-500 hover:text-white hover:bg-white/5')
+                                                ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white border-blue-500/50 shadow-[0_4px_15px_rgba(37,99,235,0.3)]'
+                                                : 'bg-white/5 border-white/5 text-gray-400 hover:text-white hover:bg-white/10')
                                     }`}
-                                    style={isBinance && !isLightMode ? { borderRadius: '4px' } : { borderRadius: '8px' }}
+                                    style={isBinance && !isLightMode ? { borderRadius: '4px' } : { borderRadius: '12px' }}
                                 >
                                     {s}
                                 </button>

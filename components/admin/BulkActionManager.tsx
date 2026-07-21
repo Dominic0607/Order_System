@@ -434,7 +434,7 @@ const BulkActionManager: React.FC<BulkActionManagerProps> = ({ orders, selectedI
                     <h3 className="text-xl font-black text-white text-center mb-2 uppercase tracking-tight">កែប្រែកាលបរិច្ឆេទ</h3>
                     <p className="text-[10px] text-gray-500 font-bold text-center mb-6 uppercase tracking-widest">ម៉ោងនឹងរក្សាទុកដូចដើម</p>
                     <div className="relative mb-8">
-                        <input type="date" value={bulkDate} onChange={e => setBulkDate(e.target.value)} className="form-input !bg-black/40 !border-gray-700 !py-4 text-white font-bold text-center rounded-[2rem] w-full" />
+                        <input type="date" value={bulkDate} onChange={e => setBulkDate(e.target.value)} className="w-full bg-black/40 border border-gray-700 px-4 py-4 text-white font-bold text-center rounded-[2rem] outline-none transition-all focus:border-blue-500 focus:bg-black/60" />
                     </div>
                     <div className="grid grid-cols-2 gap-4">
                         <button onClick={() => setActiveModal(null)} className="py-4 text-gray-500 font-black uppercase text-xs tracking-widest">បោះបង់</button>
@@ -449,7 +449,7 @@ const BulkActionManager: React.FC<BulkActionManagerProps> = ({ orders, selectedI
                 <div className="p-8 bg-[#0f172a] rounded-[3rem] border border-white/10">
                     <h3 className="text-xl font-black text-white text-center mb-8 uppercase tracking-tight">កែប្រែថ្លៃដឹកដើម (Cost)</h3>
                     <div className="relative mb-8">
-                        <input type="number" step="0.01" value={costValue} onChange={e => setCostValue(e.target.value)} className="form-input !bg-black/40 !border-gray-700 !py-6 text-blue-400 font-black text-4xl text-center rounded-[2rem]" placeholder="0.00" autoFocus />
+                        <input type="number" step="0.01" value={costValue} onChange={e => setCostValue(e.target.value)} className="w-full bg-black/40 border border-gray-700 px-4 py-6 text-blue-400 font-black text-4xl text-center rounded-[2rem] outline-none transition-all focus:border-blue-500 focus:bg-black/60" placeholder="0.00" autoFocus />
                         <span className="absolute right-6 top-1/2 -translate-y-1/2 text-gray-600 font-black text-2xl">$</span>
                     </div>
                     <div className="grid grid-cols-2 gap-4">
@@ -507,7 +507,7 @@ const BulkActionManager: React.FC<BulkActionManagerProps> = ({ orders, selectedI
                         )}
                         <div className="space-y-3">
                             <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest">កែប្រែថ្លៃដឹកដើម (Internal Cost)</p>
-                            <input type="number" step="0.01" value={shippingCost} onChange={e => setShippingCost(e.target.value)} className="form-input !bg-black/40 !border-gray-700 !py-4 rounded-2xl text-white w-full" placeholder="0.00" />
+                            <input type="number" step="0.01" value={shippingCost} onChange={e => setShippingCost(e.target.value)} className="w-full bg-black/40 border border-gray-700 px-4 py-4 rounded-2xl text-white outline-none transition-all focus:border-blue-500 focus:bg-black/60" placeholder="0.00" />
                         </div>
                     </div>
                     <div className="grid grid-cols-2 gap-4 mt-6 pt-4 border-t border-white/5">
@@ -532,7 +532,7 @@ const BulkActionManager: React.FC<BulkActionManagerProps> = ({ orders, selectedI
                     <div className="w-16 h-16 bg-red-500/20 text-red-500 rounded-full flex items-center justify-center mx-auto mb-6 text-3xl">⚠️</div>
                     <h3 className="text-xl font-black text-white mb-4 uppercase tracking-tight">លុបប្រតិបត្តិការណ៍សរុប</h3>
                     <p className="text-gray-500 text-sm mb-8">តើអ្នកប្រាកដទេថាចង់លុបការកម្មង់ទាំង <strong>{selectedIds.size}</strong> នេះ?</p>
-                    <input type="password" value={deletePassword} onChange={e => setDeletePassword(e.target.value)} className="form-input !bg-red-500/5 !border-red-500/20 !py-4 text-center text-white font-black w-full mb-8" placeholder="លេខសម្ងាត់" />
+                    <input type="password" value={deletePassword} onChange={e => setDeletePassword(e.target.value)} className="w-full bg-red-500/5 border border-red-500/20 px-4 py-4 text-center text-white font-black rounded-2xl outline-none transition-all focus:border-red-500 focus:bg-red-500/10 mb-8" placeholder="លេខសម្ងាត់" />
                     <div className="grid grid-cols-2 gap-4">
                         <button onClick={() => setActiveModal(null)} className="py-4 text-gray-500 font-black uppercase text-xs tracking-widest">បោះបង់</button>
                         <button onClick={handleBulkDelete} className="py-4 bg-red-600 text-white rounded-2xl font-black uppercase text-xs tracking-widest active:scale-95 flex items-center justify-center gap-2" disabled={isProcessing || !deletePassword}>
@@ -547,7 +547,7 @@ const BulkActionManager: React.FC<BulkActionManagerProps> = ({ orders, selectedI
                     <h3 className="text-xl font-black text-white text-center mb-6 uppercase tracking-tight">
                         {activeModal === 'cancel' ? 'បោះបង់ការកម្មង់សរុប' : 'បញ្ជូនឥវ៉ាន់ត្រឡប់មកវិញសរុប'}
                     </h3>
-                    <textarea value={actionReason} onChange={e => setActionReason(e.target.value)} className="form-input !bg-black/40 !border-gray-700 !py-4 text-white text-sm min-h-[100px] w-full rounded-2xl mb-8" placeholder="បញ្ចូលមូលហេតុ..." />
+                    <textarea value={actionReason} onChange={e => setActionReason(e.target.value)} className="w-full bg-black/40 border border-gray-700 px-4 py-4 text-white text-sm min-h-[100px] rounded-2xl outline-none transition-all focus:border-blue-500 focus:bg-black/60 mb-8" placeholder="បញ្ចូលមូលហេតុ..." />
                     <div className="grid grid-cols-2 gap-4">
                         <button onClick={() => setActiveModal(null)} className="py-4 text-gray-500 font-black uppercase text-xs tracking-widest">បោះបង់</button>
                         <button onClick={() => handleBulkStatusChange(activeModal === 'cancel' ? 'Cancelled' : 'Returned', actionReason)} className={`py-4 ${activeModal === 'cancel' ? 'bg-red-600' : 'bg-purple-600'} text-white rounded-2xl font-black uppercase text-xs tracking-widest active:scale-95 flex items-center justify-center gap-2`} disabled={isProcessing || !actionReason}>

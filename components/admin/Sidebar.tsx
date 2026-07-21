@@ -62,7 +62,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                 ]
             },
             {
-                title: t.management || 'Sittings',
+                title: t.management || 'Management',
                 items: [
                     { id: 'orders', component: 'orders', label: t.orders, icon: <i className="fa-solid fa-receipt"></i>, permission: 'view_order_list' },
                     { id: 'inventory', component: 'inventory', label: t.inventory, icon: <i className="fa-solid fa-boxes-stacked"></i>, permission: 'manage_inventory' },
@@ -134,14 +134,14 @@ const Sidebar: React.FC<SidebarProps> = ({
                         ? "text-blue-600 shadow-[inset_6px_6px_12px_#b8bec5,inset_-6px_-6px_12px_#ffffff] rounded-2xl"
                         : "text-blue-400 shadow-[inset_4px_4px_8px_rgba(0,0,0,0.7),inset_-4px_-4px_8px_rgba(255,255,255,0.03)] rounded-2xl",
                     itemHover: isLightMode
-                        ? "text-gray-500 hover:text-blue-500"
+                        ? "text-slate-600 hover:text-blue-600"
                         : "text-slate-400 hover:text-blue-400",
                     accent: "#3b82f6",
                     textPrimary: isLightMode ? "text-gray-700" : "text-slate-200",
-                    textSecondary: isLightMode ? "text-gray-400" : "text-slate-500",
+                    textSecondary: isLightMode ? "text-slate-500" : "text-slate-500",
                     border: "border-transparent",
                     logoBg: isLightMode ? "bg-[#e0e5ec]" : "bg-[#171b22]",
-                    groupTitle: isLightMode ? "text-gray-400" : "text-slate-600"
+                    groupTitle: isLightMode ? "text-slate-500" : "text-slate-600"
                 };
             case 'samsung':
                 return {
@@ -269,7 +269,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                     <img 
                         src={APP_LOGO_URL} 
                         alt="Logo" 
-                        className={`transition-all duration-700 object-cover ${isSidebarCollapsed ? 'w-12 h-12' : 'w-10 h-10'}`} 
+                        className={`transition-all duration-700 object-cover ${isSidebarCollapsed ? 'w-[58px] h-[58px]' : 'w-[48px] h-[48px]'}`} 
                     />
                     
                     {/* Custom Logo Tooltip */}
@@ -287,12 +287,12 @@ const Sidebar: React.FC<SidebarProps> = ({
 
                     {!isSidebarCollapsed && (
                         <div className="ml-3.5 flex flex-col min-w-0">
-                            <h1 className={`text-[15px] font-bold leading-tight ${styles.textPrimary}`} style={{ fontFamily: "'Inter', 'SF Pro Display', system-ui, sans-serif", letterSpacing: '-0.02em' }}>
+                            <h1 className={`text-[18px] font-bold leading-tight ${styles.textPrimary}`} style={{ fontFamily: "'Inter', 'SF Pro Display', system-ui, sans-serif", letterSpacing: '-0.02em' }}>
                                 O-System
                             </h1>
                             <div className="flex items-center gap-1.5 mt-0.5">
-                                <span className={`h-1.5 w-1.5 rounded-full bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.4)] animate-pulse`}></span>
-                                <span className={`text-[9px] font-black uppercase tracking-[0.15em] ${isLightMode ? 'text-blue-600' : 'text-blue-400'}`}>
+                                <span className={`h-[7px] w-[7px] rounded-full bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.4)] animate-pulse`}></span>
+                                <span className={`text-[11px] font-black uppercase tracking-[0.15em] ${isLightMode ? 'text-blue-600' : 'text-blue-400'}`}>
                                     Terminal PRO
                                 </span>
                             </div>
@@ -326,7 +326,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                                                 }
                                             }} 
                                             className={`
-                                                flex items-center transition-all duration-500 group relative
+                                                flex items-center transition-all duration-500 group relative focus:outline-none
                                                 ${isSidebarCollapsed && !isMobile ? 'w-14 h-14 justify-center mb-3 px-0' : 'w-full px-4 py-2.5 mb-1'}
                                                 ${uiTheme === 'samsung' ? 'rounded-[24px]' : 'rounded-2xl'}
                                                 ${isActive 
@@ -409,7 +409,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                                                                 if (isSidebarCollapsed && !isMobile) setIsReportSubMenuOpen(false);
                                                             }}
                                                             className={`
-                                                                w-full group/sub flex items-center gap-3 py-2.5 px-3 text-[11px] font-bold uppercase tracking-wide transition-all rounded-xl text-left 
+                                                                w-full group/sub flex items-center gap-3 py-2.5 px-3 text-[11px] font-bold uppercase tracking-wide transition-all rounded-xl text-left focus:outline-none
                                                                 ${uiTheme === 'binance' 
                                                                     ? (isSubActive ? 'text-[#FCD535] bg-[#2B3139]/50' : 'text-[#848E9C] hover:text-[#FCD535] hover:bg-[#2B3139]/30')
                                                                     : (isLightMode 

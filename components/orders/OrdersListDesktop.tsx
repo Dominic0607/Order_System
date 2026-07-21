@@ -777,7 +777,7 @@ const OrdersListDesktop: React.FC<OrdersListDesktopProps> = ({
     ]);
 
     return (
-        <div className={`${isLightMode ? 'bg-[#f8fafc] border-slate-200 theme-light text-slate-800' : isBinance ? 'bg-[#0B0E11] border-[#2B3139] theme-binance text-[#EAECEF]' : 'bg-[#020617]/40 border-white/5 shadow-2xl backdrop-blur-xl theme-default text-[#EAECEF]'} rounded-3xl border flex flex-col h-full min-h-[400px] overflow-hidden relative transition-all duration-300`}>
+        <div className={`${isLightMode ? 'bg-[#f8fafc] border-slate-200 theme-light text-slate-800' : isBinance ? 'bg-[#0B0E11] border-[#2B3139] theme-binance text-[#EAECEF]' : 'bg-[#020617]/40 border-white/5 shadow-2xl backdrop-blur-xl theme-default text-[#EAECEF]'} rounded-none border flex flex-col h-full min-h-[400px] overflow-hidden relative transition-all duration-300`}>
             <style>{ORDER_LIST_STYLES}</style>
             <div className="flex-grow overflow-auto custom-scrollbar overscroll-contain">
                 <div style={{ minWidth: `${totalTableWidth}px`, height: '100%', display: 'flex', flexDirection: 'column' }}>
