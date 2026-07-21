@@ -705,14 +705,6 @@ const MobilePackagingHub: React.FC<MobilePackagingHubProps> = ({
                                                          )}
                                                      </>
                                                  )}
-                                                 {!isViewOnly && isCancelled && activeTab !== 'Cancelled' && (
-                                                     <button
-                                                         onClick={(e) => { e.stopPropagation(); setUnpackTarget(order); }}
-                                                         className="flex-1 py-2 bg-gradient-to-r from-red-600 to-red-700 text-white rounded-xl text-xs font-bold uppercase shadow-[0_4px_12px_rgba(220,38,38,0.15)] active:scale-[0.97] transition-all"
-                                                     >
-                                                         {!!(order['Packed By'] || order['Packed Time']) ? 'ហែកកញ្ចប់' : 'បញ្ជាក់ការបោះបង់'}
-                                                     </button>
-                                                 )}
                                                  {activeTab === 'Shipped' && (
                                                      <div className="flex-1 flex gap-2 w-full">
                                                          <button 

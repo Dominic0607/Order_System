@@ -786,14 +786,7 @@ const DesktopPackagingHub: React.FC<DesktopPackagingHubProps> = ({
                                                                         {activeTab === 'Pending' && <button onClick={(e) => { e.stopPropagation(); onPack(order); }} className={`w-full py-1.5 ${B_ACCENT_BG} text-xs font-bold uppercase transition-colors rounded-sm`}>Pack</button>}
                                                                     </>
                                                                 )}
-                                                                {!isViewOnly && isCancelled && activeTab !== 'Cancelled' && (
-                                                                    <button 
-                                                                        onClick={(e) => { e.stopPropagation(); setUnpackTarget(order); }} 
-                                                                        className={`w-full py-1.5 bg-red-600 hover:bg-red-700 text-white text-xs font-bold uppercase transition-colors rounded-sm shadow-lg shadow-red-600/20`}
-                                                                    >
-                                                                        {!!(order['Packed By'] || order['Packed Time']) ? 'ហែកកញ្ចប់' : 'បញ្ជាក់ការបោះបង់'}
-                                                                    </button>
-                                                                )}
+
                                                                 {activeTab === 'Shipped' && (
                                                                     <div className="flex gap-2 w-full">
                                                                         <button 
@@ -817,12 +810,9 @@ const DesktopPackagingHub: React.FC<DesktopPackagingHubProps> = ({
                                                                                 Confirm Receipt
                                                                             </button>
                                                                         ) : (
-                                                                            <button 
-                                                                                onClick={(e) => { e.stopPropagation(); setUnpackTarget(order); }} 
-                                                                                className="w-full py-1.5 bg-red-600 hover:bg-red-700 text-white text-xs font-bold uppercase transition-colors rounded-sm shadow-lg shadow-red-600/20"
-                                                                            >
-                                                                                ហែកកញ្ចប់ (Unpack)
-                                                                            </button>
+                                                                            <div className="w-full py-1.5 bg-purple-500/10 border border-purple-500/20 text-purple-400 text-xs font-bold uppercase text-center rounded-sm">
+                                                                                ✓ Received
+                                                                            </div>
                                                                         )}
                                                                     </div>
                                                                 )}
@@ -1019,14 +1009,7 @@ const DesktopPackagingHub: React.FC<DesktopPackagingHubProps> = ({
                                                                 )}
                                                             </>
                                                         )}
-                                                        {!isViewOnly && isCancelled && activeTab !== 'Cancelled' && (
-                                                            <button 
-                                                                onClick={(e) => { e.stopPropagation(); setUnpackTarget(order); }} 
-                                                                className={`px-3 py-1 bg-red-600 hover:bg-red-700 text-white text-xs font-bold uppercase rounded-sm shadow-lg shadow-red-600/20`}
-                                                            >
-                                                                {!!(order['Packed By'] || order['Packed Time']) ? 'ហែកកញ្ចប់' : 'បញ្ជាក់ការបោះបង់'}
-                                                            </button>
-                                                        )}
+
                                                         {activeTab === 'Shipped' && (
                                                             <button onClick={(e) => { e.stopPropagation(); onUndoShipped(order); }} className={`px-3 py-1 bg-[#F6465D]/10 hover:bg-[#F6465D]/20 ${B_RED} text-xs font-bold uppercase rounded-sm transition-colors`}>Undo</button>
                                                         )}
