@@ -109,6 +109,16 @@ const FulfillmentDashboard: React.FC<FulfillmentDashboardProps> = ({ orders, isL
     const [viewingOrder, setViewingOrder] = useState<ParsedOrder | null>(null);
     const [bulkLoading, setBulkLoading] = useState(false);
 
+    // Keep viewingOrder in sync when orders reload (from WebSocket or manual refresh)
+    useEffect(() => {
+        if (viewingOrder && orders.length > 0) {
+            const updated = orders.find(o => o['Order ID'] === viewingOrder['Order ID']);
+            if (updated && JSON.stringify(updated) !== JSON.stringify(viewingOrder)) {
+                setViewingOrder(updated);
+            }
+        }
+    }, [orders, viewingOrder]);
+
     const allOrdersMapped = useMemo(() => {
         return orders
             .filter((o: any) => o && o['Order ID'] && o['Order ID'] !== 'Opening_Balance')

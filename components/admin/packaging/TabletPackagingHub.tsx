@@ -716,21 +716,28 @@ const TabletPackagingHub: React.FC<TabletPackagingHubProps> = ({
                                                                     </div>
                                                                 )}
                                                                 {activeTab === 'Returned' && (
-                                                                    <div className="flex gap-2">
+                                                                    <div className="flex items-center gap-2">
                                                                         <button 
                                                                             onClick={(e) => { e.stopPropagation(); onConfirmReturn?.(order); }} 
                                                                             disabled={!!order['Return Received By']}
-                                                                            className={`px-3 py-1 ${order['Return Received By'] ? 'bg-[#0ECB81]/10 text-[#0ECB81]' : 'bg-purple-500 text-white font-bold'} rounded-sm text-xs uppercase transition-colors`}
+                                                                            className={`px-3 py-1 ${order['Return Received By'] ? 'bg-purple-500/10 text-purple-400 border border-purple-500/20' : 'bg-purple-500 text-white font-bold'} rounded-sm text-xs uppercase transition-colors`}
                                                                         >
                                                                             {order['Return Received By'] ? '✓ Received' : 'Confirm'}
                                                                         </button>
                                                                         {!!order['Return Received By'] && (
-                                                                            <button 
-                                                                                onClick={(e) => { e.stopPropagation(); onUnpack(order); }}
-                                                                                className="px-3 py-1 bg-red-600 hover:bg-red-700 text-white font-bold rounded-sm text-xs uppercase transition-colors"
-                                                                            >
-                                                                                ហែកកញ្ចប់
-                                                                            </button>
+                                                                            <>
+                                                                                <div className="flex items-center justify-center border border-purple-500/20 bg-purple-500/5 rounded-sm px-2 py-1 max-w-[150px] overflow-hidden">
+                                                                                    <span className="text-[9px] font-black text-purple-400 uppercase truncate" title={order['Return Received By']}>
+                                                                                        Confirm by: {order['Return Received By']}
+                                                                                    </span>
+                                                                                </div>
+                                                                                <button 
+                                                                                    onClick={(e) => { e.stopPropagation(); onUnpack(order); }}
+                                                                                    className="px-3 py-1 bg-red-600 hover:bg-red-700 text-white font-bold rounded-sm text-xs uppercase transition-colors"
+                                                                                >
+                                                                                    ហែកកញ្ចប់
+                                                                                </button>
+                                                                            </>
                                                                         )}
                                                                     </div>
                                                                 )}

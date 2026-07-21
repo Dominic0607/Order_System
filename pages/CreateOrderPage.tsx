@@ -790,7 +790,22 @@ const CreateOrderPage: React.FC<CreateOrderPageProps> = ({ team, onSaveSuccess, 
                                 </div>
                                 {shippingFeeOption === 'charge' && (
                                     <div className="space-y-3 animate-fade-in">
-                                        <input type="number" min="0" name="shippingFee" value={order.customer.shippingFee} placeholder="តម្លៃដឹកជញ្ជូន (ឧ. 1.5)*" className={`form-input !py-3 rounded-xl ${inputBgClass}`} onChange={handleCustomerChange} required />
+                                        <div className={`flex rounded-xl overflow-hidden border transition-all duration-200 focus-within:ring-2 focus-within:ring-blue-500/20 focus-within:border-blue-500 ${isLightMode ? 'border-slate-200 bg-white' : 'border-gray-700 bg-gray-900'}`}>
+                                            <input 
+                                                type="number" 
+                                                min="0" 
+                                                step="0.01"
+                                                name="shippingFee" 
+                                                value={order.customer.shippingFee} 
+                                                placeholder="0.00" 
+                                                onChange={handleCustomerChange} 
+                                                required 
+                                                className={`w-full bg-transparent border-0 outline-none px-4 py-2.5 sm:py-3.5 text-base font-black text-right focus:ring-0 ${isLightMode ? 'text-slate-800' : 'text-white'}`} 
+                                            />
+                                            <div className={`px-4 flex items-center justify-center border-l font-black text-base select-none shrink-0 ${isLightMode ? 'bg-slate-50 border-slate-100 text-slate-400' : 'bg-gray-800/50 border-gray-700 text-gray-500'}`}>
+                                                $
+                                            </div>
+                                        </div>
                                         <div className="flex gap-2">
                                             {[1, 1.5, 2].map(fee => {
                                                 const isActive = parseFloat(order.customer.shippingFee) === fee;
@@ -870,7 +885,82 @@ const CreateOrderPage: React.FC<CreateOrderPageProps> = ({ team, onSaveSuccess, 
                                             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-8">
                                                 <div className="space-y-3 sm:space-y-4">
                                                     <div className={`flex p-1 rounded-xl sm:rounded-2xl border shadow-inner ${isLightMode ? 'bg-slate-200/60 border-slate-300' : 'bg-gray-900/50 border-gray-700'}`}>{(['percent', 'amount', 'custom'] as const).map(t => (<button key={t} type="button" onClick={() => handleProductUpdate(index, 'discountType', t)} className={`flex-1 flex flex-col items-center justify-center py-2 sm:py-2.5 rounded-lg sm:rounded-xl transition-all duration-300 active:scale-95 ${p.discountType === t ? 'bg-blue-600 text-white shadow-lg' : (isLightMode ? 'text-slate-500 hover:text-slate-700' : 'text-gray-500 hover:text-gray-300')}`}><span className="text-[9px] sm:text-[11px] font-black uppercase tracking-widest">{t === 'percent' ? 'បញ្ចុះ %' : t === 'amount' ? 'បញ្ចុះ $' : 'កែតម្លៃលក់'}</span></button>))}</div>
-                                                    <div className="relative animate-fade-in">{p.discountType === 'percent' && (<div className="space-y-2"><label className={`text-[10px] font-bold ml-1 ${isLightMode ? 'text-slate-600' : 'text-gray-400'}`}>បញ្ចូលភាគរយបញ្ចុះតម្លៃ (%)</label><div className="relative"><input type="number" min="0" max="100" placeholder="0" value={p.discountPercentInput} onChange={e=>handleProductUpdate(index, 'discountPercentInput', e.target.value)} className={`form-input !text-base sm:!text-lg !font-black !py-2 sm:!py-3 pr-10 text-right ${isLightMode ? 'text-blue-600 bg-white border-slate-200' : 'text-blue-400 bg-gray-900 border-gray-700'}`} /><div className="absolute right-0 top-0 bottom-0 pr-4 flex items-center pointer-events-none"><span className="text-gray-500 font-black">%</span></div></div></div>)}{p.discountType === 'amount' && (<><div className="space-y-2"><label className={`text-[10px] font-bold ml-1 ${isLightMode ? 'text-slate-600' : 'text-gray-400'}`}>បញ្ចូលទឹកប្រាក់បញ្ចុះតម្លៃ ($)</label><div className="relative"><input type="number" min="0" placeholder="0.00" value={p.discountAmountInput} onChange={e=>handleProductUpdate(index, 'discountAmountInput', e.target.value)} className={`form-input !text-base sm:!text-lg !font-black !py-2 sm:!py-3 pr-10 text-right ${isLightMode ? 'text-red-600 bg-white border-slate-200' : 'text-red-400 bg-gray-900 border-gray-700'}`} /><div className="absolute right-0 top-0 bottom-0 pr-4 flex items-center pointer-events-none"><span className="text-gray-500 font-black">$</span></div></div></div>{p.quantity > 1 && (<label className={`flex items-center gap-2 cursor-pointer p-2 rounded-lg mt-1 sm:mt-2 border active:scale-95 transition-transform ${isLightMode ? 'bg-slate-100 border-slate-200 text-slate-700' : 'bg-black/20 border-white/5 text-gray-400'}`}><input type="checkbox" checked={p.applyDiscountToTotal} onChange={e => handleProductUpdate(index, 'applyDiscountToTotal', e.target.checked)} className={`w-4 h-4 rounded ${isLightMode ? 'border-slate-300 bg-white text-blue-600' : 'border-gray-600 bg-gray-800 text-blue-500'}`} /><span className="text-[9px] sm:text-[10px] uppercase font-black">បញ្ចុះលើតម្លៃសរុប</span></label>)}</>)}{p.discountType === 'custom' && (<div className="space-y-2"><label className={`text-[10px] font-bold ml-1 ${isLightMode ? 'text-slate-600' : 'text-gray-400'}`}>កំណត់តម្លៃលក់ថ្មីក្នុង ១ ឯកតា ($)</label><div className="relative"><input type="text" inputMode="decimal" placeholder="0.00" value={p.finalPriceInput} onChange={e=>handleProductUpdate(index, 'finalPriceInput', e.target.value)} className={`form-input !text-base sm:!text-lg !font-black !py-2 sm:!py-3 pr-10 text-right ${isLightMode ? 'text-emerald-600 bg-white border-slate-200' : 'text-emerald-400 bg-gray-900 border-gray-700'}`} /><div className="absolute right-0 top-0 bottom-0 pr-4 flex items-center pointer-events-none"><span className="text-gray-500 font-black">$</span></div></div></div>)}</div>
+                                                    <div className="relative animate-fade-in">
+                                                        {p.discountType === 'percent' && (
+                                                            <div className="space-y-2">
+                                                                <label className={`text-[10px] font-black uppercase tracking-wider ml-1 ${isLightMode ? 'text-slate-500' : 'text-gray-400'}`}>
+                                                                    ភាគរយបញ្ចុះតម្លៃ (Discount %)
+                                                                </label>
+                                                                <div className={`flex rounded-xl overflow-hidden border transition-all duration-200 focus-within:ring-2 focus-within:ring-blue-500/20 focus-within:border-blue-500 ${isLightMode ? 'border-slate-200 bg-white' : 'border-gray-700 bg-gray-900'}`}>
+                                                                    <input 
+                                                                        type="number" 
+                                                                        min="0" 
+                                                                        max="100" 
+                                                                        placeholder="0" 
+                                                                        value={p.discountPercentInput} 
+                                                                        onChange={e => handleProductUpdate(index, 'discountPercentInput', e.target.value)} 
+                                                                        className={`w-full bg-transparent border-0 outline-none px-4 py-2.5 sm:py-3.5 text-base sm:text-lg font-black text-right focus:ring-0 ${isLightMode ? 'text-blue-600' : 'text-blue-400'}`} 
+                                                                    />
+                                                                    <div className={`px-4 flex items-center justify-center border-l font-black text-base sm:text-lg select-none shrink-0 ${isLightMode ? 'bg-slate-50 border-slate-100 text-slate-400' : 'bg-gray-800/50 border-gray-700 text-gray-500'}`}>
+                                                                        %
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        )}
+                                                        {p.discountType === 'amount' && (
+                                                            <>
+                                                                <div className="space-y-2">
+                                                                    <label className={`text-[10px] font-black uppercase tracking-wider ml-1 ${isLightMode ? 'text-slate-500' : 'text-gray-400'}`}>
+                                                                        ទឹកប្រាក់បញ្ចុះតម្លៃ (Discount Amount)
+                                                                    </label>
+                                                                    <div className={`flex rounded-xl overflow-hidden border transition-all duration-200 focus-within:ring-2 focus-within:ring-blue-500/20 focus-within:border-blue-500 ${isLightMode ? 'border-slate-200 bg-white' : 'border-gray-700 bg-gray-900'}`}>
+                                                                        <input 
+                                                                            type="number" 
+                                                                            min="0" 
+                                                                            placeholder="0.00" 
+                                                                            value={p.discountAmountInput} 
+                                                                            onChange={e => handleProductUpdate(index, 'discountAmountInput', e.target.value)} 
+                                                                            className={`w-full bg-transparent border-0 outline-none px-4 py-2.5 sm:py-3.5 text-base sm:text-lg font-black text-right focus:ring-0 ${isLightMode ? 'text-red-600' : 'text-red-400'}`} 
+                                                                        />
+                                                                        <div className={`px-4 flex items-center justify-center border-l font-black text-base sm:text-lg select-none shrink-0 ${isLightMode ? 'bg-slate-50 border-slate-100 text-slate-400' : 'bg-gray-800/50 border-gray-700 text-gray-500'}`}>
+                                                                            $
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+                                                                {p.quantity > 1 && (
+                                                                    <label className={`flex items-center gap-2 cursor-pointer p-3 rounded-xl mt-2.5 border active:scale-95 transition-all duration-200 ${isLightMode ? 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100' : 'bg-black/20 border-white/5 text-gray-400 hover:bg-white/5'}`}>
+                                                                        <input 
+                                                                            type="checkbox" 
+                                                                            checked={p.applyDiscountToTotal} 
+                                                                            onChange={e => handleProductUpdate(index, 'applyDiscountToTotal', e.target.checked)} 
+                                                                            className={`w-4 h-4 rounded transition-colors ${isLightMode ? 'border-slate-300 bg-white text-blue-600 focus:ring-blue-500' : 'border-gray-600 bg-gray-800 text-blue-500 focus:ring-blue-500'}`} 
+                                                                        />
+                                                                        <span className="text-[9px] sm:text-[10px] uppercase font-black tracking-wider select-none">បញ្ចុះលើតម្លៃសរុប (Apply discount to total)</span>
+                                                                    </label>
+                                                                )}
+                                                            </>
+                                                        )}
+                                                        {p.discountType === 'custom' && (
+                                                            <div className="space-y-2">
+                                                                <label className={`text-[10px] font-black uppercase tracking-wider ml-1 ${isLightMode ? 'text-slate-500' : 'text-gray-400'}`}>
+                                                                    កំណត់តម្លៃលក់ថ្មីក្នុង ១ ឯកតា (Custom Unit Price)
+                                                                </label>
+                                                                <div className={`flex rounded-xl overflow-hidden border transition-all duration-200 focus-within:ring-2 focus-within:ring-blue-500/20 focus-within:border-blue-500 ${isLightMode ? 'border-slate-200 bg-white' : 'border-gray-700 bg-gray-900'}`}>
+                                                                    <input 
+                                                                        type="text" 
+                                                                        inputMode="decimal" 
+                                                                        placeholder="0.00" 
+                                                                        value={p.finalPriceInput} 
+                                                                        onChange={e => handleProductUpdate(index, 'finalPriceInput', e.target.value)} 
+                                                                        className={`w-full bg-transparent border-0 outline-none px-4 py-2.5 sm:py-3.5 text-base sm:text-lg font-black text-right focus:ring-0 ${isLightMode ? 'text-emerald-600' : 'text-emerald-400'}`} 
+                                                                    />
+                                                                    <div className={`px-4 flex items-center justify-center border-l font-black text-base sm:text-lg select-none shrink-0 ${isLightMode ? 'bg-slate-50 border-slate-100 text-slate-400' : 'bg-gray-800/50 border-gray-700 text-gray-500'}`}>
+                                                                        $
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        )}
+                                                    </div>
                                                 </div>
                                                 <div className={`rounded-xl sm:rounded-[1.5rem] p-3 sm:p-5 border flex flex-col justify-between ${isLightMode ? 'bg-white border-slate-200 shadow-sm' : 'bg-gray-900/60 border-white/5'}`}><div className="space-y-2 sm:space-y-3"><div className="flex justify-between items-center text-[10px] sm:text-xs"><span className="text-gray-500 font-bold uppercase">Original Subtotal</span><span className={`font-black ${isLightMode ? 'text-blue-600' : 'text-blue-400'}`}>${originalTotal.toFixed(2)}</span></div><div className="flex justify-between items-center text-[10px] sm:text-xs"><span className="text-gray-500 font-bold uppercase">Discount Applied</span><span className={`font-black ${isLightMode ? 'text-red-600' : 'text-red-400'}`}>-{discountValue > 0 ? `$${discountValue.toFixed(2)}` : '$0.00'}</span></div><div className={`h-px my-1 ${isLightMode ? 'bg-slate-100' : 'bg-gray-700/50'}`}></div><div className="flex justify-between items-center"><span className="text-[9px] sm:text-[10px] font-black text-gray-400 uppercase tracking-widest">Net Total</span><span className={`text-xl sm:text-2xl font-black tracking-tighter ${isLightMode ? 'text-slate-900' : 'text-white'}`}>${(p.total || 0).toFixed(2)}</span></div></div><div className={`mt-3 sm:mt-4 pt-2 sm:pt-3 border-t flex justify-center ${isLightMode ? 'border-slate-100' : 'border-white/5'}`}><span className={`text-[8px] sm:text-[9px] px-2 sm:px-3 py-1 rounded-full border font-black uppercase tracking-widest ${isLightMode ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'}`}>Avg. ${(p.finalPrice || 0).toFixed(2)} / unit</span></div></div>
                                             </div>
@@ -949,7 +1039,7 @@ const CreateOrderPage: React.FC<CreateOrderPageProps> = ({ team, onSaveSuccess, 
                                         <span className={`text-xs font-black uppercase tracking-wider ${isLightMode ? 'text-slate-800' : 'text-slate-200'}`}>ថ្លៃសេវាឲ្យអ្នកដឹក (Cost)*</span>
                                     </div>
                                     <div className="flex flex-wrap items-center gap-2 mt-2">
-                                        <div className={`flex items-center rounded-xl border-2 transition-all flex-1 min-w-[100px] ${isLightMode ? 'bg-white border-slate-200 focus-within:border-blue-500 focus-within:ring-1 focus-within:ring-blue-500/20' : 'bg-gray-900 border-gray-700 focus-within:border-blue-500'}`}>
+                                        <div className={`flex rounded-xl overflow-hidden border transition-all duration-200 focus-within:ring-2 focus-within:ring-blue-500/20 focus-within:border-blue-500 flex-1 min-w-[100px] ${isLightMode ? 'border-slate-200 bg-white' : 'border-gray-700 bg-gray-900'}`}>
                                             <input 
                                                 type="number" 
                                                 min="0" 
@@ -957,11 +1047,13 @@ const CreateOrderPage: React.FC<CreateOrderPageProps> = ({ team, onSaveSuccess, 
                                                 name="cost" 
                                                 placeholder="0.00" 
                                                 value={order.shipping.cost} 
-                                                className="w-full bg-transparent pl-3 pr-8 py-1.5 font-black text-sm outline-none border-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" 
                                                 onChange={handleShippingChange} 
                                                 required 
+                                                className={`w-full bg-transparent border-0 outline-none px-3 py-2 text-sm font-black text-right focus:ring-0 ${isLightMode ? 'text-slate-800' : 'text-white'}`}
                                             />
-                                            <span className="pr-3 text-gray-400 font-bold text-xs">$</span>
+                                            <div className={`px-3 flex items-center justify-center border-l font-black text-xs select-none shrink-0 ${isLightMode ? 'bg-slate-50 border-slate-100 text-slate-400' : 'bg-gray-800/50 border-gray-700 text-gray-500'}`}>
+                                                $
+                                            </div>
                                         </div>
                                         <div className="flex gap-1.5">
                                             {(selectedShippingMethod?.CostShortcuts ? selectedShippingMethod.CostShortcuts.split(',').map((s: string) => parseFloat(s.trim())) : [1.25, 1.5, 2]).map((cost: number) => {

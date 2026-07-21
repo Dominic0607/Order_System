@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Camera, RefreshCw, Upload, AlertCircle, Check, X } from 'lucide-react';
+import { Camera, RefreshCw, Upload, AlertCircle, Check, X, RotateCcw } from 'lucide-react';
 import { compressImage } from '../../utils/imageCompressor';
 import { fileToDataUrl } from '../../utils/fileUtils';
 
@@ -292,14 +292,13 @@ export const CameraCapture: React.FC<CameraCaptureProps> = ({
             {/* Hidden canvas for taking snapshots */}
             <canvas ref={canvasRef} className="hidden" />
 
-            {/* Actions Footer */}
             <div className="flex gap-3 pt-2">
                 <button
                     type="button"
                     onClick={onCancel}
-                    className="flex-1 py-3 bg-[#2B3139] hover:bg-[#3B424A] text-[#848E9C] hover:text-[#EAECEF] font-black text-xs uppercase tracking-wider rounded-xl transition-all"
+                    className="flex-[0.9] py-3 px-2 bg-[#2B3139] hover:bg-[#3B424A] text-[#848E9C] hover:text-[#EAECEF] font-black text-[10px] sm:text-xs uppercase rounded-xl transition-all"
                 >
-                    បោះបង់ (Cancel)
+                    <span className="whitespace-nowrap">បោះបង់ (Cancel)</span>
                 </button>
                 
                 {capturedPhoto ? (
@@ -307,17 +306,22 @@ export const CameraCapture: React.FC<CameraCaptureProps> = ({
                         <button
                             type="button"
                             onClick={handleRetake}
-                            className="flex-1 py-3 bg-[#F6465D]/10 hover:bg-[#F6465D]/20 text-[#F6465D] font-black text-xs uppercase tracking-wider rounded-xl transition-all border border-[#F6465D]/20"
+                            className={`flex-[1.3] py-3 px-2 font-black text-[10px] sm:text-xs uppercase rounded-xl transition-all flex items-center justify-center gap-1.5 border active:scale-95 ${
+                                theme === 'purple'
+                                    ? 'bg-purple-500/10 hover:bg-purple-500/20 text-purple-400 border-purple-500/30'
+                                    : 'bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border-amber-500/30'
+                            }`}
                         >
-                            ថតឡើងវិញ (Retake)
+                            <RotateCcw size={12} className="shrink-0" />
+                            <span className="whitespace-nowrap">ថតឡើងវិញ (Retake)</span>
                         </button>
                         <button
                             type="button"
                             onClick={handleConfirm}
-                            className={`flex-[2] py-3 ${theme === 'purple' ? 'bg-purple-600 hover:bg-purple-500 text-white shadow-purple-600/10' : 'bg-[#0ECB81] hover:bg-[#0ECB81]/90 text-[#0B0E11]'} font-black text-xs uppercase tracking-wider rounded-xl transition-all shadow-lg flex items-center justify-center gap-2`}
+                            className={`flex-[1.8] py-3 px-2 ${theme === 'purple' ? 'bg-purple-600 hover:bg-purple-500 text-white shadow-purple-600/10' : 'bg-[#0ECB81] hover:bg-[#0ECB81]/90 text-[#0B0E11]'} font-black text-[10px] sm:text-xs uppercase rounded-xl transition-all shadow-lg flex items-center justify-center gap-1.5`}
                         >
-                            <Check size={16} strokeWidth={3} />
-                            យល់ព្រម (Confirm)
+                            <Check size={14} strokeWidth={3} className="shrink-0" />
+                            <span className="whitespace-nowrap">យល់ព្រម (Confirm)</span>
                         </button>
                     </>
                 ) : (

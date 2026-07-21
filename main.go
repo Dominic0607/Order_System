@@ -274,6 +274,8 @@ func mapToDBColumn(key string, sheetName string) string {
 		"Return Photo":                 "return_photo_url",
 		"Return Received By":           "return_received_by",
 		"Return Received Time":         "return_received_time",
+		"ReturnID":                     "id",
+		"Return ID":                    "id",
 		"Delivery Photo Sent Count":    "delivery_photo_sent_count",
 		"Delivery Telegram Message ID": "delivery_telegram_message_id",
 		"Delivery Daily Sequence":      "delivery_daily_sequence",
@@ -1622,7 +1624,7 @@ func handleGetAllOrders(c *gin.Context) {
 	// Field Selection
 	if view == "compact" {
 		// Include products_json as it's needed for the dashboard display
-		query = query.Select("order_id, timestamp, user, page, telegram_value, customer_name, customer_phone, location, address_details, note, shipping_fee_customer, subtotal, grand_total, internal_shipping_method, internal_shipping_details, internal_cost, payment_status, payment_info, discount_usd, delivery_unpaid, delivery_paid, total_product_cost, telegram_message_id1, telegram_message_id2, telegram_message_id3, scheduled_time, fulfillment_store, team, is_verified, fulfillment_status, packed_by, packed_time, package_photo_url, driver_name, tracking_number, dispatched_time, dispatched_by, delivered_time, delivery_photo_url, products_json")
+		query = query.Select("order_id, timestamp, user, page, telegram_value, customer_name, customer_phone, location, address_details, note, shipping_fee_customer, subtotal, grand_total, internal_shipping_method, internal_shipping_details, internal_cost, payment_status, payment_info, discount_usd, delivery_unpaid, delivery_paid, total_product_cost, telegram_message_id1, telegram_message_id2, telegram_message_id3, scheduled_time, fulfillment_store, team, is_verified, fulfillment_status, packed_by, packed_time, package_photo_url, driver_name, tracking_number, dispatched_time, dispatched_by, delivered_time, delivery_photo_url, products_json, cancel_reason, return_reason, return_photo_url, return_received_by, return_received_time")
 	}
 
 	// Apply Pagination
@@ -1895,7 +1897,7 @@ func handleAdminUpdateOrder(c *gin.Context) {
 			"Ready to Ship": {"Shipped", "Pending", "Cancelled"},
 			"Shipped":       {"Delivered", "Ready to Ship", "Returned"},
 			"Delivered":     {"Returned"},
-			"Returned":      {"Delivered", "Shipped", "Ready to Ship", "Pending"},
+			"Returned":      {"Delivered", "Shipped", "Ready to Ship", "Pending", "Cancelled"},
 			"Cancelled":     {"Pending", "Scheduled"},
 		}
 
@@ -1924,11 +1926,14 @@ func handleAdminUpdateOrder(c *gin.Context) {
 		// ✅ Validate required fields for each transition
 		switch newStatus {
 		case "Cancelled":
-			cancelReason, _ := r.NewData["Cancel Reason"]
-			if cancelReason == nil || strings.TrimSpace(fmt.Sprintf("%v", cancelReason)) == "" {
-				if strings.TrimSpace(originalOrder.CancelReason) == "" {
-					c.JSON(http.StatusBadRequest, gin.H{"status": "error", "message": "ត្រូវការមូលហេតុដែល Cancel (Cancel Reason)"})
-					return
+			// If transitioning from Returned, we do not require a new Cancel Reason (it is unpacked returned stock)
+			if currentStatus != "Returned" {
+				cancelReason, _ := r.NewData["Cancel Reason"]
+				if cancelReason == nil || strings.TrimSpace(fmt.Sprintf("%v", cancelReason)) == "" {
+					if strings.TrimSpace(originalOrder.CancelReason) == "" {
+						c.JSON(http.StatusBadRequest, gin.H{"status": "error", "message": "ត្រូវការមូលហេតុដែល Cancel (Cancel Reason)"})
+						return
+					}
 				}
 			}
 		case "Returned":
@@ -2162,6 +2167,7 @@ func handleAdminUpdateOrder(c *gin.Context) {
 								if err := backend.DB.Table("returns").Create(&returnItem).Error; err == nil {
 									// Sync with Google Sheets
 									go enqueueSync("addRow", map[string]interface{}{
+										"ReturnID":    returnItem.ID,
 										"Timestamp":   returnItem.Timestamp,
 										"OrderID":     returnItem.OrderID,
 										"StoreName":   returnItem.StoreName,
@@ -2213,7 +2219,12 @@ func handleAdminUpdateOrder(c *gin.Context) {
 			backend.DB.Table("returns").Where("order_id = ?", r.OrderID).Updates(returnUpdates)
 
 			// Sync with Google Sheets
-			go enqueueSync("updateSheet", sheetUpdates, "Returns", map[string]string{"OrderID": r.OrderID})
+			var returnItems []ReturnItem
+			if backend.DB.Table("returns").Where("order_id = ?", r.OrderID).Find(&returnItems).Error == nil {
+				for _, item := range returnItems {
+					go enqueueSync("updateSheet", sheetUpdates, "Returns", map[string]interface{}{"ReturnID": item.ID})
+				}
+			}
 		}
 
 		eventBytes, _ := json.Marshal(map[string]interface{}{"type": "update_order", "orderId": r.OrderID, "newData": r.NewData})

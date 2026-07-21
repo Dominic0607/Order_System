@@ -305,6 +305,7 @@ function handleAddRow(data) {
   if (data.sheetName === "Users") pkField = "username";
   else if (data.sheetName === "Stores") pkField = "storename";
   else if (data.sheetName === "Products") pkField = "barcode";
+  else if (data.sheetName === "Returns") pkField = "returnid";
   else if (data.sheetName === "AllOrders" || data.sheetName.indexOf("Orders_") === 0) pkField = "orderid";
   
   const pkValue = data.newData[Object.keys(data.newData).find(k => normalizeKey(k) === pkField)];
@@ -436,7 +437,7 @@ function handleUpdateSheet(data) {
     // 1. Try to find by 'ID' or 'OrderID' first if it exists in primaryKey, as it's the most reliable and fastest
     const idKey = pkKeys.find(k => {
       const nk = normalizeKey(k);
-      return nk === "id" || nk === "orderid";
+      return nk === "id" || nk === "orderid" || nk === "returnid";
     });
 
     if (idKey) {

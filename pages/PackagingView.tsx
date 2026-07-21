@@ -327,6 +327,16 @@ const PackagingView: React.FC<{ orders?: ParsedOrder[], onExit?: () => void }> =
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [selectedStore, activeTab, debouncedSearchTerm, teamFilter, shippingFilter, datePreset, startDate, endDate, currentPage, effectivePageSize, localRefreshTick]);
 
+    // Keep viewingOrder in sync when localOrders reloads (from WebSocket or manual refresh)
+    useEffect(() => {
+        if (viewingOrder && localOrders.length > 0) {
+            const updated = localOrders.find(o => o['Order ID'] === viewingOrder['Order ID']);
+            if (updated && JSON.stringify(updated) !== JSON.stringify(viewingOrder)) {
+                setViewingOrder(updated);
+            }
+        }
+    }, [localOrders, viewingOrder]);
+
     // 2. Memos
     const allOrdersMapped = useMemo(() => {
         return localOrders
@@ -737,6 +747,7 @@ const PackagingView: React.FC<{ orders?: ParsedOrder[], onExit?: () => void }> =
             
             // Refresh data immediately
             await refreshData();
+            setLocalRefreshTick(t => t + 1);
         } catch (error: any) { 
             alert("មានបញ្ហាពេលបញ្ជាក់ការទទួល: " + error.message); 
         } finally {
@@ -852,6 +863,7 @@ const PackagingView: React.FC<{ orders?: ParsedOrder[], onExit?: () => void }> =
                 executeAction(order, 'Cancelled', { 
                     'Return Received By': currentUser?.FullName || 'Staff',
                     'Return Received Time': new Date().toISOString().slice(0, 19).replace('T', ' '),
+                    'Cancel Reason': order['Return Reason'] || 'Returned and Unpacked',
                     'Packed By': '', 'Packed Time': '', 'Package Photo': ''
                 });
             }

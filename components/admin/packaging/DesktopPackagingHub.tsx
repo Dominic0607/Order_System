@@ -673,22 +673,22 @@ const DesktopPackagingHub: React.FC<DesktopPackagingHubProps> = ({
                                                                 {order['Return Photo'] ? (
                                                                     <button
                                                                         onClick={(e) => { e.stopPropagation(); showFullImage(convertGoogleDriveUrl(order['Return Photo']!)); }}
-                                                                        className="w-10 h-10 flex-shrink-0 rounded-sm overflow-hidden border-2 border-[#0ECB81]/40 hover:border-[#0ECB81] transition-all relative group"
+                                                                        className="w-10 h-10 flex-shrink-0 rounded-sm overflow-hidden border-2 border-purple-500/40 hover:border-purple-500 transition-all relative group"
                                                                         title="មើលរូបភាព Return"
                                                                     >
                                                                         <img src={convertGoogleDriveUrl(order['Return Photo']!)} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300" alt="Return" />
-                                                                        <div className="absolute inset-0 bg-[#0ECB81]/10 group-hover:bg-transparent transition-colors flex items-center justify-center">
-                                                                            <span className="text-[8px] font-black text-[#0ECB81] opacity-0 group-hover:opacity-100 transition-opacity">VIEW</span>
+                                                                        <div className="absolute inset-0 bg-purple-500/10 group-hover:bg-transparent transition-colors flex items-center justify-center">
+                                                                            <span className="text-[8px] font-black text-purple-400 opacity-0 group-hover:opacity-100 transition-opacity">VIEW</span>
                                                                         </div>
                                                                     </button>
                                                                 ) : (
-                                                                    <div className="w-10 h-10 flex-shrink-0 rounded-sm border border-[#0ECB81]/20 bg-[#0ECB81]/5 flex items-center justify-center">
-                                                                        <span className="text-base">📦</span>
+                                                                    <div className="w-10 h-10 flex-shrink-0 rounded-sm border border-purple-500/20 bg-purple-500/5 flex items-center justify-center">
+                                                                        <span className="text-base">↩️</span>
                                                                     </div>
                                                                 )}
                                                                 <div className="flex flex-col min-w-0">
-                                                                    <span className="text-[9px] font-black text-[#0ECB81] uppercase tracking-wider">✓ Received</span>
-                                                                    <span className="text-[9px] text-[#848E9C] truncate" title={order['Return Received By']}>{order['Return Received By']}</span>
+                                                                    <span className="text-[9px] font-black text-purple-400 uppercase tracking-wider">✓ Received</span>
+                                                                    <span className="text-[9px] text-[#848E9C] truncate" title={order['Return Received By']}>Confirmed By: {order['Return Received By']}</span>
                                                                     {order['Return Received Time'] && (
                                                                         <span className="text-[8px] text-[#848E9C]/70">{order['Return Received Time'].slice(0, 16)}</span>
                                                                     )}

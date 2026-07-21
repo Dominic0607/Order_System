@@ -26,7 +26,8 @@ import {
     Zap,
     Hash,
     History,
-    Activity
+    Activity,
+    RefreshCw
 } from 'lucide-react';
 
 interface OrderDetailModalProps {
@@ -329,6 +330,12 @@ const OrderDetailModal: React.FC<OrderDetailModalProps> = ({ order, onClose, inl
         'Cancelled': 'bg-[#F6465D]/20 text-[#F6465D] border-[#F6465D]/30',
     };
 
+    // Robust return details mapping (handling spaced, camelCase and GORM naming variations)
+    const returnReason = order['Return Reason'] || (order as any).ReturnReason || '';
+    const returnPhoto = order['Return Photo'] || (order as any).ReturnPhoto || (order as any).ReturnPhotoURL || (order as any).ReturnPhotoUrl || '';
+    const returnReceivedBy = order['Return Received By'] || (order as any).ReturnReceivedBy || '';
+    const returnReceivedTime = order['Return Received Time'] || (order as any).ReturnReceivedTime || '';
+
     const formatLifecycleDateTime = (value?: string) => {
         const rawValue = String(value || '').trim();
         if (!rawValue) return null;
@@ -394,6 +401,18 @@ const OrderDetailModal: React.FC<OrderDetailModalProps> = ({ order, onClose, inl
             dot: 'bg-[#0ECB81]',
         },
     ];
+
+    if (fs === 'Returned' || returnReceivedTime || returnReason || returnPhoto) {
+        lifecycleEvents.push({
+            key: 'returned',
+            label: 'Return Confirmed',
+            labelKm: 'បានទទួលទំនិញត្រឡប់',
+            value: returnReceivedTime,
+            icon: RefreshCw,
+            color: 'text-purple-400',
+            dot: 'bg-purple-400',
+        });
+    }
 
     const content = (
         <div className={`flex flex-col ${inline ? 'h-full' : 'h-screen'} overflow-hidden bg-[#0B0E11] text-[#EAECEF] selection:bg-[#FCD535]/30 sm:rounded-2xl border-x border-b border-[#2B3139]`} style={{ fontFamily: "'Inter', sans-serif" }}>
@@ -858,6 +877,22 @@ const OrderDetailModal: React.FC<OrderDetailModalProps> = ({ order, onClose, inl
                                                                         <p className={`text-[9px] sm:text-[10px] font-mono font-black truncate ${event.color}`}>{dateTime.time}</p>
                                                                     </div>
                                                                 </div>
+                                                                {event.key === 'returned' && (
+                                                                    <div className="mt-1 border-t border-[#2B3139] border-dashed pt-1.5 flex flex-col gap-1">
+                                                                        <div className="flex items-center justify-between gap-2">
+                                                                            <span className="text-[7px] sm:text-[8px] font-black text-[#5E6673] uppercase tracking-widest">Status</span>
+                                                                            <span className="text-[9px] sm:text-[10px] font-black text-purple-400 uppercase tracking-widest flex items-center gap-1">
+                                                                                <Check size={10} className="text-purple-400" /> Confirmed (បានទទួល)
+                                                                            </span>
+                                                                        </div>
+                                                                        {returnReceivedBy && (
+                                                                            <div className="flex items-center justify-between gap-2">
+                                                                                <span className="text-[7px] sm:text-[8px] font-black text-[#5E6673] uppercase tracking-widest">Confirmed By</span>
+                                                                                <span className="text-[9px] sm:text-[10px] font-black text-purple-300 uppercase tracking-wide truncate">{returnReceivedBy}</span>
+                                                                            </div>
+                                                                        )}
+                                                                    </div>
+                                                                )}
                                                             </div>
                                                         ) : (
                                                             <p className="mt-2 text-[9px] sm:text-[10px] font-mono font-black text-[#5E6673] uppercase tracking-wider">UNRECORDED</p>
