@@ -708,50 +708,71 @@ const EditOrderPage: React.FC<EditOrderPageProps> = ({ order, onSaveSuccess, onC
             )}
 
             {/* Top Bar */}
-            <div className={`flex-shrink-0 border-b px-3 sm:px-6 py-2 lg:py-2.5 flex flex-col lg:flex-row justify-between items-start lg:items-center gap-3 lg:gap-4 z-[60] shadow-sm relative ${isLightMode ? 'bg-white border-slate-200 text-slate-800' : 'bg-[#1E2329] border-[#2B3139] text-[#EAECEF]'}`}>
-                <div className="flex flex-col lg:flex-row lg:items-center gap-3 lg:gap-4 w-full lg:w-auto">
+            <div className={`flex-shrink-0 border-b px-3 sm:px-6 py-3 lg:py-3 flex flex-col lg:flex-row justify-between items-start lg:items-center gap-3 lg:gap-4 z-[60] shadow-sm relative ${isLightMode ? 'bg-white border-slate-200 text-slate-800' : 'bg-[#1E2329] border-[#2B3139] text-[#EAECEF]'}`}>
+                <div className="flex flex-col lg:flex-row lg:items-center gap-3 lg:gap-5 w-full lg:w-auto">
                     {/* Header Row: Back Button & Title */}
-                    <div className="flex items-center gap-2.5 flex-shrink-0">
+                    <div className="flex items-center gap-3 flex-shrink-0">
                         <button 
                             onClick={onCancel} 
-                            className={`flex-shrink-0 w-8 h-8 rounded-lg border flex items-center justify-center transition-all shadow-inner ${isLightMode ? 'bg-slate-100 border-slate-200 text-slate-500 hover:bg-slate-200 hover:text-slate-800' : 'bg-[#0B0E11] border-[#2B3139] text-[#848E9C] hover:bg-[#2B3139] hover:text-[#FCD535]'}`}
+                            className={`flex-shrink-0 w-9 h-9 rounded-xl border flex items-center justify-center transition-all duration-200 shadow-sm hover:scale-105 active:scale-95 ${
+                                isLightMode 
+                                    ? 'bg-slate-100/80 border-slate-200 text-slate-600 hover:bg-slate-200 hover:text-slate-900' 
+                                    : 'bg-[#0B0E11] border-[#2B3139] text-[#848E9C] hover:bg-[#2B3139] hover:text-[#FCD535]'
+                            }`}
                             title="Go back"
                         >
                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M10 19l-7-7m0 0l7-7m-7 7h18" /></svg>
                         </button>
                         
-                        <div className="flex items-center gap-2 min-w-0">
-                            <h1 className={`text-base lg:text-lg font-black uppercase tracking-tighter truncate ${isLightMode ? 'text-slate-800' : 'text-[#EAECEF]'}`}>Edit Order</h1>
-                            <span className={`px-1.5 py-0.5 rounded text-[8px] font-black uppercase tracking-widest flex-shrink-0 border ${isLightMode ? 'bg-blue-50 border-blue-200 text-blue-600' : 'bg-[#FCD535]/10 border-[#FCD535]/20 text-[#FCD535]'}`}>
+                        <div className="flex items-center gap-2.5 min-w-0">
+                            <h1 className={`text-base lg:text-lg font-black uppercase tracking-tight truncate ${isLightMode ? 'text-slate-900' : 'text-[#EAECEF]'}`}>
+                                Edit Order
+                            </h1>
+                            <span className={`px-2.5 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider flex-shrink-0 border shadow-sm ${
+                                isLightMode 
+                                    ? 'bg-blue-50 border-blue-200/80 text-blue-600' 
+                                    : 'bg-[#FCD535]/10 border-[#FCD535]/30 text-[#FCD535]'
+                            }`}>
                                 {formData.Team}
                             </span>
                         </div>
                     </div>
                     
                     {/* Standard Mobile Meta Layout: Grid for UID/Dist, Full-width for Time */}
-                    <div className="flex flex-col sm:flex-row sm:items-center gap-2 lg:gap-2.5 w-full lg:w-auto">
-                        {/* Row 1: UID (Copyable badge) */}
+                    <div className="flex flex-col sm:flex-row sm:items-center gap-2.5 lg:gap-3 w-full lg:w-auto">
+                        {/* Order ID Badge - Click to Copy */}
                         <div className="flex gap-2 w-full sm:w-auto">
-                            {/* Order ID Badge - Click to Copy */}
                             <div 
                                 onClick={() => {
                                     navigator.clipboard.writeText(formData['Order ID']);
                                     setCopySuccess(true);
                                     setTimeout(() => setCopySuccess(false), 2000);
                                 }}
-                                className={`relative flex items-center gap-2 px-2.5 py-1 border rounded-none cursor-pointer group/uid transition-all h-8 lg:h-9 w-full sm:w-auto ${isLightMode ? 'bg-white border-slate-200 shadow-sm hover:border-blue-500' : 'bg-[#0B0E11] border-[#2B3139] shadow-sm hover:border-[#FCD535]'}`}
+                                className={`relative flex items-center gap-2.5 px-3 py-1.5 border rounded-xl cursor-pointer group/uid transition-all duration-200 h-9.5 w-full sm:w-auto ${
+                                    isLightMode 
+                                        ? 'bg-white border-slate-200/80 shadow-sm hover:border-blue-400 hover:shadow-md' 
+                                        : 'bg-[#0B0E11] border-[#2B3139] shadow-sm hover:border-[#FCD535]'
+                                }`}
                                 title="Click to copy full ID"
                             >
-                                <div className={`flex-shrink-0 w-5.5 h-5.5 rounded-none flex items-center justify-center border transition-all ${isLightMode ? 'bg-slate-50 border-slate-200 group-hover/uid:bg-blue-50 group-hover/uid:border-blue-200' : 'bg-[#474D57]/10 border-[#474D57]/20 group-hover/uid:bg-[#FCD535]/10 group-hover/uid:border-[#FCD535]/30'}`}>
-                                    <svg className="w-3 h-3 text-[#474D57] group-hover/uid:text-[#FCD535]" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5}><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" /></svg>
+                                <div className={`flex-shrink-0 w-6 h-6 rounded-lg flex items-center justify-center border transition-colors ${
+                                    isLightMode 
+                                        ? 'bg-slate-50 border-slate-200/80 group-hover/uid:bg-blue-50 group-hover/uid:border-blue-200 text-slate-500 group-hover/uid:text-blue-600' 
+                                        : 'bg-[#474D57]/10 border-[#474D57]/20 text-[#848E9C] group-hover/uid:bg-[#FCD535]/10 group-hover/uid:border-[#FCD535]/30 group-hover/uid:text-[#FCD535]'
+                                }`}>
+                                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5}><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" /></svg>
                                 </div>
                                 <div className="flex flex-col leading-none min-w-0">
-                                    <span className={`text-[7px] font-black uppercase tracking-[0.1em] transition-colors ${isLightMode ? 'text-slate-400 group-hover/uid:text-blue-500' : 'text-[#474D57] group-hover/uid:text-[#FCD535]'}`}>Order UID</span>
-                                    <span className={`text-[9px] font-mono font-black transition-colors mt-0.5 truncate ${isLightMode ? 'text-slate-700 group-hover/uid:text-slate-900' : 'text-[#848E9C] group-hover/uid:text-[#EAECEF]'}`}>#{formData['Order ID'].substring(0, 8)}</span>
+                                    <span className={`text-[7.5px] font-black uppercase tracking-[0.1em] transition-colors ${
+                                        isLightMode ? 'text-slate-400 group-hover/uid:text-blue-500' : 'text-[#474D57] group-hover/uid:text-[#FCD535]'
+                                    }`}>Order UID</span>
+                                    <span className={`text-[10px] font-mono font-black transition-colors mt-0.5 truncate ${
+                                        isLightMode ? 'text-slate-800 group-hover/uid:text-blue-700' : 'text-[#848E9C] group-hover/uid:text-[#EAECEF]'
+                                    }`}>#{formData['Order ID'].substring(0, 8)}</span>
                                 </div>
                                 
                                 {copySuccess && (
-                                    <div className="absolute -top-10 left-1/2 -translate-x-1/2 bg-[#0ECB81] text-[#181A20] text-[10px] font-black py-1 px-2.5 rounded-none shadow-[4px_4px_0px_0px_rgba(14,203,129,0.2)] animate-bounce whitespace-nowrap z-50 flex items-center gap-1.5 border-2 border-[#181A20]">
+                                    <div className="absolute -top-10 left-1/2 -translate-x-1/2 bg-emerald-500 text-white text-[10px] font-black py-1 px-3 rounded-lg shadow-lg animate-bounce whitespace-nowrap z-50 flex items-center gap-1.5">
                                         <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={4}><path d="M5 13l4 4L19 7" /></svg>
                                         COPIED
                                     </div>
@@ -759,23 +780,39 @@ const EditOrderPage: React.FC<EditOrderPageProps> = ({ order, onSaveSuccess, onC
                             </div>
                         </div>
 
-                        {/* Row 2: Order Timestamp (Full-width on Mobile) */}
+                        {/* Order Timestamp Card (Full-width on Mobile) */}
                         {(() => {
                             const canEditDate = currentUser?.IsSystemAdmin || hasPermission('edit_order_global');
                             return (
-                                <div className={`flex items-center gap-2 px-2.5 py-1 border rounded-none transition-all h-8 lg:h-9 w-full sm:w-auto group ${!canEditDate ? 'opacity-70' : isLightMode ? 'hover:border-blue-500/50' : 'hover:border-[#FCD535]/40'} ${isLightMode ? 'bg-white border-slate-200 shadow-sm' : 'bg-[#0B0E11] border-[#2B3139] shadow-sm'}`}>
-                                    <div className={`flex-shrink-0 w-5.5 h-5.5 rounded-none flex items-center justify-center border transition-colors ${!canEditDate ? (isLightMode ? 'bg-slate-50 border-slate-200 text-slate-300' : 'bg-[#2B3139]/20 border-[#2B3139] text-[#474D57]') : isLightMode ? 'bg-slate-50 border-slate-200 text-slate-500 group-hover:bg-blue-50 group-hover:border-blue-200 group-hover:text-blue-500' : 'bg-[#848E9C]/10 border-[#848E9C]/20 text-[#848E9C] group-hover:bg-[#FCD535]/10 group-hover:border-[#FCD535]/20 group-hover:text-[#FCD535]'}`}>
+                                <div className={`flex items-center gap-2.5 px-3 py-1.5 border rounded-xl transition-all duration-200 h-9.5 w-full sm:w-auto group ${
+                                    !canEditDate ? 'opacity-70 cursor-not-allowed' : isLightMode ? 'hover:border-blue-400 hover:shadow-md' : 'hover:border-[#FCD535]/40'
+                                } ${isLightMode ? 'bg-white border-slate-200/80 shadow-sm' : 'bg-[#0B0E11] border-[#2B3139] shadow-sm'}`}>
+                                    <div className={`flex-shrink-0 w-6 h-6 rounded-lg flex items-center justify-center border transition-colors ${
+                                        !canEditDate 
+                                            ? (isLightMode ? 'bg-slate-50 border-slate-200 text-slate-300' : 'bg-[#2B3139]/20 border-[#2B3139] text-[#474D57]') 
+                                            : isLightMode 
+                                                ? 'bg-slate-50 border-slate-200/80 text-slate-500 group-hover:bg-blue-50 group-hover:border-blue-200 group-hover:text-blue-600' 
+                                                : 'bg-[#848E9C]/10 border-[#848E9C]/20 text-[#848E9C] group-hover:bg-[#FCD535]/10 group-hover:border-[#FCD535]/20 group-hover:text-[#FCD535]'
+                                    }`}>
                                         <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5}><path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                                     </div>
-                                    <div className="flex flex-col leading-none flex-grow">
-                                        <label htmlFor="order-date" className={`text-[7px] font-black uppercase tracking-[0.1em] cursor-pointer ${isLightMode ? 'text-slate-400 group-hover:text-blue-500' : 'text-[#474D57]'}`}>Log Timestamp</label>
+                                    <div className="flex flex-col leading-none flex-grow min-w-0">
+                                        <label htmlFor="order-date" className={`text-[7.5px] font-black uppercase tracking-[0.1em] cursor-pointer ${
+                                            isLightMode ? 'text-slate-400 group-hover:text-blue-500' : 'text-[#474D57]'
+                                        }`}>Log Timestamp</label>
                                         <input 
                                             id="order-date"
                                             type="datetime-local"
                                             value={formatForInput(formData.Timestamp)}
                                             onChange={handleDateChange}
                                             disabled={!canEditDate}
-                                            className={`bg-transparent border-none text-[9px] font-black p-0 focus:ring-0 h-4 w-full mt-0.5 tabular-nums text-left ${!canEditDate ? 'cursor-not-allowed' : isLightMode ? 'hover:text-blue-600 cursor-pointer text-slate-800' : 'hover:text-[#FCD535] cursor-pointer text-[#EAECEF]'}`}
+                                            className={`bg-transparent border-none text-[10px] font-mono font-extrabold p-0 focus:ring-0 h-4.5 w-full mt-0.5 tabular-nums text-left outline-none ${
+                                                !canEditDate 
+                                                    ? 'cursor-not-allowed text-slate-400' 
+                                                    : isLightMode 
+                                                        ? 'hover:text-blue-600 cursor-pointer text-slate-800' 
+                                                        : 'hover:text-[#FCD535] cursor-pointer text-[#EAECEF]'
+                                            }`}
                                             style={{ colorScheme: isLightMode ? 'light' : 'dark' }}
                                         />
                                     </div>
@@ -785,12 +822,27 @@ const EditOrderPage: React.FC<EditOrderPageProps> = ({ order, onSaveSuccess, onC
                     </div>
                 </div>
                 
-                <div className="hidden lg:flex gap-2 lg:w-auto mt-2 lg:mt-0">
-                    <button onClick={onCancel} className={`flex-1 lg:flex-none px-3.5 py-1.5 text-xs font-bold rounded-lg transition-all border flex items-center justify-center gap-1.5 h-8 lg:h-9 ${isLightMode ? 'bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-200 hover:border-slate-300' : 'bg-[#2B3139] hover:bg-[#363C44] text-[#EAECEF] border-transparent hover:border-[#848E9C]'}`}>
+                <div className="hidden lg:flex gap-2.5 lg:w-auto mt-2 lg:mt-0">
+                    <button 
+                        onClick={onCancel} 
+                        className={`flex-1 lg:flex-none px-4 py-2 text-xs font-bold rounded-xl transition-all duration-200 border flex items-center justify-center gap-1.5 h-9.5 active:scale-95 ${
+                            isLightMode 
+                                ? 'bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-200 shadow-sm' 
+                                : 'bg-[#2B3139] hover:bg-[#363C44] text-[#EAECEF] border-transparent hover:border-[#848E9C]'
+                        }`}
+                    >
                         <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M6 18L18 6M6 6l12 12" strokeWidth="2.5" strokeLinecap="round" /></svg>
                         <span>Discard</span>
                     </button>
-                    <button onClick={handleSubmit} disabled={loading} className={`flex-[2] lg:flex-none px-5 py-1.5 text-xs font-bold rounded-lg active:scale-[0.98] transition-all flex items-center justify-center gap-1.5 uppercase tracking-wider h-8 lg:h-9 ${isLightMode ? 'bg-blue-600 hover:bg-blue-500 text-white shadow-sm shadow-blue-500/10' : 'bg-[#FCD535] hover:bg-[#F0B90B] text-[#181A20] shadow-sm shadow-[#FCD535]/10'}`}>
+                    <button 
+                        onClick={handleSubmit} 
+                        disabled={loading} 
+                        className={`flex-[2] lg:flex-none px-5 py-2 text-xs font-black rounded-xl active:scale-95 transition-all duration-200 flex items-center justify-center gap-2 uppercase tracking-wider h-9.5 shadow-md ${
+                            isLightMode 
+                                ? 'bg-blue-600 hover:bg-blue-700 text-white shadow-blue-500/20' 
+                                : 'bg-[#FCD535] hover:bg-[#F0B90B] text-[#181A20] shadow-[#FCD535]/10'
+                        }`}
+                    >
                         {loading ? 'Saving...' : (
                             <>
                                 <span>Update Order</span>

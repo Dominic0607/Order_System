@@ -6,6 +6,7 @@ import { convertGoogleDriveUrl } from '../../../utils/fileUtils';
 import { configSections, getArrayCaseInsensitive } from '../../../constants/settingsConfig';
 import ConfigEditModal from './ConfigEditModal';
 import Spinner from '../../common/Spinner';
+import ToggleSwitch from '../../common/ToggleSwitch';
 import { ShippingMethod } from '../../../types';
 
 export const ShippingMethodsManagement: React.FC = () => {
@@ -368,18 +369,17 @@ export const ShippingMethodsManagement: React.FC = () => {
 
                                             {/* Driver Options (Manual / Required) */}
                                             <td className="py-4 px-4 text-center">
-                                                <div className="flex flex-col items-center gap-1">
-                                                    <button
-                                                        onClick={() => handleUpdateField(method, 'AllowManualDriver', !method.AllowManualDriver)}
-                                                        title="ចុចដើម្បី បើក/បិទ អនុញ្ញាតជ្រើសរើសអ្នកដឹកដោយផ្ទាល់"
-                                                        className={`px-2.5 py-1 rounded-xl text-[10px] font-black border transition-all ${
-                                                            method.AllowManualDriver
-                                                                ? (isLightMode ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20')
-                                                                : (isLightMode ? 'bg-slate-100 text-slate-400 border-slate-200' : 'bg-gray-800 text-gray-500 border-white/5')
-                                                        }`}
-                                                    >
-                                                        {method.AllowManualDriver ? '✓ ជ្រើសផ្ទាល់បាន' : '✕ មិនអនុញ្ញាត'}
-                                                    </button>
+                                                <div className="flex flex-col items-center gap-1.5">
+                                                    <ToggleSwitch
+                                                        size="sm"
+                                                        variant="emerald"
+                                                        checked={!!method.AllowManualDriver}
+                                                        onChange={(val) => handleUpdateField(method, 'AllowManualDriver', val)}
+                                                        disabled={isUpdating}
+                                                        onLabel="ជ្រើសផ្ទាល់បាន"
+                                                        offLabel="មិនអនុញ្ញាត"
+                                                        isLightMode={isLightMode}
+                                                    />
                                                     {method.RequireDriverSelection && (
                                                         <span className={`text-[9px] font-black px-2 py-0.5 rounded-lg border ${
                                                             isLightMode ? 'bg-amber-50 text-amber-700 border-amber-200' : 'bg-amber-500/10 text-amber-400 border-amber-500/20'
@@ -392,17 +392,18 @@ export const ShippingMethodsManagement: React.FC = () => {
 
                                             {/* Recommend Driver Toggle */}
                                             <td className="py-4 px-4 text-center">
-                                                <button
-                                                    onClick={() => handleUpdateField(method, 'EnableDriverRecommendation', !method.EnableDriverRecommendation)}
-                                                    title="ចុចដើម្បី បើក/បិទ មុខងារ Recommend Driver"
-                                                    className={`px-3 py-1 rounded-xl text-[10px] font-black border transition-all ${
-                                                        method.EnableDriverRecommendation
-                                                            ? (isLightMode ? 'bg-purple-50 text-purple-700 border-purple-200' : 'bg-purple-500/10 text-purple-400 border-purple-500/20')
-                                                            : (isLightMode ? 'bg-slate-100 text-slate-400 border-slate-200' : 'bg-gray-800 text-gray-500 border-white/5')
-                                                    }`}
-                                                >
-                                                    {method.EnableDriverRecommendation ? '💡 ដំណើរការ' : '✕ បិទ'}
-                                                </button>
+                                                <div className="flex items-center justify-center">
+                                                    <ToggleSwitch
+                                                        size="sm"
+                                                        variant="purple"
+                                                        checked={!!method.EnableDriverRecommendation}
+                                                        onChange={(val) => handleUpdateField(method, 'EnableDriverRecommendation', val)}
+                                                        disabled={isUpdating}
+                                                        onLabel="💡 ដំណើរការ"
+                                                        offLabel="✕ បិទ"
+                                                        isLightMode={isLightMode}
+                                                    />
+                                                </div>
                                             </td>
 
                                             {/* Internal Cost */}
@@ -442,34 +443,19 @@ export const ShippingMethodsManagement: React.FC = () => {
                                             {/* STATUS TOGGLE SWITCH (Disable / Enable) */}
                                             <td className="py-4 px-4 text-center">
                                                 <div className="flex items-center justify-center">
-                                                    <button
-                                                        type="button"
-                                                        disabled={isUpdating}
-                                                        onClick={() => handleUpdateField(method, 'IsDisabled', !isDisabled)}
-                                                        className={`relative inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-black border transition-all duration-300 active:scale-95 shadow-md ${
-                                                            isDisabled
-                                                                ? (isLightMode 
-                                                                    ? 'bg-rose-50 text-rose-600 border-rose-200 hover:bg-rose-100' 
-                                                                    : 'bg-rose-500/10 text-rose-400 border-rose-500/30 hover:bg-rose-500/20')
-                                                                : (isLightMode 
-                                                                    ? 'bg-emerald-50 text-emerald-600 border-emerald-200 hover:bg-emerald-100' 
-                                                                    : 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/20')
-                                                        }`}
-                                                    >
-                                                        {isUpdating ? (
-                                                            <Spinner size="sm" />
-                                                        ) : (
-                                                            <>
-                                                                {/* iOS Toggle Pill */}
-                                                                <div className={`w-8 h-4.5 rounded-full p-0.5 transition-colors duration-300 flex items-center ${
-                                                                    isDisabled ? 'bg-rose-500 justify-start' : 'bg-emerald-500 justify-end'
-                                                                }`}>
-                                                                    <div className="w-3.5 h-3.5 rounded-full bg-white shadow-sm" />
-                                                                </div>
-                                                                <span>{isDisabled ? 'បានបិទ' : 'កំពុងបើក'}</span>
-                                                            </>
-                                                        )}
-                                                    </button>
+                                                    {isUpdating ? (
+                                                        <Spinner size="sm" />
+                                                    ) : (
+                                                        <ToggleSwitch
+                                                            size="md"
+                                                            variant="emerald"
+                                                            checked={!isDisabled}
+                                                            onChange={(val) => handleUpdateField(method, 'IsDisabled', !val)}
+                                                            onLabel="កំពុងបើក"
+                                                            offLabel="បានបិទ"
+                                                            isLightMode={isLightMode}
+                                                        />
+                                                    )}
                                                 </div>
                                             </td>
 

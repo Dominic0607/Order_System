@@ -25,7 +25,8 @@ interface MobileFilterEngineProps {
 const MobileFilterEngine: React.FC<MobileFilterEngineProps> = ({
     filters, setFilters, orders, usersList, appData, calculatedRange, onApply
 }) => {
-    const { language } = useContext(AppContext);
+    const { language, advancedSettings } = useContext(AppContext);
+    const isLightMode = advancedSettings?.themeMode === 'light';
     const { uniqueValues } = useFilterEngine(orders, appData);
     const [activeCategory, setActiveCategory] = useState<string | null>('date');
 
@@ -93,24 +94,26 @@ const MobileFilterEngine: React.FC<MobileFilterEngineProps> = ({
     }, [filters]);
 
     return (
-        <div className="flex flex-col h-full bg-[#0B0E11] relative overflow-hidden">
+        <div className={`flex flex-col h-full relative overflow-hidden ${
+            isLightMode ? 'bg-white text-slate-800' : 'bg-[#0B0E11]'
+        }`}>
             <style>{`
                 .filter-category-card {
-                    background: #1E2329;
-                    border: 1px solid #2B3139;
-                    border-radius: 2px;
+                    background: ${isLightMode ? '#F8FAFC' : '#1E2329'};
+                    border: 1px solid ${isLightMode ? '#E2E8F0' : '#2B3139'};
+                    border-radius: 12px;
                     transition: all 0.15s ease-in-out;
                 }
                 .filter-category-card.active {
-                    border-color: #FCD535;
-                    background: #181A20;
+                    border-color: ${isLightMode ? '#3B82F6' : '#FCD535'};
+                    background: ${isLightMode ? '#EFF6FF' : '#181A20'};
                 }
                 .section-title {
                     font-size: 10px;
                     font-weight: 800;
                     text-transform: uppercase;
                     letter-spacing: 0.1em;
-                    color: #707A8A;
+                    color: ${isLightMode ? '#64748B' : '#707A8A'};
                     margin-bottom: 12px;
                     margin-left: 4px;
                     display: flex;
@@ -121,22 +124,37 @@ const MobileFilterEngine: React.FC<MobileFilterEngineProps> = ({
                     content: '';
                     flex: 1;
                     height: 1px;
-                    background: #2B3139;
+                    background: ${isLightMode ? '#E2E8F0' : '#2B3139'};
                 }
             `}</style>
 
             {/* Summary Header */}
-            <div className="flex-shrink-0 px-5 py-4 bg-[#1E2329] border-b border-[#2B3139] flex justify-between items-center sticky top-0 z-20">
+            <div className={`flex-shrink-0 px-5 py-4 border-b flex justify-between items-center sticky top-0 z-20 ${
+                isLightMode ? 'bg-white border-slate-200' : 'bg-[#1E2329] border-[#2B3139]'
+            }`}>
                 <div className="flex items-center gap-3">
-                    <div className="w-1 h-6 bg-[#FCD535] rounded-full"></div>
+                    <div className={`w-1 h-6 rounded-full ${
+                        isLightMode ? 'bg-blue-600' : 'bg-[#FCD535]'
+                    }`}></div>
                     <div>
-                        <h3 className="text-xs font-black text-[#EAECEF] uppercase tracking-widest">{language === 'km' ? 'ម៉ាស៊ីនចម្រោះ' : 'Filter Engine'}</h3>
-                        <p className="text-[9px] font-bold text-[#FCD535] uppercase">
+                        <h3 className={`text-xs font-black uppercase tracking-widest ${
+                            isLightMode ? 'text-slate-800' : 'text-[#EAECEF]'
+                        }`}>{language === 'km' ? 'ម៉ាស៊ីនចម្រោះ' : 'Filter Engine'}</h3>
+                        <p className={`text-[9px] font-bold uppercase ${
+                            isLightMode ? 'text-blue-600' : 'text-[#FCD535]'
+                        }`}>
                             {totalActiveFilters > 0 ? `${totalActiveFilters} ${language === 'km' ? 'ប៉ារ៉ាម៉ែត្រកំពុងសកម្ម' : 'Parameters Active'}` : (language === 'km' ? 'បង្ហាញទិន្នន័យទាំងអស់' : 'All context visible')}
                         </p>
                     </div>
                 </div>
-                <button onClick={handleReset} className="p-2 bg-[#2B3139] text-[#F6465D] rounded-sm active:scale-90 transition-all border border-transparent active:border-[#F6465D]/30">
+                <button 
+                    onClick={handleReset} 
+                    className={`p-2 rounded-xl active:scale-90 transition-all border ${
+                        isLightMode 
+                            ? 'bg-rose-50 text-rose-600 border-rose-200 hover:bg-rose-100' 
+                            : 'bg-[#2B3139] text-[#F6465D] border-transparent active:border-[#F6465D]/30'
+                    }`}
+                >
                     <RotateCcw size={16} />
                 </button>
             </div>
@@ -156,22 +174,46 @@ const MobileFilterEngine: React.FC<MobileFilterEngineProps> = ({
                                             className={`filter-category-card flex items-center justify-between p-4 ${isActive ? 'active' : ''}`}
                                         >
                                             <div className="flex items-center gap-4">
-                                                <div className={`w-8 h-8 rounded-sm flex items-center justify-center transition-all ${isActive ? 'text-[#FCD535]' : 'text-[#707A8A]'}`}>
+                                                <div className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all ${
+                                                    isActive 
+                                                        ? (isLightMode ? 'text-blue-600 bg-blue-100/50' : 'text-[#FCD535]') 
+                                                        : (isLightMode ? 'text-slate-400' : 'text-[#707A8A]')
+                                                }`}>
                                                     {cat.icon}
                                                 </div>
                                                 <div className="text-left">
-                                                    <p className={`text-[12px] font-bold uppercase tracking-tight ${isActive ? 'text-[#FCD535]' : 'text-[#EAECEF]'}`}>{cat.label}</p>
-                                                    {cat.value && !isActive && <p className="text-[10px] text-[#FCD535] font-medium mt-1 truncate max-w-[180px] opacity-80">{cat.value.replace(/,/g, ', ')}</p>}
+                                                    <p className={`text-[12px] font-bold uppercase tracking-tight ${
+                                                        isActive 
+                                                            ? (isLightMode ? 'text-blue-600' : 'text-[#FCD535]') 
+                                                            : (isLightMode ? 'text-slate-800' : 'text-[#EAECEF]')
+                                                    }`}>{cat.label}</p>
+                                                    {cat.value && !isActive && (
+                                                        <p className={`text-[10px] font-medium mt-1 truncate max-w-[180px] ${
+                                                            isLightMode ? 'text-blue-600' : 'text-[#FCD535]'
+                                                        }`}>{cat.value.replace(/,/g, ', ')}</p>
+                                                    )}
                                                 </div>
                                             </div>
                                             <div className="flex items-center gap-3">
-                                                {count > 0 && <span className="bg-[#FCD535] text-[#181A20] text-[10px] font-black px-1.5 py-0.5 rounded-sm">{count}</span>}
-                                                <svg className={`w-4 h-4 text-[#474D57] transition-transform duration-300 ${isActive ? 'rotate-180 text-[#FCD535]' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M19 9l-7 7-7-7" strokeWidth={3} /></svg>
+                                                {count > 0 && (
+                                                    <span className={`text-[10px] font-black px-2 py-0.5 rounded-md ${
+                                                        isLightMode ? 'bg-blue-600 text-white' : 'bg-[#FCD535] text-[#181A20]'
+                                                    }`}>{count}</span>
+                                                )}
+                                                <svg className={`w-4 h-4 transition-transform duration-300 ${
+                                                    isActive 
+                                                        ? (isLightMode ? 'rotate-180 text-blue-600' : 'rotate-180 text-[#FCD535]') 
+                                                        : (isLightMode ? 'text-slate-400' : 'text-[#474D57]')
+                                                }`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M19 9l-7 7-7-7" strokeWidth={3} /></svg>
                                             </div>
                                         </button>
 
                                         {isActive && (
-                                            <div className="mt-1 mb-3 p-4 bg-[#181A20] border border-[#2B3139] space-y-6 shadow-inner animate-reveal">
+                                            <div className={`mt-2 mb-3 p-4 rounded-xl border space-y-6 animate-reveal ${
+                                                isLightMode 
+                                                    ? 'bg-slate-50/60 border-slate-200 shadow-sm' 
+                                                    : 'bg-[#181A20] border-[#2B3139] shadow-inner'
+                                            }`}>
                                                 {cat.id === 'date' && (
                                                     <DateWindowFilter 
                                                         datePreset={filters.datePreset}
@@ -187,15 +229,23 @@ const MobileFilterEngine: React.FC<MobileFilterEngineProps> = ({
                                                     <div className="space-y-6">
                                                         <SelectFilter label={language === 'km' ? 'ស្វែងរកអតិថិជន' : 'Customer Database'} value={filters.customerName} onChange={v => updateFilter('customerName', v)} options={uniqueValues.customerOptions} multiple={true} isInline={true} />
                                                         <div className="px-1">
-                                                            <label className="text-[10px] font-black text-[#707A8A] mb-3 block uppercase tracking-widest ml-1">{language === 'km' ? 'ស្វែងរកអត្ថបទ' : 'Direct Text Search'}</label>
+                                                            <label className={`text-[10px] font-black mb-3 block uppercase tracking-widest ml-1 ${
+                                                                isLightMode ? 'text-slate-500' : 'text-[#707A8A]'
+                                                            }`}>{language === 'km' ? 'ស្វែងរកអត្ថបទ' : 'Direct Text Search'}</label>
                                                             <div className="relative group">
-                                                                <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-600 group-focus-within:text-[#FCD535] transition-colors" />
+                                                                <Search className={`absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 transition-colors ${
+                                                                    isLightMode ? 'text-slate-400 group-focus-within:text-blue-500' : 'text-gray-600 group-focus-within:text-[#FCD535]'
+                                                                }`} />
                                                                 <input 
                                                                     type="text"
                                                                     value={filters.customerSearch}
                                                                     onChange={(e) => updateFilter('customerSearch', e.target.value)}
                                                                     placeholder="Name, Phone, ID..."
-                                                                    className="w-full bg-[#0B0E11] border border-[#2B3139] rounded-sm py-3.5 pl-11 pr-4 text-sm text-white focus:border-[#FCD535] outline-none transition-all"
+                                                                    className={`w-full rounded-xl py-3.5 pl-11 pr-4 text-sm font-bold border outline-none transition-all ${
+                                                                        isLightMode 
+                                                                            ? 'bg-white border-slate-200 text-slate-800 focus:border-blue-500 shadow-sm placeholder:text-slate-400' 
+                                                                            : 'bg-[#0B0E11] border-[#2B3139] text-white focus:border-[#FCD535]'
+                                                                    }`}
                                                                 />
                                                             </div>
                                                         </div>
@@ -250,7 +300,9 @@ const MobileFilterEngine: React.FC<MobileFilterEngineProps> = ({
                                                 {cat.id === 'product' && (
                                                     <div className="space-y-8">
                                                         <div className="px-1">
-                                                            <label className="text-[10px] font-black text-[#707A8A] mb-3 block uppercase tracking-widest ml-1">Asset Search</label>
+                                                            <label className={`text-[10px] font-black mb-3 block uppercase tracking-widest ml-1 ${
+                                                                isLightMode ? 'text-slate-500' : 'text-[#707A8A]'
+                                                            }`}>Asset Search</label>
                                                             <SearchableProductDropdown products={appData.products} selectedProductName={filters.product} onSelect={v => updateFilter('product', v)} showTagEditor={false} />
                                                         </div>
                                                         <div className="grid grid-cols-1 gap-6">
@@ -270,10 +322,18 @@ const MobileFilterEngine: React.FC<MobileFilterEngineProps> = ({
             </div>
 
             {/* Premium Floating Apply Button */}
-            <div className="absolute bottom-0 left-0 right-0 px-6 py-6 bg-gradient-to-t from-[#0B0E11] via-[#0B0E11]/90 to-transparent z-30">
+            <div className={`absolute bottom-0 left-0 right-0 px-6 py-6 bg-gradient-to-t z-30 ${
+                isLightMode 
+                    ? 'from-white via-white/90 to-transparent' 
+                    : 'from-[#0B0E11] via-[#0B0E11]/90 to-transparent'
+            }`}>
                 <button 
                     onClick={() => onApply()}
-                    className="w-full py-4 bg-[#FCD535] text-[#181A20] font-black uppercase text-[13px] tracking-[0.15em] rounded-sm shadow-xl active:scale-[0.98] transition-all flex items-center justify-center gap-3 border border-transparent"
+                    className={`w-full py-4 font-black uppercase text-[13px] tracking-[0.15em] rounded-xl shadow-xl active:scale-[0.98] transition-all flex items-center justify-center gap-3 border ${
+                        isLightMode 
+                            ? 'bg-blue-600 hover:bg-blue-700 text-white border-transparent shadow-blue-500/25' 
+                            : 'bg-[#FCD535] text-[#181A20] border-transparent shadow-xl'
+                    }`}
                 >
                     <Check size={18} strokeWidth={3} />
                     {language === 'km' ? 'អនុវត្តការចម្រោះ' : 'Apply Filters'}

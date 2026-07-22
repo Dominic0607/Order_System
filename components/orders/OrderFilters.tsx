@@ -27,7 +27,8 @@ interface OrderFiltersProps {
 const OrderFilters: React.FC<OrderFiltersProps> = ({ 
     filters, setFilters, orders, usersList, appData, calculatedRange 
 }) => {
-    const { language } = useContext(AppContext);
+    const { language, advancedSettings } = useContext(AppContext);
+    const isLightMode = advancedSettings?.themeMode === 'light';
     const { uniqueValues } = useFilterEngine(orders, appData);
     
     const handleReset = () => {
@@ -46,15 +47,27 @@ const OrderFilters: React.FC<OrderFiltersProps> = ({
     };
 
     const SectionHeader = ({ icon: Icon, title, count }: { icon: any, title: string, count: number }) => (
-        <div className="flex items-center justify-between mb-6 pb-2 border-b border-[#2B3139]">
+        <div className={`flex items-center justify-between mb-6 pb-2 border-b ${
+            isLightMode ? 'border-slate-200' : 'border-[#2B3139]'
+        }`}>
             <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-sm bg-[#2B3139] flex items-center justify-center text-[#FCD535]">
+                <div className={`w-8 h-8 rounded-xl flex items-center justify-center border transition-colors ${
+                    isLightMode 
+                        ? 'bg-blue-50 text-blue-600 border-blue-200/60' 
+                        : 'bg-[#2B3139] text-[#FCD535] border-transparent'
+                }`}>
                     <Icon size={18} />
                 </div>
-                <h3 className="text-[11px] font-black text-[#EAECEF] uppercase tracking-[0.15em]">{title}</h3>
+                <h3 className={`text-[11px] font-black uppercase tracking-[0.15em] ${
+                    isLightMode ? 'text-slate-800' : 'text-[#EAECEF]'
+                }`}>{title}</h3>
             </div>
             {count > 0 && (
-                <span className="px-2 py-0.5 bg-[#FCD535] text-[#181A20] text-[10px] font-black rounded-sm shadow-lg shadow-[#FCD535]/10 animate-bounce-subtle">
+                <span className={`px-2 py-0.5 text-[10px] font-black rounded-lg shadow-sm ${
+                    isLightMode 
+                        ? 'bg-blue-600 text-white shadow-blue-500/20' 
+                        : 'bg-[#FCD535] text-[#181A20] shadow-[#FCD535]/10 animate-bounce-subtle'
+                }`}>
                     {count} ACTIVE
                 </span>
             )}
@@ -100,16 +113,27 @@ const OrderFilters: React.FC<OrderFiltersProps> = ({
                             multiple={true}
                             searchable={true}
                         />
-                        <div className="relative">
-                            <label className="text-[10px] font-black text-[#707A8A] mb-2 uppercase tracking-widest block">Text Search (ស្វែងរកអត្ថបទ)</label>
+                        
+                        <div>
+                            <label className={`text-[10px] font-black mb-2 uppercase tracking-widest block ${
+                                isLightMode ? 'text-slate-500' : 'text-[#707A8A]'
+                            }`}>
+                                Text Search (ស្វែងរកអត្ថបទ)
+                            </label>
                             <div className="relative group">
-                                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-600 group-focus-within:text-[#FCD535] transition-colors" />
+                                <Search className={`absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 transition-colors ${
+                                    isLightMode ? 'text-slate-400 group-focus-within:text-blue-500' : 'text-gray-600 group-focus-within:text-[#FCD535]'
+                                }`} />
                                 <input 
                                     type="text"
                                     value={filters.customerSearch}
                                     onChange={(e) => updateFilter('customerSearch', e.target.value)}
                                     placeholder="Order ID, Name, Phone..."
-                                    className="w-full bg-[#0B0E11] border border-[#2B3139] rounded-sm py-3 pl-11 pr-4 text-sm text-white focus:border-[#FCD535] outline-none transition-all placeholder:text-gray-600"
+                                    className={`w-full rounded-xl py-3 pl-11 pr-4 text-sm font-bold outline-none transition-all border ${
+                                        isLightMode 
+                                            ? 'bg-white border-slate-200 text-slate-800 focus:border-blue-500 shadow-sm placeholder:text-slate-400' 
+                                            : 'bg-[#0B0E11] border-[#2B3139] text-white focus:border-[#FCD535] placeholder:text-gray-600'
+                                    }`}
                                 />
                             </div>
                         </div>
@@ -273,7 +297,9 @@ const OrderFilters: React.FC<OrderFiltersProps> = ({
                         />
                     </div>
                     <div className="xl:col-span-2">
-                        <label className="text-[10px] font-black text-[#707A8A] mb-2 uppercase tracking-widest flex items-center gap-2">Asset Selection (Product)</label>
+                        <label className={`text-[10px] font-black mb-2 uppercase tracking-widest flex items-center gap-2 ${
+                            isLightMode ? 'text-slate-500' : 'text-[#707A8A]'
+                        }`}>Asset Selection (Product)</label>
                         <SearchableProductDropdown 
                             products={appData.products} 
                             selectedProductName={filters.product} 
@@ -284,10 +310,14 @@ const OrderFilters: React.FC<OrderFiltersProps> = ({
                 </div>
             </div>
 
-            <div className="pt-8 border-t border-[#2B3139]">
+            <div className={`pt-8 border-t ${isLightMode ? 'border-slate-200' : 'border-[#2B3139]'}`}>
                 <button 
                     onClick={handleReset}
-                    className="w-full py-4 bg-[#1E2329] text-[11px] font-black text-[#707A8A] uppercase tracking-[0.25em] hover:text-[#F6465D] border border-[#2B3139] rounded-sm transition-all hover:bg-[#F6465D]/10 hover:border-[#F6465D]/30 flex items-center justify-center gap-3 active:scale-[0.99]"
+                    className={`w-full py-4 text-[11px] font-black uppercase tracking-[0.25em] rounded-xl transition-all flex items-center justify-center gap-3 active:scale-[0.99] border ${
+                        isLightMode 
+                            ? 'bg-slate-100 text-slate-600 hover:text-rose-600 border-slate-200 hover:bg-rose-50 hover:border-rose-200' 
+                            : 'bg-[#1E2329] text-[#707A8A] hover:text-[#F6465D] border-[#2B3139] hover:bg-[#F6465D]/10 hover:border-[#F6465D]/30'
+                    }`}
                 >
                     <RotateCcw size={16} />
                     Reset All Engine Configurations

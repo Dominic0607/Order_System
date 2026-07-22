@@ -10,6 +10,7 @@ import { CacheService, CACHE_KEYS } from '../../../services/cacheService';
 import { compressImage } from '../../../utils/imageCompressor';
 import { translations } from '../../../translations';
 import SelectFilter from '../../orders/filters/SelectFilter';
+import ToggleSwitch from '../../common/ToggleSwitch';
 import { removeBackground } from '@imgly/background-removal';
 
 interface ConfigEditModalProps {
@@ -214,13 +215,14 @@ const ConfigEditModal: React.FC<ConfigEditModalProps> = ({ section, item, onClos
     // ─── Shared field renderers ────────────────────────────────────────────
     const renderField = (field: any) => {
         if (field.type === 'checkbox') return (
-            <button
-                type="button"
-                onClick={() => setFormData((prev: any) => ({ ...prev, [field.name]: !prev[field.name] }))}
-                className={`relative w-12 h-6 rounded-full transition-all duration-300 flex-shrink-0 ${formData[field.name] ? 'bg-[#fcd535]' : 'bg-[#2b3139]'}`}
-            >
-                <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform duration-300 ${formData[field.name] ? 'translate-x-6' : 'translate-x-0'}`} />
-            </button>
+            <ToggleSwitch
+                size="md"
+                variant="amber"
+                checked={!!formData[field.name]}
+                onChange={(val) => setFormData((prev: any) => ({ ...prev, [field.name]: val }))}
+                onLabel="បើក (Active)"
+                offLabel="បិទ (Inactive)"
+            />
         );
         if (field.type === 'image_url') return (
             <div className="space-y-4">
