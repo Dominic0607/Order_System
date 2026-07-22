@@ -21,6 +21,7 @@ import DriverRecommendationExcel from '../components/admin/settings/DriverRecomm
 import UserManagement from '../components/admin/settings/UserManagement';
 import ProductManagementMatrix from '../components/admin/settings/ProductManagementMatrix';
 import ShippingMethodsManagement from '../components/admin/settings/ShippingMethodsManagement';
+import GeminiKeyManagement from '../components/admin/settings/GeminiKeyManagement';
 
 import { translations } from '../translations';
 
@@ -71,7 +72,7 @@ const SettingsDashboard: React.FC<SettingsDashboardProps> = ({ onBack, initialSe
     // Fetch section data: try appData first, then direct API call as fallback
     const fetchSectionData = useCallback(async (sectionId: string, forceRefresh = false) => {
         const section = configSections.find(s => s.id === sectionId);
-        if (!section || section.id === 'telegramTemplates' || section.id === 'permissions' || section.id === 'database') {
+        if (!section || section.id === 'telegramTemplates' || section.id === 'permissions' || section.id === 'database' || section.id === 'geminiKey') {
             setIsLoading(false);
             return;
         }
@@ -418,7 +419,7 @@ const SettingsDashboard: React.FC<SettingsDashboardProps> = ({ onBack, initialSe
                     </div>
                 </div>
                 <div className="flex gap-2 w-full sm:w-auto">
-                    {activeId !== 'telegramTemplates' && activeId !== 'permissions' && activeId !== 'database' && activeId !== 'users' && activeId !== 'products' && activeId !== 'shippingMethods' && (
+                    {activeId !== 'telegramTemplates' && activeId !== 'permissions' && activeId !== 'database' && activeId !== 'geminiKey' && activeId !== 'users' && activeId !== 'products' && activeId !== 'shippingMethods' && (
                         <div className="relative flex-grow sm:flex-grow-0 sm:min-w-[240px] lg:min-w-[320px] group">
                             <div className="relative flex items-center">
                                 <div className={`absolute left-4 ${isLightMode ? 'text-slate-400' : 'text-gray-500'}`}>
@@ -450,7 +451,7 @@ const SettingsDashboard: React.FC<SettingsDashboardProps> = ({ onBack, initialSe
                         </button>
                     )}
                     {activeId === 'pages' && <button onClick={() => setIsPdfOpen(true)} className="flex-1 sm:flex-none btn btn-secondary px-6">PDF</button>}
-                    {activeId !== 'telegramTemplates' && activeId !== 'permissions' && activeId !== 'database' && activeId !== 'users' && activeId !== 'products' && activeId !== 'shippingMethods' && (
+                    {activeId !== 'telegramTemplates' && activeId !== 'permissions' && activeId !== 'database' && activeId !== 'geminiKey' && activeId !== 'users' && activeId !== 'products' && activeId !== 'shippingMethods' && (
                         <button onClick={() => setModal({ isOpen: true, sectionId: activeId, item: null })} className="flex-1 sm:flex-none btn btn-primary px-10 font-black">+ {t.add_new}</button>
                     )}
                     <button onClick={onBack} className={`hidden md:flex btn px-6 ${
@@ -510,6 +511,8 @@ const SettingsDashboard: React.FC<SettingsDashboardProps> = ({ onBack, initialSe
                         />
                     ) : activeId === 'shippingMethods' ? (
                         <div className="flex-grow overflow-hidden flex flex-col"><ShippingMethodsManagement /></div>
+                    ) : activeId === 'geminiKey' ? (
+                        <GeminiKeyManagement />
                     ) : (activeId === 'driverRecommendations' && isExcelView) ? (
                         <div className="flex-grow overflow-hidden"><DriverRecommendationExcel /></div>
                     ) : (

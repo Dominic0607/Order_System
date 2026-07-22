@@ -294,6 +294,17 @@ export const configSections: ConfigSection[] = [
         primaryKeyField: 'None',
         fields: [],
         displayField: 'None'
+    },
+    {
+        id: 'geminiKey',
+        title: 'Gemini AI API Key',
+        description: 'គ្រប់គ្រង API Key សម្រាប់មុខងារ AI (Gemini)',
+        icon: '🤖',
+        dataKey: 'none',
+        sheetName: 'None',
+        primaryKeyField: 'None',
+        fields: [],
+        displayField: 'None'
     }
 ];
 

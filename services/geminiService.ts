@@ -1,6 +1,41 @@
 
 import { GoogleGenAI, GenerateContentResponse } from "@google/genai";
 import { ParsedOrder } from "../types";
+import { WEB_APP_URL } from "../constants";
+
+// Cached dynamic key fetched from backend (used when VITE_GEMINI_API_KEY env is absent)
+let _cachedDynamicKey: string | null = null;
+let _keyFetchedAt = 0;
+const KEY_CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+
+async function getGeminiAPIKey(): Promise<string> {
+    // 1. Prefer env variable (build-time)
+    const envKey = import.meta.env.VITE_GEMINI_API_KEY;
+    if (envKey) return envKey;
+
+    // 2. Use cached dynamic key if still fresh
+    if (_cachedDynamicKey && Date.now() - _keyFetchedAt < KEY_CACHE_TTL) {
+        return _cachedDynamicKey;
+    }
+
+    // 3. Fetch from backend (admin-only endpoint returns the actual key)
+    try {
+        const token = localStorage.getItem('token');
+        if (!token) return '';
+        const res = await fetch(`${WEB_APP_URL}/api/admin/gemini-key/value`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (res.ok) {
+            const data = await res.json();
+            _cachedDynamicKey = data.apiKey || '';
+            _keyFetchedAt = Date.now();
+            return _cachedDynamicKey;
+        }
+    } catch (e) {
+        console.warn('[geminiService] Could not fetch dynamic key:', e);
+    }
+    return '';
+}
 
 // simplified text extraction as per Gemini SDK guidelines: .text is a property, not a method
 const extractText = (response: GenerateContentResponse): string => {
@@ -9,8 +44,9 @@ const extractText = (response: GenerateContentResponse): string => {
 
 export const summarizeText = async (text: string): Promise<string> => {
     if (!text) return "No text provided to summarize.";
-    // Always initialize a new instance before call to ensure up-to-date config/key
-    const ai = new GoogleGenAI({ apiKey: import.meta.env.VITE_GEMINI_API_KEY });
+    const apiKey = await getGeminiAPIKey();
+    if (!apiKey) return "Gemini API Key មិនទាន់កំណត់។ សូមកំណត់ API Key ក្នុង Admin → Settings → Gemini AI API Key";
+    const ai = new GoogleGenAI({ apiKey });
     try {
         const response = await ai.models.generateContent({
             model: "gemini-3-flash-preview",
@@ -25,7 +61,9 @@ export const summarizeText = async (text: string): Promise<string> => {
 
 export const generateProductDescription = async (productName: string): Promise<string> => {
     if (!productName) return "";
-    const ai = new GoogleGenAI({ apiKey: import.meta.env.VITE_GEMINI_API_KEY });
+    const apiKey = await getGeminiAPIKey();
+    if (!apiKey) return "Gemini API Key មិនទាន់កំណត់";
+    const ai = new GoogleGenAI({ apiKey });
     try {
         const response = await ai.models.generateContent({
             model: "gemini-3-flash-preview",
@@ -39,7 +77,9 @@ export const generateProductDescription = async (productName: string): Promise<s
 };
 
 export const analyzeReportData = async (reportData: any, filters: any): Promise<string> => {
-    const ai = new GoogleGenAI({ apiKey: import.meta.env.VITE_GEMINI_API_KEY });
+    const apiKey = await getGeminiAPIKey();
+    if (!apiKey) return "Gemini API Key មិនទាន់កំណត់។ សូមកំណត់ API Key ក្នុង Admin → Settings → Gemini AI API Key";
+    const ai = new GoogleGenAI({ apiKey });
     try {
         const filtersSummary = [
             `Date Range: ${filters.datePreset === 'all' ? 'All Time' : `${filters.startDate} to ${filters.endDate}`}`,
@@ -80,7 +120,9 @@ export const generateSalesForecast = async (orders: ParsedOrder[]): Promise<stri
         return "ត្រូវការទិន្នន័យប្រតិបត្តិការណ៍យ៉ាងតិច ៥ ដើម្បីបង្កើតការព្យាករណ៍។";
     }
 
-    const ai = new GoogleGenAI({ apiKey: import.meta.env.VITE_GEMINI_API_KEY });
+    const apiKey = await getGeminiAPIKey();
+    if (!apiKey) return "Gemini API Key មិនទាន់កំណត់។ សូមកំណត់ API Key ក្នុង Admin → Settings → Gemini AI API Key";
+    const ai = new GoogleGenAI({ apiKey });
 
     const monthlyData = orders.reduce((acc, order) => {
         const month = new Date(order.Timestamp).toISOString().slice(0, 7);
