@@ -17,6 +17,7 @@ import PdfExportModal from '@/components/admin/PdfExportModal';
 import { Shift } from '@/types';
 import DateRangeFilter, { DateRangePreset } from '@/components/common/DateRangeFilter';
 import DeliveryListGeneratorModal from '@/components/orders/DeliveryListGeneratorModal';
+import { safeParseDate } from '@/utils/dateUtils';
 
 const bClasses = {
     surface: 'bg-[#1E2329] border border-[#2B3139]',
@@ -525,11 +526,25 @@ const PackagingView: React.FC<{ orders?: ParsedOrder[], onExit?: () => void }> =
 
     const handleCloseShift = async () => {
         if (!activeShift) return;
-        const todayStr = new Date().toLocaleDateString('km-KH').split(',')[0];
+        
+        const today = new Date();
+        const todayYear = today.getFullYear();
+        const todayMonth = today.getMonth();
+        const todayDate = today.getDate();
         
         const myPackedOrders = allFilteredOrdersBase.filter(o => {
             const isMe = o['Packed By'] === currentUser?.FullName;
-            const isToday = (o['Packed Time'] || '').startsWith(todayStr);
+            
+            const packedTimeStr = o['Packed Time'];
+            if (!packedTimeStr) return false;
+            
+            const packedDate = safeParseDate(packedTimeStr);
+            if (!packedDate) return false;
+            
+            const isToday = packedDate.getFullYear() === todayYear &&
+                            packedDate.getMonth() === todayMonth &&
+                            packedDate.getDate() === todayDate;
+                            
             return isMe && isToday && (o.FulfillmentStatus === 'Ready to Ship' || o.FulfillmentStatus === 'Shipped');
         });
 

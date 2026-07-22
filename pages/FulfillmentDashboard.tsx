@@ -561,13 +561,21 @@ const FulfillmentDashboard: React.FC<FulfillmentDashboardProps> = ({ orders, isL
                 </header>
 
                 <div className={`flex-shrink-0 px-3 lg:px-8 py-3 bg-[#181A20] border-b ${B_BORDER} flex items-center gap-3 overflow-x-auto no-scrollbar`}>
-                    <span className={`text-xs font-black ${B_TEXT_SECONDARY} uppercase tracking-[0.2em] mr-2 whitespace-nowrap`}>Shipping Filter:</span>
+                    <div className="flex items-center gap-1.5 mr-2 text-[#848E9C] shrink-0 select-none">
+                        <svg className="w-3.5 h-3.5 text-[#FCD535]/80" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M12 3c2.755 0 5.455.232 8.083.678.533.09.917.556.917 1.096v3.059zm-8.083.678A1.125 1.125 0 013 4.774V7.83c0 .54.384 1.006.917 1.096l4.244.717v8.188c0 .621.504 1.125 1.125 1.125h5.428c.621 0 1.125-.504 1.125-1.125V9.643l4.244-.717c.533-.09.917-.556.917-1.096V4.774c0-.54-.384-1.006-.917-1.096A48.11 48.11 0 0012 3z" />
+                        </svg>
+                        <span className="text-[10px] font-black uppercase tracking-[0.2em] whitespace-nowrap">Shipping Filter:</span>
+                    </div>
                     <button
                         onClick={() => setShippingFilter('')}
-                        className={`px-4 py-2 rounded-sm text-xs font-black uppercase tracking-wider transition-all whitespace-nowrap border flex items-center gap-2 ${!shippingFilter ? 'bg-[#FCD535] border-[#FCD535] text-black shadow-[0_0_15px_rgba(252,213,53,0.2)]' : 'bg-[#0B0E11] border-[#2B3139] text-[#848E9C] hover:border-[#FCD535]/50 hover:text-[#EAECEF]'}`}
+                        className={`px-4 py-2 rounded-full text-xs font-bold uppercase tracking-wider transition-all duration-200 ease-out whitespace-nowrap border flex items-center gap-2 hover:scale-[1.02] active:scale-[0.97] ${!shippingFilter ? 'bg-gradient-to-r from-[#FCD535] to-[#E5C02A] border-transparent text-[#0B0E11] font-black shadow-[0_3px_12px_rgba(252,213,53,0.25)]' : 'bg-[#0B0E11] border-[#252930] text-[#848E9C] hover:border-[#848E9C]/30 hover:text-[#EAECEF]'}`}
                     >
-                        All Carriers
-                        <span className={`ml-1 px-1.5 py-0.5 rounded-full text-[10px] font-black ${!shippingFilter ? 'bg-black/10 text-black' : 'bg-[#2B3139] text-[#848E9C]'}`}>
+                        <div className={`w-5 h-5 rounded-full flex items-center justify-center shrink-0 ${!shippingFilter ? 'bg-black/10' : 'bg-[#2B3139]'}`}>
+                            <span className="text-[9px]">🌐</span>
+                        </div>
+                        <span>ALL CARRIERS</span>
+                        <span className={`px-2 py-0.5 rounded-full text-[9px] font-black transition-all ${!shippingFilter ? 'bg-black/15 text-[#0B0E11]' : 'bg-[#2B3139] text-[#EAECEF]'}`}>
                             {shippingCounts.all || 0}
                         </span>
                     </button>
@@ -578,12 +586,20 @@ const FulfillmentDashboard: React.FC<FulfillmentDashboardProps> = ({ orders, isL
                             <button
                                 key={method.MethodName}
                                 onClick={() => setShippingFilter(isActive ? '' : method.MethodName)}
-                                className={`px-4 py-2 rounded-sm text-xs font-black uppercase tracking-wider transition-all whitespace-nowrap border flex items-center gap-2.5 ${isActive ? 'bg-[#FCD535] border-[#FCD535] text-black shadow-[0_0_15px_rgba(252,213,53,0.2)]' : 'bg-[#0B0E11] border-[#2B3139] text-[#848E9C] hover:border-[#FCD535]/50 hover:text-[#EAECEF]'}`}
+                                className={`px-4 py-2 rounded-full text-xs font-bold uppercase tracking-wider transition-all duration-200 ease-out whitespace-nowrap border flex items-center gap-2.5 hover:scale-[1.02] active:scale-[0.97] ${isActive ? 'bg-gradient-to-r from-[#FCD535] to-[#E5C02A] border-transparent text-[#0B0E11] font-black shadow-[0_3px_12px_rgba(252,213,53,0.25)]' : 'bg-[#0B0E11] border-[#252930] text-[#848E9C] hover:border-[#848E9C]/30 hover:text-[#EAECEF]'}`}
                             >
-                                {method.LogoURL && <img src={convertGoogleDriveUrl(method.LogoURL)} alt="" className="w-5 h-5 object-contain" />}
+                                {method.LogoURL ? (
+                                    <div className="w-5 h-5 rounded-full bg-white p-0.5 flex items-center justify-center overflow-hidden shrink-0 shadow-inner">
+                                        <img src={convertGoogleDriveUrl(method.LogoURL)} alt="" className="w-full h-full object-contain" />
+                                    </div>
+                                ) : (
+                                    <div className="w-5 h-5 rounded-full bg-[#2B3139] flex items-center justify-center shrink-0">
+                                        <span className="text-[9px]">🚚</span>
+                                    </div>
+                                )}
                                 <span>{method.MethodName}</span>
                                 {count > 0 && (
-                                    <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-black ${isActive ? 'bg-black/10 text-black' : 'bg-[#2B3139] text-[#848E9C]'}`}>
+                                    <span className={`px-2 py-0.5 rounded-full text-[9px] font-black transition-all ${isActive ? 'bg-black/15 text-[#0B0E11]' : 'bg-[#2B3139] text-[#EAECEF]'}`}>
                                         {count}
                                     </span>
                                 )}
