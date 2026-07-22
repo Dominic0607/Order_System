@@ -88,6 +88,7 @@ const ConfigEditModal: React.FC<ConfigEditModalProps> = ({ section, item, onClos
                 const teams = Array.from(new Set(data.map((p: any) => getValueCaseInsensitive(p, 'Team')))).filter(Boolean);
                 return teams.map(t => ({ label: String(t), value: String(t) }));
             }
+            if (field.dataRef === 'productCategories') return data.map((c: any) => ({ label: c.CategoryName, value: c.CategoryName }));
         }
         return [];
     };

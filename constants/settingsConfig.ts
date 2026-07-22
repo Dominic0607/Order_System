@@ -73,9 +73,25 @@ export const configSections: ConfigSection[] = [
             { name: 'Price', label: 'តម្លៃ ($)', type: 'number' }, 
             { name: 'Cost', label: 'តម្លៃដើម ($)', type: 'number' }, 
             { name: 'ImageURL', label: 'URL រូបភាព', type: 'image_url' },
-            { name: 'Tags', label: 'Tags (comma separated)', type: 'text' }
+            { name: 'Tags', label: 'Tags (comma separated)', type: 'text' },
+            { name: 'Category', label: 'ប្រភេទ (Category)', type: 'select', dataRef: 'productCategories' }
         ], 
         displayField: 'ProductName' 
+    },
+    {
+        id: 'productCategories',
+        title: 'ប្រភេទផលិតផល (Categories)',
+        description: 'គ្រប់គ្រងប្រភេទ និងការចាត់ថ្នាក់ទំនិញ',
+        icon: '🏷️',
+        dataKey: 'productCategories',
+        sheetName: 'ProductCategories',
+        primaryKeyField: 'CategoryName',
+        fields: [
+            { name: 'CategoryName', label: 'ឈ្មោះប្រភេទ', type: 'text', placeholder: 'ឧ. Electronics, Clothing, ...' },
+            { name: 'Description', label: 'ការពន្យល់', type: 'text', placeholder: 'ពណ៌នាអំពីប្រភេទផលិតផល' },
+            { name: 'IconURL', label: 'URL រូបរូបតំណាង', type: 'image_url' }
+        ],
+        displayField: 'CategoryName'
     },
     { 
         id: 'pages', 

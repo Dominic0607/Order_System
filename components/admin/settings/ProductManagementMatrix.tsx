@@ -1,5 +1,5 @@
 
-import React, { useState, useContext, useMemo, useCallback } from 'react';
+import React, { useState, useContext, useMemo, useCallback, useRef } from 'react';
 import { AppContext } from '../../../context/AppContext';
 import { MasterProduct } from '../../../types';
 import Spinner from '../../common/Spinner';
@@ -16,8 +16,15 @@ type SortField = 'name' | 'barcode' | 'category' | 'price' | 'cost' | 'profit';
 type SortOrder = 'asc' | 'desc';
 
 const ProductManagementMatrix: React.FC<ProductManagementMatrixProps> = ({ products, onRefresh }) => {
-    const { refreshData, showNotification, language } = useContext(AppContext);
+    const { appData, refreshData, showNotification, language } = useContext(AppContext);
     const t = translations[language] || translations.km;
+    const productCategoryOptions: string[] = useMemo(() => {
+        const cats = (appData as any)?.productCategories || [];
+        const fromData = cats.map((c: any) => c.CategoryName).filter(Boolean);
+        // Also include categories already used on products (fallback if sheet is empty)
+        const usedCats = Array.from(new Set(products.map(p => p.Category).filter(Boolean))) as string[];
+        return Array.from(new Set([...fromData, ...usedCats])).sort();
+    }, [appData, products]);
     
     // State management
     const [searchQuery, setSearchQuery] = useState('');
@@ -36,6 +43,11 @@ const ProductManagementMatrix: React.FC<ProductManagementMatrixProps> = ({ produ
     // New product form state
     const [newProductFile, setNewProductFile] = useState<File | null>(null);
     const [newProductImagePreview, setNewProductImagePreview] = useState<string | null>(null);
+    const [newCategorySearch, setNewCategorySearch] = useState('');
+    const [newCategoryOpen, setNewCategoryOpen] = useState(false);
+    const [editCategorySearch, setEditCategorySearch] = useState<Record<string, string>>({});
+    const [editCategoryOpen, setEditCategoryOpen] = useState<Record<string, boolean>>({});
+    const newCategoryRef = useRef<HTMLDivElement>(null);
     const [newProduct, setNewProduct] = useState<Partial<MasterProduct>>({
         ProductName: '',
         Barcode: '',
@@ -745,15 +757,38 @@ const ProductManagementMatrix: React.FC<ProductManagementMatrixProps> = ({ produ
                                 />
                             </td>
 
-                            {/* New Category */}
+                            {/* New Category - Searchable Dropdown */}
                             <td className="px-3 py-3">
-                                <input
-                                    type="text"
-                                    placeholder={t.field_Category || 'ប្រភេទ...'}
-                                    value={newProduct.Category || ''}
-                                    onChange={(e) => setNewProduct(prev => ({ ...prev, Category: e.target.value }))}
-                                    className="w-full bg-[#0b0e11] border border-[#2b3139] rounded-md px-2.5 py-1.5 text-xs text-[#eaecef] focus:border-[#fcd535] outline-none transition-all placeholder:text-[#5e6673]"
-                                />
+                                <div className="relative" ref={newCategoryRef}>
+                                    <input
+                                        type="text"
+                                        placeholder={t.field_Category || 'ប្រភេទ...'}
+                                        value={newCategoryOpen ? newCategorySearch : (newProduct.Category || '')}
+                                        onFocus={() => { setNewCategoryOpen(true); setNewCategorySearch(newProduct.Category || ''); }}
+                                        onBlur={() => setTimeout(() => setNewCategoryOpen(false), 150)}
+                                        onChange={(e) => { setNewCategorySearch(e.target.value); setNewProduct(prev => ({ ...prev, Category: e.target.value })); }}
+                                        className="w-full bg-[#0b0e11] border border-[#2b3139] rounded-md px-2.5 py-1.5 pr-7 text-xs text-[#eaecef] focus:border-[#fcd535] outline-none transition-all placeholder:text-[#5e6673]"
+                                    />
+                                    <svg className="absolute right-2 top-1/2 -translate-y-1/2 w-3 h-3 text-[#5e6673] pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+                                    {newCategoryOpen && (
+                                        <div className="absolute z-50 top-full left-0 right-0 mt-1 bg-[#1e2329] border border-[#2b3139] rounded-md shadow-2xl max-h-48 overflow-y-auto">
+                                            {productCategoryOptions
+                                                .filter(c => c.toLowerCase().includes(newCategorySearch.toLowerCase()))
+                                                .map(cat => (
+                                                    <button
+                                                        key={cat}
+                                                        type="button"
+                                                        onMouseDown={() => { setNewProduct(prev => ({ ...prev, Category: cat })); setNewCategorySearch(cat); setNewCategoryOpen(false); }}
+                                                        className={`w-full text-left px-3 py-1.5 text-xs hover:bg-[#2b3139] transition-colors ${ newProduct.Category === cat ? 'text-[#fcd535] font-bold' : 'text-[#eaecef]' }`}
+                                                    >{cat}</button>
+                                                ))
+                                            }
+                                            {productCategoryOptions.filter(c => c.toLowerCase().includes(newCategorySearch.toLowerCase())).length === 0 && newCategorySearch && (
+                                                <div className="px-3 py-2 text-xs text-[#848e9c] italic">មិនមានប្រភេទ — នឹងបង្កើតថ្មី</div>
+                                            )}
+                                        </div>
+                                    )}
+                                </div>
                             </td>
 
                             {/* New Price */}
@@ -941,15 +976,38 @@ const ProductManagementMatrix: React.FC<ProductManagementMatrixProps> = ({ produ
                                         </div>
                                     </td>
 
-                                    {/* Category Input */}
+                                    {/* Category Searchable Dropdown */}
                                     <td className="px-3 py-3">
-                                        <input
-                                            type="text"
-                                            value={currentCategory}
-                                            onChange={(e) => handleFieldChange(product.ProductName, 'Category', e.target.value)}
-                                            placeholder="ប្រភេទ..."
-                                            className="w-full bg-[#0b0e11] border border-[#2b3139] rounded-md px-2.5 py-1 text-xs text-[#eaecef] focus:border-[#fcd535] outline-none transition-all"
-                                        />
+                                        <div className="relative">
+                                            <input
+                                                type="text"
+                                                value={editCategoryOpen[product.ProductName] ? (editCategorySearch[product.ProductName] ?? currentCategory) : currentCategory}
+                                                onFocus={() => { setEditCategoryOpen(prev => ({ ...prev, [product.ProductName]: true })); setEditCategorySearch(prev => ({ ...prev, [product.ProductName]: currentCategory })); }}
+                                                onBlur={() => setTimeout(() => setEditCategoryOpen(prev => ({ ...prev, [product.ProductName]: false })), 150)}
+                                                onChange={(e) => { setEditCategorySearch(prev => ({ ...prev, [product.ProductName]: e.target.value })); handleFieldChange(product.ProductName, 'Category', e.target.value); }}
+                                                placeholder="ប្រភេទ..."
+                                                className="w-full bg-[#0b0e11] border border-[#2b3139] rounded-md px-2.5 py-1 pr-7 text-xs text-[#eaecef] focus:border-[#fcd535] outline-none transition-all"
+                                            />
+                                            <svg className="absolute right-2 top-1/2 -translate-y-1/2 w-3 h-3 text-[#5e6673] pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+                                            {editCategoryOpen[product.ProductName] && (
+                                                <div className="absolute z-50 top-full left-0 right-0 mt-1 bg-[#1e2329] border border-[#2b3139] rounded-md shadow-2xl max-h-48 overflow-y-auto">
+                                                    {productCategoryOptions
+                                                        .filter(c => c.toLowerCase().includes((editCategorySearch[product.ProductName] || '').toLowerCase()))
+                                                        .map(cat => (
+                                                            <button
+                                                                key={cat}
+                                                                type="button"
+                                                                onMouseDown={() => { handleFieldChange(product.ProductName, 'Category', cat); setEditCategorySearch(prev => ({ ...prev, [product.ProductName]: cat })); setEditCategoryOpen(prev => ({ ...prev, [product.ProductName]: false })); }}
+                                                                className={`w-full text-left px-3 py-1.5 text-xs hover:bg-[#2b3139] transition-colors ${ currentCategory === cat ? 'text-[#fcd535] font-bold' : 'text-[#eaecef]' }`}
+                                                            >{cat}</button>
+                                                        ))
+                                                    }
+                                                    {productCategoryOptions.filter(c => c.toLowerCase().includes((editCategorySearch[product.ProductName] || '').toLowerCase())).length === 0 && editCategorySearch[product.ProductName] && (
+                                                        <div className="px-3 py-2 text-xs text-[#848e9c] italic">មិនមានប្រភេទ — នឹងរក្សាទុកជាប្រភេទថ្មី</div>
+                                                    )}
+                                                </div>
+                                            )}
+                                        </div>
                                     </td>
 
                                     {/* Price Input (Flex Alignment) */}
