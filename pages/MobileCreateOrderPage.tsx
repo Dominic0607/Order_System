@@ -46,6 +46,7 @@ const MobileCreateOrderPage: React.FC<MobileCreateOrderPageProps> = ({ team, onS
     const [isUndoing, setIsUndoing] = useState(false);
     const submitTimeoutRef = useRef<NodeJS.Timeout | null>(null);
     const submitIntervalRef = useRef<NodeJS.Timeout | null>(null);
+    const contentRef = useRef<HTMLDivElement>(null);
 
     const teamPages = useMemo(() => {
         if (!appData.pages) return [];
@@ -144,6 +145,12 @@ const MobileCreateOrderPage: React.FC<MobileCreateOrderPageProps> = ({ team, onS
 
     const updateOrder = (updates: any) => setOrder((prev: any) => ({ ...prev, ...updates }));
 
+    const handleInputFocus = (e: React.FocusEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+        setTimeout(() => {
+            e.target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }, 300);
+    };
+
     const handlePhoneChange = (value: string) => {
         let phoneNumber = value.replace(/[^0-9]/g, '');
         if (phoneNumber.length > 1 && phoneNumber.startsWith('00')) phoneNumber = '0' + phoneNumber.substring(2);
@@ -181,13 +188,13 @@ const MobileCreateOrderPage: React.FC<MobileCreateOrderPageProps> = ({ team, onS
     const handleNext = () => {
         if (validateStep(currentStep)) {
             setCurrentStep(prev => prev + 1);
-            window.scrollTo({ top: 0, behavior: 'smooth' });
+            contentRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
         }
     };
 
     const handlePrev = () => {
         setCurrentStep(prev => prev - 1);
-        window.scrollTo({ top: 0, behavior: 'smooth' });
+        contentRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
     };
 
     const handleUndo = () => {
@@ -279,7 +286,7 @@ const MobileCreateOrderPage: React.FC<MobileCreateOrderPageProps> = ({ team, onS
         if (!validateStep(4)) return;
         
         setLoading(true);
-        window.scrollTo({ top: 0, behavior: 'smooth' });
+        contentRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
         if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
 
         const grace = advancedSettings?.placingOrderGracePeriod || 5;
@@ -311,9 +318,9 @@ const MobileCreateOrderPage: React.FC<MobileCreateOrderPageProps> = ({ team, onS
     };
 
     return (
-        <div className="min-h-screen bg-[#020617] pb-32">
+        <div className="flex flex-col h-screen h-[100dvh] bg-[#020617] overflow-hidden text-gray-300 font-sans">
             {/* Header Stepper */}
-            <div className="sticky top-0 z-40 bg-[#020617]/80 backdrop-blur-xl border-b border-white/5 px-6 py-4">
+            <div className="flex-shrink-0 bg-[#020617]/90 border-b border-white/5 px-6 py-4">
                 <div className="flex items-center justify-between mb-4">
                     <button onClick={handleCancel} className="text-gray-500 text-[10px] font-black uppercase tracking-widest">បោះបង់</button>
                     <span className="text-white text-[11px] font-black uppercase tracking-[0.3em]">បង្កើតការកម្មង់ថ្មី</span>
@@ -332,8 +339,11 @@ const MobileCreateOrderPage: React.FC<MobileCreateOrderPageProps> = ({ team, onS
                 </div>
             </div>
 
-            {/* Content Area */}
-            <div className="px-6 py-8">
+            {/* Scrollable Content Area */}
+            <div 
+                ref={contentRef}
+                className="flex-grow overflow-y-auto overflow-x-hidden px-6 py-8 pb-10 space-y-6 [-webkit-overflow-scrolling:touch] touch-action-pan-y scroll-smooth custom-scrollbar-mobile"
+            >
                 {error && (
                     <div className="mb-6 p-4 bg-red-500/10 border border-red-500/20 rounded-2xl flex items-center gap-3 animate-shake">
                         <svg className="w-5 h-5 text-red-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" strokeWidth={2}/></svg>
@@ -396,10 +406,10 @@ const MobileCreateOrderPage: React.FC<MobileCreateOrderPageProps> = ({ team, onS
                                 ))}
                             </div>
 
-                            <input type="text" placeholder="ឈ្មោះអតិថិជន*" className="w-full bg-white/5 border border-white/5 rounded-2xl p-4 text-white text-sm" value={order.customer.name} onChange={e => updateOrder({ customer: { ...order.customer, name: e.target.value } })} />
+                            <input type="text" placeholder="ឈ្មោះអតិថិជន*" className="w-full bg-white/5 border border-white/5 rounded-2xl p-4 text-white text-sm" value={order.customer.name} onChange={e => updateOrder({ customer: { ...order.customer, name: e.target.value } })} onFocus={handleInputFocus} />
                             
                             <div className="relative">
-                                <input type="tel" placeholder="លេខទូរស័ព្ទ*" className="w-full bg-white/5 border border-white/5 rounded-2xl p-4 text-white text-sm pr-12" value={order.customer.phone} onChange={e => handlePhoneChange(e.target.value)} />
+                                <input type="tel" placeholder="លេខទូរស័ព្ទ*" className="w-full bg-white/5 border border-white/5 rounded-2xl p-4 text-white text-sm pr-12" value={order.customer.phone} onChange={e => handlePhoneChange(e.target.value)} onFocus={handleInputFocus} />
                                 {carrierLogo && <img src={carrierLogo} className="absolute right-4 top-4 h-6 w-auto object-contain" />}
                             </div>
 
@@ -409,7 +419,7 @@ const MobileCreateOrderPage: React.FC<MobileCreateOrderPageProps> = ({ team, onS
                                 onSelect={(val) => updateOrder({ customer: { ...order.customer, province: val } })}
                             />
                             
-                            <input type="text" placeholder="ទីតាំងលម្អិត..." className="w-full bg-white/5 border border-white/5 rounded-2xl p-4 text-white text-sm" value={order.customer.additionalLocation} onChange={e => updateOrder({ customer: { ...order.customer, additionalLocation: e.target.value } })} />
+                            <input type="text" placeholder="ទីតាំងលម្អិត..." className="w-full bg-white/5 border border-white/5 rounded-2xl p-4 text-white text-sm" value={order.customer.additionalLocation} onChange={e => updateOrder({ customer: { ...order.customer, additionalLocation: e.target.value } })} onFocus={handleInputFocus} />
                             
                             <div className="space-y-3">
                                 <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-2">ថ្លៃសេវាដឹកជញ្ជូន</label>
@@ -475,6 +485,7 @@ const MobileCreateOrderPage: React.FC<MobileCreateOrderPageProps> = ({ team, onS
                                     className="w-full bg-white/5 border border-white/5 rounded-3xl p-5 text-white font-black text-xl pr-12 focus:border-blue-500/50 outline-none transition-all" 
                                     value={order.shipping.cost} 
                                     onChange={e => updateOrder({ shipping: { ...order.shipping, cost: e.target.value } })}
+                                    onFocus={handleInputFocus}
                                 />
                                 <div className="absolute right-0 top-0 bottom-0 pr-6 flex items-center pointer-events-none">
                                     <span className="text-gray-500 font-bold text-lg">$</span>
@@ -542,13 +553,13 @@ const MobileCreateOrderPage: React.FC<MobileCreateOrderPageProps> = ({ team, onS
                             </div>
                         </div>
 
-                        <textarea placeholder="ចំណាំបន្ថែម..." value={order.note} rows={4} onChange={(e) => updateOrder({ note: e.target.value })} className="w-full bg-white/5 border border-white/5 rounded-[2rem] p-6 text-white text-sm focus:border-blue-500/50 outline-none transition-all"></textarea>
+                        <textarea placeholder="ចំណាំបន្ថែម..." value={order.note} rows={4} onChange={(e) => updateOrder({ note: e.target.value })} className="w-full bg-white/5 border border-white/5 rounded-[2rem] p-6 text-white text-sm focus:border-blue-500/50 outline-none transition-all" onFocus={handleInputFocus}></textarea>
                     </div>
                 )}
             </div>
 
             {/* Bottom Navigation */}
-            <div className="fixed bottom-0 left-0 w-full p-6 bg-gradient-to-t from-[#020617] via-[#020617] to-transparent z-40">
+            <div className="flex-shrink-0 p-6 bg-[#020617] border-t border-white/5">
                 <div className="flex gap-3">
                     {currentStep > 1 && (
                         <button onClick={handlePrev} className="flex-1 py-5 bg-white/5 text-gray-400 rounded-[1.8rem] font-black uppercase text-[11px] tracking-widest border border-white/5">ថយក្រោយ</button>
