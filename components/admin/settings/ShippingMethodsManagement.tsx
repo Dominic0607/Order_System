@@ -195,7 +195,7 @@ export const ShippingMethodsManagement: React.FC = () => {
                     </div>
                     <div className="flex items-baseline gap-2">
                         <span className={`text-2xl font-black ${isLightMode ? 'text-rose-600' : 'text-rose-400'}`}>{metrics.disabled}</span>
-                        <span className={`text-[11px] font-bold ${isLightMode ? 'text-rose-600/70' : 'text-rose-500/80'}`}>បិទផ្អាក</span>
+                        <span className={`text-[11px] font-bold ${isLightMode ? 'text-rose-600/70' : 'text-rose-500/80'}`}>បានបិទ</span>
                     </div>
                 </div>
 
@@ -284,7 +284,11 @@ export const ShippingMethodsManagement: React.FC = () => {
 
                     <button
                         onClick={() => setModal({ isOpen: true, item: null })}
-                        className="btn btn-primary px-5 py-2.5 rounded-2xl font-black text-xs shadow-lg shadow-blue-600/20 whitespace-nowrap flex items-center gap-2"
+                        className={`px-5 py-2.5 rounded-2xl font-black text-xs shadow-md active:scale-95 transition-all flex items-center gap-2 whitespace-nowrap ${
+                            isLightMode 
+                                ? 'bg-blue-600 hover:bg-blue-700 text-white shadow-blue-500/20' 
+                                : 'bg-blue-600 hover:bg-blue-500 text-white shadow-blue-600/30'
+                        }`}
                     >
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M12 4v16m8-8H4" /></svg>
                         បន្ថែមសេវាថ្មី
@@ -369,7 +373,7 @@ export const ShippingMethodsManagement: React.FC = () => {
 
                                             {/* Driver Options (Manual / Required) */}
                                             <td className="py-4 px-4 text-center">
-                                                <div className="flex flex-col items-center gap-1.5">
+                                                <div className="flex items-center justify-center gap-2">
                                                     <ToggleSwitch
                                                         size="sm"
                                                         variant="emerald"
@@ -381,10 +385,10 @@ export const ShippingMethodsManagement: React.FC = () => {
                                                         isLightMode={isLightMode}
                                                     />
                                                     {method.RequireDriverSelection && (
-                                                        <span className={`text-[9px] font-black px-2 py-0.5 rounded-lg border ${
+                                                        <span className={`text-[9.5px] font-black px-2 py-0.5 rounded-md border flex-shrink-0 whitespace-nowrap ${
                                                             isLightMode ? 'bg-amber-50 text-amber-700 border-amber-200' : 'bg-amber-500/10 text-amber-400 border-amber-500/20'
-                                                        }`}>
-                                                            តម្រូវជ្រើសអ្នកដឹក
+                                                        }`} title="តម្រូវឲ្យជ្រើសរើសអ្នកដឹក">
+                                                            តម្រូវអ្នកដឹក
                                                         </span>
                                                     )}
                                                 </div>
@@ -420,7 +424,7 @@ export const ShippingMethodsManagement: React.FC = () => {
 
                                             {/* Cost Shortcuts */}
                                             <td className="py-4 px-4 text-left">
-                                                <div className="flex flex-wrap gap-1.5 max-w-[200px]">
+                                                <div className="flex flex-wrap gap-1.5 max-w-[200px] items-center">
                                                     {method.CostShortcuts ? (
                                                         method.CostShortcuts.split(',').map((sc, i) => (
                                                             <span
