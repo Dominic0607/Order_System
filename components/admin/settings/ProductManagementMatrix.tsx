@@ -5,7 +5,6 @@ import { MasterProduct } from '../../../types';
 import Spinner from '../../common/Spinner';
 import { WEB_APP_URL } from '../../../constants';
 import { convertGoogleDriveUrl } from '../../../utils/fileUtils';
-import { getValueCaseInsensitive } from '../../../constants/settingsConfig';
 import { translations } from '../../../translations';
 
 interface ProductManagementMatrixProps {
@@ -13,14 +12,27 @@ interface ProductManagementMatrixProps {
     onRefresh: () => void;
 }
 
+type SortField = 'name' | 'barcode' | 'price' | 'cost' | 'profit';
+type SortOrder = 'asc' | 'desc';
+
 const ProductManagementMatrix: React.FC<ProductManagementMatrixProps> = ({ products, onRefresh }) => {
     const { refreshData, showNotification, language } = useContext(AppContext);
-    const t = translations[language];
+    const t = translations[language] || translations.km;
+    
+    // State management
     const [searchQuery, setSearchQuery] = useState('');
+    const [selectedTag, setSelectedTag] = useState<string | null>(null);
+    const [sortField, setSortField] = useState<SortField | null>(null);
+    const [sortOrder, setSortOrder] = useState<SortOrder>('asc');
+    
     const [updating, setUpdating] = useState<string | null>(null);
     const [editData, setEditData] = useState<Record<string, Partial<MasterProduct>>>({});
     const [isSavingAll, setIsSavingAll] = useState(false);
     const [isAddingNew, setIsAddingNew] = useState(false);
+    const [copiedBarcode, setCopiedBarcode] = useState<string | null>(null);
+    const [lightboxImage, setLightboxImage] = useState<string | null>(null);
+
+    // New product form state
     const [newProductFile, setNewProductFile] = useState<File | null>(null);
     const [newProductImagePreview, setNewProductImagePreview] = useState<string | null>(null);
     const [newProduct, setNewProduct] = useState<Partial<MasterProduct>>({
@@ -32,8 +44,32 @@ const ProductManagementMatrix: React.FC<ProductManagementMatrixProps> = ({ produ
         ImageURL: ''
     });
 
+    // Extract unique tags for quick filtering
+    const allTags = useMemo(() => {
+        const tagSet = new Set<string>();
+        products.forEach(p => {
+            if (p.Tags) {
+                p.Tags.split(/[,;\s]+/).forEach(t => {
+                    const cleaned = t.trim();
+                    if (cleaned) tagSet.add(cleaned);
+                });
+            }
+        });
+        return Array.from(tagSet);
+    }, [products]);
+
+    // Handle barcode copy to clipboard
+    const handleCopyBarcode = (barcode: string) => {
+        if (!barcode) return;
+        navigator.clipboard.writeText(barcode);
+        setCopiedBarcode(barcode);
+        showNotification?.(`បានចម្លង Barcode: ${barcode}`, 'info');
+        setTimeout(() => setCopiedBarcode(null), 2000);
+    };
+
+    // Add new product handler
     const handleAddNewProduct = async () => {
-        if (!newProduct.ProductName) {
+        if (!newProduct.ProductName?.trim()) {
             showNotification?.('សូមបញ្ចូលឈ្មោះផលិតផល', 'error');
             return;
         }
@@ -86,7 +122,7 @@ const ProductManagementMatrix: React.FC<ProductManagementMatrixProps> = ({ produ
                         });
                         await uploadPromise;
                     } catch (e: any) {
-                        showNotification?.(`Product added, but image upload failed: ${e.message}`, 'warning');
+                        showNotification?.(`បានបន្ថែមផលិតផល តែជួបបញ្ហាក្នុងការ Upload រូបភាព: ${e.message}`, 'warning');
                     }
                 }
 
@@ -113,15 +149,66 @@ const ProductManagementMatrix: React.FC<ProductManagementMatrixProps> = ({ produ
         }
     };
 
+    // Filter and Sort logic
     const filteredProducts = useMemo(() => {
-        if (!searchQuery.trim()) return products;
-        const q = searchQuery.toLowerCase();
-        return products.filter(p => 
-            p.ProductName.toLowerCase().includes(q) || 
-            (p.Barcode || '').toLowerCase().includes(q) ||
-            (p.Tags || '').toLowerCase().includes(q)
-        );
-    }, [products, searchQuery]);
+        let result = [...products];
+
+        // 1. Search Query Filter
+        if (searchQuery.trim()) {
+            const q = searchQuery.toLowerCase();
+            result = result.filter(p =>
+                p.ProductName.toLowerCase().includes(q) ||
+                (p.Barcode || '').toLowerCase().includes(q) ||
+                (p.Tags || '').toLowerCase().includes(q)
+            );
+        }
+
+        // 2. Tag Filter
+        if (selectedTag) {
+            result = result.filter(p => p.Tags && p.Tags.toLowerCase().includes(selectedTag.toLowerCase()));
+        }
+
+        // 3. Sorting
+        if (sortField) {
+            result.sort((a, b) => {
+                const getVal = (prod: MasterProduct, field: SortField) => {
+                    const changes = editData[prod.ProductName] || {};
+                    switch (field) {
+                        case 'name': return (changes.ProductName ?? prod.ProductName).toLowerCase();
+                        case 'barcode': return (changes.Barcode ?? prod.Barcode ?? '').toLowerCase();
+                        case 'price': return Number(changes.Price ?? prod.Price ?? 0);
+                        case 'cost': return Number(changes.Cost ?? prod.Cost ?? 0);
+                        case 'profit': {
+                            const p = Number(changes.Price ?? prod.Price ?? 0);
+                            const c = Number(changes.Cost ?? prod.Cost ?? 0);
+                            return p - c;
+                        }
+                        default: return 0;
+                    }
+                };
+
+                const valA = getVal(a, sortField);
+                const valB = getVal(b, sortField);
+
+                if (valA < valB) return sortOrder === 'asc' ? -1 : 1;
+                if (valA > valB) return sortOrder === 'asc' ? 1 : -1;
+                return 0;
+            });
+        }
+
+        return result;
+    }, [products, searchQuery, selectedTag, sortField, sortOrder, editData]);
+
+    // Header Sort Toggle
+    const handleSort = (field: SortField) => {
+        if (sortField === field) {
+            if (sortOrder === 'asc') setSortOrder('desc');
+            else setSortField(null); // Reset sort
+        } else {
+            setSortField(field);
+            setSortOrder('asc');
+        }
+    };
 
     const handleFieldChange = (productName: string, field: keyof MasterProduct, value: any) => {
         setEditData(prev => ({
@@ -131,6 +218,14 @@ const ProductManagementMatrix: React.FC<ProductManagementMatrixProps> = ({ produ
                 [field]: value
             }
         }));
+    };
+
+    const handleResetRow = (productName: string) => {
+        setEditData(prev => {
+            const next = { ...prev };
+            delete next[productName];
+            return next;
+        });
     };
 
     const handleSaveRow = async (product: MasterProduct, specificChanges?: Partial<MasterProduct>) => {
@@ -155,13 +250,9 @@ const ProductManagementMatrix: React.FC<ProductManagementMatrixProps> = ({ produ
 
             const result = await res.json();
             if (res.ok && result.status === 'success') {
-                showNotification?.(`${t.save_success}: ${product.ProductName}`, 'success');
+                showNotification?.(`${t.save_success || 'បានរក្សាទុក'}: ${product.ProductName}`, 'success');
                 if (!specificChanges) {
-                    setEditData(prev => {
-                        const next = { ...prev };
-                        delete next[product.ProductName];
-                        return next;
-                    });
+                    handleResetRow(product.ProductName);
                 }
                 await refreshData();
                 onRefresh();
@@ -185,7 +276,7 @@ const ProductManagementMatrix: React.FC<ProductManagementMatrixProps> = ({ produ
             reader.onload = async () => {
                 const base64Data = (reader.result as string).split(',')[1];
                 const token = localStorage.getItem('token');
-                
+
                 const res = await fetch(`${WEB_APP_URL}/api/upload-image`, {
                     method: 'POST',
                     headers: {
@@ -204,7 +295,7 @@ const ProductManagementMatrix: React.FC<ProductManagementMatrixProps> = ({ produ
 
                 const result = await res.json();
                 if (res.ok && result.status === 'success') {
-                    showNotification?.(t.upload_success, 'success');
+                    showNotification?.(t.upload_success || 'Upload រូបភាពជោគជ័យ', 'success');
                     await refreshData();
                     onRefresh();
                 } else {
@@ -220,7 +311,7 @@ const ProductManagementMatrix: React.FC<ProductManagementMatrixProps> = ({ produ
     };
 
     const handleDeleteProduct = async (product: MasterProduct) => {
-        if (!window.confirm(`${t.confirm_delete} "${product.ProductName}"?`)) return;
+        if (!window.confirm(`${t.confirm_delete || 'តើអ្នកពិតជាចង់លុប'} "${product.ProductName}"?`)) return;
 
         setUpdating(product.ProductName);
         try {
@@ -239,7 +330,7 @@ const ProductManagementMatrix: React.FC<ProductManagementMatrixProps> = ({ produ
 
             const result = await res.json();
             if (res.ok && result.status === 'success') {
-                showNotification?.(t.delete_success, 'success');
+                showNotification?.(t.delete_success || 'លុបជោគជ័យ', 'success');
                 await refreshData();
                 onRefresh();
             } else {
@@ -286,93 +377,252 @@ const ProductManagementMatrix: React.FC<ProductManagementMatrixProps> = ({ produ
         }
 
         if (successCount > 0) {
-            showNotification?.(`${t.save_success}: ${successCount}`, 'success');
+            showNotification?.(`${t.save_success || 'រក្សាទុកជោគជ័យ'}: ${successCount}`, 'success');
             setEditData({});
             await refreshData();
             onRefresh();
         }
         if (failCount > 0) {
-            showNotification?.(`Failed: ${failCount}`, 'error');
+            showNotification?.(`បរាជ័យ: ${failCount}`, 'error');
         }
         setIsSavingAll(false);
     };
 
+    // Calculate profit and margin
+    const renderProfitMargin = (price: number, cost: number) => {
+        if (!price && !cost) return null;
+        const profit = price - cost;
+        const margin = price > 0 ? (profit / price) * 100 : 0;
+        const isPositive = profit >= 0;
+
+        return (
+            <div className="flex items-center gap-1.5 mt-1 text-[10px]">
+                <span className={`font-semibold ${isPositive ? 'text-[#0ecb81]' : 'text-[#f6465d]'}`}>
+                    {isPositive ? '+' : ''}${profit.toFixed(2)}
+                </span>
+                <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold ${
+                    margin >= 30 ? 'bg-[#0ecb81]/15 text-[#0ecb81] border border-[#0ecb81]/30' :
+                    margin > 0 ? 'bg-[#fcd535]/15 text-[#fcd535] border border-[#fcd535]/30' :
+                    'bg-[#f6465d]/15 text-[#f6465d] border border-[#f6465d]/30'
+                }`}>
+                    {margin.toFixed(1)}%
+                </span>
+            </div>
+        );
+    };
+
+    const newProductPrice = newProduct.Price || 0;
+    const newProductCost = newProduct.Cost || 0;
+
     return (
-        <div className="flex flex-col h-full gap-4">
-            {/* Action Bar */}
-            <div className="flex flex-col md:flex-row items-center justify-between gap-4 p-4 bg-[#1e2329] border border-[#2b3139] rounded-sm">
-                <div className="relative w-full md:max-w-md group">
-                    <div className="absolute left-3 top-1/2 -translate-y-1/2 text-[#848e9c]">
-                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                        </svg>
+        <div className="flex flex-col h-full gap-3 font-sans text-[#eaecef]">
+            {/* Top Toolbar & Filter Bar */}
+            <div className="bg-[#1e2329] border border-[#2b3139] rounded-lg p-3.5 shadow-md flex flex-col gap-3">
+                <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
+                    {/* Search Bar */}
+                    <div className="relative flex-grow max-w-lg">
+                        <div className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#848e9c]">
+                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                            </svg>
+                        </div>
+                        <input
+                            type="text"
+                            placeholder={`${t.search || 'ស្វែងរក...'} (Name, Barcode, Tags)`}
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                            className="w-full bg-[#0b0e11] border border-[#2b3139] rounded-md py-2 pl-10 pr-9 text-sm text-[#eaecef] focus:border-[#fcd535] focus:ring-1 focus:ring-[#fcd535] outline-none transition-all placeholder:text-[#5e6673]"
+                        />
+                        {searchQuery && (
+                            <button
+                                onClick={() => setSearchQuery('')}
+                                className="absolute right-3 top-1/2 -translate-y-1/2 text-[#848e9c] hover:text-white transition-colors"
+                            >
+                                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                            </button>
+                        )}
                     </div>
-                    <input
-                        type="text"
-                        placeholder={`${t.search} (Name, Barcode, Tags)`}
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                        className="w-full bg-[#0b0e11] border border-[#2b3139] rounded-sm py-2 pl-10 pr-4 text-sm text-[#eaecef] focus:border-[#fcd535] outline-none transition-all placeholder:text-[#5e6673]"
-                    />
+
+                    {/* Stats & Actions */}
+                    <div className="flex items-center gap-2.5 flex-wrap justify-between lg:justify-end">
+                        {/* Total Count Badge */}
+                        <div className="flex items-center gap-1.5 px-3 py-1.5 bg-[#0b0e11] border border-[#2b3139] rounded-md text-xs font-semibold text-[#848e9c]">
+                            <span>សរុប:</span>
+                            <span className="text-[#fcd535] font-bold">{filteredProducts.length}</span>
+                            {products.length !== filteredProducts.length && (
+                                <span className="text-[10px] text-[#5e6673]">({products.length})</span>
+                            )}
+                        </div>
+
+                        {/* Unsaved Changes Indicator & Bulk Save */}
+                        {Object.keys(editData).length > 0 && (
+                            <button
+                                onClick={handleSaveAll}
+                                disabled={isSavingAll}
+                                className="flex items-center gap-2 px-4 py-1.5 bg-[#fcd535] text-black text-xs font-extrabold uppercase rounded-md hover:bg-[#f0c832] active:scale-95 transition-all shadow-md shadow-[#fcd535]/10 disabled:opacity-50 animate-pulse"
+                            >
+                                {isSavingAll ? <Spinner size="xs" /> : (
+                                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
+                                    </svg>
+                                )}
+                                {t.save_all || 'រក្សាទុកទាំងអស់'} ({Object.keys(editData).length})
+                            </button>
+                        )}
+
+                        {/* Refresh Button */}
+                        <button
+                            onClick={onRefresh}
+                            className="p-2 bg-[#2b3139] text-[#848e9c] rounded-md hover:text-white hover:bg-[#3d4451] active:scale-95 transition-all border border-[#3d4451]"
+                            title={t.refresh_data || 'ទាញយកទិន្នន័យឡើងវិញ'}
+                        >
+                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                            </svg>
+                        </button>
+                    </div>
                 </div>
 
-                <div className="flex items-center gap-2">
-                    {Object.keys(editData).length > 0 && (
+                {/* Tag Quick Filters */}
+                {allTags.length > 0 && (
+                    <div className="flex items-center gap-1.5 overflow-x-auto pb-1 pt-1 scrollbar-thin">
+                        <span className="text-[11px] font-bold text-[#5e6673] uppercase tracking-wider whitespace-nowrap mr-1">Tags:</span>
                         <button
-                            onClick={handleSaveAll}
-                            disabled={isSavingAll}
-                            className="flex items-center gap-2 px-6 py-2 bg-[#fcd535] text-black text-xs font-black uppercase rounded-sm hover:bg-[#f0c832] transition-all disabled:opacity-50"
+                            onClick={() => setSelectedTag(null)}
+                            className={`px-2.5 py-1 rounded-full text-xs font-semibold whitespace-nowrap transition-all ${
+                                selectedTag === null
+                                    ? 'bg-[#fcd535] text-black shadow-sm font-bold'
+                                    : 'bg-[#0b0e11] text-[#848e9c] border border-[#2b3139] hover:text-white hover:border-[#3d4451]'
+                            }`}
                         >
-                            {isSavingAll ? <Spinner size="xs" /> : <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" /></svg>}
-                            {t.save_all} ({Object.keys(editData).length})
+                            ទាំងអស់ ({products.length})
                         </button>
-                    )}
-                    <button
-                        onClick={onRefresh}
-                        className="p-2 bg-[#2b3139] text-[#848e9c] rounded-sm hover:text-white transition-all border border-[#3d4451]"
-                        title={t.refresh_data}
-                    >
-                        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
-                    </button>
-                </div>
+                        {allTags.map(tag => {
+                            const isSelected = selectedTag === tag;
+                            const count = products.filter(p => p.Tags && p.Tags.toLowerCase().includes(tag.toLowerCase())).length;
+                            return (
+                                <button
+                                    key={tag}
+                                    onClick={() => setSelectedTag(isSelected ? null : tag)}
+                                    className={`px-2.5 py-1 rounded-full text-xs font-medium whitespace-nowrap transition-all ${
+                                        isSelected
+                                            ? 'bg-[#fcd535] text-black shadow-sm font-bold'
+                                            : 'bg-[#0b0e11] text-[#848e9c] border border-[#2b3139] hover:text-white hover:border-[#3d4451]'
+                                    }`}
+                                >
+                                    #{tag} <span className="opacity-60 text-[10px]">({count})</span>
+                                </button>
+                            );
+                        })}
+                    </div>
+                )}
             </div>
 
-            {/* Matrix Table */}
-            <div className="flex-grow overflow-auto border border-[#2b3139] bg-[#0b0e11] rounded-sm relative">
+            {/* Matrix Table Container */}
+            <div className="flex-grow overflow-auto border border-[#2b3139] bg-[#0b0e11] rounded-lg relative shadow-inner">
                 <table className="w-full border-collapse text-left">
-                    <thead className="sticky top-0 z-20 bg-[#181a20] shadow-sm">
-                        <tr>
-                            <th className="px-4 py-3 text-[10px] font-black text-[#848e9c] uppercase tracking-widest w-12 text-center border-b border-[#2b3139]">#</th>
-                            <th className="px-4 py-3 text-[10px] font-black text-[#848e9c] uppercase tracking-widest border-b border-[#2b3139] w-16">{t.product_image}</th>
-                            <th className="px-4 py-3 text-[10px] font-black text-[#848e9c] uppercase tracking-widest border-b border-[#2b3139]">{t.product_name}</th>
-                            <th className="px-4 py-3 text-[10px] font-black text-[#848e9c] uppercase tracking-widest border-b border-[#2b3139] w-48">{t.field_Barcode}</th>
-                            <th className="px-4 py-3 text-[10px] font-black text-[#848e9c] uppercase tracking-widest border-b border-[#2b3139] w-32">{t.field_Price}</th>
-                            <th className="px-4 py-3 text-[10px] font-black text-[#848e9c] uppercase tracking-widest border-b border-[#2b3139] w-32">{t.field_Cost}</th>
-                            <th className="px-4 py-3 text-[10px] font-black text-[#848e9c] uppercase tracking-widest border-b border-[#2b3139] w-40">{t.tags}</th>
-                            <th className="px-4 py-3 text-[10px] font-black text-[#848e9c] uppercase tracking-widest border-b border-[#2b3139] w-24 text-center">{t.actions}</th>
+                    {/* Header */}
+                    <thead className="sticky top-0 z-20 bg-[#181a20] shadow-md">
+                        <tr className="border-b border-[#2b3139]">
+                            <th className="px-3 py-3 text-[10px] font-bold text-[#848e9c] uppercase tracking-wider w-10 text-center">#</th>
+                            <th className="px-3 py-3 text-[10px] font-bold text-[#848e9c] uppercase tracking-wider w-14 text-center">{t.product_image || 'រូបភាព'}</th>
+                            
+                            {/* Sortable Name */}
+                            <th 
+                                onClick={() => handleSort('name')} 
+                                className="px-4 py-3 text-[10px] font-bold text-[#848e9c] uppercase tracking-wider cursor-pointer hover:text-white transition-colors"
+                            >
+                                <div className="flex items-center gap-1">
+                                    <span>{t.product_name || 'ឈ្មោះផលិតផល'}</span>
+                                    {sortField === 'name' && (
+                                        <span className="text-[#fcd535]">{sortOrder === 'asc' ? '▲' : '▼'}</span>
+                                    )}
+                                </div>
+                            </th>
+
+                            {/* Sortable Barcode */}
+                            <th 
+                                onClick={() => handleSort('barcode')}
+                                className="px-3 py-3 text-[10px] font-bold text-[#848e9c] uppercase tracking-wider w-44 cursor-pointer hover:text-white transition-colors"
+                            >
+                                <div className="flex items-center gap-1">
+                                    <span>{t.field_Barcode || 'BARCODE'}</span>
+                                    {sortField === 'barcode' && (
+                                        <span className="text-[#fcd535]">{sortOrder === 'asc' ? '▲' : '▼'}</span>
+                                    )}
+                                </div>
+                            </th>
+
+                            {/* Sortable Price */}
+                            <th 
+                                onClick={() => handleSort('price')}
+                                className="px-3 py-3 text-[10px] font-bold text-[#848e9c] uppercase tracking-wider w-36 cursor-pointer hover:text-white transition-colors"
+                            >
+                                <div className="flex items-center gap-1">
+                                    <span>{t.field_Price || 'តម្លៃ ($)'}</span>
+                                    {sortField === 'price' && (
+                                        <span className="text-[#0ecb81]">{sortOrder === 'asc' ? '▲' : '▼'}</span>
+                                    )}
+                                </div>
+                            </th>
+
+                            {/* Sortable Cost */}
+                            <th 
+                                onClick={() => handleSort('cost')}
+                                className="px-3 py-3 text-[10px] font-bold text-[#848e9c] uppercase tracking-wider w-36 cursor-pointer hover:text-white transition-colors"
+                            >
+                                <div className="flex items-center gap-1">
+                                    <span>{t.field_Cost || 'តម្លៃដើម ($)'}</span>
+                                    {sortField === 'cost' && (
+                                        <span className="text-[#f6465d]">{sortOrder === 'asc' ? '▲' : '▼'}</span>
+                                    )}
+                                </div>
+                            </th>
+
+                            {/* Tags */}
+                            <th className="px-3 py-3 text-[10px] font-bold text-[#848e9c] uppercase tracking-wider w-44">{t.tags || 'TAGS'}</th>
+
+                            {/* Actions */}
+                            <th className="px-3 py-3 text-[10px] font-bold text-[#848e9c] uppercase tracking-wider w-24 text-center">{t.actions || 'សកម្មភាព'}</th>
                         </tr>
                     </thead>
-                    <tbody className="divide-y divide-[#2b3139]">
+
+                    <tbody className="divide-y divide-[#2b3139]/60">
                         {/* Inline Add Row */}
-                        <tr className="bg-[#fcd535]/5 border-b-2 border-[#fcd535]/20">
-                            <td className="px-4 py-3 text-center text-[#fcd535] font-black">+</td>
-                            <td className="px-4 py-3">
-                                <div className="relative group/newimg w-10 h-10 bg-[#181a20] rounded-sm border border-dashed border-[#fcd535]/40 flex items-center justify-center text-[#fcd535]/40 transition-all overflow-hidden">
+                        <tr className="bg-[#fcd535]/5 border-b-2 border-[#fcd535]/30">
+                            <td className="px-3 py-3 text-center text-[#fcd535] font-black text-sm">+</td>
+                            
+                            {/* Add Image Upload Box */}
+                            <td className="px-3 py-3">
+                                <div className="relative group/newimg w-11 h-11 bg-[#181a20] rounded-md border border-dashed border-[#fcd535]/50 flex items-center justify-center text-[#fcd535]/60 transition-all overflow-hidden shadow-inner">
                                     {(newProductImagePreview || newProduct.ImageURL) ? (
-                                        <img src={newProductImagePreview || convertGoogleDriveUrl(newProduct.ImageURL!)} className="w-full h-full object-cover rounded-sm" alt="" />
+                                        <img 
+                                            src={newProductImagePreview || convertGoogleDriveUrl(newProduct.ImageURL!)} 
+                                            className="w-full h-full object-cover rounded-md cursor-pointer" 
+                                            alt=""
+                                            onClick={() => setLightboxImage(newProductImagePreview || convertGoogleDriveUrl(newProduct.ImageURL!))}
+                                        />
                                     ) : (
-                                        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h14a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                                        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4"/>
+                                        </svg>
                                     )}
-                                    <div className="absolute inset-0 bg-black/60 flex items-center justify-center gap-1 opacity-0 group-hover/newimg:opacity-100 transition-opacity">
+                                    
+                                    {/* Actions Overlay */}
+                                    <div className="absolute inset-0 bg-black/75 flex items-center justify-center gap-1.5 opacity-0 group-hover/newimg:opacity-100 transition-opacity">
                                         <button 
-                                            className="p-1 hover:text-[#fcd535] text-white transition-colors"
+                                            className="p-1.5 hover:text-[#fcd535] text-white transition-colors bg-[#2b3139]/80 rounded"
                                             title="Upload File"
                                             onClick={() => document.getElementById('new-product-upload')?.click()}
                                         >
-                                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
+                                            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/>
+                                            </svg>
                                         </button>
                                         <button 
-                                            className="p-1 hover:text-[#fcd535] text-white transition-colors"
+                                            className="p-1.5 hover:text-[#fcd535] text-white transition-colors bg-[#2b3139]/80 rounded"
                                             title="Set Image URL"
                                             onClick={() => {
                                                 const url = window.prompt("Enter Image URL", newProduct.ImageURL || "");
@@ -383,7 +633,9 @@ const ProductManagementMatrix: React.FC<ProductManagementMatrixProps> = ({ produ
                                                 }
                                             }}
                                         >
-                                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" /></svg>
+                                            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+                                            </svg>
                                         </button>
                                     </div>
                                     <input 
@@ -402,110 +654,150 @@ const ProductManagementMatrix: React.FC<ProductManagementMatrixProps> = ({ produ
                                     />
                                 </div>
                             </td>
+
+                            {/* New Product Name */}
                             <td className="px-4 py-3">
                                 <input
                                     type="text"
-                                    placeholder={t.product_name}
+                                    placeholder={t.product_name || 'ឈ្មោះផលិតផលថ្មី...'}
                                     value={newProduct.ProductName}
                                     onChange={(e) => setNewProduct(prev => ({ ...prev, ProductName: e.target.value }))}
-                                    className="w-full bg-[#0b0e11] border border-[#fcd535]/30 rounded-sm px-2 py-1 text-sm font-bold text-white focus:border-[#fcd535] outline-none transition-all placeholder:text-[#5e6673]"
+                                    className="w-full bg-[#0b0e11] border border-[#fcd535]/40 rounded-md px-3 py-1.5 text-sm font-bold text-white focus:border-[#fcd535] focus:ring-1 focus:ring-[#fcd535] outline-none transition-all placeholder:text-[#5e6673]"
                                 />
                             </td>
-                            <td className="px-4 py-3">
+
+                            {/* New Barcode */}
+                            <td className="px-3 py-3">
                                 <input
                                     type="text"
-                                    placeholder={t.field_Barcode}
+                                    placeholder={t.field_Barcode || 'Barcode'}
                                     value={newProduct.Barcode}
                                     onChange={(e) => setNewProduct(prev => ({ ...prev, Barcode: e.target.value }))}
-                                    className="w-full bg-[#0b0e11] border border-[#2b3139] rounded-sm px-2 py-1 text-sm font-mono text-[#fcd535] focus:border-[#fcd535] outline-none transition-all placeholder:text-[#5e6673]"
+                                    className="w-full bg-[#0b0e11] border border-[#2b3139] rounded-md px-2.5 py-1.5 text-xs font-mono text-[#fcd535] focus:border-[#fcd535] outline-none transition-all placeholder:text-[#5e6673]"
                                 />
                             </td>
-                            <td className="px-4 py-3">
+
+                            {/* New Price */}
+                            <td className="px-3 py-3">
                                 <div className="relative">
-                                    <span className="absolute left-2 top-1/2 -translate-y-1/2 text-[#5e6673] text-xs">$</span>
+                                    <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[#5e6673] text-xs font-bold">$</span>
                                     <input
                                         type="number"
+                                        step="0.01"
                                         placeholder="0.00"
                                         value={newProduct.Price || ''}
                                         onChange={(e) => setNewProduct(prev => ({ ...prev, Price: parseFloat(e.target.value) || 0 }))}
-                                        className="w-full bg-[#0b0e11] border border-[#2b3139] rounded-sm pl-5 pr-2 py-1 text-sm font-bold text-[#0ecb81] focus:border-[#0ecb81] outline-none transition-all"
+                                        className="w-full bg-[#0b0e11] border border-[#2b3139] rounded-md pl-6 pr-2 py-1.5 text-xs font-extrabold text-[#0ecb81] focus:border-[#0ecb81] outline-none transition-all"
                                     />
                                 </div>
                             </td>
-                            <td className="px-4 py-3">
+
+                            {/* New Cost */}
+                            <td className="px-3 py-3">
                                 <div className="relative">
-                                    <span className="absolute left-2 top-1/2 -translate-y-1/2 text-[#5e6673] text-xs">$</span>
+                                    <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[#5e6673] text-xs font-bold">$</span>
                                     <input
                                         type="number"
+                                        step="0.01"
                                         placeholder="0.00"
                                         value={newProduct.Cost || ''}
                                         onChange={(e) => setNewProduct(prev => ({ ...prev, Cost: parseFloat(e.target.value) || 0 }))}
-                                        className="w-full bg-[#0b0e11] border border-[#2b3139] rounded-sm pl-5 pr-2 py-1 text-sm font-bold text-[#f6465d] focus:border-[#f6465d] outline-none transition-all"
+                                        className="w-full bg-[#0b0e11] border border-[#2b3139] rounded-md pl-6 pr-2 py-1.5 text-xs font-extrabold text-[#f6465d] focus:border-[#f6465d] outline-none transition-all"
                                     />
                                 </div>
+                                {renderProfitMargin(newProductPrice, newProductCost)}
                             </td>
-                            <td className="px-4 py-3">
+
+                            {/* New Tags */}
+                            <td className="px-3 py-3">
                                 <input
                                     type="text"
-                                    placeholder={t.tags}
+                                    placeholder="tag1, tag2..."
                                     value={newProduct.Tags}
                                     onChange={(e) => setNewProduct(prev => ({ ...prev, Tags: e.target.value }))}
-                                    className="w-full bg-[#0b0e11] border border-[#2b3139] rounded-sm px-2 py-1 text-xs text-[#848e9c] focus:border-[#fcd535] outline-none transition-all placeholder:text-[#5e6673]"
+                                    className="w-full bg-[#0b0e11] border border-[#2b3139] rounded-md px-2.5 py-1.5 text-xs text-[#848e9c] focus:border-[#fcd535] outline-none transition-all placeholder:text-[#5e6673]"
                                 />
                             </td>
-                            <td className="px-4 py-3 text-center">
+
+                            {/* Add Button */}
+                            <td className="px-3 py-3 text-center">
                                 <button
                                     onClick={handleAddNewProduct}
-                                    disabled={isAddingNew || !newProduct.ProductName}
-                                    className="px-4 py-1.5 bg-[#fcd535] text-black text-[10px] font-black uppercase rounded-sm hover:bg-[#f0c832] transition-all disabled:opacity-50"
+                                    disabled={isAddingNew || !newProduct.ProductName?.trim()}
+                                    className="w-full py-1.5 px-3 bg-[#fcd535] text-black text-[11px] font-black uppercase rounded-md hover:bg-[#f0c832] active:scale-95 transition-all shadow-sm disabled:opacity-40"
                                 >
-                                    {isAddingNew ? <Spinner size="xs" /> : t.add_new}
+                                    {isAddingNew ? <Spinner size="xs" /> : (t.add_new || 'បន្ថែម')}
                                 </button>
                             </td>
                         </tr>
 
+                        {/* Product Rows */}
                         {filteredProducts.map((product, idx) => {
                             const isUpdating = updating === product.ProductName;
                             const changes = editData[product.ProductName] || {};
                             const hasChanges = Object.keys(changes).length > 0;
 
+                            const currentBarcode = changes.Barcode !== undefined ? changes.Barcode : product.Barcode;
+                            const currentPrice = changes.Price !== undefined ? changes.Price : (product.Price || 0);
+                            const currentCost = changes.Cost !== undefined ? changes.Cost : (product.Cost || 0);
+                            const currentTags = changes.Tags !== undefined ? changes.Tags : (product.Tags || '');
+                            const currentImg = changes.ImageURL !== undefined ? changes.ImageURL : product.ImageURL;
+
+                            const formattedImgUrl = currentImg ? convertGoogleDriveUrl(currentImg) : null;
+                            const tagList = currentTags.split(/[,;\s]+/).map(t => t.trim()).filter(Boolean);
+
                             return (
-                                <tr key={product.ProductName} className={`hover:bg-[#181a20] transition-colors group ${hasChanges ? 'bg-[#fcd535]/5' : ''}`}>
-                                    <td className="px-4 py-3 text-xs font-bold text-[#5e6673] text-center">{idx + 1}</td>
-                                    <td className="px-4 py-3">
-                                        <div className="relative group/img w-10 h-10 bg-[#181a20] rounded-sm border border-[#2b3139] overflow-hidden">
-                                            {(changes.ImageURL !== undefined ? changes.ImageURL : product.ImageURL) ? (
+                                <tr 
+                                    key={product.ProductName} 
+                                    className={`hover:bg-[#1e2329]/70 transition-colors group ${
+                                        hasChanges ? 'bg-[#fcd535]/10 border-l-4 border-l-[#fcd535]' : ''
+                                    }`}
+                                >
+                                    {/* Index */}
+                                    <td className="px-3 py-3 text-xs font-bold text-[#5e6673] text-center">{idx + 1}</td>
+
+                                    {/* Image Thumbnail */}
+                                    <td className="px-3 py-3">
+                                        <div className="relative group/img w-11 h-11 bg-[#181a20] rounded-md border border-[#2b3139] overflow-hidden shadow-inner flex items-center justify-center">
+                                            {formattedImgUrl ? (
                                                 <img 
-                                                    src={convertGoogleDriveUrl(changes.ImageURL !== undefined ? changes.ImageURL : product.ImageURL)} 
-                                                    alt="" 
-                                                    className="w-full h-full object-cover"
+                                                    src={formattedImgUrl} 
+                                                    alt={product.ProductName} 
+                                                    className="w-full h-full object-cover cursor-pointer hover:scale-105 transition-transform"
+                                                    onClick={() => setLightboxImage(formattedImgUrl)}
                                                 />
                                             ) : (
-                                                <div className="w-full h-full flex items-center justify-center text-[#2b3139]">
-                                                    <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24"><path d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h14a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                                                <div className="w-full h-full bg-gradient-to-br from-[#1e2329] to-[#0b0e11] flex flex-col items-center justify-center text-[#3d4451]">
+                                                    <svg className="w-5 h-5 opacity-60" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h14a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                                                    </svg>
                                                 </div>
                                             )}
-                                            
-                                            {/* Upload Overlay */}
-                                            <div className="absolute inset-0 bg-black/60 flex items-center justify-center gap-1 opacity-0 group-hover/img:opacity-100 transition-opacity">
+
+                                            {/* Hover Upload Overlay */}
+                                            <div className="absolute inset-0 bg-black/75 flex items-center justify-center gap-1 opacity-0 group-hover/img:opacity-100 transition-opacity">
                                                 <button 
-                                                    className="p-1 hover:text-[#fcd535] text-white transition-colors"
-                                                    title="Upload Image"
+                                                    className="p-1 hover:text-[#fcd535] text-white transition-colors bg-[#2b3139]/80 rounded"
+                                                    title="Upload File"
                                                     onClick={() => document.getElementById(`upload-${product.ProductName}`)?.click()}
                                                 >
-                                                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
+                                                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/>
+                                                    </svg>
                                                 </button>
                                                 <button 
-                                                    className="p-1 hover:text-[#fcd535] text-white transition-colors"
+                                                    className="p-1 hover:text-[#fcd535] text-white transition-colors bg-[#2b3139]/80 rounded"
                                                     title="Set Image URL"
                                                     onClick={() => {
-                                                        const url = window.prompt("Enter Image URL", changes.ImageURL !== undefined ? changes.ImageURL : (product.ImageURL || ""));
+                                                        const url = window.prompt("Enter Image URL", currentImg || "");
                                                         if (url !== null) {
                                                             handleFieldChange(product.ProductName, 'ImageURL', url.trim());
                                                         }
                                                     }}
                                                 >
-                                                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" /></svg>
+                                                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+                                                    </svg>
                                                 </button>
                                             </div>
                                             <input 
@@ -517,72 +809,132 @@ const ProductManagementMatrix: React.FC<ProductManagementMatrixProps> = ({ produ
                                             />
                                         </div>
                                     </td>
+
+                                    {/* Product Name & Tag Badges */}
                                     <td className="px-4 py-3">
-                                        <div className="flex flex-col">
-                                            <span className="text-sm font-bold text-[#eaecef]">{product.ProductName}</span>
-                                            {product.Tags && <span className="text-[10px] text-[#848e9c]">{product.Tags}</span>}
+                                        <div className="flex flex-col gap-0.5">
+                                            <span className="text-sm font-bold text-[#eaecef] group-hover:text-[#fcd535] transition-colors line-clamp-2">
+                                                {product.ProductName}
+                                            </span>
+                                            {tagList.length > 0 && (
+                                                <div className="flex items-center gap-1 flex-wrap mt-0.5">
+                                                    {tagList.map((tag, tIdx) => (
+                                                        <span key={tIdx} className="px-1.5 py-0.2 text-[9px] bg-[#2b3139] text-[#848e9c] rounded font-medium">
+                                                            #{tag}
+                                                        </span>
+                                                    ))}
+                                                </div>
+                                            )}
                                         </div>
                                     </td>
-                                    <td className="px-4 py-3">
-                                        <input
-                                            type="text"
-                                            value={changes.Barcode !== undefined ? changes.Barcode : product.Barcode}
-                                            onChange={(e) => handleFieldChange(product.ProductName, 'Barcode', e.target.value)}
-                                            className="w-full bg-[#0b0e11] border border-[#2b3139] rounded-sm px-2 py-1 text-sm font-mono text-[#fcd535] focus:border-[#fcd535] outline-none transition-all"
-                                        />
+
+                                    {/* Barcode with Copy Action */}
+                                    <td className="px-3 py-3">
+                                        <div className="relative flex items-center">
+                                            <input
+                                                type="text"
+                                                value={currentBarcode || ''}
+                                                onChange={(e) => handleFieldChange(product.ProductName, 'Barcode', e.target.value)}
+                                                className="w-full bg-[#0b0e11] border border-[#2b3139] rounded-md pl-2.5 pr-7 py-1 text-xs font-mono text-[#fcd535] focus:border-[#fcd535] outline-none transition-all"
+                                            />
+                                            {currentBarcode && (
+                                                <button
+                                                    onClick={() => handleCopyBarcode(currentBarcode)}
+                                                    className="absolute right-1.5 text-[#5e6673] hover:text-[#fcd535] p-1 transition-colors"
+                                                    title="Copy Barcode"
+                                                >
+                                                    {copiedBarcode === currentBarcode ? (
+                                                        <svg className="w-3.5 h-3.5 text-[#0ecb81]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                                                        </svg>
+                                                    ) : (
+                                                        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                                                        </svg>
+                                                    )}
+                                                </button>
+                                            )}
+                                        </div>
                                     </td>
-                                    <td className="px-4 py-3">
+
+                                    {/* Price Input */}
+                                    <td className="px-3 py-3">
                                         <div className="relative">
-                                            <span className="absolute left-2 top-1/2 -translate-y-1/2 text-[#5e6673] text-xs">$</span>
+                                            <span className="absolute left-2 top-1/2 -translate-y-1/2 text-[#5e6673] text-xs font-bold">$</span>
                                             <input
                                                 type="number"
                                                 step="0.01"
-                                                value={changes.Price !== undefined ? changes.Price : product.Price}
-                                                onChange={(e) => handleFieldChange(product.ProductName, 'Price', parseFloat(e.target.value))}
-                                                className="w-full bg-[#0b0e11] border border-[#2b3139] rounded-sm pl-5 pr-2 py-1 text-sm font-bold text-[#0ecb81] focus:border-[#0ecb81] outline-none transition-all"
+                                                value={currentPrice}
+                                                onChange={(e) => handleFieldChange(product.ProductName, 'Price', parseFloat(e.target.value) || 0)}
+                                                className="w-full bg-[#0b0e11] border border-[#2b3139] rounded-md pl-5 pr-2 py-1 text-xs font-extrabold text-[#0ecb81] focus:border-[#0ecb81] outline-none transition-all"
                                             />
                                         </div>
                                     </td>
-                                    <td className="px-4 py-3">
+
+                                    {/* Cost Input & Profit Badge */}
+                                    <td className="px-3 py-3">
                                         <div className="relative">
-                                            <span className="absolute left-2 top-1/2 -translate-y-1/2 text-[#5e6673] text-xs">$</span>
+                                            <span className="absolute left-2 top-1/2 -translate-y-1/2 text-[#5e6673] text-xs font-bold">$</span>
                                             <input
                                                 type="number"
                                                 step="0.01"
-                                                value={changes.Cost !== undefined ? changes.Cost : product.Cost}
-                                                onChange={(e) => handleFieldChange(product.ProductName, 'Cost', parseFloat(e.target.value))}
-                                                className="w-full bg-[#0b0e11] border border-[#2b3139] rounded-sm pl-5 pr-2 py-1 text-sm font-bold text-[#f6465d] focus:border-[#f6465d] outline-none transition-all"
+                                                value={currentCost}
+                                                onChange={(e) => handleFieldChange(product.ProductName, 'Cost', parseFloat(e.target.value) || 0)}
+                                                className="w-full bg-[#0b0e11] border border-[#2b3139] rounded-md pl-5 pr-2 py-1 text-xs font-extrabold text-[#f6465d] focus:border-[#f6465d] outline-none transition-all"
                                             />
                                         </div>
+                                        {renderProfitMargin(currentPrice, currentCost)}
                                     </td>
-                                    <td className="px-4 py-3">
+
+                                    {/* Tags Input */}
+                                    <td className="px-3 py-3">
                                         <input
                                             type="text"
-                                            value={changes.Tags !== undefined ? changes.Tags : product.Tags || ''}
+                                            value={currentTags}
                                             onChange={(e) => handleFieldChange(product.ProductName, 'Tags', e.target.value)}
                                             placeholder="tag1, tag2..."
-                                            className="w-full bg-[#0b0e11] border border-[#2b3139] rounded-sm px-2 py-1 text-xs text-[#848e9c] focus:border-[#fcd535] outline-none transition-all"
+                                            className="w-full bg-[#0b0e11] border border-[#2b3139] rounded-md px-2.5 py-1 text-xs text-[#848e9c] focus:border-[#fcd535] outline-none transition-all"
                                         />
                                     </td>
-                                    <td className="px-4 py-3 text-center">
-                                        <div className="flex items-center justify-center gap-2">
+
+                                    {/* Actions */}
+                                    <td className="px-3 py-3 text-center">
+                                        <div className="flex items-center justify-center gap-1.5">
                                             {hasChanges ? (
-                                                <button
-                                                    onClick={() => handleSaveRow(product)}
-                                                    disabled={isUpdating}
-                                                    className="p-2 bg-[#0ecb8120] text-[#0ecb81] rounded-sm hover:bg-[#0ecb81] hover:text-white transition-all"
-                                                    title="Save changes"
-                                                >
-                                                    {isUpdating ? <Spinner size="xs" /> : <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" /></svg>}
-                                                </button>
+                                                <>
+                                                    <button
+                                                        onClick={() => handleSaveRow(product)}
+                                                        disabled={isUpdating}
+                                                        className="p-1.5 bg-[#0ecb81]/20 text-[#0ecb81] border border-[#0ecb81]/40 rounded-md hover:bg-[#0ecb81] hover:text-white transition-all shadow-sm"
+                                                        title="Save changes"
+                                                    >
+                                                        {isUpdating ? <Spinner size="xs" /> : (
+                                                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                                                            </svg>
+                                                        )}
+                                                    </button>
+                                                    <button
+                                                        onClick={() => handleResetRow(product.ProductName)}
+                                                        disabled={isUpdating}
+                                                        className="p-1.5 bg-[#2b3139] text-[#848e9c] rounded-md hover:text-white hover:bg-rose-500/20 hover:text-rose-400 transition-all"
+                                                        title="Discard changes"
+                                                    >
+                                                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />
+                                                        </svg>
+                                                    </button>
+                                                </>
                                             ) : (
                                                 <button
                                                     onClick={() => handleDeleteProduct(product)}
                                                     disabled={isUpdating}
-                                                    className="p-2 text-[#5e6673] hover:text-red-500 hover:bg-red-500/10 rounded-sm transition-all opacity-0 group-hover:opacity-100"
+                                                    className="p-1.5 text-[#5e6673] hover:text-red-500 hover:bg-red-500/10 rounded-md transition-all opacity-0 group-hover:opacity-100"
                                                     title="Delete product"
                                                 >
-                                                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                                                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                                    </svg>
                                                 </button>
                                             )}
                                         </div>
@@ -592,14 +944,52 @@ const ProductManagementMatrix: React.FC<ProductManagementMatrixProps> = ({ produ
                         })}
                     </tbody>
                 </table>
+
+                {/* Empty State */}
                 {filteredProducts.length === 0 && (
-                    <div className="py-20 text-center text-[#5e6673] font-bold">
-                        រកមិនឃើញផលិតផលដែលអ្នកស្វែងរកទេ
+                    <div className="py-16 text-center text-[#5e6673] flex flex-col items-center justify-center gap-2">
+                        <svg className="w-12 h-12 text-[#2b3139]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
+                        </svg>
+                        <p className="font-bold text-sm">រកមិនឃើញផលិតផលដែលអ្នកស្វែងរកទេ</p>
+                        {searchQuery && (
+                            <button
+                                onClick={() => { setSearchQuery(''); setSelectedTag(null); }}
+                                className="text-xs text-[#fcd535] hover:underline mt-1"
+                            >
+                                លុបការស្វែងរក
+                            </button>
+                        )}
                     </div>
                 )}
             </div>
+
+            {/* Lightbox Modal */}
+            {lightboxImage && (
+                <div 
+                    className="fixed inset-0 z-50 bg-black/85 backdrop-blur-sm flex items-center justify-center p-4"
+                    onClick={() => setLightboxImage(null)}
+                >
+                    <div className="relative max-w-2xl max-h-[85vh] bg-[#1e2329] p-2 rounded-xl border border-[#2b3139] shadow-2xl overflow-hidden">
+                        <button
+                            onClick={() => setLightboxImage(null)}
+                            className="absolute top-4 right-4 z-10 p-2 bg-black/60 text-white hover:bg-black/90 rounded-full transition-colors"
+                        >
+                            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                        </button>
+                        <img 
+                            src={lightboxImage} 
+                            alt="Preview" 
+                            className="w-full h-full max-h-[80vh] object-contain rounded-lg"
+                        />
+                    </div>
+                </div>
+            )}
         </div>
     );
 };
 
 export default ProductManagementMatrix;
+
