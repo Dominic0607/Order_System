@@ -17,7 +17,8 @@ export interface MasterProduct {
   Price: number;
   Cost: number;
   ImageURL: string;
-  Tags?: string; 
+  Tags?: string;
+  Category?: string;
 }
 
 export interface Product {

@@ -602,18 +602,29 @@ const PermissionMatrix: React.FC = () => {
                                                                 <button
                                                                     onClick={() => handleToggle(roleName, feature, isEnabled)}
                                                                     disabled={isUpdating}
-                                                                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-all duration-300 focus:outline-none shadow-sm cursor-pointer ${
+                                                                    title={isEnabled ? `បិទ ${feature} សម្រាប់ ${roleName}` : `បើក ${feature} សម្រាប់ ${roleName}`}
+                                                                    className={`relative inline-flex h-6.5 w-[46px] items-center rounded-full transition-all duration-300 focus:outline-none cursor-pointer ${
                                                                         isEnabled
-                                                                            ? 'bg-gradient-to-r from-[#0ecb81] to-[#05b871] shadow-[#0ecb81]/25 ring-2 ring-[#0ecb81]/20'
-                                                                            : 'bg-[#1e2329] border border-[#2b3139] hover:border-[#474d57]'
-                                                                    } ${isUpdating ? 'opacity-50' : 'opacity-100 hover:scale-105 active:scale-95'}`}
+                                                                            ? 'bg-gradient-to-r from-[#0ecb81] to-[#00b26b] shadow-[0_0_12px_rgba(14,203,129,0.35)] ring-2 ring-[#0ecb81]/30'
+                                                                            : 'bg-[#14171d] border border-[#2b3139] hover:border-[#474d57]'
+                                                                    } ${isUpdating ? 'opacity-50 cursor-wait' : 'opacity-100 hover:scale-105 active:scale-95'}`}
                                                                 >
                                                                     <span
-                                                                        className={`inline-block h-4 w-4 rounded-full bg-white transition-transform duration-300 shadow-md ${
-                                                                            isEnabled ? 'translate-x-6' : 'translate-x-1'
-                                                                        } flex items-center justify-center`}
+                                                                        className={`inline-flex h-5 w-5 transform rounded-full bg-white transition-all duration-300 shadow-[0_2px_5px_rgba(0,0,0,0.5)] ${
+                                                                            isEnabled ? 'translate-x-[23px]' : 'translate-x-0.5'
+                                                                        } items-center justify-center`}
                                                                     >
-                                                                        {isUpdating && <div className="w-2.5 h-2.5 border-2 border-[#0ecb81] border-t-transparent rounded-full animate-spin"></div>}
+                                                                        {isUpdating ? (
+                                                                            <div className="w-2.5 h-2.5 border-2 border-[#0ecb81] border-t-transparent rounded-full animate-spin"></div>
+                                                                        ) : isEnabled ? (
+                                                                            <svg className="w-3 h-3 text-[#0ecb81]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3.5} d="M5 13l4 4L19 7" />
+                                                                            </svg>
+                                                                        ) : (
+                                                                            <svg className="w-2.5 h-2.5 text-[#5e6673]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M6 18L18 6M6 6l12 12" />
+                                                                            </svg>
+                                                                        )}
                                                                     </span>
                                                                 </button>
                                                             )}

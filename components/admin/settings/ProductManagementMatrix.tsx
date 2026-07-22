@@ -12,7 +12,7 @@ interface ProductManagementMatrixProps {
     onRefresh: () => void;
 }
 
-type SortField = 'name' | 'barcode' | 'price' | 'cost' | 'profit';
+type SortField = 'name' | 'barcode' | 'category' | 'price' | 'cost' | 'profit';
 type SortOrder = 'asc' | 'desc';
 
 const ProductManagementMatrix: React.FC<ProductManagementMatrixProps> = ({ products, onRefresh }) => {
@@ -22,6 +22,7 @@ const ProductManagementMatrix: React.FC<ProductManagementMatrixProps> = ({ produ
     // State management
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedTag, setSelectedTag] = useState<string | null>(null);
+    const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
     const [sortField, setSortField] = useState<SortField | null>(null);
     const [sortOrder, setSortOrder] = useState<SortOrder>('asc');
     
@@ -38,6 +39,7 @@ const ProductManagementMatrix: React.FC<ProductManagementMatrixProps> = ({ produ
     const [newProduct, setNewProduct] = useState<Partial<MasterProduct>>({
         ProductName: '',
         Barcode: '',
+        Category: '',
         Price: 0,
         Cost: 0,
         Tags: '',
@@ -56,6 +58,17 @@ const ProductManagementMatrix: React.FC<ProductManagementMatrixProps> = ({ produ
             }
         });
         return Array.from(tagSet);
+    }, [products]);
+
+    // Extract unique categories for quick filtering
+    const allCategories = useMemo(() => {
+        const catSet = new Set<string>();
+        products.forEach(p => {
+            if (p.Category?.trim()) {
+                catSet.add(p.Category.trim());
+            }
+        });
+        return Array.from(catSet);
     }, [products]);
 
     // Handle barcode copy to clipboard
@@ -130,6 +143,7 @@ const ProductManagementMatrix: React.FC<ProductManagementMatrixProps> = ({ produ
                 setNewProduct({
                     ProductName: '',
                     Barcode: '',
+                    Category: '',
                     Price: 0,
                     Cost: 0,
                     Tags: '',
@@ -159,16 +173,22 @@ const ProductManagementMatrix: React.FC<ProductManagementMatrixProps> = ({ produ
             result = result.filter(p =>
                 p.ProductName.toLowerCase().includes(q) ||
                 (p.Barcode || '').toLowerCase().includes(q) ||
+                (p.Category || '').toLowerCase().includes(q) ||
                 (p.Tags || '').toLowerCase().includes(q)
             );
         }
 
-        // 2. Tag Filter
+        // 2. Category Filter
+        if (selectedCategory) {
+            result = result.filter(p => p.Category && p.Category.toLowerCase().trim() === selectedCategory.toLowerCase().trim());
+        }
+
+        // 3. Tag Filter
         if (selectedTag) {
             result = result.filter(p => p.Tags && p.Tags.toLowerCase().includes(selectedTag.toLowerCase()));
         }
 
-        // 3. Sorting
+        // 4. Sorting
         if (sortField) {
             result.sort((a, b) => {
                 const getVal = (prod: MasterProduct, field: SortField) => {
@@ -176,6 +196,7 @@ const ProductManagementMatrix: React.FC<ProductManagementMatrixProps> = ({ produ
                     switch (field) {
                         case 'name': return (changes.ProductName ?? prod.ProductName).toLowerCase();
                         case 'barcode': return (changes.Barcode ?? prod.Barcode ?? '').toLowerCase();
+                        case 'category': return (changes.Category ?? prod.Category ?? '').toLowerCase();
                         case 'price': return Number(changes.Price ?? prod.Price ?? 0);
                         case 'cost': return Number(changes.Cost ?? prod.Cost ?? 0);
                         case 'profit': {
@@ -197,7 +218,7 @@ const ProductManagementMatrix: React.FC<ProductManagementMatrixProps> = ({ produ
         }
 
         return result;
-    }, [products, searchQuery, selectedTag, sortField, sortOrder, editData]);
+    }, [products, searchQuery, selectedCategory, selectedTag, sortField, sortOrder, editData]);
 
     // Header Sort Toggle
     const handleSort = (field: SortField) => {
@@ -485,9 +506,43 @@ const ProductManagementMatrix: React.FC<ProductManagementMatrixProps> = ({ produ
                     </div>
                 </div>
 
+                {/* Category Quick Filters */}
+                {allCategories.length > 0 && (
+                    <div className="flex items-center gap-1.5 overflow-x-auto pb-1 pt-1 scrollbar-thin">
+                        <span className="text-[11px] font-bold text-[#5e6673] uppercase tracking-wider whitespace-nowrap mr-1">ប្រភេទ:</span>
+                        <button
+                            onClick={() => setSelectedCategory(null)}
+                            className={`px-2.5 py-1 rounded-full text-xs font-semibold whitespace-nowrap transition-all ${
+                                selectedCategory === null
+                                    ? 'bg-[#0ecb81] text-black shadow-sm font-bold'
+                                    : 'bg-[#0b0e11] text-[#848e9c] border border-[#2b3139] hover:text-white hover:border-[#3d4451]'
+                            }`}
+                        >
+                            ទាំងអស់ ({products.length})
+                        </button>
+                        {allCategories.map(cat => {
+                            const isSelected = selectedCategory === cat;
+                            const count = products.filter(p => p.Category && p.Category.toLowerCase().trim() === cat.toLowerCase().trim()).length;
+                            return (
+                                <button
+                                    key={cat}
+                                    onClick={() => setSelectedCategory(isSelected ? null : cat)}
+                                    className={`px-2.5 py-1 rounded-full text-xs font-medium whitespace-nowrap transition-all ${
+                                        isSelected
+                                            ? 'bg-[#0ecb81] text-black shadow-sm font-bold'
+                                            : 'bg-[#0b0e11] text-[#848e9c] border border-[#2b3139] hover:text-white hover:border-[#3d4451]'
+                                    }`}
+                                >
+                                    {cat} <span className="opacity-60 text-[10px]">({count})</span>
+                                </button>
+                            );
+                        })}
+                    </div>
+                )}
+
                 {/* Tag Quick Filters */}
                 {allTags.length > 0 && (
-                    <div className="flex items-center gap-1.5 overflow-x-auto pb-1 pt-1 scrollbar-thin">
+                    <div className="flex items-center gap-1.5 overflow-x-auto pb-1 pt-1 scrollbar-thin border-t border-[#2b3139]/40 mt-1">
                         <span className="text-[11px] font-bold text-[#5e6673] uppercase tracking-wider whitespace-nowrap mr-1">Tags:</span>
                         <button
                             onClick={() => setSelectedTag(null)}
@@ -545,7 +600,7 @@ const ProductManagementMatrix: React.FC<ProductManagementMatrixProps> = ({ produ
                             {/* Sortable Barcode */}
                             <th 
                                 onClick={() => handleSort('barcode')}
-                                className="px-3 py-3 text-[10px] font-bold text-[#848e9c] uppercase tracking-wider w-44 cursor-pointer hover:text-white transition-colors"
+                                className="px-3 py-3 text-[10px] font-bold text-[#848e9c] uppercase tracking-wider w-40 cursor-pointer hover:text-white transition-colors"
                             >
                                 <div className="flex items-center gap-1">
                                     <span>{t.field_Barcode || 'BARCODE'}</span>
@@ -555,10 +610,23 @@ const ProductManagementMatrix: React.FC<ProductManagementMatrixProps> = ({ produ
                                 </div>
                             </th>
 
+                            {/* Sortable Category */}
+                            <th 
+                                onClick={() => handleSort('category')}
+                                className="px-3 py-3 text-[10px] font-bold text-[#848e9c] uppercase tracking-wider w-36 cursor-pointer hover:text-white transition-colors"
+                            >
+                                <div className="flex items-center gap-1">
+                                    <span>{t.field_Category || 'ប្រភេទ (CATEGORY)'}</span>
+                                    {sortField === 'category' && (
+                                        <span className="text-[#fcd535]">{sortOrder === 'asc' ? '▲' : '▼'}</span>
+                                    )}
+                                </div>
+                            </th>
+
                             {/* Sortable Price */}
                             <th 
                                 onClick={() => handleSort('price')}
-                                className="px-3 py-3 text-[10px] font-bold text-[#848e9c] uppercase tracking-wider w-36 cursor-pointer hover:text-white transition-colors"
+                                className="px-3 py-3 text-[10px] font-bold text-[#848e9c] uppercase tracking-wider w-32 cursor-pointer hover:text-white transition-colors"
                             >
                                 <div className="flex items-center gap-1">
                                     <span>{t.field_Price || 'តម្លៃ ($)'}</span>
@@ -571,7 +639,7 @@ const ProductManagementMatrix: React.FC<ProductManagementMatrixProps> = ({ produ
                             {/* Sortable Cost */}
                             <th 
                                 onClick={() => handleSort('cost')}
-                                className="px-3 py-3 text-[10px] font-bold text-[#848e9c] uppercase tracking-wider w-36 cursor-pointer hover:text-white transition-colors"
+                                className="px-3 py-3 text-[10px] font-bold text-[#848e9c] uppercase tracking-wider w-32 cursor-pointer hover:text-white transition-colors"
                             >
                                 <div className="flex items-center gap-1">
                                     <span>{t.field_Cost || 'តម្លៃដើម ($)'}</span>
@@ -582,7 +650,7 @@ const ProductManagementMatrix: React.FC<ProductManagementMatrixProps> = ({ produ
                             </th>
 
                             {/* Tags */}
-                            <th className="px-3 py-3 text-[10px] font-bold text-[#848e9c] uppercase tracking-wider w-44">{t.tags || 'TAGS'}</th>
+                            <th className="px-3 py-3 text-[10px] font-bold text-[#848e9c] uppercase tracking-wider w-36">{t.tags || 'TAGS'}</th>
 
                             {/* Actions */}
                             <th className="px-3 py-3 text-[10px] font-bold text-[#848e9c] uppercase tracking-wider w-24 text-center">{t.actions || 'សកម្មភាព'}</th>
@@ -677,6 +745,17 @@ const ProductManagementMatrix: React.FC<ProductManagementMatrixProps> = ({ produ
                                 />
                             </td>
 
+                            {/* New Category */}
+                            <td className="px-3 py-3">
+                                <input
+                                    type="text"
+                                    placeholder={t.field_Category || 'ប្រភេទ...'}
+                                    value={newProduct.Category || ''}
+                                    onChange={(e) => setNewProduct(prev => ({ ...prev, Category: e.target.value }))}
+                                    className="w-full bg-[#0b0e11] border border-[#2b3139] rounded-md px-2.5 py-1.5 text-xs text-[#eaecef] focus:border-[#fcd535] outline-none transition-all placeholder:text-[#5e6673]"
+                                />
+                            </td>
+
                             {/* New Price */}
                             <td className="px-3 py-3">
                                 <div className="flex items-center bg-[#0b0e11] border border-[#2b3139] rounded-md px-2.5 py-1.5 focus-within:border-[#0ecb81] transition-all">
@@ -739,6 +818,7 @@ const ProductManagementMatrix: React.FC<ProductManagementMatrixProps> = ({ produ
 
                             const currentName = changes.ProductName !== undefined ? changes.ProductName : product.ProductName;
                             const currentBarcode = changes.Barcode !== undefined ? changes.Barcode : product.Barcode;
+                            const currentCategory = changes.Category !== undefined ? changes.Category : (product.Category || '');
                             const currentPrice = changes.Price !== undefined ? changes.Price : (product.Price || 0);
                             const currentCost = changes.Cost !== undefined ? changes.Cost : (product.Cost || 0);
                             const currentTags = changes.Tags !== undefined ? changes.Tags : (product.Tags || '');
@@ -859,6 +939,17 @@ const ProductManagementMatrix: React.FC<ProductManagementMatrixProps> = ({ produ
                                                 </button>
                                             )}
                                         </div>
+                                    </td>
+
+                                    {/* Category Input */}
+                                    <td className="px-3 py-3">
+                                        <input
+                                            type="text"
+                                            value={currentCategory}
+                                            onChange={(e) => handleFieldChange(product.ProductName, 'Category', e.target.value)}
+                                            placeholder="ប្រភេទ..."
+                                            className="w-full bg-[#0b0e11] border border-[#2b3139] rounded-md px-2.5 py-1 text-xs text-[#eaecef] focus:border-[#fcd535] outline-none transition-all"
+                                        />
                                     </td>
 
                                     {/* Price Input (Flex Alignment) */}
