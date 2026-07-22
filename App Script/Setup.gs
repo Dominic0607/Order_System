@@ -16,7 +16,7 @@ const SYSTEM_STRUCTURE = {
   "Stores": ["StoreName", "StoreType", "Address", "TelegramBotToken", "TelegramGroupID", "TelegramTopicID", "LabelPrinterURL", "CODAlertGroupID"],
   "Settings": ["Key", "Value", "Description"],
   "TeamsPages": ["ID", "Team", "PageName", "TelegramValue", "PageLogoURL", "DefaultStore", "TelegramTopicID"],
-  "Products": ["Barcode", "ProductName", "Price", "Cost", "ImageURL", "Tags"],
+  "Products": ["Barcode", "ProductName", "Price", "Cost", "ImageURL", "Tags", "Category"],
   "Locations": ["ID", "Province", "District", "Sangkat"],
   "ShippingMethods": ["MethodName", "LogoURL", "AllowManualDriver", "RequireDriverSelection", "InternalCost", "CostShortcuts", "EnableDriverRecommendation"],
   "DeliveryGroups": ["ID", "StoreName", "ShippingMethod", "TelegramGroupID", "TelegramTopicID"],
