@@ -170,6 +170,39 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
+  // Intercept Google Drive, Google User Content, and R2 proxy image requests for dynamic caching
+  const isGoogleImage = url.hostname.includes('drive.google.com') || 
+                        url.hostname.includes('googleusercontent.com');
+  const isR2ProxyImage = url.pathname.includes('/api/r2-proxy');
+
+  if (isGoogleImage || isR2ProxyImage) {
+    event.respondWith(
+      caches.match(event.request).then((cachedResponse) => {
+        if (cachedResponse) {
+          // Serve from cache immediately, and fetch/update cache in background (Stale-While-Revalidate)
+          fetch(event.request).then((networkResponse) => {
+            if (networkResponse.ok && isCacheableRequest(event.request)) {
+              caches.open(CACHE_NAME).then((cache) => cache.put(event.request, networkResponse));
+            }
+          }).catch(() => {}); // Ignore network errors
+          return cachedResponse;
+        }
+
+        return fetch(event.request).then((networkResponse) => {
+          if (networkResponse.ok && isCacheableRequest(event.request)) {
+            const copy = networkResponse.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put(event.request, copy)).catch(err => console.warn('Image cache put error:', err));
+          }
+          return networkResponse;
+        }).catch(err => {
+          console.warn('Image fetch failed:', err);
+          return new Response('Network error', { status: 503 });
+        });
+      })
+    );
+    return;
+  }
+
   // Simple network-first strategy for API calls, cache-first for static assets
   if (event.request.url.includes('/api/')) {
     event.respondWith(
