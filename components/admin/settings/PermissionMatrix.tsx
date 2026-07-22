@@ -355,42 +355,42 @@ const PermissionMatrix: React.FC = () => {
                         <button
                             onClick={handleSyncToSheet}
                             disabled={syncing || resetting}
-                            className="flex items-center gap-2 px-5 py-2.5 text-xs font-bold rounded-sm border border-[#2b3139] bg-[#2b3139] text-[#eaecef] hover:bg-[#474d57] hover:border-[#474d57] transition-all disabled:opacity-50 active:scale-95 shadow-lg group"
+                            className="flex items-center gap-2 px-4 py-2 text-xs font-extrabold rounded-lg border border-[#fcd535]/30 bg-gradient-to-r from-[#2b3139] to-[#1e2329] text-white hover:border-[#fcd535] hover:shadow-lg hover:shadow-[#fcd535]/15 hover:scale-[1.02] active:scale-95 transition-all disabled:opacity-50 group cursor-pointer"
                         >
                             {syncing ? <Spinner size="xs" /> : (
                                 <svg className="w-4 h-4 text-[#fcd535] group-hover:rotate-180 transition-transform duration-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                                 </svg>
                             )}
-                            Sync to Sheets
+                            <span>Sync to Sheets</span>
                         </button>
 
                         {!showResetConfirm ? (
                             <button
                                 onClick={() => setShowResetConfirm(true)}
                                 disabled={resetting || syncing}
-                                className="flex items-center gap-2 px-5 py-2.5 text-xs font-bold rounded-sm border border-[#F6465D30] bg-[#F6465D15] text-[#F6465D] hover:bg-[#F6465D] hover:text-white transition-all disabled:opacity-50 active:scale-95 shadow-lg"
+                                className="flex items-center gap-2 px-4 py-2 text-xs font-extrabold rounded-lg border border-rose-500/40 bg-gradient-to-r from-rose-500/15 to-rose-600/20 text-rose-400 hover:bg-rose-500 hover:text-white hover:border-rose-500 hover:shadow-lg hover:shadow-rose-500/20 hover:scale-[1.02] active:scale-95 transition-all disabled:opacity-50 cursor-pointer"
                             >
                                 {resetting ? <Spinner size="xs" /> : (
                                     <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                                     </svg>
                                 )}
-                                Reset Matrix
+                                <span>Reset Matrix</span>
                             </button>
                         ) : (
-                            <div className="flex items-center gap-3 px-4 py-2 rounded-sm border border-[#F6465D50] bg-[#F6465D20] animate-fade-in">
-                                <span className="text-xs text-[#F6465D] font-bold">តើអ្នកចង់ Reset គ្រប់សិទ្ធិមែនទេ?</span>
-                                <div className="flex gap-2">
+                            <div className="flex items-center gap-3 px-4 py-2 rounded-lg border border-rose-500/50 bg-rose-500/20 backdrop-blur-sm animate-fade-in shadow-lg">
+                                <span className="text-xs text-rose-300 font-bold">តើអ្នកចង់ Reset គ្រប់សិទ្ធិមែនទេ?</span>
+                                <div className="flex items-center gap-2">
                                     <button
                                         onClick={handleReset}
-                                        className="px-3 py-1.5 text-xs font-black rounded bg-[#F6465D] text-white hover:brightness-110 active:scale-95 transition-all shadow-lg"
+                                        className="px-3 py-1.5 text-xs font-black rounded-md bg-rose-500 text-white hover:bg-rose-600 active:scale-95 transition-all shadow-md cursor-pointer"
                                     >
                                         បាទ/ចាស
                                     </button>
                                     <button
                                         onClick={() => setShowResetConfirm(false)}
-                                        className="px-3 py-1.5 text-xs font-bold rounded bg-[#2b3139] text-[#848e9c] hover:text-[#eaecef] transition-colors"
+                                        className="px-3 py-1.5 text-xs font-bold rounded-md bg-[#2b3139] text-[#848e9c] hover:text-[#eaecef] hover:bg-[#3d4451] transition-colors cursor-pointer"
                                     >
                                         ទេ
                                     </button>
@@ -401,12 +401,14 @@ const PermissionMatrix: React.FC = () => {
                 </div>
 
                 {/* Category Quick Filter */}
-                <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-[#2b3139]">
-                    <span className="text-[10px] uppercase font-bold text-[#5e6673] mr-2">បង្ហាញតាមផ្នែក:</span>
+                <div className="flex flex-wrap items-center gap-2 pt-3 border-t border-[#2b3139]">
+                    <span className="text-[10px] uppercase font-extrabold text-[#5e6673] tracking-wider mr-1">បង្ហាញតាមផ្នែក:</span>
                     <button
                         onClick={() => setActiveCategory('all')}
-                        className={`px-3 py-1 text-[11px] font-bold rounded-full transition-all ${
-                            activeCategory === 'all' ? 'bg-[#fcd535] text-[#1e2329]' : 'bg-[#2b3139] text-[#848e9c] hover:bg-[#474d57]'
+                        className={`px-3.5 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer ${
+                            activeCategory === 'all'
+                                ? 'bg-gradient-to-r from-[#fcd535] to-[#f0b90b] text-black shadow-md shadow-[#fcd535]/20 scale-[1.02]'
+                                : 'bg-[#0b0e11] border border-[#2b3139] text-[#848e9c] hover:text-white hover:border-[#474d57]'
                         }`}
                     >
                         ទាំងអស់
@@ -415,8 +417,10 @@ const PermissionMatrix: React.FC = () => {
                         <button
                             key={cat.id}
                             onClick={() => setActiveCategory(cat.id)}
-                            className={`px-3 py-1 text-[11px] font-bold rounded-full transition-all ${
-                                activeCategory === cat.id ? 'bg-[#fcd535] text-[#1e2329]' : 'bg-[#2b3139] text-[#848e9c] hover:bg-[#474d57]'
+                            className={`px-3.5 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer ${
+                                activeCategory === cat.id
+                                    ? 'bg-gradient-to-r from-[#fcd535] to-[#f0b90b] text-black shadow-md shadow-[#fcd535]/20 scale-[1.02]'
+                                    : 'bg-[#0b0e11] border border-[#2b3139] text-[#848e9c] hover:text-white hover:border-[#474d57]'
                             }`}
                         >
                             {cat.name.split(' (')[0]}
@@ -426,8 +430,8 @@ const PermissionMatrix: React.FC = () => {
             </div>
 
             {hasOrphans && (
-                <div className="flex items-center gap-3 px-5 py-3 rounded-sm text-xs shadow-md border-l-4 animate-slide-up" style={{ backgroundColor: '#F0B90B10', borderColor: '#F0B90B', color: '#F0B90B' }}>
-                    <div className="w-8 h-8 rounded-full bg-[#F0B90B20] flex items-center justify-center flex-shrink-0">
+                <div className="flex items-center gap-3 px-5 py-3 rounded-lg text-xs shadow-md border-l-4 animate-slide-up bg-[#F0B90B]/10 border-[#F0B90B] text-[#F0B90B]">
+                    <div className="w-8 h-8 rounded-full bg-[#F0B90B]/20 flex items-center justify-center flex-shrink-0">
                         <span className="text-lg font-bold">!</span>
                     </div>
                     <span className="font-medium">
@@ -436,14 +440,14 @@ const PermissionMatrix: React.FC = () => {
                 </div>
             )}
 
-            <div className="w-full max-h-[75vh] overflow-y-auto overflow-x-auto custom-scrollbar rounded-sm border border-[#2b3139] bg-[#0b0e11] relative shadow-2xl group/table">
+            <div className="w-full max-h-[75vh] overflow-y-auto overflow-x-auto custom-scrollbar rounded-lg border border-[#2b3139] bg-[#0b0e11] relative shadow-2xl group/table">
                 <table className="w-full border-collapse text-left table-fixed min-w-max">
                     <thead className="sticky top-0 z-[40] bg-[#1e2329] shadow-md">
                         <tr>
                             <th className="px-6 py-5 text-left font-bold text-[#eaecef] text-sm sticky left-0 z-50 bg-[#1e2329] w-[300px] border-r border-[#2b3139]">
                                 <div className="flex items-center gap-2">
-                                    <div className="w-1.5 h-4 bg-[#fcd535]"></div>
-                                    <span className="uppercase tracking-widest text-[11px] text-[#848e9c]">មុខងារប្រព័ន្ធ / មុខនាទី</span>
+                                    <div className="w-1.5 h-4 bg-[#fcd535] rounded-full"></div>
+                                    <span className="uppercase tracking-widest text-[11px] font-extrabold text-[#848e9c]">មុខងារប្រព័ន្ធ / មុខនាទី</span>
                                 </div>
                             </th>
                             {allRoleColumns.map((role) => (
@@ -455,25 +459,28 @@ const PermissionMatrix: React.FC = () => {
                                     <div className="flex flex-col items-center gap-2">
                                         <div className="flex items-center gap-1.5">
                                             <span className="text-[10px] font-mono opacity-40">ID:{role.id}</span>
-                                            <span className="text-sm tracking-tight">{role.name}</span>
+                                            <span className="text-sm font-extrabold tracking-tight">{role.name}</span>
                                         </div>
                                         
-                                        {/* Column Mass Action */}
+                                        {/* Column Mass Action Segmented Button */}
                                         {role.name.toLowerCase() !== 'admin' && (
-                                            <div className="flex items-center gap-1 bg-[#0b0e11] p-0.5 rounded-full border border-[#2b3139]">
+                                            <div className="flex items-center bg-[#0b0e11] border border-[#2b3139] rounded-md overflow-hidden p-0.5 shadow-inner">
                                                 <button
                                                     onClick={() => handleRoleMassToggle(role.name, 'enable')}
                                                     title={`បើកសិទ្ធិទាំងអស់សម្រាប់ ${role.name}`}
-                                                    className="p-1 rounded-full text-[#0ecb81] hover:bg-[#0ecb8120] transition-colors"
+                                                    className="flex items-center gap-1 px-2.5 py-0.5 text-[10px] font-bold text-[#0ecb81] hover:bg-[#0ecb81] hover:text-black rounded transition-all active:scale-95 cursor-pointer"
                                                 >
                                                     <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>
+                                                    <span>បើក</span>
                                                 </button>
+                                                <div className="w-[1px] h-3.5 bg-[#2b3139]"></div>
                                                 <button
                                                     onClick={() => handleRoleMassToggle(role.name, 'disable')}
                                                     title={`បិទសិទ្ធិទាំងអស់សម្រាប់ ${role.name}`}
-                                                    className="p-1 rounded-full text-[#f6465d] hover:bg-[#f6465d20] transition-colors"
+                                                    className="flex items-center gap-1 px-2.5 py-0.5 text-[10px] font-bold text-[#f6465d] hover:bg-[#f6465d] hover:text-white rounded transition-all active:scale-95 cursor-pointer"
                                                 >
                                                     <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M6 18L18 6M6 6l12 12" /></svg>
+                                                    <span>បិទ</span>
                                                 </button>
                                             </div>
                                         )}
@@ -482,7 +489,7 @@ const PermissionMatrix: React.FC = () => {
                                             <button
                                                 onClick={() => handleRegisterRole(role.name)}
                                                 disabled={registering === role.name}
-                                                className="mt-1 px-3 py-1 text-[9px] font-black uppercase rounded-full bg-[#F0B90B] text-[#1e2329] hover:bg-[#fcd535] shadow-lg transition-all active:scale-90"
+                                                className="mt-1 px-3 py-1 text-[10px] font-black uppercase rounded-full bg-[#F0B90B] text-[#1e2329] hover:bg-[#fcd535] shadow-md transition-all active:scale-90 cursor-pointer"
                                             >
                                                 {registering === role.name ? '...' : 'Register'}
                                             </button>
@@ -504,7 +511,7 @@ const PermissionMatrix: React.FC = () => {
                                         className="bg-[#181a20] z-20 cursor-pointer hover:bg-[#1e2329] transition-colors"
                                         onClick={() => toggleCategory(cat.id)}
                                     >
-                                        <td colSpan={allRoleColumns.length + 1} className="px-6 py-4 border-y border-[#2b3139]">
+                                        <td colSpan={allRoleColumns.length + 1} className="px-6 py-3.5 border-y border-[#2b3139]">
                                             <div className="flex items-center gap-3">
                                                 <div className={`transition-transform duration-300 ${isCollapsed ? '-rotate-90' : ''}`}>
                                                     <svg className="w-4 h-4 text-[#fcd535]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -512,7 +519,7 @@ const PermissionMatrix: React.FC = () => {
                                                     </svg>
                                                 </div>
                                                 <span className="text-[12px] font-black uppercase text-[#eaecef] tracking-widest">{cat.name}</span>
-                                                <span className="px-2 py-0.5 rounded-full bg-[#2b3139] text-[10px] text-[#848e9c]">
+                                                <span className="px-2.5 py-0.5 rounded-full bg-[#2b3139] text-[10px] font-bold text-[#848e9c]">
                                                     {cat.features.filter(isFeatureVisible).length} មុខងារ
                                                 </span>
                                                 <div className="h-px flex-grow bg-gradient-to-r from-[#2b3139] to-transparent ml-4 opacity-30"></div>
@@ -528,7 +535,7 @@ const PermissionMatrix: React.FC = () => {
                                                 <td className="px-6 py-4 sticky left-0 z-10 bg-[#0b0e11] group-hover:bg-[#12161c] border-r border-[#2b3139] shadow-xl transition-all">
                                                     <div className="flex items-center justify-between gap-4">
                                                         <div className="flex items-start gap-3">
-                                                            <div className="w-8 h-8 rounded-lg bg-[#1e2329] border border-[#2b3139] flex items-center justify-center text-lg mt-0.5">
+                                                            <div className="w-8 h-8 rounded-lg bg-[#1e2329] border border-[#2b3139] flex items-center justify-center text-lg mt-0.5 shadow-sm">
                                                                 {info?.icon || '⚙️'}
                                                             </div>
                                                             <div className="flex flex-col">
@@ -545,20 +552,20 @@ const PermissionMatrix: React.FC = () => {
                                                         </div>
                                                         
                                                         {/* Row Mass Actions */}
-                                                        <div className="flex flex-col items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                                                             <button 
                                                                 onClick={() => handleMassToggle(feature, 'enable')}
                                                                 title="បើកឱ្យគ្រប់គ្នា"
-                                                                className="p-1 rounded bg-[#0ecb8110] text-[#0ecb81] hover:bg-[#0ecb81] hover:text-[#0b0e11] transition-all"
+                                                                className="p-1.5 rounded-md bg-[#0ecb81]/15 text-[#0ecb81] hover:bg-[#0ecb81] hover:text-black transition-all cursor-pointer"
                                                             >
-                                                                <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>
+                                                                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>
                                                             </button>
                                                             <button 
                                                                 onClick={() => handleMassToggle(feature, 'disable')}
                                                                 title="បិទគ្រប់គ្នា"
-                                                                className="p-1 rounded bg-[#f6465d10] text-[#f6465d] hover:bg-[#f6465d] hover:text-white transition-all"
+                                                                className="p-1.5 rounded-md bg-[#f6465d]/15 text-[#f6465d] hover:bg-[#f6465d] hover:text-white transition-all cursor-pointer"
                                                             >
-                                                                <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M6 18L18 6M6 6l12 12" /></svg>
+                                                                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M6 18L18 6M6 6l12 12" /></svg>
                                                             </button>
                                                         </div>
                                                     </div>
@@ -586,24 +593,27 @@ const PermissionMatrix: React.FC = () => {
                                                         <td key={lockKey} className="px-4 py-4 text-center align-middle border-b border-[#2b3139]/30">
                                                             {isAdminRole ? (
                                                                 <div className="flex items-center justify-center">
-                                                                    <div className="px-3 py-1 bg-[#fcd535]/10 border border-[#fcd535]/30 rounded-full text-[10px] font-black text-[#fcd535] shadow-sm">
-                                                                        MASTER
+                                                                    <div className="px-3.5 py-1 bg-gradient-to-r from-[#fcd535]/20 via-[#f0b90b]/15 to-[#fcd535]/20 border border-[#fcd535]/40 rounded-full text-[10px] font-black text-[#fcd535] tracking-wider shadow-sm flex items-center gap-1">
+                                                                        <span>👑</span>
+                                                                        <span>MASTER</span>
                                                                     </div>
                                                                 </div>
                                                             ) : (
                                                                 <button
                                                                     onClick={() => handleToggle(roleName, feature, isEnabled)}
                                                                     disabled={isUpdating}
-                                                                    className={`relative inline-flex h-5 w-10 items-center rounded-full transition-all duration-300 focus:outline-none shadow-md ${
-                                                                        isEnabled ? 'bg-[#0ecb81]' : 'bg-[#2b3139]'
-                                                                    } ${isUpdating ? 'opacity-50' : 'opacity-100 hover:scale-110'}`}
+                                                                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-all duration-300 focus:outline-none shadow-sm cursor-pointer ${
+                                                                        isEnabled
+                                                                            ? 'bg-gradient-to-r from-[#0ecb81] to-[#05b871] shadow-[#0ecb81]/25 ring-2 ring-[#0ecb81]/20'
+                                                                            : 'bg-[#1e2329] border border-[#2b3139] hover:border-[#474d57]'
+                                                                    } ${isUpdating ? 'opacity-50' : 'opacity-100 hover:scale-105 active:scale-95'}`}
                                                                 >
                                                                     <span
-                                                                        className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform duration-300 shadow-sm ${
-                                                                            isEnabled ? 'translate-x-5.5' : 'translate-x-1'
+                                                                        className={`inline-block h-4 w-4 rounded-full bg-white transition-transform duration-300 shadow-md ${
+                                                                            isEnabled ? 'translate-x-6' : 'translate-x-1'
                                                                         } flex items-center justify-center`}
                                                                     >
-                                                                        {isUpdating && <div className="w-2 h-2 border-2 border-[#0ecb81] border-t-transparent rounded-full animate-spin"></div>}
+                                                                        {isUpdating && <div className="w-2.5 h-2.5 border-2 border-[#0ecb81] border-t-transparent rounded-full animate-spin"></div>}
                                                                     </span>
                                                                 </button>
                                                             )}

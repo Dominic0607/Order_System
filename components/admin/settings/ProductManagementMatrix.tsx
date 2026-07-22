@@ -679,30 +679,30 @@ const ProductManagementMatrix: React.FC<ProductManagementMatrixProps> = ({ produ
 
                             {/* New Price */}
                             <td className="px-3 py-3">
-                                <div className="relative">
-                                    <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[#5e6673] text-xs font-bold">$</span>
+                                <div className="flex items-center bg-[#0b0e11] border border-[#2b3139] rounded-md px-2.5 py-1.5 focus-within:border-[#0ecb81] transition-all">
+                                    <span className="text-[#5e6673] text-xs font-extrabold mr-1.5 select-none">$</span>
                                     <input
                                         type="number"
                                         step="0.01"
                                         placeholder="0.00"
                                         value={newProduct.Price || ''}
                                         onChange={(e) => setNewProduct(prev => ({ ...prev, Price: parseFloat(e.target.value) || 0 }))}
-                                        className="w-full bg-[#0b0e11] border border-[#2b3139] rounded-md pl-6 pr-2 py-1.5 text-xs font-extrabold text-[#0ecb81] focus:border-[#0ecb81] outline-none transition-all"
+                                        className="w-full bg-transparent text-xs font-extrabold text-[#0ecb81] outline-none border-none p-0 focus:ring-0"
                                     />
                                 </div>
                             </td>
 
                             {/* New Cost */}
                             <td className="px-3 py-3">
-                                <div className="relative">
-                                    <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[#5e6673] text-xs font-bold">$</span>
+                                <div className="flex items-center bg-[#0b0e11] border border-[#2b3139] rounded-md px-2.5 py-1.5 focus-within:border-[#f6465d] transition-all">
+                                    <span className="text-[#5e6673] text-xs font-extrabold mr-1.5 select-none">$</span>
                                     <input
                                         type="number"
                                         step="0.01"
                                         placeholder="0.00"
                                         value={newProduct.Cost || ''}
                                         onChange={(e) => setNewProduct(prev => ({ ...prev, Cost: parseFloat(e.target.value) || 0 }))}
-                                        className="w-full bg-[#0b0e11] border border-[#2b3139] rounded-md pl-6 pr-2 py-1.5 text-xs font-extrabold text-[#f6465d] focus:border-[#f6465d] outline-none transition-all"
+                                        className="w-full bg-transparent text-xs font-extrabold text-[#f6465d] outline-none border-none p-0 focus:ring-0"
                                     />
                                 </div>
                                 {renderProfitMargin(newProductPrice, newProductCost)}
@@ -737,6 +737,7 @@ const ProductManagementMatrix: React.FC<ProductManagementMatrixProps> = ({ produ
                             const changes = editData[product.ProductName] || {};
                             const hasChanges = Object.keys(changes).length > 0;
 
+                            const currentName = changes.ProductName !== undefined ? changes.ProductName : product.ProductName;
                             const currentBarcode = changes.Barcode !== undefined ? changes.Barcode : product.Barcode;
                             const currentPrice = changes.Price !== undefined ? changes.Price : (product.Price || 0);
                             const currentCost = changes.Cost !== undefined ? changes.Cost : (product.Cost || 0);
@@ -810,14 +811,17 @@ const ProductManagementMatrix: React.FC<ProductManagementMatrixProps> = ({ produ
                                         </div>
                                     </td>
 
-                                    {/* Product Name & Tag Badges */}
+                                    {/* Product Name (Editable Input) */}
                                     <td className="px-4 py-3">
-                                        <div className="flex flex-col gap-0.5">
-                                            <span className="text-sm font-bold text-[#eaecef] group-hover:text-[#fcd535] transition-colors line-clamp-2">
-                                                {product.ProductName}
-                                            </span>
+                                        <div className="flex flex-col gap-1">
+                                            <input
+                                                type="text"
+                                                value={currentName}
+                                                onChange={(e) => handleFieldChange(product.ProductName, 'ProductName', e.target.value)}
+                                                className="w-full bg-[#0b0e11] border border-[#2b3139] rounded-md px-2.5 py-1 text-xs font-bold text-[#eaecef] focus:border-[#fcd535] outline-none transition-all"
+                                            />
                                             {tagList.length > 0 && (
-                                                <div className="flex items-center gap-1 flex-wrap mt-0.5">
+                                                <div className="flex items-center gap-1 flex-wrap">
                                                     {tagList.map((tag, tIdx) => (
                                                         <span key={tIdx} className="px-1.5 py-0.2 text-[9px] bg-[#2b3139] text-[#848e9c] rounded font-medium">
                                                             #{tag}
@@ -857,30 +861,30 @@ const ProductManagementMatrix: React.FC<ProductManagementMatrixProps> = ({ produ
                                         </div>
                                     </td>
 
-                                    {/* Price Input */}
+                                    {/* Price Input (Flex Alignment) */}
                                     <td className="px-3 py-3">
-                                        <div className="relative">
-                                            <span className="absolute left-2 top-1/2 -translate-y-1/2 text-[#5e6673] text-xs font-bold">$</span>
+                                        <div className="flex items-center bg-[#0b0e11] border border-[#2b3139] rounded-md px-2.5 py-1 focus-within:border-[#0ecb81] transition-all">
+                                            <span className="text-[#5e6673] text-xs font-extrabold mr-1.5 select-none">$</span>
                                             <input
                                                 type="number"
                                                 step="0.01"
                                                 value={currentPrice}
                                                 onChange={(e) => handleFieldChange(product.ProductName, 'Price', parseFloat(e.target.value) || 0)}
-                                                className="w-full bg-[#0b0e11] border border-[#2b3139] rounded-md pl-5 pr-2 py-1 text-xs font-extrabold text-[#0ecb81] focus:border-[#0ecb81] outline-none transition-all"
+                                                className="w-full bg-transparent text-xs font-extrabold text-[#0ecb81] outline-none border-none p-0 focus:ring-0"
                                             />
                                         </div>
                                     </td>
 
-                                    {/* Cost Input & Profit Badge */}
+                                    {/* Cost Input & Profit Badge (Flex Alignment) */}
                                     <td className="px-3 py-3">
-                                        <div className="relative">
-                                            <span className="absolute left-2 top-1/2 -translate-y-1/2 text-[#5e6673] text-xs font-bold">$</span>
+                                        <div className="flex items-center bg-[#0b0e11] border border-[#2b3139] rounded-md px-2.5 py-1 focus-within:border-[#f6465d] transition-all">
+                                            <span className="text-[#5e6673] text-xs font-extrabold mr-1.5 select-none">$</span>
                                             <input
                                                 type="number"
                                                 step="0.01"
                                                 value={currentCost}
                                                 onChange={(e) => handleFieldChange(product.ProductName, 'Cost', parseFloat(e.target.value) || 0)}
-                                                className="w-full bg-[#0b0e11] border border-[#2b3139] rounded-md pl-5 pr-2 py-1 text-xs font-extrabold text-[#f6465d] focus:border-[#f6465d] outline-none transition-all"
+                                                className="w-full bg-transparent text-xs font-extrabold text-[#f6465d] outline-none border-none p-0 focus:ring-0"
                                             />
                                         </div>
                                         {renderProfitMargin(currentPrice, currentCost)}
