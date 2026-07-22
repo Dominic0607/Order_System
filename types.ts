@@ -156,6 +156,7 @@ export interface ShippingMethod {
   InternalCost: number;
   CostShortcuts: string;
   EnableDriverRecommendation?: boolean;
+  IsDisabled?: boolean;
 }
 
 export interface DeliveryGroup {

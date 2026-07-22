@@ -16,7 +16,10 @@ const SearchableShippingMethodDropdown: React.FC<SearchableShippingMethodDropdow
     onSelect, 
     placeholder = "ជ្រើសរើសសេវាដឹកជញ្ជូន..." 
 }) => {
-    const safeMethods = useMemo(() => Array.isArray(methods) ? methods : [], [methods]);
+    const safeMethods = useMemo(() => {
+        const arr = Array.isArray(methods) ? methods : [];
+        return arr.filter(m => !m.IsDisabled || m.MethodName === selectedMethodName);
+    }, [methods, selectedMethodName]);
     const [isOpen, setIsOpen] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
     const dropdownRef = useRef<HTMLDivElement>(null);

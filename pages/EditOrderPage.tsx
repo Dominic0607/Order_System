@@ -760,23 +760,28 @@ const EditOrderPage: React.FC<EditOrderPageProps> = ({ order, onSaveSuccess, onC
                         </div>
 
                         {/* Row 2: Order Timestamp (Full-width on Mobile) */}
-                        <div className={`flex items-center gap-2 px-2.5 py-1 border rounded-none transition-all h-8 lg:h-9 w-full sm:w-auto group ${!currentUser?.IsSystemAdmin ? 'opacity-70' : isLightMode ? 'hover:border-blue-500/50' : 'hover:border-[#FCD535]/40'} ${isLightMode ? 'bg-white border-slate-200 shadow-sm' : 'bg-[#0B0E11] border-[#2B3139] shadow-sm'}`}>
-                            <div className={`flex-shrink-0 w-5.5 h-5.5 rounded-none flex items-center justify-center border transition-colors ${!currentUser?.IsSystemAdmin ? (isLightMode ? 'bg-slate-50 border-slate-200 text-slate-300' : 'bg-[#2B3139]/20 border-[#2B3139] text-[#474D57]') : isLightMode ? 'bg-slate-50 border-slate-200 text-slate-500 group-hover:bg-blue-50 group-hover:border-blue-200 group-hover:text-blue-500' : 'bg-[#848E9C]/10 border-[#848E9C]/20 text-[#848E9C] group-hover:bg-[#FCD535]/10 group-hover:border-[#FCD535]/20 group-hover:text-[#FCD535]'}`}>
-                                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5}><path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                            </div>
-                            <div className="flex flex-col leading-none flex-grow">
-                                <label htmlFor="order-date" className={`text-[7px] font-black uppercase tracking-[0.1em] cursor-pointer ${isLightMode ? 'text-slate-400 group-hover:text-blue-500' : 'text-[#474D57]'}`}>Log Timestamp</label>
-                                <input 
-                                    id="order-date"
-                                    type="datetime-local"
-                                    value={formatForInput(formData.Timestamp)}
-                                    onChange={handleDateChange}
-                                    disabled={!currentUser?.IsSystemAdmin}
-                                    className={`bg-transparent border-none text-[9px] font-black p-0 focus:ring-0 h-4 w-full mt-0.5 tabular-nums text-left ${!currentUser?.IsSystemAdmin ? 'cursor-not-allowed' : isLightMode ? 'hover:text-blue-600 cursor-pointer text-slate-800' : 'hover:text-[#FCD535] cursor-pointer text-[#EAECEF]'}`}
-                                    style={{ colorScheme: isLightMode ? 'light' : 'dark' }}
-                                />
-                            </div>
-                        </div>
+                        {(() => {
+                            const canEditDate = currentUser?.IsSystemAdmin || hasPermission('edit_order_global');
+                            return (
+                                <div className={`flex items-center gap-2 px-2.5 py-1 border rounded-none transition-all h-8 lg:h-9 w-full sm:w-auto group ${!canEditDate ? 'opacity-70' : isLightMode ? 'hover:border-blue-500/50' : 'hover:border-[#FCD535]/40'} ${isLightMode ? 'bg-white border-slate-200 shadow-sm' : 'bg-[#0B0E11] border-[#2B3139] shadow-sm'}`}>
+                                    <div className={`flex-shrink-0 w-5.5 h-5.5 rounded-none flex items-center justify-center border transition-colors ${!canEditDate ? (isLightMode ? 'bg-slate-50 border-slate-200 text-slate-300' : 'bg-[#2B3139]/20 border-[#2B3139] text-[#474D57]') : isLightMode ? 'bg-slate-50 border-slate-200 text-slate-500 group-hover:bg-blue-50 group-hover:border-blue-200 group-hover:text-blue-500' : 'bg-[#848E9C]/10 border-[#848E9C]/20 text-[#848E9C] group-hover:bg-[#FCD535]/10 group-hover:border-[#FCD535]/20 group-hover:text-[#FCD535]'}`}>
+                                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5}><path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                                    </div>
+                                    <div className="flex flex-col leading-none flex-grow">
+                                        <label htmlFor="order-date" className={`text-[7px] font-black uppercase tracking-[0.1em] cursor-pointer ${isLightMode ? 'text-slate-400 group-hover:text-blue-500' : 'text-[#474D57]'}`}>Log Timestamp</label>
+                                        <input 
+                                            id="order-date"
+                                            type="datetime-local"
+                                            value={formatForInput(formData.Timestamp)}
+                                            onChange={handleDateChange}
+                                            disabled={!canEditDate}
+                                            className={`bg-transparent border-none text-[9px] font-black p-0 focus:ring-0 h-4 w-full mt-0.5 tabular-nums text-left ${!canEditDate ? 'cursor-not-allowed' : isLightMode ? 'hover:text-blue-600 cursor-pointer text-slate-800' : 'hover:text-[#FCD535] cursor-pointer text-[#EAECEF]'}`}
+                                            style={{ colorScheme: isLightMode ? 'light' : 'dark' }}
+                                        />
+                                    </div>
+                                </div>
+                            );
+                        })()}
                     </div>
                 </div>
                 

@@ -18,15 +18,17 @@ const ShippingMethodDropdown: React.FC<ShippingMethodDropdownProps> = ({
     const { advancedSettings } = useContext(AppContext);
     const isLightMode = advancedSettings?.themeMode === 'light';
 
+    const activeMethods = methods.filter(m => !m.IsDisabled || selectedMethodName === m.MethodName);
+
     return (
         <div className="w-full py-1">
-            {methods.length === 0 ? (
+            {activeMethods.length === 0 ? (
                 <div className={`p-6 text-center border-2 border-dashed rounded-none ${isLightMode ? 'bg-slate-50 border-slate-200' : 'bg-[#0B0E11]/50 border-[#2B3139]'}`}>
                     <p className={`text-[10px] font-black uppercase tracking-widest italic animate-pulse ${isLightMode ? 'text-slate-400' : 'text-[#474D57]'}`}>No Methods Found</p>
                 </div>
             ) : (
                 <div className="grid grid-cols-2 sm:flex sm:flex-wrap gap-2 p-1">
-                    {methods.map((method) => {
+                    {activeMethods.map((method) => {
                         const isSelected = selectedMethodName === method.MethodName;
                         
                         return (
