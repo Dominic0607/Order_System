@@ -63,10 +63,10 @@ const OrderFilters: React.FC<OrderFiltersProps> = ({
                 }`}>{title}</h3>
             </div>
             {count > 0 && (
-                <span className={`px-2 py-0.5 text-[10px] font-black rounded-lg shadow-sm ${
+                <span className={`px-2 py-0.5 text-[9px] font-black rounded-md ${
                     isLightMode 
-                        ? 'bg-blue-600 text-white shadow-blue-500/20' 
-                        : 'bg-[#FCD535] text-[#181A20] shadow-[#FCD535]/10 animate-bounce-subtle'
+                        ? 'bg-blue-600 text-white' 
+                        : 'bg-[#FCD535] text-[#181A20]'
                 }`}>
                     {count} ACTIVE
                 </span>

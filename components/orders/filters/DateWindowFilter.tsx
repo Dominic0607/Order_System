@@ -36,8 +36,8 @@ const DateWindowFilter: React.FC<DateWindowFilterProps> = ({
         <div className="space-y-6">
             <div className={`p-6 rounded-2xl border transition-all ${
                 isLightMode 
-                    ? 'bg-slate-50/80 border-slate-200 shadow-sm' 
-                    : 'bg-[#181A20] border-[#2B3139] shadow-inner'
+                    ? 'bg-slate-50/70 border-slate-200' 
+                    : 'bg-[#181A20] border-[#2B3139]'
             } group/date`}>
                 <label className={`text-[10px] font-black mb-4 block uppercase tracking-[0.2em] flex items-center gap-2 ${
                     isLightMode ? 'text-blue-600' : 'text-[#FCD535]'
@@ -49,9 +49,9 @@ const DateWindowFilter: React.FC<DateWindowFilterProps> = ({
                     <select 
                         value={datePreset} 
                         onChange={e => setDatePreset(e.target.value as any)} 
-                        className={`form-select w-full !py-4 !px-6 rounded-xl font-bold transition-all appearance-none cursor-pointer border ${
+                        className={`form-select w-full !py-3.5 !px-5 rounded-xl font-bold transition-all appearance-none cursor-pointer border ${
                             isLightMode 
-                                ? 'bg-white border-slate-200 text-slate-800 focus:border-blue-500/50 hover:border-slate-300 shadow-sm' 
+                                ? 'bg-white border-slate-200 text-slate-800 focus:border-blue-500 hover:border-slate-300' 
                                 : '!bg-[#0B0E11] border-[#2B3139] text-gray-200 focus:border-[#FCD535] hover:border-gray-600'
                         }`}
                     >
@@ -61,9 +61,9 @@ const DateWindowFilter: React.FC<DateWindowFilterProps> = ({
                         isLightMode ? 'text-slate-400' : 'text-gray-500'
                     }`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 9l-7 7-7-7" /></svg>
                 </div>
-                <div className={`mt-4 p-3.5 rounded-xl text-center text-[11px] font-mono border uppercase tracking-widest ${
+                <div className={`mt-3 p-3 rounded-xl text-center text-[11px] font-mono border uppercase tracking-widest ${
                     isLightMode 
-                        ? 'bg-white text-slate-600 border-slate-200 shadow-sm' 
+                        ? 'bg-white text-slate-500 border-slate-200' 
                         : 'bg-[#0B0E11] text-gray-400 border-[#2B3139]'
                 }`}>
                     {calculatedRange}

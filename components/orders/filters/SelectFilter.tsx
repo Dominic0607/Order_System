@@ -204,6 +204,16 @@ const SelectFilter: React.FC<SelectFilterProps> = ({
         );
     }
 
+    // Check if real filters (other than default "All") are applied
+    const isFiltered = useMemo(() => {
+        if (!selectedValues.length) return false;
+        if (selectedValues.length === 1) {
+            const val = String(selectedValues[0]).toLowerCase();
+            if (val === 'all' || val === 'all time' || val === 'all (ទាំងអស់)' || val === 'all messages' || val === 'all status' || val === 'all payments') return false;
+        }
+        return true;
+    }, [selectedValues]);
+
     // ── variant-aware style tokens ──────────────────────────────────────────
     const isModal = variant === 'modal';
     const r = 'rounded-xl';
@@ -215,7 +225,7 @@ const SelectFilter: React.FC<SelectFilterProps> = ({
         ? 'hover:bg-slate-50' 
         : (isModal ? 'hover:bg-[#252a33]' : 'hover:bg-[#181A20]');
     const bgMenu = isLightMode 
-        ? 'bg-white border-slate-200 shadow-2xl' 
+        ? 'bg-white border-slate-200 shadow-lg' 
         : (isModal ? 'bg-[#1e2329] border-[#2B3139]' : 'bg-[#181A20] border-[#2B3139]');
     const bgSearch = isLightMode 
         ? 'bg-slate-50 border-slate-200 text-slate-800' 
@@ -235,7 +245,7 @@ const SelectFilter: React.FC<SelectFilterProps> = ({
     }
 
     let baseClass = `relative w-full cursor-pointer ${bgTrigger} border ${
-        isLightMode ? 'border-slate-200 shadow-sm' : 'border-[#2B3139]'
+        isLightMode ? 'border-slate-200' : 'border-[#2B3139]'
     } py-3 px-4 ${r} font-bold transition-all ${bgHover} flex justify-between items-center group/select`;
     
     let textClass = isLightMode ? 'text-slate-600' : (isModal ? 'text-[#848e9c]' : 'text-gray-400');
@@ -248,13 +258,13 @@ const SelectFilter: React.FC<SelectFilterProps> = ({
             baseClass += " !border-[#F6465D]/50 !bg-[#F6465D]/10";
             textClass = "text-[#F6465D]";
         }
-    } else if (selectedValues.length > 0) {
+    } else if (isFiltered) {
         textClass = isLightMode ? "text-blue-600 font-black" : "text-[#FCD535]";
-        baseClass += isLightMode ? " !border-blue-500/50 !bg-blue-50/70 shadow-sm" : " !border-[#FCD535]/40 !bg-[#FCD535]/8";
+        baseClass += isLightMode ? " !border-blue-500/50 !bg-blue-50/70" : " !border-[#FCD535]/40 !bg-[#FCD535]/8";
     }
 
     if (isOpen) baseClass += isLightMode 
-        ? " !border-blue-500 bg-white ring-2 ring-blue-500/20" 
+        ? " !border-blue-500 bg-white" 
         : (isModal ? " !border-[#fcd535]/50" : " border-[#FCD535] bg-[#181A20]");
 
     return (

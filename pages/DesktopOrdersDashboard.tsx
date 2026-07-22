@@ -232,19 +232,19 @@ const DesktopOrdersDashboard: React.FC<DesktopOrdersDashboardProps> = ({ onBack,
     return (
         <div className={`w-full h-full flex flex-col animate-reveal relative ${isLightMode ? 'bg-[#f8fafc]' : isBinance ? 'bg-[#0B0E11]' : 'bg-[#020617]'} overflow-hidden`}>
             <Modal isOpen={isFilterModalOpen} onClose={() => setIsFilterModalOpen(false)} maxWidth="max-w-5xl">
-                <div className={`p-8 ${isLightMode ? 'bg-white border border-slate-200 shadow-2xl' : isBinance ? 'bg-[#1E2329]' : 'bg-[#0f172a] rounded-[2.5rem]'} flex flex-col h-[85vh]`} style={isBinance && !isLightMode ? { borderRadius: '2px' } : { borderRadius: '24px' }}>
+                <div className={`p-8 ${isLightMode ? 'bg-white border border-slate-200' : isBinance ? 'bg-[#1E2329]' : 'bg-[#0f172a] rounded-[2.5rem]'} flex flex-col h-[85vh]`} style={isBinance && !isLightMode ? { borderRadius: '2px' } : { borderRadius: '24px' }}>
                     <div className="flex justify-between items-center mb-8">
                         <div className="flex items-center gap-4">
-                            <div className={`w-2 h-10 ${isLightMode ? 'bg-blue-500 rounded-full shadow-[0_0_20px_rgba(59,130,246,0.3)]' : isBinance ? 'bg-[#FCD535]' : 'bg-blue-600 rounded-full shadow-[0_0_20px_rgba(37,99,235,0.5)]'}`} style={isBinance && !isLightMode ? { borderRadius: '1px' } : undefined}></div>
-                            <h2 className={`text-3xl font-black ${isLightMode ? 'text-slate-800' : isBinance ? 'text-[#EAECEF]' : 'text-white'} uppercase tracking-tighter ${isBinance ? '' : 'italic'}`}>{t.filter_engine}</h2>
+                            <div className={`w-2 h-10 ${isLightMode ? 'bg-blue-600 rounded-full' : isBinance ? 'bg-[#FCD535]' : 'bg-blue-600 rounded-full'}`} style={isBinance && !isLightMode ? { borderRadius: '1px' } : undefined}></div>
+                            <h2 className={`text-2xl font-black ${isLightMode ? 'text-slate-800' : isBinance ? 'text-[#EAECEF]' : 'text-white'} uppercase tracking-tight`}>{t.filter_engine}</h2>
                         </div>
-                        <button onClick={() => setIsFilterModalOpen(false)} className={`w-12 h-12 ${isLightMode ? 'bg-slate-100 border-slate-200 text-slate-500 hover:text-slate-800 hover:bg-slate-200 rounded-2xl' : isBinance ? 'bg-[#2B3139] border-[#474D57] text-[#848E9C] hover:text-[#EAECEF]' : 'bg-white/5 border-white/5 text-gray-500 hover:text-white'} flex items-center justify-center border shadow-xl`} style={isBinance && !isLightMode ? { borderRadius: '2px' } : undefined}>&times;</button>
+                        <button onClick={() => setIsFilterModalOpen(false)} className={`w-10 h-10 ${isLightMode ? 'bg-slate-100 border-slate-200 text-slate-500 hover:text-slate-800 hover:bg-slate-200 rounded-xl' : isBinance ? 'bg-[#2B3139] border-[#474D57] text-[#848E9C] hover:text-[#EAECEF]' : 'bg-white/5 border-white/5 text-gray-500 hover:text-white'} flex items-center justify-center border transition-all active:scale-95`} style={isBinance && !isLightMode ? { borderRadius: '2px' } : undefined}>&times;</button>
                     </div>
                     <div className="flex-grow overflow-y-auto pr-4 custom-scrollbar">
                         <OrderFilters filters={filters} setFilters={setFilters} orders={enrichedOrders} usersList={appData.users || []} appData={appData} calculatedRange={calculatedRange} />
                     </div>
                     <div className={`mt-6 border-t ${isLightMode ? 'border-slate-200' : isBinance ? 'border-[#2B3139]' : 'border-white/5'} pt-6`}>
-                        <button onClick={() => { setIsFilterModalOpen(false); setCurrentPage(1); }} className={`w-full py-4 ${isLightMode ? 'bg-blue-600 hover:bg-blue-500 text-white shadow-lg rounded-2xl' : isBinance ? 'bg-[#FCD535] hover:bg-[#f0c51d] text-[#181A20]' : 'bg-blue-600 hover:bg-blue-500 text-white shadow-[0_20px_50px_rgba(37,99,235,0.3)] rounded-2xl'} text-[13px] font-black uppercase tracking-[0.25em]`} style={isBinance && !isLightMode ? { borderRadius: '2px' } : undefined}>{t.apply_config}</button>
+                        <button onClick={() => { setIsFilterModalOpen(false); setCurrentPage(1); }} className={`w-full py-4 ${isLightMode ? 'bg-blue-600 hover:bg-blue-700 text-white rounded-xl' : isBinance ? 'bg-[#FCD535] hover:bg-[#f0c51d] text-[#181A20]' : 'bg-blue-600 hover:bg-blue-500 text-white rounded-xl'} text-[13px] font-black uppercase tracking-[0.15em] transition-all active:scale-[0.99]`} style={isBinance && !isLightMode ? { borderRadius: '2px' } : undefined}>{t.apply_config}</button>
                     </div>
                 </div>
             </Modal>
